@@ -1,0 +1,214 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\Resources\Pickups\Models\PickupRequests;
+
+use App\Domain\Pickups\Enums\PickupStatus;
+use App\Domain\Pickups\Models\PickupRequest;
+use App\Domain\Pickups\Services\PickupService;
+use App\Filament\Resources\Pickups\Models\PickupRequests\Pages\ManagePickupRequests;
+use App\Models\User;
+use App\Support\StatusLabel;
+use App\Support\WeightFormatter;
+use BackedEnum;
+use Carbon\CarbonImmutable;
+use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Resources\Pages\PageRegistration;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
+use UnitEnum;
+
+final class PickupRequestResource extends Resource
+{
+    protected static ?string $model = PickupRequest::class;
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Operasional';
+
+    protected static ?int $navigationSort = 10;
+
+    protected static ?string $navigationLabel = 'Penjemputan';
+
+    protected static ?string $modelLabel = 'penjemputan';
+
+    protected static ?string $pluralModelLabel = 'penjemputan';
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->components([
+            TextInput::make('customer.name')->label('Warga')->disabled(),
+            DatePicker::make('selected_date')->label('Tanggal pilihan')->disabled(),
+            Select::make('service_area_id')->label('Area pelayanan')->relationship('serviceArea', 'name')->disabled(),
+            TextInput::make('status')->label('Status')->formatStateUsing(fn (PickupStatus|string|null $state): string => $state === null ? '—' : StatusLabel::for($state))->disabled(),
+            TextInput::make('estimated_weight_kg')->label('Perkiraan berat (kg)')->formatStateUsing(fn (?string $state): string => WeightFormatter::format($state))->disabled(),
+            Textarea::make('address')->label('Alamat')->disabled(),
+            Textarea::make('notes')->label('Catatan akses')->disabled()->rows(3),
+        ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->recordTitleAttribute('request_number')
+            ->defaultSort('selected_date', 'desc')
+            ->columns([
+                TextColumn::make('request_number')->label('Nomor')->searchable()->sortable(),
+                TextColumn::make('customer.name')->label('Nasabah')->searchable(),
+                TextColumn::make('serviceArea.name')->label('Area')->searchable(),
+                TextColumn::make('selected_date')->label('Tanggal')->date('d M Y')->sortable(),
+                TextColumn::make('status')->label('Status')->formatStateUsing(fn (PickupStatus|string $state): string => StatusLabel::for($state))->badge(),
+                TextColumn::make('assignedStaff.name')->label('Petugas')->placeholder('Belum ditugaskan'),
+            ])
+            ->filters([
+                SelectFilter::make('status')->label('Status')->options([
+                    PickupStatus::PendingReview->value => 'Menunggu pemeriksaan',
+                    PickupStatus::Accepted->value => 'Diterima',
+                    PickupStatus::Scheduled->value => 'Dijadwalkan',
+                    PickupStatus::EnRoute->value => 'Menuju lokasi',
+                    PickupStatus::PickedUp->value => 'Sudah dijemput',
+                    PickupStatus::Completed->value => 'Selesai',
+                    PickupStatus::Rejected->value => 'Ditolak',
+                    PickupStatus::Cancelled->value => 'Dibatalkan',
+                ]),
+                SelectFilter::make('service_area_id')->label('Area pelayanan')->relationship('serviceArea', 'name'),
+                SelectFilter::make('assigned_staff_id')->label('Petugas')->relationship('assignedStaff', 'name'),
+                Filter::make('scheduled_date')->label('Tanggal layanan')->form([
+                    DatePicker::make('date')->label('Tanggal'),
+                ])->query(static function (Builder $query, array $data): Builder {
+                    return $query->when($data['date'] ?? null, static fn (Builder $query, string $date): Builder => $query->whereDate('scheduled_date', $date));
+                }),
+            ])
+            ->recordActions([
+                Action::make('inspect')
+                    ->label('Tinjau penjemputan')
+                    ->icon(Heroicon::OutlinedEye)
+                    ->modalHeading('Tinjau penjemputan')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->schema([
+                        TextInput::make('customer')->label('Nasabah')->disabled(),
+                        TextInput::make('area')->label('Area pelayanan')->disabled(),
+                        TextInput::make('status')->label('Status')->disabled(),
+                        Textarea::make('items')->label('Jenis dan perkiraan')->disabled()->rows(5),
+                        Textarea::make('notes')->label('Catatan akses')->disabled()->rows(3),
+                        Placeholder::make('evidence')->label('Bukti foto')->content(fn (PickupRequest $record) => self::proofPhotoLinks($record)),
+                        Textarea::make('timeline')->label('Riwayat status')->disabled()->rows(6),
+                    ])
+                    ->fillForm(fn (PickupRequest $record): array => self::inspectionData($record)),
+                Action::make('accept')
+                    ->label('Terima pengajuan')
+                    ->icon(Heroicon::OutlinedCheckCircle)
+                    ->color('success')
+                    ->visible(fn (PickupRequest $record): bool => $record->status->value === 'menunggu_pemeriksaan')
+                    ->authorize('review')
+                    ->action(function (PickupRequest $record): PickupRequest {
+                        return app(PickupService::class)->review(self::actor(), $record, true);
+                    }),
+                Action::make('reject')
+                    ->label('Tolak')
+                    ->icon(Heroicon::OutlinedXCircle)
+                    ->color('danger')
+                    ->visible(fn (PickupRequest $record): bool => $record->status->value === 'menunggu_pemeriksaan')
+                    ->authorize('review')
+                    ->schema([Textarea::make('reason')->label('Alasan penolakan')->required()->minLength(10)->maxLength(1000)->rows(4)])
+                    ->action(fn (PickupRequest $record, array $data): PickupRequest => app(PickupService::class)->review(self::actor(), $record, false, (string) $data['reason'])),
+                Action::make('schedule')
+                    ->label('Jadwalkan')
+                    ->icon(Heroicon::OutlinedCalendarDays)
+                    ->visible(fn (PickupRequest $record): bool => $record->status->value === 'diterima')
+                    ->authorize('schedule')
+                    ->schema([
+                        Select::make('assigned_staff_id')->label('Petugas penjemputan')->helperText('Hanya petugas aktif pada area penjemputan ini yang dapat dipilih.')->options(fn (PickupRequest $record): array => User::query()->where('users.status', 'aktif')->whereHas('roles', fn (Builder $roles): Builder => $roles->where('roles.name', 'petugas'))->whereHas('staffProfile.serviceAreas', fn (Builder $assignment): Builder => $assignment->where('staff_service_areas.service_area_id', $record->service_area_id)->where(fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_from')->orWhereDate('staff_service_areas.active_from', '<=', today()))->where(fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_to')->orWhereDate('staff_service_areas.active_to', '>=', today()))->whereHas('serviceArea', fn (Builder $area): Builder => $area->where('service_areas.is_active', true)))->orderBy('users.name')->pluck('users.name', 'users.id')->all())->required(),
+                        DatePicker::make('scheduled_date')->label('Tanggal jadwal')->helperText('Pilih tanggal mulai hari ini sampai batas waktu pemesanan.')->minDate(today('Asia/Jakarta'))->maxDate(today('Asia/Jakarta')->addDays((int) config('app.pickup_booking_horizon_days', 30)))->required(),
+                    ])
+                    ->action(function (PickupRequest $record, array $data): PickupRequest {
+                        return app(PickupService::class)->schedule(self::actor(), $record, User::query()->findOrFail((int) $data['assigned_staff_id']), (string) $data['scheduled_date']);
+                    }),
+            ]);
+    }
+
+    /** @return Builder<PickupRequest> */
+    public static function getEloquentQuery(): Builder
+    {
+        $actor = auth()->user();
+        if (! $actor instanceof User) {
+            return PickupRequest::query()->whereKey([]);
+        }
+
+        return app(PickupService::class)->visibleFor($actor)->with(['customer', 'serviceArea', 'assignedStaff']);
+    }
+
+    /** @return array<string, PageRegistration> */
+    public static function getPages(): array
+    {
+        return ['index' => ManagePickupRequests::route('/')];
+    }
+
+    /** @return array<string, string> */
+    private static function inspectionData(PickupRequest $record): array
+    {
+        $record->loadMissing(['customer', 'serviceArea', 'items.wasteType', 'media', 'statusHistory']);
+
+        return [
+            'customer' => data_get($record->customer, 'name', 'Nasabah'),
+            'area' => data_get($record->serviceArea, 'name', 'Area tidak tersedia'),
+            'status' => StatusLabel::for($record->status),
+            'items' => $record->items->map(static fn ($item): string => sprintf('%s · %s kg · %s', data_get($item->wasteType, 'name', 'Jenis tidak tersedia'), WeightFormatter::format($item->estimated_weight_kg), $item->estimated_quantity === null ? 'jumlah —' : 'jumlah '.$item->estimated_quantity))->implode("\n"),
+            'notes' => $record->notes ?? 'Tidak ada catatan akses.',
+            'evidence' => $record->media->map(static fn ($media): string => $media->original_name.' · '.$media->mime_type.' · '.$media->size.' byte')->implode("\n"),
+            'timeline' => $record->statusHistory->sortBy('occurred_at')->map(static fn ($history): string => CarbonImmutable::parse($history->occurred_at, 'Asia/Jakarta')->format('d M Y H:i').' · '.StatusLabel::for($history->new_status).' · '.($history->reason ?? ''))->implode("\n"),
+        ];
+    }
+
+    private static function proofPhotoLinks(PickupRequest $record): HtmlString
+    {
+        $record->loadMissing('media');
+        if ($record->media->isEmpty()) {
+            return new HtmlString('Tidak ada bukti foto.');
+        }
+
+        $thumbnails = $record->media->map(static function ($media): string {
+            $mediaUrl = e(route('pickup.media', $media));
+            $originalName = e($media->original_name);
+
+            if (! str_starts_with($media->mime_type, 'image/')) {
+                return sprintf(
+                    '<a class="text-primary-600 underline" href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+                    $mediaUrl,
+                    $originalName,
+                );
+            }
+
+            return sprintf(
+                '<a class="block" href="%s" target="_blank" rel="noopener noreferrer"><img class="h-24 w-24 rounded-lg border border-gray-200 object-cover" src="%s" alt="Bukti foto %s"></a>',
+                $mediaUrl,
+                $mediaUrl,
+                $originalName,
+            );
+        })->implode('');
+
+        return new HtmlString('<div class="flex flex-wrap gap-3">'.$thumbnails.'</div>');
+    }
+
+    private static function actor(): User
+    {
+        /** @var User $actor */
+        $actor = auth()->user();
+
+        return $actor;
+    }
+}

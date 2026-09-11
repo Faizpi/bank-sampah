@@ -1,0 +1,100 @@
+<x-slot:title>Detail pencairan</x-slot:title>
+<x-slot:context>Layanan warga</x-slot:context>
+
+@php
+    $withdrawalStages = [
+        ['title' => 'Diajukan', 'description' => 'Pengajuan tercatat dan menunggu pemeriksaan.', 'icon' => 'file-check', 'statuses' => ['menunggu_verifikasi']],
+        ['title' => 'Disetujui', 'description' => 'Nominal disetujui dan dana yang ditahan tetap tercatat.', 'icon' => 'clipboard-check', 'statuses' => ['disetujui']],
+        ['title' => 'Siap diambil', 'description' => 'Pembayaran sudah siap diproses bendahara.', 'icon' => 'calendar-days', 'statuses' => ['siap_diambil']],
+        ['title' => 'Sudah dibayar', 'description' => 'Penerimaan diverifikasi dan bukti pembayaran tersimpan.', 'icon' => 'banknote', 'statuses' => ['sudah_dibayar']],
+    ];
+    $withdrawalStatus = $withdrawal->status->value;
+    $withdrawalTerminalStep = in_array($withdrawalStatus, ['ditolak', 'dibatalkan', 'kedaluwarsa'], true)
+        ? [
+            'status' => $withdrawalStatus,
+            'title' => match ($withdrawalStatus) {
+                'ditolak' => 'Pengajuan ditolak',
+                'dibatalkan' => 'Pengajuan dibatalkan',
+                default => 'Pengajuan kedaluwarsa',
+            },
+            'description' => 'Tahap berikutnya tidak dilanjutkan dan dana yang ditahan mengikuti aturan status ini.',
+        ]
+        : null;
+@endphp
+
+<section aria-labelledby="withdrawal-detail-title" class="grid gap-6">
+    {{-- Page header --}}
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <p class="text-label font-semibold text-forest-600">Pencairan {{ $withdrawal->request_number }}</p>
+            <h1 id="withdrawal-detail-title" class="mt-2 text-h1 font-bold text-deep-green">Status pencairan</h1>
+        </div>
+        <x-ui.mascot variant="5" bubble="Status saldo terpantau!" bubblePosition="top" class="h-24 w-auto shrink-0" />
+    </div>
+
+    @if (session('success'))
+        <x-ui.success-state title="Berhasil" :description="session('success')" />
+    @endif
+
+    <x-ui.panel title="Ringkasan pencairan" description="Nominal dicatat saat pengajuan dan tidak dapat diubah.">
+        <dl class="grid gap-3 text-body md:grid-cols-2">
+            <div class="rounded-lg bg-success-bg px-3 py-2">
+                <dt class="text-caption font-medium text-forest-700">Nominal</dt>
+                <dd class="mt-0.5 amount-tabular font-bold text-forest-700">Rp{{ number_format($withdrawal->amount, 0, ',', '.') }}</dd>
+            </div>
+            <div class="rounded-lg bg-warm-canvas px-3 py-2">
+                <dt class="text-caption font-medium text-text-secondary">Status</dt>
+                <dd class="mt-0.5 font-semibold text-deep-green">{{ ucwords(str_replace('_', ' ', $withdrawal->status->value)) }}</dd>
+            </div>
+            <div class="rounded-lg bg-warm-canvas px-3 py-2">
+                <dt class="text-caption font-medium text-text-secondary">Tanggal pengambilan</dt>
+                <dd class="mt-0.5 font-semibold text-deep-green">{{ $withdrawal->pickup_date?->translatedFormat('d F Y') ?? 'Belum ditetapkan' }}</dd>
+            </div>
+            <div class="rounded-lg bg-warm-canvas px-3 py-2">
+                <dt class="text-caption font-medium text-text-secondary">Petugas pembayar</dt>
+                <dd class="mt-0.5 font-semibold text-deep-green">{{ $withdrawal->payer?->name ?? 'Belum ditetapkan' }}</dd>
+            </div>
+            <div class="rounded-lg bg-warm-canvas px-3 py-2 md:col-span-2">
+                <dt class="text-caption font-medium text-text-secondary">Lokasi pengambilan</dt>
+                <dd class="mt-0.5 font-semibold text-deep-green">{{ $withdrawal->pickup_location }}</dd>
+            </div>
+        </dl>
+    </x-ui.panel>
+
+    <x-ui.panel title="Tahapan pencairan" description="Tahap yang belum tercapai tetap terlihat agar status dan langkah berikutnya mudah dipahami.">
+        <x-ui.status-stepper
+            :steps="$withdrawalStages"
+            :current-status="$withdrawalStatus"
+            :history="$withdrawal->statusHistory"
+            :terminal-step="$withdrawalTerminalStep"
+            :completed-statuses="['sudah_dibayar']"
+            label="Tahapan pencairan"
+        />
+    </x-ui.panel>
+
+    @if ($withdrawal->status->value === 'sudah_dibayar')
+        <div class="flex justify-end">
+            <a href="{{ route('citizen.withdrawal.receipt', $withdrawal) }}"
+                class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">
+                <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h9l3 3v17H6z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+                Buka Bukti Pencairan
+            </a>
+        </div>
+    @endif
+
+    @if ($withdrawal->status->value === 'menunggu_verifikasi')
+        <div class="flex justify-end">
+            <button type="button" x-on:click="$dispatch('open-dialog', { id: 'cancel-withdrawal-dialog', invoker: $el })"
+                class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
+                Batalkan pengajuan
+            </button>
+        </div>
+        <x-ui.dialog id="cancel-withdrawal-dialog" name="cancel-withdrawal" title="Batalkan pengajuan pencairan" description="Dana yang ditahan akan dilepas kembali setelah pembatalan." state="error">
+            <p>Pengajuan pencairan {{ $withdrawal->request_number }} tidak akan diproses lebih lanjut.</p>
+            <x-slot:actions>
+                <x-ui.button type="button" variant="secondary" x-on:click="closeModal()">Kembali</x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="cancel" wire:loading.attr="disabled" wire:target="cancel">Batalkan pengajuan</x-ui.button>
+            </x-slot:actions>
+        </x-ui.dialog>
+    @endif
+</section>
