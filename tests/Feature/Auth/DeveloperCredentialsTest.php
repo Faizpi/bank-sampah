@@ -243,7 +243,7 @@ final class DeveloperCredentialsTest extends TestCase
         $this->seed(DeveloperUsersSeeder::class);
         $this->seed(LocalDataSeeder::class);
 
-        self::assertGreaterThanOrEqual(45, User::query()->count());
+        self::assertGreaterThanOrEqual(13, User::query()->count());
         self::assertNotNull($this->devUser('warga')->customerProfile);
         self::assertNotNull($this->devUser('petugas')->staffProfile);
         self::assertTrue($this->devUser('admin')->canAccessPanel($this->backofficePanel()));
@@ -317,13 +317,13 @@ final class DeveloperCredentialsTest extends TestCase
         $this->seed(LocalDataSeeder::class);
 
         $areas = ServiceArea::query()->where('name', 'like', 'Layanan Binaan %')->where('is_active', true)->orderBy('name')->get();
-        self::assertSame(['Layanan Binaan Selatan', 'Layanan Binaan Utara'], $areas->pluck('name')->all());
+        self::assertSame(['Layanan Binaan RW 01', 'Layanan Binaan RW 02'], $areas->pluck('name')->all());
         self::assertSame(0, ServiceArea::query()->where('name', 'Layanan Wilayah Tengah')->where('is_active', true)->count());
 
         foreach (['petugas', 'bendahara'] as $role) {
             self::assertTrue(Hash::check(DeveloperUsersSeeder::password(), $this->devUser($role)->password));
         }
-        foreach (['6281312345001', '6281312345002', DeveloperUsersSeeder::telephone('petugas'), DeveloperUsersSeeder::telephone('bendahara')] as $phone) {
+        foreach ([DeveloperUsersSeeder::telephone('petugas'), DeveloperUsersSeeder::telephone('bendahara')] as $phone) {
             $profile = User::query()->where('phone', $phone)->firstOrFail()->staffProfile;
             self::assertNotNull($profile);
             self::assertSame(2, StaffServiceArea::query()->where('staff_profile_user_id', $profile->user_id)->whereDate('active_from', '<=', $clock->toDateString())->whereNull('active_to')->count());
@@ -378,14 +378,14 @@ final class DeveloperCredentialsTest extends TestCase
         self::assertSame($wrongRwId, $unrelated->refresh()->rw_id);
     }
 
-    public function test_operational_demo_reseed_deactivates_legacy_yusuf_and_converges_to_two_operational_staff_per_role(): void
+    public function test_operational_demo_reseed_deactivates_legacy_staff_and_converges_to_one_operational_account_per_role(): void
     {
         $this->freezeDemoClock();
         config()->set('app.env', 'production');
         config()->set('app.demo_mode', true);
         config()->set('app.demo_password', 'KataSandiUji-Yang-Unik-2026');
         $this->seed(DeveloperUsersSeeder::class);
-        $legacyArea = ServiceArea::query()->where('name', 'Layanan Wilayah Tengah')->firstOrFail();
+        $legacyArea = ServiceArea::query()->where('name', 'Layanan Binaan RW 01')->firstOrFail();
         $yusuf = User::factory()->create(['name' => 'Yusuf Maulana', 'phone' => '6281312345003']);
         $petugas = Role::query()->where('name', 'petugas')->firstOrFail();
         $yusuf->roles()->attach($petugas->id, ['assigned_by' => $yusuf->id, 'reason' => 'Legacy demo']);
@@ -397,8 +397,8 @@ final class DeveloperCredentialsTest extends TestCase
         self::assertFalse($yusuf->fresh()->roles()->where('name', 'petugas')->exists());
         self::assertNotNull($profile->fresh()->active_to);
         self::assertSame(0, StaffServiceArea::query()->where('staff_profile_user_id', $yusuf->id)->whereNull('active_to')->count());
-        self::assertSame(2, User::query()->whereHas('roles', fn ($query) => $query->where('name', 'petugas'))->whereHas('staffProfile', fn ($query) => $query->whereNull('active_to'))->count());
-        self::assertSame(2, User::query()->whereHas('roles', fn ($query) => $query->where('name', 'bendahara'))->whereHas('staffProfile', fn ($query) => $query->whereNull('active_to'))->count());
+        self::assertSame(1, User::query()->whereHas('roles', fn ($query) => $query->where('name', 'petugas'))->whereHas('staffProfile', fn ($query) => $query->whereNull('active_to'))->count());
+        self::assertSame(1, User::query()->whereHas('roles', fn ($query) => $query->where('name', 'bendahara'))->whereHas('staffProfile', fn ($query) => $query->whereNull('active_to'))->count());
     }
 
     public function test_operational_demo_reseed_keeps_pickup_fixtures_stable_without_capacity_records(): void

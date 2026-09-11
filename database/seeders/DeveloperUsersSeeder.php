@@ -207,12 +207,13 @@ final class DeveloperUsersSeeder extends Seeder
     private function ensureProfiles(User $user, string $roleName, bool $customer, bool $staff): void
     {
         if ($customer) {
+            $rt = $this->localRt();
             CustomerProfile::query()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
                     'customer_number' => 'CST-00000001',
-                    'rt_id' => $this->localRt()->id,
-                    'address' => 'Kampung Sukamaju RT 01/RW 02, Desa Binaan',
+                    'rt_id' => $rt->id,
+                    'address' => $rt->name.', Desa Binaan',
                     'joined_at' => now()->toDateString(),
                 ],
             );
@@ -249,7 +250,7 @@ final class DeveloperUsersSeeder extends Seeder
     private function localServiceArea(): ServiceArea
     {
         return ServiceArea::query()->firstOrCreate(
-            ['name' => 'Layanan Wilayah Tengah'],
+            ['name' => 'Layanan Binaan RW 01'],
             ['is_active' => true],
         );
     }
@@ -257,17 +258,17 @@ final class DeveloperUsersSeeder extends Seeder
     private function localRt(): Rt
     {
         $dusun = Dusun::query()->firstOrCreate(
-            ['code' => 'DSN-BS-TENGAH'],
-            ['name' => 'Dusun Wilayah Tengah', 'is_active' => true],
+            ['code' => 'DSN-BS-BINAAN'],
+            ['name' => 'Dusun Binaan', 'is_active' => true],
         );
         $rw = Rw::query()->firstOrCreate(
-            ['dusun_id' => $dusun->id, 'code' => 'DSN-BS-TENGAH-RW-02'],
-            ['name' => 'RW 02 Wilayah Tengah', 'is_active' => true],
+            ['dusun_id' => $dusun->id, 'code' => 'DSN-BS-BINAAN-RW-01'],
+            ['name' => 'RW 01 Dusun Binaan', 'is_active' => true],
         );
 
         return Rt::query()->firstOrCreate(
-            ['rw_id' => $rw->id, 'code' => 'DSN-BS-TENGAH-RW-02-RT-01'],
-            ['name' => 'RT 01 RW 02', 'is_active' => true],
+            ['rw_id' => $rw->id, 'code' => 'DSN-BS-BINAAN-RW-01-RT-01'],
+            ['name' => 'RT 01 RW 01 Dusun Binaan', 'is_active' => true],
         );
     }
 }

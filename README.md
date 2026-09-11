@@ -104,6 +104,26 @@ Lima jenis sampah umum yang dipakai:
 
 Kolom `code` inilah yang menjadi label kelas bila kelak ditambahkan klasifikasi citra, sehingga urutan dan penulisannya dijaga tetap stabil.
 
+### Skala data seed lokal
+
+Data demo sengaja dibuat ringkas agar mudah ditinjau saat pengujian dan sidang. Seed lokal menghasilkan:
+
+| Entitas | Jumlah |
+| --- | --- |
+| Dusun | 1 |
+| RW | 2 |
+| RT | 4 |
+| Area layanan | 2 |
+| Warga | 10 |
+| Akun pengelola | 4 (petugas, bendahara, admin, superadmin) |
+| Setoran | 30 (metode langsung, penjemputan, keliling) |
+| Penjemputan | 5 |
+| Pencairan | 3 (menunggu, disetujui, dibayar) |
+| Layanan keliling | 3 |
+| Jenis sampah | 5 |
+
+Hanya wilayah kanonik di atas yang dibuat. Setiap penyebutan wilayah di luar set kanonik akan dinonaktifkan secara otomatis (soft), sehingga tidak pernah ada dusun/RW/RT/area "mati" yang tertinggal. Riwayat transaksi tetap terjaga.
+
 ## Verifikasi penting
 
 ```bash

@@ -53,14 +53,9 @@ final class LocalDataSeeder extends Seeder
 {
     /** @var list<string> */
     private const CUSTOMER_NAMES = [
-        'Asep Saepuloh', 'Ujang Suherman',
-        'Nia Kurniasih', 'Fajar Nugraha', 'Yani Mulyani', 'Lilis Suryani', 'Rudi Hartono',
-        'Euis Komariah', 'Budi Santoso', 'Tati Rosdiana', 'Hendra Gunawan', 'Wulan Sari', 'Deni Permana',
-        'Yayah Rohayah', 'Iwan Kurniawan', 'Maman Suparman', 'Novi Andriani', 'Cecep Saefulloh', 'Fitri Handayani',
-        'Taufik Hidayat', 'Mira Puspitasari', 'Dede Suhendar', 'Salsa Nuraini', 'Rian Firmansyah', 'Endah Wulandari',
-        'Rizal Maulana', 'Neng Sulastri', 'Wahyu Ramadhan', 'Intan Permata', 'Yudi Irawan', 'Mela Anggraini',
-        'Raka Pratama', 'Nurhayati', 'Dimas Saputra', 'Sari Rahmawati', 'Aldi Firmansyah', 'Mutiara Fitri',
-        'Robby Kurnia', 'Novianti', 'Gilang Ramadhan', 'Tina Kartika', 'Solehudin', 'Maya Safitri',
+        'Asep Saepuloh', 'Ujang Suherman', 'Nia Kurniasih',
+        'Fajar Nugraha', 'Yani Mulyani', 'Lilis Suryani', 'Rudi Hartono',
+        'Euis Komariah', 'Budi Santoso',
     ];
 
     public function run(): void
@@ -109,8 +104,7 @@ final class LocalDataSeeder extends Seeder
         $rts = [];
 
         foreach ([
-            ['code' => 'DSN-BS-UTARA', 'name' => 'Dusun Binaan Utara'],
-            ['code' => 'DSN-BS-SELATAN', 'name' => 'Dusun Binaan Selatan'],
+            ['code' => 'DSN-BS-BINAAN', 'name' => 'Dusun Binaan'],
         ] as $dusunData) {
             $dusun = Dusun::query()->where('code', $dusunData['code'])->first();
             $dusun ??= $manager->createDusun($admin, $dusunData['code'], $dusunData['name']);
@@ -122,7 +116,7 @@ final class LocalDataSeeder extends Seeder
                 $rw ??= $manager->createRw($admin, $dusun, $rwCode, 'RW '.str_pad((string) $rwNumber, 2, '0', STR_PAD_LEFT).' '.$dusun->name);
                 $rws[] = $rw;
 
-                foreach (range(1, 3) as $rtNumber) {
+                foreach (range(1, 2) as $rtNumber) {
                     $rtCode = $rwCode.'-RT-'.str_pad((string) $rtNumber, 2, '0', STR_PAD_LEFT);
                     $rt = Rt::query()->where('rw_id', $rw->id)->where('code', $rtCode)->first();
                     $rt ??= $manager->createRt($admin, $rw, $rtCode, 'RT '.str_pad((string) $rtNumber, 2, '0', STR_PAD_LEFT).' '.$rw->name);
@@ -131,27 +125,11 @@ final class LocalDataSeeder extends Seeder
             }
         }
 
-        $legacyAreas = ServiceArea::query()->where('name', 'Layanan Wilayah Tengah')->get();
-        $legacyAreas->each(function (ServiceArea $area) use ($manager, $admin): void {
-            $manager->deactivate($admin, $area);
-        });
-        StaffServiceArea::query()
-            ->whereIn('service_area_id', $legacyAreas->pluck('id'))
-            ->whereNull('active_to')
-            ->update(['active_to' => CarbonImmutable::now('Asia/Jakarta')->subDay()->toDateString()]);
-        Rt::query()->where('code', 'like', 'DSN-BS-TENGAH%')->get()->each(function (Rt $rt) use ($manager, $admin): void {
-            $manager->deactivate($admin, $rt);
-        });
-        Rw::query()->where('code', 'like', 'DSN-BS-TENGAH%')->get()->each(function (Rw $rw) use ($manager, $admin): void {
-            $manager->deactivate($admin, $rw);
-        });
-        Dusun::query()->where('code', 'DSN-BS-TENGAH')->get()->each(function (Dusun $dusun) use ($manager, $admin): void {
-            $manager->deactivate($admin, $dusun);
-        });
+        self::deactivateNonCanonicalRegions($admin, $rts, $rws, $dusuns);
 
-        $areaNames = ['Layanan Binaan Utara', 'Layanan Binaan Selatan'];
+        $areaNames = ['Layanan Binaan RW 01', 'Layanan Binaan RW 02'];
         $areas = [];
-        foreach (array_chunk($rts, 6) as $index => $areaRts) {
+        foreach (array_chunk($rts, 2) as $index => $areaRts) {
             $name = $areaNames[$index];
             $area = ServiceArea::query()->where('name', $name)->first();
             if ($area === null) {
@@ -170,34 +148,7 @@ final class LocalDataSeeder extends Seeder
      */
     private function seedStaff(array $areas, string $passwordHash, CarbonImmutable $now): array
     {
-        $created = [];
         $activeFrom = $now->subDays(30)->toDateString();
-        foreach ([
-            ['key' => 'officer', 'role' => 'petugas', 'name' => 'Rangga Pratama', 'phone' => '6281312345001', 'email' => 'rangga.pratama@example.test', 'staff_number' => 'STF-BS-101'],
-            ['key' => 'treasurer', 'role' => 'bendahara', 'name' => 'Nina Kusumawati', 'phone' => '6281312345002', 'email' => 'nina.kusumawati@example.test', 'staff_number' => 'STF-BS-102'],
-        ] as $definition) {
-            $user = User::query()->updateOrCreate(
-                ['phone' => $definition['phone']],
-                [
-                    'name' => $definition['name'],
-                    'email' => $definition['email'],
-                    'email_verified_at' => now(),
-                    'password' => $passwordHash,
-                    'status' => UserStatus::Active,
-                    'verified_at' => now(),
-                    'terms_version' => (string) config('app.terms_version'),
-                    'terms_accepted_at' => now(),
-                ],
-            );
-            $role = Role::query()->where('name', $definition['role'])->firstOrFail();
-            $user->roles()->syncWithoutDetaching([$role->id => ['assigned_by' => $user->id, 'reason' => 'Data awal']]);
-            $profile = StaffProfile::query()->updateOrCreate(
-                ['user_id' => $user->id],
-                ['staff_number' => $definition['staff_number'], 'service_area_id' => $areas[0]->id, 'active_from' => $activeFrom, 'active_to' => null],
-            );
-            $this->syncActiveAreaAssignments($profile, $areas, $activeFrom);
-            $created[$definition['key']] = $user;
-        }
 
         $petugas = User::query()->where('email', DeveloperUsersSeeder::email('petugas'))->firstOrFail();
         $petugasProfile = StaffProfile::query()->updateOrCreate(
@@ -206,35 +157,43 @@ final class LocalDataSeeder extends Seeder
         );
         $this->syncActiveAreaAssignments($petugasProfile, $areas, $activeFrom);
 
-        $treasurer = User::query()->where('email', DeveloperUsersSeeder::email('bendahara'))->firstOrFail();
+        $bendahara = User::query()->where('email', DeveloperUsersSeeder::email('bendahara'))->firstOrFail();
         $treasurerProfile = StaffProfile::query()->updateOrCreate(
-            ['user_id' => $treasurer->id],
+            ['user_id' => $bendahara->id],
             ['staff_number' => 'STF-BS-002', 'service_area_id' => $areas[0]->id, 'active_from' => $activeFrom, 'active_to' => null],
         );
         $this->syncActiveAreaAssignments($treasurerProfile, $areas, $activeFrom);
-        $this->deactivateLegacyYusuf($now);
+        $this->deactivateLegacyStaff($now);
 
-        return [$created['officer'], $petugas, $created['treasurer'], $treasurer];
+        return [$petugas, $bendahara];
     }
 
-    private function deactivateLegacyYusuf(CarbonImmutable $now): void
+    private function deactivateLegacyStaff(CarbonImmutable $now): void
     {
-        $yusuf = User::query()->where('phone', '6281312345003')->first();
-        if (! $yusuf instanceof User) {
-            return;
-        }
+        $canonicalIds = [
+            User::query()->where('email', DeveloperUsersSeeder::email('petugas'))->value('id'),
+            User::query()->where('email', DeveloperUsersSeeder::email('bendahara'))->value('id'),
+        ];
 
-        $yusuf->roles()->detach(Role::query()->where('name', 'petugas')->value('id'));
-        $profile = $yusuf->staffProfile()->first();
-        if (! $profile instanceof StaffProfile) {
-            return;
-        }
+        $legacy = User::query()
+            ->whereHas('staffProfile')
+            ->whereNotIn('id', array_filter($canonicalIds))
+            ->whereHas('roles', static fn ($query) => $query->whereIn('name', ['petugas', 'bendahara']))
+            ->get();
 
-        $profile->forceFill(['active_to' => $now->subDay()->toDateString()])->save();
-        StaffServiceArea::query()
-            ->where('staff_profile_user_id', $profile->user_id)
-            ->whereNull('active_to')
-            ->update(['active_to' => $now->subDay()->toDateString()]);
+        foreach ($legacy as $user) {
+            $user->roles()->detach(Role::query()->whereIn('name', ['petugas', 'bendahara'])->pluck('id')->all());
+            $profile = $user->staffProfile()->first();
+            if (! $profile instanceof StaffProfile) {
+                continue;
+            }
+
+            $profile->forceFill(['active_to' => $now->subDay()->toDateString()])->save();
+            StaffServiceArea::query()
+                ->where('staff_profile_user_id', $profile->user_id)
+                ->whereNull('active_to')
+                ->update(['active_to' => $now->subDay()->toDateString()]);
+        }
     }
 
     /** @param list<ServiceArea> $areas */
@@ -246,6 +205,50 @@ final class LocalDataSeeder extends Seeder
                 ['active_from' => $activeFrom, 'active_to' => null],
             );
         }
+    }
+
+    /**
+     * Soft-deactivate any region that is not part of the canonical demo set.
+     * History (deposits, customers) is preserved; only `is_active` flips.
+     *
+     * @param  list<Rt>  $rts
+     * @param  list<Rw>  $rws
+     * @param  list<Dusun>  $dusuns
+     */
+    private static function deactivateNonCanonicalRegions(User $admin, array $rts, array $rws, array $dusuns): void
+    {
+        $manager = app(ManageRegions::class);
+        $rtIds = array_map(static fn (Rt $rt): int => (int) $rt->id, $rts);
+        $rwIds = array_map(static fn (Rw $rw): int => (int) $rw->id, $rws);
+        $dusunIds = array_map(static fn (Dusun $dusun): int => (int) $dusun->id, $dusuns);
+        $today = CarbonImmutable::now('Asia/Jakarta');
+
+        $staleAreas = ServiceArea::query()
+            ->whereNotIn('name', ['Layanan Binaan RW 01', 'Layanan Binaan RW 02'])
+            ->where('is_active', true)
+            ->get();
+        $staleAreas->each(function (ServiceArea $area) use ($manager, $admin): void {
+            $manager->deactivate($admin, $area);
+        });
+        if ($staleAreas->isNotEmpty()) {
+            StaffServiceArea::query()
+                ->whereIn('service_area_id', $staleAreas->pluck('id'))
+                ->whereNull('active_to')
+                ->update(['active_to' => $today->subDay()->toDateString()]);
+        }
+
+        Rt::query()->whereNotIn('id', $rtIds)->where('is_active', true)->get()
+            ->each(function (Rt $rt) use ($manager, $admin): void {
+                $manager->deactivate($admin, $rt);
+            });
+        Rw::query()->whereNotIn('id', $rwIds)->where('is_active', true)->get()
+            ->each(function (Rw $rw) use ($manager, $admin): void {
+                $manager->deactivate($admin, $rw);
+            });
+        Dusun::query()->whereNotIn('id', $dusunIds)->where('is_active', true)->get()
+            ->each(function (Dusun $dusun) use ($manager, $admin): void {
+                $manager->deactivate($admin, $dusun);
+            });
     }
 
     private function fixtureId(string $type, CarbonImmutable $now, int $sequence): string
@@ -313,12 +316,9 @@ final class LocalDataSeeder extends Seeder
     {
         $services = [];
         $definitions = [
-            ['number' => $this->fixtureId('MOB', $now, 1), 'start' => $now->subDays(6)->setTime(8, 0), 'end' => $now->subDays(6)->setTime(12, 0), 'status' => MobileServiceStatus::Closed, 'point' => 'Balai Dusun Binaan Utara'],
-            ['number' => $this->fixtureId('MOB', $now, 2), 'start' => $now->subDays(3)->setTime(8, 0), 'end' => $now->subDays(3)->setTime(13, 0), 'status' => MobileServiceStatus::Closed, 'point' => 'Lapangan Dusun Binaan Selatan'],
-            ['number' => $this->fixtureId('MOB', $now, 3), 'start' => $now->subHour(), 'end' => $now->addHours(4), 'status' => MobileServiceStatus::Open, 'point' => 'Halaman Kantor Desa Binaan'],
-            ['number' => $this->fixtureId('MOB', $now, 4), 'start' => $now->addDay()->setTime(8, 0), 'end' => $now->addDay()->setTime(13, 0), 'status' => MobileServiceStatus::Published, 'point' => 'Balai Dusun Binaan Selatan'],
-            ['number' => $this->fixtureId('MOB', $now, 5), 'start' => $now->addDays(14)->setTime(8, 0), 'end' => $now->addDays(14)->setTime(13, 0), 'status' => MobileServiceStatus::Published, 'point' => 'Balai Dusun Binaan Utara'],
-            ['number' => $this->fixtureId('MOB', $now, 6), 'start' => $now->addDays(28)->setTime(8, 0), 'end' => $now->addDays(28)->setTime(13, 0), 'status' => MobileServiceStatus::Published, 'point' => 'Lapangan Desa Binaan'],
+            ['number' => $this->fixtureId('MOB', $now, 1), 'start' => $now->subDays(6)->setTime(8, 0), 'end' => $now->subDays(6)->setTime(12, 0), 'status' => MobileServiceStatus::Closed, 'point' => 'Balai Dusun Binaan'],
+            ['number' => $this->fixtureId('MOB', $now, 2), 'start' => $now->subHour(), 'end' => $now->addHours(4), 'status' => MobileServiceStatus::Open, 'point' => 'Halaman Kantor Desa Binaan'],
+            ['number' => $this->fixtureId('MOB', $now, 3), 'start' => $now->addDays(14)->setTime(8, 0), 'end' => $now->addDays(14)->setTime(13, 0), 'status' => MobileServiceStatus::Published, 'point' => 'Lapangan Dusun Binaan'],
         ];
         foreach ($definitions as $index => $definition) {
             $rt = $regions['rts'][$index % count($regions['rts'])];
@@ -337,8 +337,8 @@ final class LocalDataSeeder extends Seeder
                     'created_by' => $staff[0]->id,
                 ],
             );
-            $service->staff()->syncWithoutDetaching([$staff[$index % 4]->id]);
-            $service->wasteTypes()->syncWithoutDetaching(array_map(static fn (WasteType $type): int => $type->id, array_slice($types, 0, 6)));
+            $service->staff()->syncWithoutDetaching([$staff[$index % count($staff)]->id]);
+            $service->wasteTypes()->syncWithoutDetaching(array_map(static fn (WasteType $type): int => $type->id, $types));
             $services[] = $service;
         }
 
@@ -354,7 +354,7 @@ final class LocalDataSeeder extends Seeder
     private function seedPickups(array $regions, array $staff, array $customers, array $types, CarbonImmutable $now): array
     {
         $pickups = [];
-        foreach (range(1, 10) as $number) {
+        foreach (range(1, 5) as $number) {
             $areaIndex = ($number - 1) % count($regions['areas']);
             $area = $regions['areas'][$areaIndex];
             $customer = collect($customers)->first(function (User $candidate) use ($area): bool {
@@ -365,17 +365,15 @@ final class LocalDataSeeder extends Seeder
             $customer ??= $customers[($number * 3) % count($customers)];
             $rt = $customer->customerProfile()->firstOrFail()->rt()->firstOrFail();
             $date = match ($number) {
-                5, 6 => $now->toDateString(),
-                7, 8 => $now->addDays($number - 6)->toDateString(),
-                default => $now->subDays(7 - $number)->toDateString(),
+                3 => $now->toDateString(),
+                4 => $now->addDay()->toDateString(),
+                default => $now->subDays(3 - $number)->toDateString(),
             };
             $status = match ($number) {
-                1, 2, 3, 4 => PickupStatus::Completed,
-                5, 6 => PickupStatus::Scheduled,
-                7 => PickupStatus::Accepted,
-                8 => PickupStatus::PendingReview,
-                9 => PickupStatus::Rejected,
-                default => PickupStatus::Cancelled,
+                1, 2 => PickupStatus::Completed,
+                3 => PickupStatus::Scheduled,
+                4 => PickupStatus::PendingReview,
+                default => PickupStatus::Rejected,
             };
             $pickup = PickupRequest::query()->firstOrCreate(
                 ['request_number' => $this->fixtureId('PUP', $now, $number)],
@@ -390,13 +388,13 @@ final class LocalDataSeeder extends Seeder
                     'notes' => 'Warga mengajukan penjemputan sampah terpilah.',
                     'status' => $status,
                     'rejection_reason' => $status === PickupStatus::Rejected ? 'Alamat belum dapat dijangkau pada jadwal yang dipilih.' : null,
-                    'cancellation_reason' => $status === PickupStatus::Cancelled ? 'Warga membatalkan karena sampah belum siap.' : null,
-                    'assigned_staff_id' => in_array($status, [PickupStatus::PendingReview, PickupStatus::Rejected, PickupStatus::Cancelled], true) ? null : $staff[$areaIndex % 4]->id,
-                    'accepted_at' => in_array($status, [PickupStatus::Accepted, PickupStatus::Scheduled, PickupStatus::Completed], true) ? $now->subDays(max(1, 7 - $number))->setTime(9, 0) : null,
-                    'scheduled_at' => in_array($status, [PickupStatus::Scheduled, PickupStatus::Completed], true) ? $now->subDays(max(1, 7 - $number))->setTime(10, 0) : null,
-                    'en_route_at' => $status === PickupStatus::Completed ? $now->subDays(7 - $number)->setTime(11, 0) : null,
-                    'picked_up_at' => $status === PickupStatus::Completed ? $now->subDays(7 - $number)->setTime(11, 30) : null,
-                    'completed_at' => $status === PickupStatus::Completed ? $now->subDays(7 - $number)->setTime(12, 0) : null,
+                    'cancellation_reason' => null,
+                    'assigned_staff_id' => in_array($status, [PickupStatus::PendingReview, PickupStatus::Rejected], true) ? null : $staff[$areaIndex % count($staff)]->id,
+                    'accepted_at' => in_array($status, [PickupStatus::Accepted, PickupStatus::Scheduled, PickupStatus::Completed], true) ? $now->subDays(max(1, 3 - $number))->setTime(9, 0) : null,
+                    'scheduled_at' => in_array($status, [PickupStatus::Scheduled, PickupStatus::Completed], true) ? $now->subDays(max(1, 3 - $number))->setTime(10, 0) : null,
+                    'en_route_at' => $status === PickupStatus::Completed ? $now->subDays(3 - $number)->setTime(11, 0) : null,
+                    'picked_up_at' => $status === PickupStatus::Completed ? $now->subDays(3 - $number)->setTime(11, 30) : null,
+                    'completed_at' => $status === PickupStatus::Completed ? $now->subDays(3 - $number)->setTime(12, 0) : null,
                 ],
             );
             foreach (array_slice($types, 0, 2) as $typeIndex => $type) {
@@ -406,7 +404,7 @@ final class LocalDataSeeder extends Seeder
                 );
             }
             if (! StatusHistory::query()->where('subject_type', PickupRequest::class)->where('subject_id', $pickup->id)->exists()) {
-                StatusHistory::query()->create(['subject_type' => PickupRequest::class, 'subject_id' => $pickup->id, 'old_status' => null, 'new_status' => $status->value, 'actor_id' => $staff[$areaIndex % 4]->id, 'reason' => 'Status awal layanan penjemputan.', 'occurred_at' => $pickup->completed_at ?? $pickup->created_at ?? $now]);
+                StatusHistory::query()->create(['subject_type' => PickupRequest::class, 'subject_id' => $pickup->id, 'old_status' => null, 'new_status' => $status->value, 'actor_id' => $staff[$areaIndex % count($staff)]->id, 'reason' => 'Status awal layanan penjemputan.', 'occurred_at' => $pickup->completed_at ?? $pickup->created_at ?? $now]);
             }
             $pickups[] = $pickup;
         }
@@ -424,70 +422,80 @@ final class LocalDataSeeder extends Seeder
      */
     private function seedDeposits(array $customers, array $staff, array $types, array $conditions, array $prices, array $mobileServices, array $pickups, LedgerService $ledger, CarbonImmutable $now): void
     {
-        foreach (range(0, 29) as $dayOffset) {
-            foreach (range(1, 8) as $sequence) {
-                $seedNumber = ($dayOffset * 8) + $sequence;
-                $number = $this->fixtureId('DEP', $now, $seedNumber);
-                if (Deposit::query()->where('deposit_number', $number)->exists()) {
-                    continue;
-                }
-                $customer = $customers[($seedNumber * 5) % count($customers)];
-                $staffMember = $staff[($seedNumber - 1) % 4];
-                $occurredAt = $now->subDays($dayOffset)->setTime(8 + ($sequence % 8), ($sequence * 7) % 60);
-                $mobile = $dayOffset === 3 && $sequence <= 2 ? $mobileServices[1] : ($dayOffset === 0 && $sequence === 1 ? $mobileServices[2] : null);
-                $pickup = $sequence === 2 && $dayOffset < 4 ? $pickups[$dayOffset] : null;
-                $method = $mobile instanceof MobileService ? 'keliling' : ($pickup instanceof PickupRequest ? 'penjemputan' : 'langsung');
-                $token = QrToken::generate();
-                $deposit = Deposit::query()->create([
-                    'deposit_number' => $number,
-                    'customer_id' => $customer->id,
-                    'staff_id' => $staffMember->id,
-                    'method' => $method,
-                    'pickup_request_id' => $pickup?->id,
-                    'mobile_service_id' => $mobile?->id,
-                    'location' => $mobile instanceof MobileService ? $mobile->point : 'Loket Bank Sampah',
-                    'occurred_at' => $occurredAt,
-                    'status' => Deposit::STATUS_DRAFT,
-                ]);
+        // 30 deposits across the last 30 days with a realistic method mix so the
+        // dashboards, reports, and method breakdowns all show non-trivial data.
+        foreach (range(1, 30) as $seedNumber) {
+            $dayOffset = $seedNumber - 1;
+            $number = $this->fixtureId('DEP', $now, $seedNumber);
+            if (Deposit::query()->where('deposit_number', $number)->exists()) {
+                continue;
+            }
 
-                $totalGrams = 0;
-                $totalValue = 0;
-                foreach ([$types[($seedNumber + 1) % count($types)], $types[($seedNumber + 3) % count($types)]] as $itemIndex => $type) {
-                    $condition = $conditions[($seedNumber + $itemIndex) % count($conditions)];
-                    $weight = number_format(1.2 + (($seedNumber + $itemIndex) % 7) * 0.65, 3, '.', '');
-                    $snapshot = $prices[$type->id][$condition->id]->snapshot()->withWeight($weight);
-                    $deposit->items()->create([
-                        'waste_type_id' => $type->id,
-                        'waste_condition_id' => $condition->id,
-                        'waste_type_code' => $snapshot->wasteTypeCode,
-                        'waste_type_name' => $snapshot->wasteTypeName,
-                        'unit_code' => $snapshot->unitCode,
-                        'unit_name' => $snapshot->unitName,
-                        'unit_symbol' => $snapshot->unitSymbol,
-                        'condition_code' => $snapshot->conditionCode,
-                        'condition_name' => $snapshot->conditionName,
-                        'weight_kg' => $snapshot->weightKg,
-                        'price_per_unit' => $snapshot->pricePerUnit,
-                        'subtotal' => $snapshot->subtotal,
-                        'rounding_version' => $snapshot->roundingVersion,
-                        'price_snapshot' => $snapshot->toArray(),
-                    ]);
-                    $totalGrams += Weight::fromDecimal($snapshot->weightKg)->grams();
-                    $totalValue += $snapshot->subtotal;
-                }
-                $deposit->forceFill([
-                    'status' => Deposit::STATUS_FINAL,
-                    'total_weight_kg' => Weight::fromGrams($totalGrams)->decimal(),
-                    'total_value' => $totalValue,
-                    'finalized_at' => $occurredAt->addMinutes(20),
-                    'idempotency_key' => 'local-deposit-'.$seedNumber,
-                    'verification_token_hash' => $token->hash(),
-                    'verification_token_encrypted' => $token->value(),
-                ])->save();
-                $ledger->postDeposit($deposit, $totalValue, 'deposit:'.$deposit->id.':deposit');
-                if ($pickup instanceof PickupRequest && $pickup->deposit_id === null) {
-                    $pickup->forceFill(['deposit_id' => $deposit->id])->save();
-                }
+            $mobile = in_array($seedNumber, [5, 15, 25], true)
+                ? $mobileServices[$seedNumber % count($mobileServices)]
+                : null;
+            $pickup = match ($seedNumber) {
+                3 => $pickups[0] ?? null,
+                12 => $pickups[1] ?? null,
+                default => null,
+            };
+
+            $customer = $pickup instanceof PickupRequest
+                ? User::query()->findOrFail($pickup->customer_id)
+                : $customers[($seedNumber * 5) % count($customers)];
+            $staffMember = $staff[($seedNumber - 1) % count($staff)];
+            $occurredAt = $now->subDays($dayOffset)->setTime(8 + ($seedNumber % 8), ($seedNumber * 7) % 60);
+            $method = $mobile instanceof MobileService ? 'keliling' : ($pickup instanceof PickupRequest ? 'penjemputan' : 'langsung');
+            $token = QrToken::generate();
+            $deposit = Deposit::query()->create([
+                'deposit_number' => $number,
+                'customer_id' => $customer->id,
+                'staff_id' => $staffMember->id,
+                'method' => $method,
+                'pickup_request_id' => $pickup?->id,
+                'mobile_service_id' => $mobile?->id,
+                'location' => $mobile instanceof MobileService ? $mobile->point : 'Loket Bank Sampah',
+                'occurred_at' => $occurredAt,
+                'status' => Deposit::STATUS_DRAFT,
+            ]);
+
+            $totalGrams = 0;
+            $totalValue = 0;
+            foreach ([$types[$seedNumber % count($types)], $types[($seedNumber + 2) % count($types)]] as $itemIndex => $type) {
+                $condition = $conditions[($seedNumber + $itemIndex) % count($conditions)];
+                $weight = number_format(1.2 + (($seedNumber + $itemIndex) % 7) * 0.65, 3, '.', '');
+                $snapshot = $prices[$type->id][$condition->id]->snapshot()->withWeight($weight);
+                $deposit->items()->create([
+                    'waste_type_id' => $type->id,
+                    'waste_condition_id' => $condition->id,
+                    'waste_type_code' => $snapshot->wasteTypeCode,
+                    'waste_type_name' => $snapshot->wasteTypeName,
+                    'unit_code' => $snapshot->unitCode,
+                    'unit_name' => $snapshot->unitName,
+                    'unit_symbol' => $snapshot->unitSymbol,
+                    'condition_code' => $snapshot->conditionCode,
+                    'condition_name' => $snapshot->conditionName,
+                    'weight_kg' => $snapshot->weightKg,
+                    'price_per_unit' => $snapshot->pricePerUnit,
+                    'subtotal' => $snapshot->subtotal,
+                    'rounding_version' => $snapshot->roundingVersion,
+                    'price_snapshot' => $snapshot->toArray(),
+                ]);
+                $totalGrams += Weight::fromDecimal($snapshot->weightKg)->grams();
+                $totalValue += $snapshot->subtotal;
+            }
+            $deposit->forceFill([
+                'status' => Deposit::STATUS_FINAL,
+                'total_weight_kg' => Weight::fromGrams($totalGrams)->decimal(),
+                'total_value' => $totalValue,
+                'finalized_at' => $occurredAt->addMinutes(20),
+                'idempotency_key' => 'local-deposit-'.$seedNumber,
+                'verification_token_hash' => $token->hash(),
+                'verification_token_encrypted' => $token->value(),
+            ])->save();
+            $ledger->postDeposit($deposit, $totalValue, 'deposit:'.$deposit->id.':deposit');
+            if ($pickup instanceof PickupRequest && $pickup->deposit_id === null) {
+                $pickup->forceFill(['deposit_id' => $deposit->id])->save();
             }
         }
     }
@@ -497,7 +505,17 @@ final class LocalDataSeeder extends Seeder
      */
     private function seedWithdrawals(User $admin, array $customers, array $staff, LedgerService $ledger, CarbonImmutable $now): void
     {
-        foreach (range(1, 6) as $number) {
+        // Three withdrawals cover every status the dashboards and receipt flows
+        // need: one awaiting verification, one approved, and one fully paid.
+        $outcomes = [
+            1 => WithdrawalStatus::PendingVerification,
+            2 => WithdrawalStatus::Approved,
+            3 => WithdrawalStatus::Paid,
+        ];
+
+        $payer = $staff[count($staff) - 1];
+
+        foreach ($outcomes as $number => $targetStatus) {
             $eligibleCustomers = array_values(array_filter($customers, static function (User $candidate): bool {
                 return ($candidate->ledgerAccount()->first()?->availableBalance() ?? 0) >= 10_000;
             }));
@@ -534,15 +552,15 @@ final class LocalDataSeeder extends Seeder
             if (! StatusHistory::query()->where('subject_type', WithdrawalRequest::class)->where('subject_id', $withdrawal->id)->exists()) {
                 StatusHistory::query()->create(['subject_type' => WithdrawalRequest::class, 'subject_id' => $withdrawal->id, 'old_status' => null, 'new_status' => WithdrawalStatus::PendingVerification->value, 'actor_id' => $customer->id, 'reason' => 'Pengajuan pencairan warga.', 'occurred_at' => $now->subDays(5 - min($number, 5))]);
             }
-            if ($number >= 3 && $withdrawal->status === WithdrawalStatus::PendingVerification) {
+            if (in_array($targetStatus, [WithdrawalStatus::Approved, WithdrawalStatus::Paid], true) && $withdrawal->status === WithdrawalStatus::PendingVerification) {
                 $withdrawal->forceFill(['status' => WithdrawalStatus::Approved, 'approver_id' => $admin->id, 'approved_at' => $now->subDays(1)])->save();
                 StatusHistory::query()->create(['subject_type' => WithdrawalRequest::class, 'subject_id' => $withdrawal->id, 'old_status' => WithdrawalStatus::PendingVerification->value, 'new_status' => WithdrawalStatus::Approved->value, 'actor_id' => $admin->id, 'reason' => 'Pencairan telah diverifikasi.', 'occurred_at' => $now->subHours(18)]);
             }
-            if ($number >= 5 && $withdrawal->status === WithdrawalStatus::Approved) {
-                $withdrawal->forceFill(['status' => WithdrawalStatus::ReadyForPickup, 'payer_id' => $staff[3]->id])->save();
-                StatusHistory::query()->create(['subject_type' => WithdrawalRequest::class, 'subject_id' => $withdrawal->id, 'old_status' => WithdrawalStatus::Approved->value, 'new_status' => WithdrawalStatus::ReadyForPickup->value, 'actor_id' => $staff[3]->id, 'reason' => 'Bendahara multi-area ditetapkan sebagai petugas pembayar.', 'occurred_at' => $now->subHours(12)]);
+            if ($targetStatus === WithdrawalStatus::Paid && $withdrawal->status === WithdrawalStatus::Approved) {
+                $withdrawal->forceFill(['status' => WithdrawalStatus::ReadyForPickup, 'payer_id' => $payer->id])->save();
+                StatusHistory::query()->create(['subject_type' => WithdrawalRequest::class, 'subject_id' => $withdrawal->id, 'old_status' => WithdrawalStatus::Approved->value, 'new_status' => WithdrawalStatus::ReadyForPickup->value, 'actor_id' => $payer->id, 'reason' => 'Bendahara ditetapkan sebagai petugas pembayar.', 'occurred_at' => $now->subHours(12)]);
             }
-            if ($number === 6 && $withdrawal->status === WithdrawalStatus::ReadyForPickup) {
+            if ($targetStatus === WithdrawalStatus::Paid && $withdrawal->status === WithdrawalStatus::ReadyForPickup) {
                 $entry = $ledger->convertHold($withdrawal->balanceHold()->firstOrFail(), 'withdrawal:'.$withdrawal->id.':payment');
                 $withdrawal->forceFill([
                     'status' => WithdrawalStatus::Paid,
@@ -551,7 +569,7 @@ final class LocalDataSeeder extends Seeder
                     'recipient_reference' => $profile->customer_number,
                     'receipt_ledger_entry_id' => $entry->id,
                 ])->save();
-                StatusHistory::query()->create(['subject_type' => WithdrawalRequest::class, 'subject_id' => $withdrawal->id, 'old_status' => WithdrawalStatus::ReadyForPickup->value, 'new_status' => WithdrawalStatus::Paid->value, 'actor_id' => $staff[3]->id, 'reason' => 'Pencairan dibayarkan oleh bendahara multi-area.', 'occurred_at' => $now->subHour()]);
+                StatusHistory::query()->create(['subject_type' => WithdrawalRequest::class, 'subject_id' => $withdrawal->id, 'old_status' => WithdrawalStatus::ReadyForPickup->value, 'new_status' => WithdrawalStatus::Paid->value, 'actor_id' => $payer->id, 'reason' => 'Pencairan dibayarkan oleh bendahara.', 'occurred_at' => $now->subHour()]);
             }
         }
     }
@@ -640,7 +658,7 @@ final class LocalDataSeeder extends Seeder
             ['announcement_number' => $this->fixtureId('ANN', $now, 3)],
             [
                 'title' => 'Rencana layanan keliling 30 hari',
-                'body' => '<p>Jadwal layanan dan kapasitas penjemputan tersedia untuk 30 hari ke depan di wilayah Binaan Utara dan Selatan. Pilih tanggal yang sesuai sebelum kapasitas penuh.</p>',
+                'body' => '<p>Jadwal layanan dan kapasitas penjemputan tersedia untuk 30 hari ke depan di seluruh wilayah layanan. Pilih tanggal yang sesuai sebelum kapasitas penuh.</p>',
                 'audience' => AnnouncementAudience::Public,
                 'publish_start' => $now,
                 'publish_end' => $now->addDays(30),
