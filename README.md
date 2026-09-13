@@ -8,13 +8,13 @@ Aplikasi ini dibuat mobile-first, jadi nyaman dipakai lewat HP saat petugas bera
 
 **Warga** — mendaftar akun, melihat saldo dan riwayat transaksi, mengajukan penjemputan sampah, mengajukan pencairan saldo, memakai kartu nasabah ber-QR, dan menukar saldo dengan paket sembako.
 
-**Petugas** — mencari nasabah, mencatat setoran sampah, menangani tugas penjemputan, dan melayani penukaran di layanan keliling.
+**Petugas** — mencari nasabah, mencatat setoran sampah, dan menangani tugas penjemputan.
 
 **Bendahara** — memverifikasi dan mencatat pencairan saldo, mengunggah bukti pembayaran, serta menyusun laporan.
 
 **Admin** — mengelola data warga dan pengguna, wilayah (dusun, RW, RT), jenis sampah dan harganya, pengumuman, program, hingga audit dan rekonsiliasi.
 
-**Pengunjung** — tanpa perlu masuk, siapa pun bisa melihat katalog sampah, daftar harga, jadwal layanan keliling, pengumuman, dan statistik.
+**Pengunjung** — tanpa perlu masuk, siapa pun bisa melihat katalog sampah, daftar harga, pengumuman, dan statistik.
 
 ## Alur singkat
 
@@ -48,10 +48,10 @@ http://bank-sampah-skripsi.test
 
 ## Akun percobaan
 
-Setelah data awal dimuat, tersedia akun contoh untuk mencoba semua peran. Seluruh akun memakai kata sandi yang sama:
+Saat mode demo lokal aktif (`APP_DEMO_MODE`), tersedia akun contoh untuk mencoba semua peran. Seluruh akun demo memakai kata sandi yang sama:
 
 ```text
 Banten123
 ```
 
-Ganti kata sandi ini sebelum dipakai sungguhan.
+Kata sandi ini hanya berlaku untuk data demo lokal. Bootstrap produksi (`ProductionBootstrapSeeder`) tidak memakai kata sandi ini: isi `APP_INITIAL_ADMIN_PASSWORD` (minimal 12 karakter) di environment privat, dan akun yang sudah ada tidak pernah ditimpa.

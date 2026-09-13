@@ -226,13 +226,6 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 - **Hasil:** progres agregat bersih dan ringkasan akhir.
 - **Jejak:** TGT-001; BR-TGT-001–006.
 
-### FL-31 — Bank Sampah Keliling per RT/RW
-- **Aktor:** admin, petugas, warga.
-- **Alur utama:** buat jadwal pada hierarki desa, dusun, RW, dan RT → validasi benturan serta kapasitas jadwal → publikasi → buka titik → identifikasi warga → setoran langsung → saldo/bukti → tutup/rekap.
-- **Keputusan/gagal:** benturan kembali memilih waktu/petugas; jadwal belum dibuka tidak menerima transaksi keliling.
-- **Hasil:** titik layanan terjadwal, bukan penjemputan rumah.
-- **Jejak:** MOB-001, DEP-001; BR-MOB-001–006.
-
 ### FL-32 — Estimasi Nilai Sebelum Setor
 - **Aktor:** warga, publik.
 - **Alur utama:** pilih jenis → masukkan perkiraan berat → validasi harga → hitung → tampilkan estimasi, edukasi, penafian → selesai tanpa transaksi.

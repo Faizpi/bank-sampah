@@ -85,7 +85,7 @@ Finalisasi setoran melakukan validasi ulang harga aktif di dalam transaction. Ha
 
 - Nasabah wajib aktif dan dapat diakses petugas.
 - Petugas wajib aktif, memiliki `deposit.create/finalize`, dan berada dalam scope lokasi/tugas.
-- Metode adalah enum `langsung`, `penjemputan`, atau `keliling`; referensi sumber wajib cocok untuk dua metode terakhir.
+- Metode adalah enum `langsung` atau `penjemputan`; referensi sumber wajib cocok untuk metode penjemputan.
 - Waktu transaksi tidak boleh melampaui batas backdate/future yang ditetapkan; override memerlukan permission dan alasan.
 - Idempotency key wajib berupa UUID/ULID atau token acak valid dan unik pada scope perintah.
 
@@ -157,20 +157,13 @@ Transisi yang tidak tercantum pada BR-PUP-009 ditolak. Pembatalan warga setelah 
 - Handover memerlukan `grocery.handover`, penerima terverifikasi, bukti valid, dan status `siap_diambil`.
 - Selesai tidak dapat diulang; tolak/batal/kedaluwarsa melepas hold tanpa saldo keluar.
 
-## 11. Target, keliling, estimasi, dan publik
+## 11. Target, estimasi, dan publik
 
 ### Target
 
 - Nama/tujuan wajib; jenis/scope valid; berat target decimal positif maksimal tiga desimal; mulai < selesai.
 - Visibilitas publik boolean/enum dan metrik publik harus allowlist.
 - Progres tidak diterima dari input admin; dihitung dari transaksi final bersih.
-
-### Layanan keliling
-
-- Titik 3–255 karakter dan wilayah harus mengikuti hierarki desa, dusun, RW, dan RT yang aktif. Waktu mulai harus sebelum selesai, dengan minimal satu petugas dan jenis diterima.
-- Jadwal petugas atau titik tidak boleh overlap.
-- Kapasitas nonnegatif berlaku per jadwal dan membatasi penerimaan layanan. Status mengikuti `draf → dipublikasikan → dibuka → ditutup`, dengan `dibatalkan` sebagai endpoint sah sebelum dibuka.
-- Transaksi bertipe keliling memerlukan jadwal `dibuka` dan petugas terdaftar.
 
 ### Estimasi
 

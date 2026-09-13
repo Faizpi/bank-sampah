@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dashboard;
 
+use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Http\Middleware\EnsureSessionIsFresh;
@@ -131,43 +130,27 @@ final class RoleDashboardTest extends TestCase
             ->assertDontSee('Data Warga Lain');
     }
 
-    public function test_officer_dashboard_promotes_an_open_assigned_mobile_service_to_focus_now(): void
+    public function test_officer_dashboard_promotes_draft_deposit_to_focus_now(): void
     {
         $officer = User::factory()->create();
-        $otherOfficer = User::factory()->create();
-        $this->grant($officer, 'petugas', 'user.view', 'mobile-service.view', 'mobile-service.operate');
-        $this->grant($otherOfficer, 'petugas-lain', 'user.view', 'mobile-service.view', 'mobile-service.operate');
+        $customer = User::factory()->create(['name' => 'Nasabah Prioritas']);
+        $this->grant($officer, 'petugas', 'user.view', 'deposit.view', 'deposit.create');
 
-        $assignedService = MobileService::query()->create([
-            'service_number' => 'MS-FOCUS-001',
-            'point' => 'Balai RW 02',
-            'starts_at' => now()->subMinutes(15),
-            'ends_at' => now()->addHour(),
-            'status' => MobileServiceStatus::Open,
-            'capacity' => 20,
-            'served_count' => 0,
-            'created_by' => $officer->id,
+        Deposit::query()->create([
+            'deposit_number' => 'DEP-FOCUS-001',
+            'customer_id' => $customer->id,
+            'staff_id' => $officer->id,
+            'method' => 'langsung',
+            'occurred_at' => now(),
+            'status' => Deposit::STATUS_DRAFT,
         ]);
-        $assignedService->staff()->attach($officer);
-        $otherService = MobileService::query()->create([
-            'service_number' => 'MS-HIDDEN-002',
-            'point' => 'Data Wilayah Lain',
-            'starts_at' => now()->subMinutes(15),
-            'ends_at' => now()->addHour(),
-            'status' => MobileServiceStatus::Open,
-            'capacity' => 20,
-            'served_count' => 0,
-            'created_by' => $otherOfficer->id,
-        ]);
-        $otherService->staff()->attach($otherOfficer);
 
         $this->actingAs($officer->fresh())
             ->get(route('officer.dashboard'))
             ->assertOk()
             ->assertSee('Fokus sekarang')
-            ->assertSee('Layani titik keliling sekarang')
-            ->assertSee('Balai RW 02')
-            ->assertDontSee('Data Wilayah Lain');
+            ->assertSee('Lanjutkan draf setoran')
+            ->assertSee('Nasabah Prioritas');
     }
 
     public function test_officer_dashboard_rows_wrap_long_mobile_content_instead_of_truncating_it(): void

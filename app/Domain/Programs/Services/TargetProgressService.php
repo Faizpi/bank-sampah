@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 final readonly class TargetProgressService
 {
+    /** Deposits stream through this many rows per database round trip so wide target windows stay bounded in memory. */
+    private const STREAM_CHUNK_SIZE = 200;
+
     /**
      * @param  list<int>|null  $allowedRtIds
      * @return array{weight_kg: string, subject_count: int, deposit_count: int, plastic_weight_kg: string}
@@ -106,9 +109,8 @@ final readonly class TargetProgressService
                 $depositQuery->whereHas('customer.customerProfile', static fn (Builder $profile): Builder => $profile->whereIn('rt_id', $allowedRtIds));
             }
         }
-        $deposits = $depositQuery->get();
 
-        foreach ($deposits as $deposit) {
+        foreach ($depositQuery->lazyById(self::STREAM_CHUNK_SIZE) as $deposit) {
             foreach ($targets as $target) {
                 if ($deposit->occurred_at->lt($target->period_start->startOfDay()) || $deposit->occurred_at->gt($target->period_end->endOfDay())) {
                     continue;

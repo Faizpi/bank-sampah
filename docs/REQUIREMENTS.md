@@ -83,7 +83,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Aktor:** admin.
 - **Prasyarat:** memiliki permission master wilayah.
 - **Alur:** admin mengelola hierarki, status, area pelayanan, penugasan, dan keterkaitan jadwal; sistem memvalidasi parent dan kode unik.
-- **Hasil:** pengguna, penjemputan, layanan keliling, target, dan laporan memakai referensi wilayah konsisten.
+- **Hasil:** pengguna, penjemputan, target, dan laporan memakai referensi wilayah konsisten.
 - **Kegagalan:** parent tidak aktif, duplikasi, atau wilayah bereferensi tidak dapat dihapus fisik.
 - **Kriteria penerimaan:** hierarki valid; kode unik pada scope; deaktivasi mempertahankan riwayat; filter wilayah konsisten.
 - **Jejak:** FL-04, FL-07, FL-33, FL-35; BR-REG-001–003; TC-REG-001.
@@ -234,17 +234,6 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Kriteria penerimaan:** unit konsisten; periode tidak ambigu; koreksi/reversal tercermin; publik tanpa data pribadi.
 - **Jejak:** FL-30; BR-TGT-001–006; TC-TGT-001.
 
-### MOB — Bank Sampah Keliling
-
-#### MOB-001 — Jadwal dan operasi layanan keliling per RT/RW
-- **Aktor:** admin, petugas, warga.
-- **Prasyarat:** wilayah, titik, waktu, petugas, dan kapasitas tersedia.
-- **Alur:** admin membuat jadwal; sistem mendeteksi benturan; jadwal dipublikasikan; petugas membuka titik; warga datang dengan QR/nomor; setoran mengikuti alur langsung; petugas menutup dan merekap layanan.
-- **Hasil:** layanan terjadwal tercatat per wilayah tanpa diperlakukan sebagai penjemputan rumah.
-- **Kegagalan:** benturan mengharuskan waktu/petugas lain; layanan belum dibuka tidak menerima transaksi bertipe keliling.
-- **Kriteria penerimaan:** wilayah jadwal mengikuti hierarki desa, dusun, RW, dan RT; titik, waktu, petugas, jenis diterima, kapasitas, serta status harus jelas; kapasitas membatasi penerimaan pada jadwal terkait.
-- **Jejak:** FL-31; BR-MOB-001–006; TC-MOB-001.
-
 ### EST — estimasi nilai
 
 #### EST-001 — Kalkulator estimasi sebelum setor
@@ -370,7 +359,6 @@ Nomor mengacu pada urutan diagram pada kumpulan flowchart dan rincian [USER_FLOW
 | FL-28 | Penanganan Kesalahan Transaksi | DEP-003, BAL-002 |
 | FL-29 | Laporan dan Ekspor Excel | RPT-001 |
 | FL-30 | Target Pengumpulan Sampah Desa | TGT-001 |
-| FL-31 | Bank Sampah Keliling per RT/RW | MOB-001, DEP-001 |
 | FL-32 | Estimasi Nilai Sebelum Setor | EST-001, WST-001 |
 | FL-33 | Pelayanan Warga Tanpa Smartphone | CST-002, AUTH-001 |
 | FL-34 | Verifikasi Bukti Transaksi dengan QR | QRV-001 |
@@ -391,7 +379,7 @@ ID `FL-01`–`FL-36` mengikuti urutan generator dan diagram final sebagaimana di
 | Penjemputan dan kapasitas | PUP-001 |
 | Pencairan dan sembako | WDR-001, GRC-001 |
 | Informasi status, WhatsApp manual, pengumuman | WA-001, ANN-001 |
-| Target, keliling, estimasi, QR bukti | TGT-001, MOB-001, EST-001, QRV-001 |
+| Target, estimasi, QR bukti | TGT-001, EST-001, QRV-001 |
 | Partisipasi, publik, laporan | PUB-001–002, RPT-001 |
 | Audit dan PWA | AUD-001, PWA-001 |
 

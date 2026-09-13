@@ -26,7 +26,7 @@
         </div>
 
         @if ($hasLedger)
-            <div class="mt-5 grid grid-cols-3 gap-2 border-t border-border pt-4">
+            <div class="mt-5 grid grid-cols-1 gap-2 border-t border-border pt-4 min-[380px]:grid-cols-3">
                 <div class="rounded-lg bg-warm-canvas px-3 py-2">
                     <p class="text-caption font-medium text-text-secondary">Tertahan</p>
                     <p class="mt-0.5 amount-tabular text-label font-bold text-deep-green">Rp{{ number_format($heldBalance, 0, ',', '.') }}</p>
@@ -102,7 +102,13 @@
                             <p class="text-caption text-text-secondary">{{ $pickup->request_number ?? 'Menunggu konfirmasi' }}</p>
                         </div>
                     </div>
-                    <x-ui.status-badge :status="$pickup->status?->value ?? 'diajukan'" />
+                                <x-ui.status-badge :status="match ($pickup->status) {
+                                    \App\Domain\Pickups\Enums\PickupStatus::Rejected => 'error',
+                                    \App\Domain\Pickups\Enums\PickupStatus::Cancelled => 'cancelled',
+                                    \App\Domain\Pickups\Enums\PickupStatus::Completed => 'success',
+                                    \App\Domain\Pickups\Enums\PickupStatus::OnTheWay, \App\Domain\Pickups\Enums\PickupStatus::PickedUp => 'in_progress',
+                                    default => 'pending',
+                                }">{{ \App\Support\StatusLabel::for($pickup->status) }}</x-ui.status-badge>
                 </a>
             @endforeach
             @foreach ($activeWithdrawals as $withdrawal)
@@ -116,7 +122,14 @@
                             <p class="text-caption text-text-secondary">Rp{{ number_format($withdrawal->amount ?? 0, 0, ',', '.') }}</p>
                         </div>
                     </div>
-                    <x-ui.status-badge :status="$withdrawal->status?->value ?? 'diajukan'" />
+                                <x-ui.status-badge :status="match ($withdrawal->status) {
+                                    \App\Domain\Withdrawals\Enums\WithdrawalStatus::Paid => 'success',
+                                    \App\Domain\Withdrawals\Enums\WithdrawalStatus::Rejected => 'error',
+                                    \App\Domain\Withdrawals\Enums\WithdrawalStatus::Cancelled => 'cancelled',
+                                    \App\Domain\Withdrawals\Enums\WithdrawalStatus::Expired => 'expired',
+                                    \App\Domain\Withdrawals\Enums\WithdrawalStatus::Approved, \App\Domain\Withdrawals\Enums\WithdrawalStatus::ReadyForPickup => 'in_progress',
+                                    default => 'pending',
+                                }">{{ \App\Support\StatusLabel::for($withdrawal->status) }}</x-ui.status-badge>
                 </a>
             @endforeach
             @foreach ($activeGroceries as $redemption)
@@ -130,7 +143,14 @@
                             <p class="text-caption text-text-secondary">{{ $redemption->request_number }}</p>
                         </div>
                     </div>
-                    <x-ui.status-badge :status="$redemption->status->value" />
+                                <x-ui.status-badge :status="match ($redemption->status) {
+                                    \App\Domain\Groceries\Enums\GroceryStatus::Completed => 'success',
+                                    \App\Domain\Groceries\Enums\GroceryStatus::Rejected => 'error',
+                                    \App\Domain\Groceries\Enums\GroceryStatus::Cancelled => 'cancelled',
+                                    \App\Domain\Groceries\Enums\GroceryStatus::Expired => 'expired',
+                                    \App\Domain\Groceries\Enums\GroceryStatus::Preparing, \App\Domain\Groceries\Enums\GroceryStatus::ReadyForPickup => 'in_progress',
+                                    default => 'pending',
+                                }">{{ \App\Support\StatusLabel::for($redemption->status) }}</x-ui.status-badge>
                 </a>
             @endforeach
         </div>
@@ -143,7 +163,7 @@
     <div>
         <div class="mb-3 flex items-center justify-between">
             <h2 class="text-label font-bold text-text-secondary">Setoran Terbaru</h2>
-            <a href="{{ route('citizen.deposit-history') }}" class="text-caption font-semibold text-forest-600 hover:text-forest-700">Lihat semua</a>
+            <a href="{{ route('citizen.deposit-history') }}" class="inline-flex min-h-touch items-center text-caption font-semibold text-forest-600 hover:text-forest-700">Lihat semua</a>
         </div>
         @if ($recentDeposits->isEmpty())
             <div class="rounded-xl border border-border bg-surface p-6 text-center shadow-xs">

@@ -12,8 +12,6 @@ use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Programs\Enums\TargetStatus;
 use App\Domain\Programs\Models\CollectionTarget;
 use App\Domain\Programs\Models\TargetScope;
@@ -77,16 +75,6 @@ final class InternalStatisticsTest extends TestCase
             'public_min_subjects' => 1,
             'created_by' => $actor->id,
         ]);
-        MobileService::query()->create([
-            'service_number' => 'MOB-STATS-001',
-            'point' => 'Titik statistik',
-            'starts_at' => '2026-08-01 08:00:00',
-            'ends_at' => '2026-08-01 12:00:00',
-            'status' => MobileServiceStatus::Closed,
-            'capacity' => 20,
-            'served_count' => 1,
-            'created_by' => $actor->id,
-        ]);
 
         $statistics = app(StatisticsService::class);
         $internal = $statistics->internal($actor, '2026-08-01', '2026-08-02');
@@ -98,13 +86,12 @@ final class InternalStatisticsTest extends TestCase
         self::assertSame('2.500', $internal['plastic_weight_kg']);
         self::assertSame('Plastik', $internal['dominant_waste_type']);
         self::assertSame('2.500', $internal['target_progress_kg']);
-        self::assertSame(1, $internal['mobile_service_count']);
 
-        $statistics->configurePublic($actor, ['active_customers', 'target_progress_kg', 'mobile_service_count'], ['period'], 2, true);
+        $statistics->configurePublic($actor, ['active_customers', 'target_progress_kg'], ['period'], 2, true);
         $public = $statistics->public('2026-08-01', '2026-08-02');
 
         self::assertFalse($public['suppressed']);
-        self::assertSame(['active_customers' => 2, 'target_progress_kg' => '2.500', 'mobile_service_count' => 1], $public['metrics']);
+        self::assertSame(['active_customers' => 2, 'target_progress_kg' => '2.500'], $public['metrics']);
     }
 
     public function test_public_statistics_uses_configured_rt_aggregation_and_includes_period_metadata(): void
@@ -203,7 +190,6 @@ final class InternalStatisticsTest extends TestCase
         self::assertTrue($result['suppressed']);
         self::assertNull($result['active_customers']);
         self::assertNull($result['target_progress_kg']);
-        self::assertNull($result['mobile_service_count']);
     }
 
     /** @return array{WasteType, WasteCondition} */

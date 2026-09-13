@@ -61,11 +61,16 @@ final readonly class WithdrawalPaymentService
             $media = $this->mediaStore->handlePhoto($proof, $actor);
 
             return DB::transaction(function () use ($actor, $withdrawal, $verification, $reference, $media, $idempotencyKey, $payloadHash): WithdrawalRequest {
-                $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
-                if ($existing !== null) {
+                $claim = IdempotencyKey::acquireOrCreate($actor->id, self::SCOPE, $idempotencyKey, $payloadHash);
+                if (! $claim['is_new']) {
+                    $existing = $claim['key'];
+                    if ($existing->payload_hash !== $payloadHash || $existing->result_id === null) {
+                        throw ValidationException::withMessages(['idempotency_key' => 'Permintaan berbeda menggunakan idempotency key yang sama.']);
+                    }
+
                     return WithdrawalRequest::query()->findOrFail($existing->result_id);
                 }
-                $key = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => self::SCOPE, 'key' => $idempotencyKey, 'payload_hash' => $payloadHash, 'status' => 'processing']);
+                $key = $claim['key'];
                 $locked = WithdrawalRequest::query()->whereKey($withdrawal->id)->lockForUpdate()->firstOrFail();
                 $this->assertPayer($actor, $locked);
                 if (! $locked->canTransitionTo(WithdrawalStatus::Paid)) {

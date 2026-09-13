@@ -46,12 +46,22 @@ final readonly class GroceryRequestService
         $packageId = $this->packageId($data['package_id'] ?? null);
         $payloadHash = $this->payloadHash(['customer_id' => $customer->id, 'rt_id' => $customer->customerProfile?->rt_id, 'service_area_id' => $area->id, 'package_id' => $packageId]);
 
+        $existing = DB::transaction(fn (): ?IdempotencyKey => $this->existingIdempotency($actor, $idempotencyKey, $payloadHash));
+        if ($existing !== null) {
+            return GroceryRedemption::query()->findOrFail($existing->result_id);
+        }
+
         return DB::transaction(function () use ($actor, $customer, $area, $packageId, $idempotencyKey, $payloadHash): GroceryRedemption {
-            $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
-            if ($existing !== null) {
+            $claim = IdempotencyKey::acquireOrCreate($actor->id, self::SCOPE, $idempotencyKey, $payloadHash);
+            if (! $claim['is_new']) {
+                $existing = $claim['key'];
+                if ($existing->payload_hash !== $payloadHash || $existing->result_id === null) {
+                    throw ValidationException::withMessages(['idempotency_key' => 'Permintaan berbeda menggunakan idempotency key yang sama.']);
+                }
+
                 return GroceryRedemption::query()->findOrFail($existing->result_id);
             }
-            $key = $this->createIdempotency($actor, $idempotencyKey, $payloadHash);
+            $key = $claim['key'];
             $package = GroceryPackage::query()->whereKey($packageId)->lockForUpdate()->first();
             if ($package === null || ! $package->isAvailableOn(now('Asia/Jakarta')->toImmutable())) {
                 throw ValidationException::withMessages(['package_id' => 'Paket sembako tidak aktif atau tidak tersedia.']);
@@ -208,11 +218,6 @@ final readonly class GroceryRequestService
         }
 
         return $existing;
-    }
-
-    private function createIdempotency(User $actor, string $key, string $hash): IdempotencyKey
-    {
-        return IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => self::SCOPE, 'key' => $key, 'payload_hash' => $hash, 'status' => 'processing']);
     }
 
     /** @param array<string, mixed> $payload */

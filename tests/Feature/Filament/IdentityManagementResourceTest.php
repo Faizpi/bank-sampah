@@ -26,6 +26,7 @@ use App\Filament\Resources\Identity\Models\Roles\Pages\ManageRoles as ManageRole
 use App\Filament\Resources\Identity\Models\Users\Pages\ManageUsers as ManageUsersPage;
 use App\Filament\Resources\Identity\Models\Users\UserResource;
 use App\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -618,6 +619,138 @@ final class IdentityManagementResourceTest extends TestCase
 
         $this->expectException(AuthorizationException::class);
         app(ManageUsers::class)->deactivate(User::factory()->create()->fresh(), $target->fresh(), 'Aktor tanpa permission tidak boleh mutasi.');
+    }
+
+    public function test_user_creation_without_role_manage_cannot_assign_a_privileged_role(): void
+    {
+        $actor = User::factory()->create();
+        $superadmin = Role::query()->create(['name' => 'superadmin']);
+        $this->grant($actor, 'user-create-no-role-manage', 'user.create');
+
+        try {
+            app(ManageUsers::class)->create($actor->fresh(), [
+                'name' => 'Escalation Attempt',
+                'username' => 'escalation.attempt',
+                'phone' => '6281234567890',
+                'email' => 'escalation@example.test',
+                'password' => 'rahasia-yang-kuat',
+                'password_confirmation' => 'rahasia-yang-kuat',
+                'role_id' => $superadmin->id,
+            ]);
+            self::fail('Expected the privileged role escalation to be denied.');
+        } catch (AuthorizationException $exception) {
+            self::assertStringContainsString('role.manage', $exception->getMessage());
+        }
+
+        $this->assertDatabaseMissing('users', ['username' => 'escalation.attempt']);
+    }
+
+    public function test_user_creation_without_role_manage_can_still_assign_a_non_privileged_role(): void
+    {
+        $actor = User::factory()->create();
+        $petugas = Role::query()->create(['name' => 'petugas']);
+        $this->grant($actor, 'user-create-non-privileged', 'user.create');
+
+        $created = app(ManageUsers::class)->create($actor->fresh(), [
+            'name' => 'Petugas Baru',
+            'username' => 'petugas.baru',
+            'phone' => '6281234567890',
+            'email' => 'petugas.baru@example.test',
+            'password' => 'rahasia-yang-kuat',
+            'password_confirmation' => 'rahasia-yang-kuat',
+            'role_id' => $petugas->id,
+        ]);
+
+        self::assertSame([$petugas->id], $created->roles()->pluck('roles.id')->all());
+    }
+
+    public function test_user_creation_with_role_manage_can_assign_a_privileged_role(): void
+    {
+        $actor = User::factory()->create();
+        $admin = Role::query()->create(['name' => 'admin']);
+        $this->grant($actor, 'user-create-role-manage', 'user.create', 'role.manage');
+
+        $created = app(ManageUsers::class)->create($actor->fresh(), [
+            'name' => 'Admin Baru',
+            'username' => 'admin.baru',
+            'phone' => '6281234567890',
+            'email' => 'admin.baru@example.test',
+            'password' => 'rahasia-yang-kuat',
+            'password_confirmation' => 'rahasia-yang-kuat',
+            'role_id' => $admin->id,
+        ]);
+
+        self::assertSame([$admin->id], $created->roles()->pluck('roles.id')->all());
+    }
+
+    public function test_user_create_form_only_offers_roles_the_actor_may_grant(): void
+    {
+        $actor = User::factory()->create();
+        Role::query()->create(['name' => 'superadmin']);
+        Role::query()->create(['name' => 'admin']);
+        Role::query()->create(['name' => 'warga']);
+        $this->grant($actor, 'user-create-form-scope', 'user.create');
+
+        $options = array_values(UserResource::grantableRoleOptions($actor->fresh()));
+        self::assertContains('warga', $options);
+        self::assertNotContains('superadmin', $options);
+        self::assertNotContains('admin', $options);
+
+        $manager = User::factory()->create();
+        $this->grant($manager, 'user-create-form-manager', 'user.create', 'role.manage');
+
+        $managerOptions = array_values(UserResource::grantableRoleOptions($manager->fresh()));
+        self::assertSame(['superadmin', 'admin', 'warga'], array_values(array_filter(
+            $managerOptions,
+            static fn (string $name): bool => in_array($name, ['superadmin', 'admin', 'warga'], true),
+        )));
+    }
+
+    public function test_custom_privileged_roles_are_rejected_without_partial_writes_and_filtered_from_options(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $actor = User::factory()->create();
+        $this->grant($actor, 'creator-only', 'user.create');
+        $admin = Role::query()->where('name', 'admin')->sole();
+        $capabilities = ['role.manage', 'backup.restore', 'transaction.reverse', 'ledger.adjust', 'system.settings.manage', 'system.maintenance', 'user.reset-password', 'user.view.all', 'admin-baseline'];
+
+        foreach ($capabilities as $index => $capability) {
+            $role = Role::query()->create(['name' => 'operator-'.$index]);
+            $role->permissions()->sync($capability === 'admin-baseline'
+                ? $admin->permissions()->pluck('permissions.id')
+                : Permission::query()->where('name', $capability)->pluck('id'));
+            $counts = [User::withTrashed()->count(), DB::table('role_user')->count(), AuditLog::query()->count()];
+
+            try {
+                app(ManageUsers::class)->create($actor, [
+                    'name' => 'Forged Role', 'username' => 'forged-'.$index,
+                    'password' => 'rahasia-yang-kuat', 'password_confirmation' => 'rahasia-yang-kuat',
+                    'role_id' => $role->id,
+                ]);
+                self::fail('Custom capability escalation must be denied: '.$capability);
+            } catch (AuthorizationException) {
+                self::assertSame($counts, [User::withTrashed()->count(), DB::table('role_user')->count(), AuditLog::query()->count()]);
+            }
+            self::assertArrayNotHasKey($role->id, UserResource::grantableRoleOptions($actor));
+        }
+    }
+
+    public function test_seeded_operational_roles_remain_delegable_by_user_creators(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $actor = User::factory()->create();
+        $this->grant($actor, 'operational-creator', 'user.create');
+
+        foreach (['warga', 'petugas', 'bendahara'] as $name) {
+            $role = Role::query()->where('name', $name)->sole();
+            $created = app(ManageUsers::class)->create($actor, [
+                'name' => 'New '.$name, 'username' => 'new-'.$name,
+                'password' => 'rahasia-yang-kuat', 'password_confirmation' => 'rahasia-yang-kuat',
+                'role_id' => $role->id,
+            ]);
+            self::assertSame([$role->id], $created->roles()->pluck('roles.id')->all());
+            self::assertArrayHasKey($role->id, UserResource::grantableRoleOptions($actor));
+        }
     }
 
     /** @return array{0: ServiceArea, 1: Rt} */

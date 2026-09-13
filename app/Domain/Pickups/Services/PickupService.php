@@ -72,21 +72,16 @@ final readonly class PickupService
 
         try {
             return DB::transaction(function () use ($actor, $customer, $area, $address, $selectedDate, $notes, $normalizedItems, $estimatedWeight, $photos, $idempotencyKey, $payloadHash, &$storedMedia): PickupRequest {
-                $existingKey = IdempotencyKey::activeForUpdate($actor->id, self::IDEMPOTENCY_REQUEST_SCOPE, $idempotencyKey);
+                $claim = IdempotencyKey::acquireOrCreate($actor->id, self::IDEMPOTENCY_REQUEST_SCOPE, $idempotencyKey, $payloadHash);
 
-                if ($existingKey !== null) {
+                if (! $claim['is_new']) {
+                    $existingKey = $claim['key'];
                     $this->assertSamePayload($existingKey, $payloadHash);
 
                     return PickupRequest::query()->findOrFail($existingKey->result_id);
                 }
 
-                $key = IdempotencyKey::query()->create([
-                    'actor_id' => $actor->id,
-                    'scope' => self::IDEMPOTENCY_REQUEST_SCOPE,
-                    'key' => $idempotencyKey,
-                    'payload_hash' => $payloadHash,
-                    'status' => 'processing',
-                ]);
+                $key = $claim['key'];
 
                 // No capacity check: citizens can submit for any valid date.
                 $pickup = PickupRequest::query()->create([
@@ -260,13 +255,14 @@ final readonly class PickupService
 
         try {
             return DB::transaction(function () use ($actor, $pickup, $normalized, $idempotencyKey, $payloadHash, $evidence, &$media): PickupRequest {
-                $existingKey = IdempotencyKey::activeForUpdate($actor->id, self::IDEMPOTENCY_COMPLETE_SCOPE, $idempotencyKey);
-                if ($existingKey !== null) {
+                $claim = IdempotencyKey::acquireOrCreate($actor->id, self::IDEMPOTENCY_COMPLETE_SCOPE, $idempotencyKey, $payloadHash);
+                if (! $claim['is_new']) {
+                    $existingKey = $claim['key'];
                     $this->assertSamePayload($existingKey, $payloadHash);
 
                     return PickupRequest::query()->findOrFail($existingKey->result_id);
                 }
-                $key = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => self::IDEMPOTENCY_COMPLETE_SCOPE, 'key' => $idempotencyKey, 'payload_hash' => $payloadHash, 'status' => 'processing']);
+                $key = $claim['key'];
                 $locked = $this->lockPickup($pickup);
                 $this->assertTransition($locked, PickupStatus::Completed);
                 if ($locked->status !== PickupStatus::PickedUp) {

@@ -38,7 +38,7 @@
         <dl class="grid gap-3 text-body md:grid-cols-2">
             <div class="rounded-lg bg-warm-canvas px-3 py-2">
                 <dt class="text-caption font-medium text-text-secondary">Status</dt>
-                <dd class="mt-0.5 font-semibold text-deep-green">{{ ucwords(str_replace('_', ' ', $pickup->status->value)) }}</dd>
+                <dd class="mt-0.5 font-semibold text-deep-green">{{ \App\Support\StatusLabel::for($pickup->status) }}</dd>
             </div>
             <div class="rounded-lg bg-warm-canvas px-3 py-2">
                 <dt class="text-caption font-medium text-text-secondary">Tanggal pilihan</dt>
@@ -60,14 +60,16 @@
 
     <x-ui.panel title="Sampah yang diajukan" description="Rincian dan foto ini tersimpan bersama pengajuan Anda.">
         <div class="grid gap-3 md:grid-cols-2">
-            @foreach ($pickup->items as $item)
+            @forelse ($pickup->items as $item)
                 <div class="rounded-lg bg-warm-canvas px-3 py-2">
                     <p class="font-semibold text-deep-green">{{ $item->wasteType?->name ?? 'Jenis sampah' }}</p>
                     <p class="mt-0.5 text-caption text-text-secondary">
                         {{ $item->estimated_weight_kg !== null ? \App\Support\WeightFormatter::format($item->estimated_weight_kg).' kg' : ($item->estimated_quantity ?? 0).' item' }}
                     </p>
                 </div>
-            @endforeach
+            @empty
+                <p class="rounded-lg border border-border bg-warm-canvas px-3 py-4 text-body-sm text-text-secondary md:col-span-2">Belum ada rincian sampah yang tercatat pada pengajuan ini.</p>
+            @endforelse
         </div>
         @if ($pickup->notes)
             <p class="mt-4 text-body text-text-secondary"><span class="font-semibold text-deep-green">Catatan:</span> {{ $pickup->notes }}</p>
@@ -105,7 +107,10 @@
             <p>Pengajuan {{ $pickup->request_number }} tidak akan diproses lebih lanjut.</p>
             <x-slot:actions>
                 <x-ui.button type="button" variant="secondary" x-on:click="closeModal()">Kembali</x-ui.button>
-                <x-ui.button type="button" variant="danger" wire:click="cancel" wire:loading.attr="disabled" wire:target="cancel">Batalkan pengajuan</x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="cancel" wire:loading.attr="disabled" wire:target="cancel">
+                    <span wire:loading.remove wire:target="cancel">Batalkan pengajuan</span>
+                    <span wire:loading wire:target="cancel">Membatalkan...</span>
+                </x-ui.button>
             </x-slot:actions>
         </x-ui.dialog>
     @endif

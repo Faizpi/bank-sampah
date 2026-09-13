@@ -184,7 +184,7 @@
         </div>
     </section>
 
-    {{-- CTA Section —— light bg so it doesn't bleed into footer --}}
+    {{-- CTA Section -- light bg so it doesn't bleed into footer --}}
     <section class="border-t border-border bg-surface py-16 sm:py-20" aria-labelledby="account-cta-title">
         <div class="public-container flex flex-col gap-8 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center lg:flex lg:flex-row lg:justify-between">
             <div class="md:min-w-0 lg:max-w-2xl">

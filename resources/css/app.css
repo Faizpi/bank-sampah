@@ -15,7 +15,7 @@
     --color-warm-canvas: #f6f5ef;
     --color-surface: #ffffff;
     --color-harvest-gold: #d6a84b;
-    --color-terracotta: #c76b4f;
+    --color-terracotta: #a8472f;
     --color-sky-blue: #326d80;
     --color-text-primary: #17241f;
     --color-text-secondary: #55635d;
@@ -152,6 +152,14 @@
 
     :focus-visible {
         outline: 2px solid var(--color-focus);
+        outline-offset: 2px;
+    }
+
+    .bg-deep-green:focus-visible,
+    .bg-deep-green :focus-visible,
+    [class*="bg-deep-green"]:focus-visible,
+    [class*="bg-deep-green"] :focus-visible {
+        outline: 2px solid var(--color-surface);
         outline-offset: 2px;
     }
 
@@ -304,7 +312,11 @@
 }
 
 @utility animate-mascot {
-    animation: mascot-float 3s ease-in-out infinite;
+    animation: mascot-float 2s ease-in-out 1;
+
+    &:hover {
+        animation: mascot-float 2s ease-in-out 1;
+    }
 
     @media (prefers-reduced-motion: reduce) {
         animation: none;

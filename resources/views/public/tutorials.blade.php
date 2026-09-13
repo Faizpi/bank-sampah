@@ -97,7 +97,7 @@
                             type="search"
                             x-model="searchQuery"
                             placeholder="Cari tutorial (misal: jemput, cairkan)..."
-                            class="min-h-touch w-full rounded-full border border-border bg-surface pl-11 pr-10 text-body-sm text-text-primary placeholder:text-text-secondary/70 focus:border-forest-600 focus:outline-none focus:ring-2 focus:ring-forest-600/30"
+                            class="min-h-touch w-full rounded-md border border-border bg-surface pl-11 pr-10 text-body-sm text-text-primary placeholder:text-text-secondary/70 focus:border-forest-600 focus:outline-none focus:ring-2 focus:ring-forest-600/30"
                         >
                         <div class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary">
                             <x-public.icon name="search" size="size-5" />
@@ -122,12 +122,12 @@
                         :class="activeRole === 'all'
                             ? 'bg-deep-green text-surface font-bold shadow-xs'
                             : 'bg-surface text-text-secondary hover:bg-success-bg hover:text-deep-green border border-border/90 font-medium'"
-                        class="inline-flex min-h-touch items-center gap-2 rounded-full px-4 py-2 text-body-sm transition duration-180"
+                        class="inline-flex min-h-touch items-center gap-2 rounded-md px-4 py-2 text-body-sm transition duration-180"
                     >
                         <span>Semua Panduan</span>
                         <span
                             :class="activeRole === 'all' ? 'bg-surface/25 text-surface' : 'bg-forest-600/10 text-forest-700'"
-                            class="rounded-full px-2 py-0.5 text-caption font-bold"
+                            class="px-2 py-0.5 text-caption font-bold"
                         >
                             {{ $totalCount }}
                         </span>
@@ -139,12 +139,12 @@
                         :class="activeRole === 'warga'
                             ? 'bg-forest-600 text-surface font-bold shadow-xs'
                             : 'bg-surface text-text-secondary hover:bg-success-bg hover:text-deep-green border border-border/90 font-medium'"
-                        class="inline-flex min-h-touch items-center gap-2 rounded-full px-4 py-2 text-body-sm transition duration-180"
+                        class="inline-flex min-h-touch items-center gap-2 rounded-md px-4 py-2 text-body-sm transition duration-180"
                     >
                         <span>Sesi Warga</span>
                         <span
                             :class="activeRole === 'warga' ? 'bg-surface/25 text-surface' : 'bg-forest-600/10 text-forest-700'"
-                            class="rounded-full px-2 py-0.5 text-caption font-bold"
+                            class="px-2 py-0.5 text-caption font-bold"
                         >
                             {{ $wargaCount }}
                         </span>
@@ -154,14 +154,14 @@
                         type="button"
                         x-on:click="activeRole = 'petugas'"
                         :class="activeRole === 'petugas'
-                            ? 'bg-blue-700 text-surface font-bold shadow-xs'
-                            : 'bg-surface text-text-secondary hover:bg-blue-50 hover:text-blue-800 border border-border/90 font-medium'"
-                        class="inline-flex min-h-touch items-center gap-2 rounded-full px-4 py-2 text-body-sm transition duration-180"
+                            ? 'bg-sky-blue text-surface font-bold shadow-xs'
+                            : 'bg-surface text-text-secondary hover:bg-info-bg hover:text-deep-green border border-border/90 font-medium'"
+                        class="inline-flex min-h-touch items-center gap-2 rounded-md px-4 py-2 text-body-sm transition duration-180"
                     >
                         <span>Sesi Petugas</span>
                         <span
-                            :class="activeRole === 'petugas' ? 'bg-surface/25 text-surface' : 'bg-blue-100 text-blue-800'"
-                            class="rounded-full px-2 py-0.5 text-caption font-bold"
+                            :class="activeRole === 'petugas' ? 'bg-surface/25 text-surface' : 'bg-info-bg text-deep-green'"
+                            class="px-2 py-0.5 text-caption font-bold"
                         >
                             {{ $petugasCount }}
                         </span>
@@ -171,14 +171,14 @@
                         type="button"
                         x-on:click="activeRole = 'bendahara'"
                         :class="activeRole === 'bendahara'
-                            ? 'bg-amber-600 text-surface font-bold shadow-xs'
-                            : 'bg-surface text-text-secondary hover:bg-amber-50 hover:text-amber-800 border border-border/90 font-medium'"
-                        class="inline-flex min-h-touch items-center gap-2 rounded-full px-4 py-2 text-body-sm transition duration-180"
+                            ? 'bg-harvest-gold text-deep-green font-bold shadow-xs'
+                            : 'bg-surface text-text-secondary hover:bg-warning-bg hover:text-deep-green border border-border/90 font-medium'"
+                        class="inline-flex min-h-touch items-center gap-2 rounded-md px-4 py-2 text-body-sm transition duration-180"
                     >
                         <span>Sesi Bendahara</span>
                         <span
-                            :class="activeRole === 'bendahara' ? 'bg-surface/25 text-surface' : 'bg-amber-100 text-amber-800'"
-                            class="rounded-full px-2 py-0.5 text-caption font-bold"
+                            :class="activeRole === 'bendahara' ? 'bg-deep-green/15 text-deep-green' : 'bg-warning-bg text-deep-green'"
+                            class="px-2 py-0.5 text-caption font-bold"
                         >
                             {{ $bendaharaCount }}
                         </span>
@@ -188,14 +188,14 @@
                         type="button"
                         x-on:click="activeRole = 'superadmin'"
                         :class="activeRole === 'superadmin'
-                            ? 'bg-purple-700 text-surface font-bold shadow-xs'
-                            : 'bg-surface text-text-secondary hover:bg-purple-50 hover:text-purple-800 border border-border/90 font-medium'"
-                        class="inline-flex min-h-touch items-center gap-2 rounded-full px-4 py-2 text-body-sm transition duration-180"
+                            ? 'bg-terracotta text-surface font-bold shadow-xs'
+                            : 'bg-surface text-text-secondary hover:bg-danger-bg hover:text-deep-green border border-border/90 font-medium'"
+                        class="inline-flex min-h-touch items-center gap-2 rounded-md px-4 py-2 text-body-sm transition duration-180"
                     >
                         <span>Sesi Superadmin / Admin</span>
                         <span
-                            :class="activeRole === 'superadmin' ? 'bg-surface/25 text-surface' : 'bg-purple-100 text-purple-800'"
-                            class="rounded-full px-2 py-0.5 text-caption font-bold"
+                            :class="activeRole === 'superadmin' ? 'bg-surface/25 text-surface' : 'bg-danger-bg text-deep-green'"
+                            class="px-2 py-0.5 text-caption font-bold"
                         >
                             {{ $adminCount }}
                         </span>
@@ -222,12 +222,14 @@
                     @foreach ($tutorials as $item)
                         @php
                             $roleData = match($item['role']) {
-                                'warga' => ['badge' => 'bg-emerald-50 text-emerald-800 border-emerald-200', 'dot' => 'bg-emerald-600', 'label' => 'Warga'],
-                                'petugas' => ['badge' => 'bg-blue-50 text-blue-800 border-blue-200', 'dot' => 'bg-blue-600', 'label' => 'Petugas'],
-                                'bendahara' => ['badge' => 'bg-amber-50 text-amber-800 border-amber-200', 'dot' => 'bg-amber-600', 'label' => 'Bendahara'],
-                                'superadmin' => ['badge' => 'bg-purple-50 text-purple-800 border-purple-200', 'dot' => 'bg-purple-600', 'label' => 'Superadmin'],
-                                default => ['badge' => 'bg-gray-50 text-gray-800 border-gray-200', 'dot' => 'bg-gray-600', 'label' => ucfirst($item['role'])],
+                                'warga' => ['badge' => 'bg-success-bg text-forest-700 border-forest-600/25', 'dot' => 'bg-forest-600', 'label' => 'Warga'],
+                                'petugas' => ['badge' => 'bg-info-bg text-deep-green border-sky-blue/30', 'dot' => 'bg-sky-blue', 'label' => 'Petugas'],
+                                'bendahara' => ['badge' => 'bg-warning-bg text-deep-green border-harvest-gold/40', 'dot' => 'bg-harvest-gold', 'label' => 'Bendahara'],
+                                'superadmin' => ['badge' => 'bg-danger-bg text-deep-green border-terracotta/30', 'dot' => 'bg-terracotta', 'label' => 'Superadmin'],
+                                default => ['badge' => 'bg-disabled-bg text-text-primary border-border', 'dot' => 'bg-text-secondary', 'label' => ucfirst($item['role'])],
                             };
+                            $videoUrl = (string) ($item['video_url'] ?? '');
+                            $videoComingSoon = $videoUrl === '' || str_contains($videoUrl, 'placeholder');
                         @endphp
                         <article
                             x-show="filterMatches({{ Js::from($item) }})"
@@ -241,7 +243,7 @@
                             <div>
                                 {{-- Card Badges --}}
                                 <div class="flex items-center justify-between gap-2">
-                                    <span class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-caption font-bold uppercase tracking-wider {{ $roleData['badge'] }}">
+                                    <span class="inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-0.5 text-caption font-bold uppercase tracking-wider {{ $roleData['badge'] }}">
                                         <span class="size-1.5 rounded-full {{ $roleData['dot'] }}"></span>
                                         {{ $roleData['label'] }}
                                     </span>
@@ -256,7 +258,7 @@
                                 <p class="mt-2 text-body-sm leading-relaxed text-text-secondary">{{ $item['summary'] }}</p>
 
                                 {{-- Steps Summary Box --}}
-                                <div class="mt-4 rounded-lg bg-surface-muted/60 p-3.5">
+                                <div class="mt-4 rounded-lg border border-border/70 bg-warm-canvas p-3.5">
                                     <p class="text-caption font-bold uppercase tracking-wide text-forest-700">Ringkasan Alur:</p>
                                     <ol class="mt-2 space-y-1.5 pl-4 text-body-sm text-text-primary list-decimal">
                                         @foreach ($item['steps'] as $step)
@@ -268,19 +270,33 @@
 
                             {{-- Google Drive Video CTA Button --}}
                             <div class="mt-6 border-t border-border/70 pt-4">
-                                <a
-                                    href="{{ $item['video_url'] }}"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="group inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-deep-green px-4 py-2.5 text-label font-bold text-surface shadow-xs transition duration-180 hover:bg-forest-600 active:translate-y-px"
-                                >
-                                    <x-public.icon name="play" size="size-4" class="transition-transform duration-180 group-hover:scale-110" />
-                                    <span>Tonton Video (Google Drive)</span>
-                                    <x-public.icon name="external-link" size="size-3.5" class="opacity-75" />
-                                </a>
-                                <p class="mt-2 text-center text-caption text-text-secondary/80">
-                                    Tersimpan di Google Drive • Dapat diputar di HP & Laptop
-                                </p>
+                                @if ($videoComingSoon)
+                                    <span
+                                        aria-disabled="true"
+                                        class="inline-flex min-h-touch w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-border bg-disabled-bg px-4 py-2.5 text-label font-bold text-text-secondary"
+                                    >
+                                        <x-public.icon name="play" size="size-4" />
+                                        <span>Video segera hadir</span>
+                                        <span class="rounded-sm border border-harvest-gold/50 bg-warning-bg px-1.5 py-0.5 text-caption font-semibold text-deep-green">Segera hadir</span>
+                                    </span>
+                                    <p class="mt-2 text-center text-caption text-text-secondary/80">
+                                        Video panduan untuk sesi ini belum dipublikasikan.
+                                    </p>
+                                @else
+                                    <a
+                                        href="{{ $videoUrl }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="group inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-deep-green px-4 py-2.5 text-label font-bold text-surface shadow-xs transition duration-180 hover:bg-forest-600 active:translate-y-px"
+                                    >
+                                        <x-public.icon name="play" size="size-4" class="transition-transform duration-180 group-hover:scale-110" />
+                                        <span>Tonton Video (Google Drive)</span>
+                                        <x-public.icon name="external-link" size="size-3.5" class="opacity-75" />
+                                    </a>
+                                    <p class="mt-2 text-center text-caption text-text-secondary/80">
+                                        Tersimpan di Google Drive • Dapat diputar di HP & Laptop
+                                    </p>
+                                @endif
                             </div>
                         </article>
                     @endforeach
@@ -302,7 +318,7 @@
                     <button
                         type="button"
                         x-on:click="searchQuery = ''; activeRole = 'all';"
-                        class="mt-5 inline-flex min-h-touch items-center justify-center rounded-full bg-forest-600 px-5 py-2 text-label font-bold text-surface transition hover:bg-forest-700"
+                        class="mt-5 inline-flex min-h-touch items-center justify-center rounded-md bg-forest-600 px-5 py-2 text-label font-bold text-surface transition hover:bg-forest-700"
                     >
                         Tampilkan Semua Tutorial
                     </button>
@@ -326,7 +342,7 @@
                         <div class="flex flex-wrap gap-2">
                             <a
                                 href="{{ route('login') }}"
-                                class="inline-flex min-h-touch items-center justify-center gap-2 rounded-full bg-forest-600 px-5 text-label font-bold text-surface shadow-xs transition hover:bg-forest-700"
+                                class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md bg-forest-600 px-5 text-label font-bold text-surface shadow-xs transition hover:bg-forest-700"
                             >
                                 <x-public.icon name="log-in" size="size-4" />
                                 Masuk Aplikasi

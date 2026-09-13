@@ -29,7 +29,9 @@
             <x-ui.input name="dateUntil" label="Sampai tanggal" type="date" :error="$errors->first('dateUntil')" wire:model.live="dateUntil" />
         </form>
 
-        <div class="divide-y divide-border pt-4">
+        <p wire:loading wire:target="requestNumber,status,dateFrom,dateUntil" role="status" aria-live="polite" class="pt-4 text-body-sm font-semibold text-text-secondary">Memuat riwayat penukaran...</p>
+
+        <div class="divide-y divide-border pt-4" wire:loading.remove wire:target="requestNumber,status,dateFrom,dateUntil">
             @forelse ($redemptions as $redemption)
                 @php
                     $badgeStatus = match ($redemption->status) {
@@ -55,9 +57,9 @@
                             <p class="amount-tabular break-words text-title font-bold text-deep-green">Rp {{ number_format($redemption->value_snapshot, 0, ',', '.') }}</p>
                             <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
                                 @if ($redemption->status === \App\Domain\Groceries\Enums\GroceryStatus::Completed)
-                                    <a href="{{ route('citizen.grocery.receipt', $redemption) }}" class="inline-flex min-h-touch items-center px-2 text-label font-bold text-forest-600 hover:text-forest-700">Bukti</a>
+                                    <a href="{{ route('citizen.grocery.receipt', $redemption) }}" class="inline-flex min-h-touch min-w-touch items-center justify-center rounded-md px-3 text-label font-bold text-forest-600 hover:bg-warm-canvas hover:text-forest-700">Bukti</a>
                                 @endif
-                                <a href="{{ route('citizen.grocery.show', $redemption) }}" class="inline-flex min-h-touch items-center px-2 text-label font-bold text-forest-600 hover:text-forest-700">Detail</a>
+                                <a href="{{ route('citizen.grocery.show', $redemption) }}" class="inline-flex min-h-touch min-w-touch items-center justify-center rounded-md px-3 text-label font-bold text-forest-600 hover:bg-warm-canvas hover:text-forest-700">Detail</a>
                             </div>
                         </div>
                     </div>

@@ -9,6 +9,7 @@
 @php
     $states = [
         'default' => 'border-border',
+        'warning' => 'border-harvest-gold bg-warning-bg',
         'error' => 'border-terracotta',
         'success' => 'border-forest-600/25',
         'disabled' => 'border-border bg-disabled-bg text-text-secondary',

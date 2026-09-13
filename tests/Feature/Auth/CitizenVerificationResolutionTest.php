@@ -148,17 +148,19 @@ final class CitizenVerificationResolutionTest extends TestCase
         $this->assertDatabaseCount('audit_logs', 0);
     }
 
-    private function grant(User $user, string $permissionName): void
+    private function grant(User $user, string ...$permissionNames): void
     {
         $role = Role::query()->firstOrCreate(
             ['name' => 'verifier'],
             ['description' => 'Test verifier role'],
         );
-        $permission = Permission::query()->firstOrCreate(
-            ['name' => $permissionName],
-            ['description' => "Test permission {$permissionName}"],
-        );
-        $role->permissions()->syncWithoutDetaching($permission);
+        foreach (array_unique([...$permissionNames, 'user.view', 'user.view.all']) as $permissionName) {
+            $permission = Permission::query()->firstOrCreate(
+                ['name' => $permissionName],
+                ['description' => "Test permission {$permissionName}"],
+            );
+            $role->permissions()->syncWithoutDetaching($permission);
+        }
         $user->roles()->attach($role);
     }
 }

@@ -153,7 +153,7 @@
                                 <select id="rt_id" name="rt_id" wire:model.blur="rt_id" required aria-invalid="{{ $errors->has('rt_id') ? 'true' : 'false' }}" @if ($errors->has('rt_id')) aria-describedby="rt_id-error" @endif class="min-h-touch w-full rounded-xl border {{ $errors->has('rt_id') ? 'border-terracotta' : 'border-border' }} bg-surface px-4 text-body text-text-primary shadow-xs transition duration-180 hover:border-forest-600 focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30">
                                     <option value="">Pilih RT domisili</option>
                                     @foreach ($rts as $rt)
-                                        <option value="{{ $rt->id }}">{{ $rt->rw->dusun->name }} — {{ $rt->rw->name }} — {{ $rt->name }}</option>
+                                        <option value="{{ $rt->id }}">{{ $rt->rw->dusun->name }}, {{ $rt->rw->name }}, {{ $rt->name }}</option>
                                     @endforeach
                                 </select>
                                 @error('rt_id')
@@ -182,7 +182,7 @@
                     </section>
 
                     <div class="space-y-3 border-t border-border pt-6">
-                        <div class="flex min-h-touch items-center gap-3 rounded-xl bg-info-bg px-4 py-3 border border-sky-100" wire:loading wire:target="register" aria-live="polite">
+                        <div class="flex min-h-touch items-center gap-3 rounded-xl bg-info-bg px-4 py-3 border border-sky-blue/30" wire:loading wire:target="register" aria-live="polite">
                             <x-public.icon name="loader-circle" size="size-5" class="shrink-0 animate-spin text-sky-blue motion-reduce:animate-none" />
                             <p class="text-body-sm font-semibold text-text-secondary">Memproses pendaftaran. Mohon tunggu.</p>
                         </div>

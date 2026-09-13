@@ -20,8 +20,8 @@ final class WeightFormatterTest extends TestCase
         yield 'rounds down' => ['1.256', '1,26'];
         yield 'small value' => ['0.005', '0,01'];
         yield 'large value' => ['1234567890.125', '1.234.567.890,13'];
-        yield 'blank' => ['', '—'];
-        yield 'null' => [null, '—'];
+        yield 'blank' => ['', '-'];
+        yield 'null' => [null, '-'];
     }
 
     #[DataProvider('values')]

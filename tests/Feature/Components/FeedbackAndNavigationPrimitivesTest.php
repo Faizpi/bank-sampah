@@ -230,12 +230,13 @@ final class FeedbackAndNavigationPrimitivesTest extends TestCase
         self::assertStringContainsString('role="alert"', $errorToast);
         self::assertStringContainsString('aria-live="assertive"', $errorToast);
 
-        $stateClasses = ['default' => 'border-border', 'error' => 'border-terracotta', 'success' => 'border-forest-600', 'disabled' => 'bg-disabled-bg'];
+        $stateClasses = ['default' => 'border-border', 'warning' => 'border-harvest-gold', 'error' => 'border-terracotta', 'success' => 'border-forest-600', 'disabled' => 'bg-disabled-bg'];
         foreach ($stateClasses as $state => $class) {
             $panel = Blade::render('<x-ui.panel :state="$state" title="Panel">Isi</x-ui.panel>', compact('state'));
             self::assertStringContainsString($class, $panel);
         }
-        foreach (array_slice($stateClasses, 0, 3, true) as $state => $class) {
+        $dialogStateClasses = ['default' => 'border-border', 'error' => 'border-terracotta', 'success' => 'border-forest-600'];
+        foreach ($dialogStateClasses as $state => $class) {
             $dialog = Blade::render('<x-ui.dialog name="state" title="Dialog" :state="$state">Isi</x-ui.dialog>', compact('state'));
             self::assertStringContainsString($class, $dialog);
         }

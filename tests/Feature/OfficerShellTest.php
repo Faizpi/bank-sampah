@@ -15,7 +15,6 @@ final class OfficerShellTest extends TestCase
     private const OFFICER_DESTINATIONS = [
         'Tugas' => '/dashboard/petugas',
         'Setoran' => '/petugas/pindai',
-        'Layanan' => '/petugas/layanan-keliling',
         'Akun' => '/profil/kata-sandi',
     ];
 
@@ -44,7 +43,7 @@ final class OfficerShellTest extends TestCase
         self::assertStringContainsString('max-w-officer', $html);
         self::assertStringContainsString('pb-[calc(5.75rem+env(safe-area-inset-bottom))]', $html);
         self::assertSame(1, substr_count($html, '<header'));
-        self::assertSame(1, substr_count($html, '<h1'));
+        self::assertSame(0, substr_count($html, '<h1'));
         self::assertSame(1, substr_count($html, '<main'));
 
         $source = file_get_contents(resource_path('views/components/layouts/officer.blade.php'));
@@ -68,8 +67,8 @@ final class OfficerShellTest extends TestCase
         $html = Blade::render('<x-layouts.officer :title="$title">Isi</x-layouts.officer>', compact('title'));
 
         self::assertStringContainsString($title, $html);
-        self::assertMatchesRegularExpression('/<h1[^>]*class="[^"]*break-words[^"]*"[^>]*>'.$title.'<\/h1>/', $html);
-        self::assertDoesNotMatchRegularExpression('/<h1[^>]*class="[^"]*truncate[^"]*"/', $html);
+        self::assertMatchesRegularExpression('/<p[^>]*class="[^"]*break-words[^"]*"[^>]*>'.$title.'<\/p>/', $html);
+        self::assertDoesNotMatchRegularExpression('/<p[^>]*class="[^"]*truncate[^"]*"/', $html);
     }
 
     public function test_header_optional_slots_are_caller_owned_visible_and_omitted_when_absent(): void
@@ -134,7 +133,8 @@ final class OfficerShellTest extends TestCase
         self::assertSame(count($destinations), substr_count($html, 'data-nav-item'));
         self::assertSame(1, substr_count($html, 'aria-current="page"'));
         self::assertStringContainsString('bottom-[calc(0.75rem+env(safe-area-inset-bottom))]', $html);
-        self::assertStringContainsString('rounded-full', $html);
+        self::assertStringContainsString('rounded-lg', $html);
+        self::assertStringContainsString('gap-1 rounded-md px-1', $html);
         self::assertSame(count($destinations), substr_count($html, 'min-h-touch'));
 
         $lastPosition = -1;
@@ -159,11 +159,6 @@ final class OfficerShellTest extends TestCase
         yield 'officer task only' => ['officer', [
             'Tugas' => '/dashboard/petugas',
         ], 'Tugas', 'Navigasi petugas'];
-        yield 'officer one optional' => ['officer', [
-            'Tugas' => '/dashboard/petugas',
-            'Layanan' => '/petugas/layanan-keliling',
-            'Akun' => '/profil/kata-sandi',
-        ], 'Layanan', 'Navigasi petugas'];
         yield 'treasurer full' => ['treasurer', self::TREASURER_DESTINATIONS, 'Laporan', 'Navigasi bendahara'];
         yield 'treasurer core only' => ['treasurer', [
             'Tugas' => '/dashboard/bendahara',

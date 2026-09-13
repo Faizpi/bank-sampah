@@ -56,15 +56,18 @@
         <style>
             :root {
                 color-scheme: light;
-                --canvas: #f7f8f4;
-                --surface: #ffffff;
-                --ink: #102d22;
-                --muted: #52665c;
-                --line: #d9e3d8;
-                --forest: #217345;
-                --forest-dark: #155331;
-                --soft-green: #eaf4e8;
-                --warm: #fff8e7;
+                --canvas: #F6F5EF;
+                --surface: #FFFFFF;
+                --ink: #123D32;
+                --text-primary: #17241F;
+                --muted: #55635D;
+                --line: #D9E1DC;
+                --forest: #1E6A56;
+                --forest-dark: #185746;
+                --soft-green: #E7F3ED;
+                --warm: #FBF2DC;
+                --focus: #326D80;
+                --terracotta: #A8472F;
             }
 
             * { box-sizing: border-box; }
@@ -72,9 +75,9 @@
             body {
                 min-height: 100vh;
                 margin: 0;
-                color: var(--ink);
+                color: var(--text-primary);
                 background: var(--canvas);
-                font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                font-family: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
                 -webkit-font-smoothing: antialiased;
             }
             a { color: inherit; }
@@ -92,11 +95,11 @@
             .brand:focus-visible,
             .button:focus-visible,
             .back-link:focus-visible {
-                outline: 3px solid #92c7a4;
+                outline: 3px solid var(--focus);
                 outline-offset: 3px;
             }
             .brand img { width: 2.75rem; height: 2.75rem; object-fit: contain; }
-            .brand strong { display: block; font-size: .95rem; line-height: 1.2; }
+            .brand strong { display: block; font-size: .95rem; line-height: 1.2; color: var(--ink); }
             .brand span { display: block; margin-top: .15rem; color: var(--muted); font-size: .8rem; }
             main {
                 display: grid;
@@ -111,7 +114,7 @@
                 border: 1px solid var(--line);
                 border-radius: 1rem;
                 background: var(--surface);
-                box-shadow: 0 1.25rem 3rem rgba(18, 63, 38, .10);
+                box-shadow: 0 1.25rem 3rem rgb(18 61 50 / 10%);
             }
             .content { padding: clamp(1.75rem, 5vw, 4.5rem); }
             .code {
@@ -125,6 +128,7 @@
             h1 {
                 max-width: 17ch;
                 margin: 1.35rem 0 .75rem;
+                color: var(--ink);
                 font-size: clamp(1.7rem, 3.5vw, 2.65rem);
                 line-height: 1.08;
                 letter-spacing: -.03em;
@@ -145,7 +149,7 @@
                 justify-content: center;
                 border-radius: .6rem;
                 padding: .72rem 1rem;
-                color: #fff;
+                color: var(--surface);
                 background: var(--forest);
                 font-size: .95rem;
                 font-weight: 700;
@@ -165,16 +169,16 @@
             .mascot-wrap img {
                 width: min(100%, 15rem);
                 height: auto;
-                filter: drop-shadow(0 .85rem 1rem rgba(24, 91, 50, .18));
+                filter: drop-shadow(0 .85rem 1rem rgb(18 61 50 / 18%));
             }
             .mascot-note {
                 display: inline-block;
                 max-width: 20rem;
                 margin: 1rem 0 0;
                 padding: .55rem .75rem;
-                border: 1px solid #cde0cb;
+                border: 1px solid var(--line);
                 border-radius: .5rem;
-                color: var(--forest-dark);
+                color: var(--ink);
                 background: var(--warm);
                 font-size: .85rem;
                 font-weight: 600;

@@ -13,7 +13,7 @@
     $allowedIcons = ['home', 'layout-dashboard', 'recycle', 'grid-2x2', 'history', 'user-round', 'scan-line', 'clipboard-list', 'wallet-cards'];
 @endphp
 
-<nav aria-label="{{ $label }}" {{ $attributes->class('fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-bottom-nav w-[calc(100%-1.5rem)] max-w-citizen -translate-x-1/2 rounded-full border border-border/90 bg-surface/95 p-1 shadow-sm backdrop-blur') }}>
+<nav aria-label="{{ $label }}" {{ $attributes->class('fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-bottom-nav w-[calc(100%-1.5rem)] max-w-citizen -translate-x-1/2 rounded-lg border border-border/90 bg-surface/95 p-1 shadow-sm backdrop-blur') }}>
     <div class="mx-auto grid min-h-16 max-w-citizen grid-flow-col auto-cols-fr">
         @foreach ($items as $item)
             @php
@@ -25,7 +25,7 @@
                 href="{{ $item['href'] ?? '#' }}"
                 @if ($active) aria-current="page" @endif
                 @class([
-                    'inline-flex min-h-touch min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-caption transition duration-180 focus-visible:ring-2 focus-visible:ring-focus sm:px-2',
+                    'inline-flex min-h-touch min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-caption transition duration-180 focus-visible:ring-2 focus-visible:ring-focus sm:px-2',
                     'font-semibold text-forest-600' => $active,
                     'text-text-secondary hover:text-deep-green active:text-forest-600' => ! $active,
                 ])

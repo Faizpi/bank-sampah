@@ -49,7 +49,7 @@
             </div>
             <div class="rounded-lg bg-warm-canvas px-3 py-2">
                 <dt class="text-caption font-medium text-text-secondary">Status</dt>
-                <dd class="mt-0.5 font-semibold text-deep-green">{{ ucwords(str_replace('_', ' ', $redemption->status->value)) }}</dd>
+                <dd class="mt-0.5 font-semibold text-deep-green">{{ \App\Support\StatusLabel::for($redemption->status) }}</dd>
             </div>
             <div class="rounded-lg bg-warm-canvas px-3 py-2 md:col-span-2">
                 <dt class="text-caption font-medium text-text-secondary">Isi Paket</dt>
@@ -96,7 +96,10 @@
             <p>Pengajuan {{ $redemption->request_number }} tidak akan masuk tahap persiapan paket.</p>
             <x-slot:actions>
                 <x-ui.button type="button" variant="secondary" x-on:click="closeModal()">Kembali</x-ui.button>
-                <x-ui.button type="button" variant="danger" wire:click="cancel" wire:loading.attr="disabled" wire:target="cancel">Batalkan pengajuan</x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="cancel" wire:loading.attr="disabled" wire:target="cancel">
+                    <span wire:loading.remove wire:target="cancel">Batalkan pengajuan</span>
+                    <span wire:loading wire:target="cancel">Membatalkan...</span>
+                </x-ui.button>
             </x-slot:actions>
         </x-ui.dialog>
     @endif

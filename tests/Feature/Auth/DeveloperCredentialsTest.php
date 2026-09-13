@@ -18,8 +18,6 @@ use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
 use App\Domain\Identity\Models\StaffServiceArea;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Programs\Models\CollectionTarget;
@@ -33,7 +31,6 @@ use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Livewire\Auth\LoginForm;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DeveloperUsersSeeder;
 use Database\Seeders\LocalDataSeeder;
 use Filament\Auth\Pages\Login as FilamentLogin;
@@ -337,45 +334,6 @@ final class DeveloperCredentialsTest extends TestCase
         }
         self::assertSame(0, WithdrawalRequest::query()->whereNull('rt_id')->orWhereNull('service_area_id')->count());
         self::assertSame(0, GroceryRedemption::query()->whereNull('rt_id')->orWhereNull('service_area_id')->count());
-        self::assertSame(
-            0,
-            MobileService::query()
-                ->whereHas('rt', fn ($query) => $query->whereColumn('rt.rw_id', '!=', 'mobile_services.rw_id'))
-                ->count(),
-            'Every seeded mobile service RT must belong to its selected RW.',
-        );
-    }
-
-    public function test_operational_demo_reseed_repairs_fixture_mobile_service_region_without_touching_unrelated_records(): void
-    {
-        $this->freezeDemoClock();
-        config()->set('app.env', 'production');
-        config()->set('app.demo_mode', true);
-        config()->set('app.demo_password', 'KataSandiUji-Yang-Unik-2026');
-        $this->seed(DeveloperUsersSeeder::class);
-        $this->seed(LocalDataSeeder::class);
-
-        $fixture = MobileService::query()->where('service_number', 'like', 'MOB-BS-%')->firstOrFail();
-        $correctRwId = $fixture->rt()->firstOrFail()->rw_id;
-        $wrongRwId = DB::table('rw')->where('id', '!=', $correctRwId)->value('id');
-        self::assertIsInt($wrongRwId);
-
-        $fixtureStaffIds = $fixture->staff()->pluck('users.id')->all();
-        $fixtureWasteTypeIds = $fixture->wasteTypes()->pluck('waste_types.id')->all();
-        $unrelated = $fixture->replicate()->forceFill([
-            'service_number' => 'MOB-EXTERNAL-001',
-            'rw_id' => $wrongRwId,
-        ]);
-        $unrelated->save();
-        $fixture->forceFill(['rw_id' => $wrongRwId])->save();
-
-        $this->seed(LocalDataSeeder::class);
-
-        $fixture->refresh();
-        self::assertSame($fixture->rt()->firstOrFail()->rw_id, $fixture->rw_id);
-        self::assertSame($fixtureStaffIds, $fixture->staff()->pluck('users.id')->all());
-        self::assertSame($fixtureWasteTypeIds, $fixture->wasteTypes()->pluck('waste_types.id')->all());
-        self::assertSame($wrongRwId, $unrelated->refresh()->rw_id);
     }
 
     public function test_operational_demo_reseed_deactivates_legacy_staff_and_converges_to_one_operational_account_per_role(): void
@@ -489,14 +447,11 @@ final class DeveloperCredentialsTest extends TestCase
         $this->seed(DeveloperUsersSeeder::class);
         $this->seed(LocalDataSeeder::class);
 
-        self::assertTrue(MobileService::query()->where('status', MobileServiceStatus::Closed)->where('ends_at', '<', $clock)->exists());
-        self::assertTrue(MobileService::query()->where('status', MobileServiceStatus::Open)->where('starts_at', '<=', $clock)->where('ends_at', '>=', $clock)->exists());
-        self::assertTrue(MobileService::query()->where('status', MobileServiceStatus::Published)->where('starts_at', '>', $clock)->where('starts_at', '<=', $clock->addDays(30))->exists());
         self::assertSame(0, DB::table('pickup_capacities')->count());
         self::assertTrue(PickupRequest::query()->whereIn('status', [PickupStatus::Completed, PickupStatus::Scheduled, PickupStatus::Accepted, PickupStatus::PendingReview])->exists());
         self::assertSame(0, PickupRequest::query()->where('status', PickupStatus::Completed)->whereNull('deposit_id')->count());
         self::assertGreaterThan(0, Deposit::query()->where('method', 'penjemputan')->count());
-        self::assertGreaterThan(0, Deposit::query()->where('method', 'keliling')->count());
+        self::assertGreaterThan(0, Deposit::query()->where('method', 'langsung')->count());
         self::assertTrue(WithdrawalRequest::query()->where('status', WithdrawalStatus::Paid)->whereNotNull('receipt_ledger_entry_id')->whereNotNull('payer_id')->exists());
         self::assertSame(0, GroceryPackage::query()->count());
         self::assertSame(0, GroceryRedemption::query()->count());
@@ -504,23 +459,9 @@ final class DeveloperCredentialsTest extends TestCase
         self::assertTrue(Announcement::query()->whereDate('publish_end', '>=', $clock->addDays(30)->toDateString())->exists());
         self::assertTrue(StatisticPublication::query()->where('publication_key', 'public-dashboard')->where('is_active', true)->where('privacy_threshold', '>=', 5)->exists());
 
-        $counts = [Deposit::query()->count(), PickupRequest::query()->count(), WithdrawalRequest::query()->count(), GroceryRedemption::query()->count(), MobileService::query()->count()];
+        $counts = [Deposit::query()->count(), PickupRequest::query()->count(), WithdrawalRequest::query()->count(), GroceryRedemption::query()->count()];
         $this->seed(LocalDataSeeder::class);
-        self::assertSame($counts, [Deposit::query()->count(), PickupRequest::query()->count(), WithdrawalRequest::query()->count(), GroceryRedemption::query()->count(), MobileService::query()->count()]);
-    }
-
-    public function test_public_mobile_schedule_renders_after_explicit_demo_data_is_seeded(): void
-    {
-        config()->set('app.env', 'production');
-        config()->set('app.demo_mode', true);
-        config()->set('app.demo_password', 'KataSandiUji-Yang-Unik-2026');
-
-        $this->seed(DatabaseSeeder::class);
-
-        $this->get(route('public.mobile-schedule'))
-            ->assertOk()
-            ->assertSee('Jadwal aktif')
-            ->assertSee('Halaman Kantor Desa Binaan');
+        self::assertSame($counts, [Deposit::query()->count(), PickupRequest::query()->count(), WithdrawalRequest::query()->count(), GroceryRedemption::query()->count()]);
     }
 
     private function newBackfillRt(User $admin, string $suffix): Rt

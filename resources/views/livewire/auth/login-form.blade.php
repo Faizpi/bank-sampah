@@ -81,7 +81,7 @@
                 </div>
 
                 <div class="space-y-3 pt-2">
-                    <div class="flex min-h-touch items-center gap-3 rounded-xl bg-info-bg px-4 py-3 border border-sky-100" wire:loading wire:target="login" aria-live="polite">
+                    <div class="flex min-h-touch items-center gap-3 rounded-xl bg-info-bg px-4 py-3 border border-sky-blue/30" wire:loading wire:target="login" aria-live="polite">
                         <x-public.icon name="loader-circle" size="size-5" class="shrink-0 animate-spin text-sky-blue motion-reduce:animate-none" />
                         <p class="text-body-sm font-semibold text-text-secondary">Memproses masuk. Mohon tunggu.</p>
                     </div>
@@ -119,7 +119,7 @@
             @endif
 
             <p class="mx-auto mt-6 max-w-form text-center text-caption text-text-secondary">
-                <a href="{{ route('filament.backoffice.auth.login') }}" class="inline-flex items-center rounded-md font-bold text-forest-600 underline underline-offset-4 hover:text-forest-700">Akses Panel Admin</a>
+                <a href="{{ route('filament.backoffice.auth.login') }}" class="inline-flex min-h-touch items-center rounded-md font-bold text-forest-600 underline underline-offset-4 hover:text-forest-700">Akses Panel Admin</a>
             </p>
         </div>
     </section>

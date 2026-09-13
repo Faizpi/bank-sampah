@@ -37,7 +37,6 @@ erDiagram
   GROCERY_PACKAGES ||--o{ GROCERY_REDEMPTIONS : selected
   USERS ||--o{ GROCERY_REDEMPTIONS : requests
   GROCERY_REDEMPTIONS ||--o| BALANCE_HOLDS : reserves
-  MOBILE_SERVICES ||--o{ DEPOSITS : hosts
   COLLECTION_TARGETS ||--o{ TARGET_SCOPES : defines
 
   ANNOUNCEMENTS }o--o{ RT : targets
@@ -115,8 +114,6 @@ Tidak ada tabel stok rinci, mutasi stok, gudang, atau kuantitas inventori sembak
 
 | Tabel | Kolom penting | Indeks/constraint | Penghapusan |
 |---|---|---|---|
-| `mobile_services` | nomor, RT/RW, titik, start/end, status, capacity, notes | UQ nomor; IDX region/start/status | Simpan histori |
-| `mobile_service_staff`, `mobile_service_waste_types` | jadwal dengan petugas/jenis | UQ pasangan | Cascade pivot sebelum histori terkunci |
 | `collection_targets` | nomor, nama, tujuan, start/end, target weight `DECIMAL(15,3)`, status, public flag | UQ nomor; IDX status/period | Simpan histori |
 | `target_scopes` | target, jenis/kategori/wilayah nullable terkontrol | IDX target dan dimensi | RESTRICT |
 | `announcements` | judul, isi tersanitasi, audiens, publish start/end, status, author | IDX status/period/audience | Nonaktif atau soft-delete |
@@ -143,7 +140,6 @@ Secret utama tetap di environment dan tidak disimpan pada audit.
 | Penjemputan | `menunggu_pemeriksaan`, `diterima`, `dijadwalkan`, `menuju_lokasi`, `dijemput`, `selesai`, `ditolak`, `dibatalkan` |
 | Pencairan | `menunggu_verifikasi`, `disetujui`, `siap_diambil`, `sudah_dibayar`, `ditolak`, `dibatalkan`, `kedaluwarsa` |
 | Sembako | `menunggu_verifikasi`, `disetujui`, `sedang_disiapkan`, `siap_diambil`, `selesai`, `ditolak`, `dibatalkan`, `kedaluwarsa` |
-| Layanan keliling | `draf`, `dipublikasikan`, `dibuka`, `ditutup`, `dibatalkan` |
 | Target | `draf`, `aktif`, `ditutup`, `dibatalkan` |
 | Export | `menunggu`, `diproses`, `berhasil`, `gagal`, `kedaluwarsa` sesuai domain |
 

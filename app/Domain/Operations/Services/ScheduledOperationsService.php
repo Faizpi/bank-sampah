@@ -126,7 +126,12 @@ final readonly class ScheduledOperationsService
     {
         $ids = $this->ids(
             ReportExport::query()
-                ->where('status', '!=', ReportExportStatus::Expired->value)
+                ->whereIn('status', [
+                    ReportExportStatus::Pending->value,
+                    ReportExportStatus::Processing->value,
+                    ReportExportStatus::Succeeded->value,
+                    ReportExportStatus::Failed->value,
+                ])
                 ->where('expires_at', '<=', $now),
         );
         $correlationId = (string) Str::uuid();

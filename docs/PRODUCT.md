@@ -81,7 +81,6 @@ Membutuhkan laporan agregat untuk evaluasi partisipasi, pengumpulan sampah, dan 
 ### Fitur Program dan Transparansi
 
 - Data agregat pengumpulan untuk evaluasi internal.
-- Bank Sampah Keliling dengan jadwal pada wilayah layanan yang mengikuti hierarki desa, dusun, RW, dan RT.
 - Estimasi nilai sebelum setor.
 - QR verifikasi bukti transaksi.
 - Partisipasi RT/RW dan statistik publik desa.

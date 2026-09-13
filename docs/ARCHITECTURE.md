@@ -59,12 +59,11 @@ WhatsApp bukan integrasi pengiriman. Aplikasi hanya membentuk tautan dan membuka
 | Pickups | Pengajuan, foto, kapasitas, alternatif tanggal, penugasan, status. | Menggunakan perkiraan sebagai nilai saldo. |
 | Withdrawals | Pengajuan, approve, pay, kedaluwarsa, bukti. | Menggabungkan approve dan pay sebagai satu permission. |
 | Groceries | Paket deskriptif, approve, prepare, handover, bukti. | Mengelola stok rinci. |
-| Programs | Target, layanan keliling, partisipasi wilayah, statistik publik. | Mengelola produksi paving block. |
+| Programs | Target, partisipasi wilayah, statistik publik. | Mengelola produksi paving block. |
 | Communication | Pengumuman, informasi status pada halaman terkait, dan template `wa.me`. | Menyatakan WhatsApp atau push notification terkirim otomatis. |
 | Reports | Laporan web dan file ekspor privat yang tersedia. | Melewati scope record. |
 | AuditReconciliation | Audit append-oriented dan insiden operasional. | Menghapus audit lewat fungsi operasional. |
 | Platform | Media, scheduler, Health, dan PWA. | Menambahkan UI teknis selain Health atau memerlukan daemon shared hosting. |
-| MobileServices | Jadwal dan pelaksanaan layanan keliling. | Menggunakan perkiraan sebagai nilai saldo. |
 | Notifications | Persistensi, dedupe, dan tenggat notifikasi. | Menyatakan kanal eksternal terkirim otomatis. |
 | Corrections | Koreksi dan reversal transaksi finansial. | Mengubah entri ledger secara langsung. |
 | Operations | Backup, restore, health operasional, dan retensi. | Menjalankan proses filesystem atau shell dari UI. |
@@ -88,7 +87,6 @@ app/
     Reports/
     AuditReconciliation/
     Platform/
-    MobileServices/
     Notifications/
     Corrections/
     Operations/
@@ -210,7 +208,7 @@ Shell khusus mobile-first, saldo-first, maksimal lima bottom navigation item. Bu
 
 ### Petugas/bendahara
 
-Shell khusus task-first untuk smartphone lapangan, scan/nomor, setoran, pickup, pay/handover, layanan keliling, warga berbantuan, dan laporan sesuai assignment. Bukan Filament.
+Shell khusus task-first untuk smartphone lapangan, scan/nomor, setoran, pickup, pay/handover, warga berbantuan, dan laporan sesuai assignment. Bukan Filament.
 
 ### Admin/superadmin
 

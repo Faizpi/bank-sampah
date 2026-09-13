@@ -20,8 +20,6 @@ use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Ledger\Models\LedgerEntry;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Platform\Enums\MediaVisibility;
 use App\Domain\Platform\Models\Media;
 use App\Domain\WasteMaster\Actions\ManageWastePricing;
@@ -179,103 +177,22 @@ final class DepositEvidenceTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_deposit_form_resume_preserves_mobile_service_context(): void
-    {
-        [$staff, $customer, $type, $condition] = $this->context();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'customer.view', 'user.view', 'user.view.all']);
-        $mobileService = $this->mobileService($staff, $type);
-        $draft = app(DepositService::class)->createDraft($staff, $customer, 'keliling', null, $mobileService);
-        app(DepositService::class)->replaceDraftItems($staff, $draft, [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']]);
-
-        Livewire::actingAs($staff)
-            ->withQueryParams(['draftId' => $draft->id, 'mobileServiceId' => 999999])
-            ->test(DepositForm::class, ['customerId' => $customer->id])
-            ->assertSet('draft.id', $draft->id)
-            ->assertSet('mobileServiceId', $mobileService->id)
-            ->assertSet('items.0.waste_type_id', $type->id);
-    }
-
-    public function test_mobile_only_customer_can_create_keliling_draft_only_with_valid_service_context(): void
-    {
-        [$staff, $customer, $type] = $this->context();
-        $rtId = $customer->customerProfile->rt_id;
-        $this->grant($staff, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view']);
-        $mobileService = $this->mobileService($staff, $type);
-        $mobileService->forceFill(['rt_id' => $rtId])->save();
-
-        $draft = app(DepositService::class)->createDraft($staff->fresh(), $customer->fresh(), 'keliling', null, $mobileService->fresh());
-
-        self::assertSame('keliling', $draft->method);
-        self::assertSame($mobileService->id, $draft->mobile_service_id);
-
-        $other = User::factory()->create();
-        $this->grant($other, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view']);
-        $this->expectException(AuthorizationException::class);
-        app(DepositService::class)->createDraft($other->fresh(), $customer->fresh(), 'keliling', null, $mobileService->fresh());
-    }
-
-    public function test_mobile_context_is_rejected_for_a_direct_deposit_even_when_customer_is_regularly_visible(): void
-    {
-        [$staff, $customer, $type] = $this->context();
-        $this->grant($staff, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view', 'user.view.all']);
-        $mobileService = $this->mobileService($staff, $type);
-        $mobileService->forceFill(['rt_id' => $customer->customerProfile->rt_id])->save();
-
-        $this->expectException(ValidationException::class);
-        app(DepositService::class)->createDraft($staff->fresh(), $customer->fresh(), 'langsung', null, $mobileService->fresh());
-    }
-
-    public function test_mobile_deposit_form_does_not_leak_another_officers_service_context(): void
-    {
-        [$owner, $customer, $type] = $this->context();
-        $otherOfficer = User::factory()->create();
-        $this->grant($owner, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view']);
-        $this->grant($otherOfficer, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view', 'user.view.all']);
-        $mobileService = $this->mobileService($owner, $type);
-
-        Livewire::actingAs($otherOfficer)
-            ->withQueryParams(['mobileServiceId' => $mobileService->id])
-            ->test(DepositForm::class, ['customerId' => $customer->id])
-            ->assertNotFound();
-    }
-
-    public function test_mobile_deposit_form_rejects_invalid_and_inactive_service_contexts(): void
-    {
-        [$staff, $customer, $type] = $this->context();
-        $this->grant($staff, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view', 'user.view.all']);
-
-        Livewire::actingAs($staff)
-            ->withQueryParams(['mobileServiceId' => 999999])
-            ->test(DepositForm::class, ['customerId' => $customer->id])
-            ->assertNotFound();
-
-        $mobileService = $this->mobileService($staff, $type);
-        $mobileService->forceFill(['status' => MobileServiceStatus::Closed])->save();
-
-        Livewire::actingAs($staff)
-            ->withQueryParams(['mobileServiceId' => $mobileService->id])
-            ->test(DepositForm::class, ['customerId' => $customer->id])
-            ->assertNotFound();
-    }
-
-    public function test_mobile_deposit_form_shows_context_and_only_supported_waste_types(): void
+    public function test_deposit_form_shows_direct_context_and_only_active_waste_types(): void
     {
         [$staff, $customer, $supportedType, $condition] = $this->context();
         WasteMasterMutationGuard::run(static fn (): bool => $supportedType->category->forceFill(['is_active' => true])->save());
         $unsupportedType = WasteType::factory()
             ->for($supportedType->category, 'category')
             ->for($supportedType->unit, 'unit')
-            ->create(['name' => 'Jenis Tidak Didukung', 'is_active' => true]);
+            ->create(['name' => 'Jenis Tidak Didukung', 'is_active' => false]);
         WasteMasterMutationGuard::run(static fn (): array => $unsupportedType->conditions()->sync([$condition->id]));
-        $this->grant($staff, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view']);
-        $mobileService = $this->mobileService($staff, $supportedType);
+        $this->grant($staff, ['deposit.create', 'customer.view', 'user.view', 'user.view.all']);
 
         Livewire::actingAs($staff)
-            ->withQueryParams(['mobileServiceId' => $mobileService->id])
             ->test(DepositForm::class, ['customerId' => $customer->id])
             ->assertSee('Konteks setoran')
             ->assertSee($customer->name)
-            ->assertSee($mobileService->point)
+            ->assertSee('Setoran langsung')
             ->call('addItem')
             ->assertSee($supportedType->name)
             ->assertDontSee($unsupportedType->name)
@@ -285,7 +202,7 @@ final class DepositEvidenceTest extends TestCase
             ->assertSee('Jenis sampah wajib dipilih.');
     }
 
-    public function test_deposit_form_filters_conditions_per_row_and_rejects_tampered_pairs_in_direct_and_mobile_modes(): void
+    public function test_deposit_form_filters_conditions_per_row_and_rejects_tampered_pairs(): void
     {
         [$staff, $customer, $firstType, $firstCondition] = $this->context();
         $secondCondition = WasteCondition::factory()->create(['name' => 'Kondisi Setoran Kedua', 'is_active' => true]);
@@ -296,30 +213,22 @@ final class DepositEvidenceTest extends TestCase
             ->create(['name' => 'Jenis Setoran Kedua', 'is_active' => true]);
         WasteMasterMutationGuard::run(static fn (): array => $firstType->conditions()->sync([$firstCondition->id, $inactiveCondition->id]));
         WasteMasterMutationGuard::run(static fn (): array => $secondType->conditions()->sync([$secondCondition->id]));
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'mobile-service.operate', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'customer.view', 'user.view', 'user.view.all']);
 
-        $assertBehavior = function ($component) use ($firstType, $firstCondition, $secondType, $secondCondition, $inactiveCondition): void {
-            $component->call('addItem')
-                ->set('items.0.waste_type_id', $firstType->id)
-                ->assertSee($firstCondition->name)
-                ->assertDontSee($secondCondition->name)
-                ->assertDontSee($inactiveCondition->name)
-                ->set('items.0.condition_id', $firstCondition->id)
-                ->set('items.0.waste_type_id', $secondType->id)
-                ->assertSet('items.0.condition_id', '')
-                ->set('items.0.condition_id', $firstCondition->id)
-                ->set('items.0.weight_kg', '1.000')
-                ->call('saveDraft')
-                ->assertHasErrors(['items.0.condition_id']);
-        };
-
-        $assertBehavior(Livewire::actingAs($staff)->test(DepositForm::class, ['customerId' => $customer->id]));
-
-        $mobileService = $this->mobileService($staff, $firstType);
-        $mobileService->wasteTypes()->attach($secondType->id);
-        $assertBehavior(Livewire::actingAs($staff)
-            ->withQueryParams(['mobileServiceId' => $mobileService->id])
-            ->test(DepositForm::class, ['customerId' => $customer->id]));
+        Livewire::actingAs($staff)
+            ->test(DepositForm::class, ['customerId' => $customer->id])
+            ->call('addItem')
+            ->set('items.0.waste_type_id', $firstType->id)
+            ->assertSee($firstCondition->name)
+            ->assertDontSee($secondCondition->name)
+            ->assertDontSee($inactiveCondition->name)
+            ->set('items.0.condition_id', $firstCondition->id)
+            ->set('items.0.waste_type_id', $secondType->id)
+            ->assertSet('items.0.condition_id', '')
+            ->set('items.0.condition_id', $firstCondition->id)
+            ->set('items.0.weight_kg', '1.000')
+            ->call('saveDraft')
+            ->assertHasErrors(['items.0.condition_id']);
     }
 
     public function test_deposit_form_requires_evidence_and_clears_it_after_successful_finalization(): void
@@ -565,23 +474,6 @@ final class DepositEvidenceTest extends TestCase
         $customer->customerProfile()->create(['rt_id' => $rt->id, 'address' => 'Alamat pengujian']);
 
         return [$staff, $customer, $type, $condition];
-    }
-
-    private function mobileService(User $staff, WasteType $type): MobileService
-    {
-        $service = MobileService::query()->create([
-            'service_number' => 'MOB-RESUME-'.str()->upper(str()->random(10)),
-            'point' => 'Titik layanan resume',
-            'starts_at' => now()->subHour(),
-            'ends_at' => now()->addHour(),
-            'status' => MobileServiceStatus::Open,
-            'capacity' => 20,
-            'created_by' => $staff->id,
-        ]);
-        $service->staff()->attach($staff->id);
-        $service->wasteTypes()->attach($type->id);
-
-        return $service->fresh();
     }
 
     /** @param list<string> $names */

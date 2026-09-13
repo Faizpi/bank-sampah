@@ -23,13 +23,12 @@ Jika sumber bertentangan, hentikan pekerjaan terdampak dan selaraskan dokumen se
 
 ## 3. Ruang lingkup kerja
 
-Pekerjaan aktif mempertahankan fungsi inti akun, pengguna, wilayah, master sampah dan harga, identitas nasabah, setoran, ledger, penjemputan, pencairan, penukaran sembako, pengumuman, WhatsApp manual, jadwal layanan keliling, estimasi, QR bukti, laporan yang tersedia, audit, media privat, dan PWA terbatas.
+Pekerjaan aktif mempertahankan fungsi inti akun, pengguna, wilayah, master sampah dan harga, identitas nasabah, setoran, ledger, penjemputan, pencairan, penukaran sembako, pengumuman, WhatsApp manual, estimasi, QR bukti, laporan yang tersedia, audit, media privat, dan PWA terbatas.
 
 Aturan berikut tetap normatif dan tak boleh dilonggarkan untuk menyesuaikan defect:
 
 1. Target yang masih menjadi sasaran produk dihitung dari transaksi final bersih dan tidak menerima nilai progres bebas.
-2. Jadwal layanan keliling mengikuti hierarki desa, dusun, RW, dan RT, menolak benturan, serta menerapkan kapasitas pada jadwal terkait.
-3. Penjemputan memerlukan foto, area aktif, slot kapasitas, alternatif tanggal saat penuh, berat aktual, dan transaksi final sebelum status selesai.
+2. Penjemputan memerlukan foto, area aktif, slot kapasitas, alternatif tanggal saat penuh, berat aktual, dan transaksi final sebelum status selesai.
 
 ## 4. Administrasi teknis
 

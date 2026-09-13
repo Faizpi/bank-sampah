@@ -42,18 +42,21 @@
     <x-ui.panel title="Detail pengambilan" description="Pastikan lokasi dan tanggal mudah diverifikasi petugas.">
         <div class="grid gap-4 md:grid-cols-2">
             @if ($serviceAreas->count() > 1)
-                <label class="block md:col-span-2">
-                    <span class="text-label font-semibold text-deep-green">Area layanan</span>
-                    <select wire:model.live="serviceAreaId" class="mt-2 block w-full rounded-xl border-border bg-warm-canvas text-body text-deep-green">
+                <div class="block md:col-span-2">
+                    <label for="withdrawal-service-area" class="text-label font-semibold text-deep-green">Area layanan</label>
+                    <select id="withdrawal-service-area" wire:model.live="serviceAreaId"
+                        aria-invalid="{{ $errors->has('serviceAreaId') ? 'true' : 'false' }}"
+                        @if ($errors->has('serviceAreaId')) aria-describedby="withdrawal-service-area-error" @endif
+                        class="mt-2 block min-h-touch w-full rounded-xl border {{ $errors->has('serviceAreaId') ? 'border-terracotta' : 'border-border' }} bg-warm-canvas px-4 text-body text-deep-green focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30">
                         <option value="">Pilih area layanan</option>
                         @foreach ($serviceAreas as $serviceArea)
                             <option value="{{ $serviceArea->id }}">{{ $serviceArea->name }}</option>
                         @endforeach
                     </select>
                     @error('serviceAreaId')
-                        <p role="alert" class="mt-2 text-body-sm text-terracotta">{{ $message }}</p>
+                        <p id="withdrawal-service-area-error" role="alert" class="mt-2 text-body-sm text-terracotta">{{ $message }}</p>
                     @enderror
-                </label>
+                </div>
             @endif
             <x-ui.input wire:model.live.debounce.300ms="amount" label="Nominal (rupiah)" name="amount"
                 inputmode="numeric" placeholder="Minimal Rp10.000"

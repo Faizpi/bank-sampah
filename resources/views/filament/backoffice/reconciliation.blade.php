@@ -41,21 +41,21 @@
                 <label class="block text-base font-semibold leading-6 text-gray-800">
                     <span>Tanggal bisnis</span>
                     <input wire:model="businessDate" type="date" class="mt-2 backoffice-form-control">
-                    @error('businessDate') <span class="mt-2 block text-sm font-medium text-danger-700">{{ $message }}</span> @enderror
+                    @error('businessDate') <span class="mt-2 block text-sm font-medium text-terracotta">{{ $message }}</span> @enderror
                 </label>
 
                 <label class="block text-base font-semibold leading-6 text-gray-800">
                     <span>Kas pencairan (Rp)</span>
                     <input wire:model="cashTotal" inputmode="numeric" type="text" placeholder="Contoh: 150000" class="mt-2 backoffice-form-control">
                     <span class="mt-2 block text-sm font-normal leading-6 text-gray-600">Kosongkan bila uang fisik belum dihitung.</span>
-                    @error('cashTotal') <span class="mt-2 block text-sm font-medium text-danger-700">{{ $message }}</span> @enderror
+                    @error('cashTotal') <span class="mt-2 block text-sm font-medium text-terracotta">{{ $message }}</span> @enderror
                 </label>
 
                 <label class="block text-base font-semibold leading-6 text-gray-800 sm:col-span-2">
                     <span>Catatan awal</span>
                     <textarea wire:model="notes" rows="4" maxlength="2000" placeholder="Contoh: Penghitungan dilakukan bersama bendahara dan petugas kas." class="mt-2 backoffice-form-control"></textarea>
                     <span class="mt-2 block text-sm font-normal leading-6 text-gray-600">Opsional. Gunakan untuk konteks pemeriksaan, bukan untuk data rahasia.</span>
-                    @error('notes') <span class="mt-2 block text-sm font-medium text-danger-700">{{ $message }}</span> @enderror
+                    @error('notes') <span class="mt-2 block text-sm font-medium text-terracotta">{{ $message }}</span> @enderror
                 </label>
 
                 <div class="sm:col-span-2">
@@ -79,12 +79,12 @@
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div class="min-w-0">
                             <h3 class="text-lg font-bold text-gray-950">{{ $reconciliation->business_date->format('d M Y') }} <span class="font-medium text-gray-500">· Versi {{ $reconciliation->version }}</span></h3>
-                            <p class="mt-2 text-base leading-7 text-gray-600">Dibuat oleh {{ $reconciliation->creator?->name ?? '—' }}. Saldo tersedia: Rp {{ number_format($reconciliation->opening_total, 0, ',', '.') }} → Rp {{ number_format($reconciliation->closing_total, 0, ',', '.') }}.</p>
+                            <p class="mt-2 text-base leading-7 text-gray-600">Dibuat oleh {{ $reconciliation->creator?->name ?? '-' }}. Saldo tersedia: Rp {{ number_format($reconciliation->opening_total, 0, ',', '.') }} hingga Rp {{ number_format($reconciliation->closing_total, 0, ',', '.') }}.</p>
                         </div>
                         <span @class([
                             'inline-flex shrink-0 items-center rounded-md px-3 py-1.5 text-sm font-bold',
                             'bg-success-50 text-success-800' => $reconciliation->status === 'disetujui',
-                            'bg-danger-50 text-danger-800' => $reconciliation->status === 'ditolak',
+                            'bg-danger-bg text-terracotta' => $reconciliation->status === 'ditolak',
                             'bg-primary-50 text-primary-800' => $reconciliation->status === 'diajukan',
                             'bg-warning-50 text-warning-800' => $reconciliation->status === 'draf',
                         ])>{{ ucfirst(str_replace('_', ' ', $reconciliation->status)) }}</span>
@@ -108,7 +108,7 @@
                                         <td class="max-w-sm px-4 py-4 font-semibold">{{ str_replace('_', ' ', $item->item_type) }}<span class="mt-1 block text-xs font-normal leading-5 text-gray-600">{{ $item->note }}</span></td>
                                         <td class="px-4 py-4 text-right font-medium tabular-nums">Rp {{ number_format($item->expected_total, 0, ',', '.') }}</td>
                                         <td class="px-4 py-4 text-right font-medium tabular-nums">Rp {{ number_format($item->actual_total, 0, ',', '.') }}</td>
-                                        <td @class(['px-4 py-4 text-right font-bold tabular-nums', 'text-success-700' => $item->difference === 0, 'text-danger-700' => $item->difference !== 0])>Rp {{ number_format($item->difference, 0, ',', '.') }}</td>
+                                        <td @class(['px-4 py-4 text-right font-bold tabular-nums', 'text-success-700' => $item->difference === 0, 'text-terracotta' => $item->difference !== 0])>Rp {{ number_format($item->difference, 0, ',', '.') }}</td>
                                         <td class="px-4 py-4 text-sm font-semibold">{{ ucfirst($item->status) }}</td>
                                     </tr>
                                 @endforeach
@@ -144,7 +144,7 @@
                                 </label>
                                 <div class="flex flex-wrap gap-3">
                                     <button wire:click="approveSnapshot({{ $reconciliation->id }})" type="button" class="min-h-11 rounded-lg bg-success-700 px-5 text-base font-semibold text-white transition hover:bg-success-800">Setujui</button>
-                                    <button wire:click="rejectSnapshot({{ $reconciliation->id }})" type="button" class="min-h-11 rounded-lg bg-danger-700 px-5 text-base font-semibold text-white transition hover:bg-danger-800">Tolak</button>
+                                    <button wire:click="rejectSnapshot({{ $reconciliation->id }})" type="button" class="min-h-11 rounded-lg bg-terracotta px-5 text-base font-semibold text-white transition hover:opacity-90">Tolak</button>
                                 </div>
                             </div>
                         </div>

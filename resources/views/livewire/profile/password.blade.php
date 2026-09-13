@@ -54,7 +54,7 @@
             </div>
         @endif
 
-        @if ($errors->any())
+        @if ($errors->hasAny(['current_password', 'password', 'password_confirmation']))
             <div id="password-change-errors"
                 class="mb-4 flex items-center gap-3 rounded-xl border border-terracotta bg-danger-bg px-4 py-3.5"
                 role="alert" tabindex="-1"
@@ -67,7 +67,7 @@
         @endif
 
         <form class="space-y-5" wire:submit="changePassword"
-            @if ($errors->any()) aria-describedby="password-change-errors" @endif>
+            @if ($errors->hasAny(['current_password', 'password', 'password_confirmation'])) aria-describedby="password-change-errors" @endif>
             <x-ui.input name="current_password" label="Kata sandi saat ini" type="password"
                 wire:model="current_password" autocomplete="current-password" required
                 :error="$errors->first('current_password')" />
@@ -76,7 +76,8 @@
                 hint="Minimal 10 karakter." required
                 :error="$errors->first('password')" />
             <x-ui.input name="password_confirmation" label="Konfirmasi kata sandi baru" type="password"
-                wire:model="password_confirmation" autocomplete="new-password" required />
+                wire:model="password_confirmation" autocomplete="new-password" required
+                :error="$errors->first('password_confirmation')" />
             <div class="flex justify-end">
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="changePassword">
                     <span wire:loading.remove wire:target="changePassword">Simpan Kata Sandi Baru</span>

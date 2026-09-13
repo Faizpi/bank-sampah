@@ -60,9 +60,28 @@ final readonly class WithdrawalRequestService
             'assisted_service_id' => $assistedServiceId,
         ]);
 
+        $existing = DB::transaction(fn (): ?IdempotencyKey => $this->existingIdempotency($actor, $idempotencyKey, $payloadHash));
+        if ($existing !== null) {
+            $withdrawal = WithdrawalRequest::query()->findOrFail($existing->result_id);
+            if ($assistedServiceId !== null) {
+                return DB::transaction(function () use ($actor, $assistedServiceId, $withdrawal): WithdrawalRequest {
+                    $record = $this->assistedServices->lockForWithdrawalLink($actor, $assistedServiceId);
+                    $this->assistedServices->linkWithdrawalInTransaction($actor, $record, $withdrawal);
+
+                    return $withdrawal->fresh(['balanceHold', 'customer', 'assistedService']);
+                });
+            }
+
+            return $withdrawal->fresh(['balanceHold', 'customer', 'assistedService']);
+        }
+
         return DB::transaction(function () use ($actor, $customer, $area, $amount, $location, $pickupDate, $idempotencyKey, $payloadHash, $assistedServiceId): WithdrawalRequest {
-            $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
-            if ($existing !== null) {
+            $claim = IdempotencyKey::acquireOrCreate($actor->id, self::SCOPE, $idempotencyKey, $payloadHash);
+            if (! $claim['is_new']) {
+                $existing = $claim['key'];
+                if ($existing->payload_hash !== $payloadHash || $existing->result_id === null) {
+                    throw ValidationException::withMessages(['idempotency_key' => 'Permintaan yang sama digunakan dengan payload berbeda atau belum selesai.']);
+                }
                 $withdrawal = WithdrawalRequest::query()->findOrFail($existing->result_id);
                 if ($assistedServiceId !== null) {
                     $record = $this->assistedServices->lockForWithdrawalLink($actor, $assistedServiceId);
@@ -72,7 +91,7 @@ final readonly class WithdrawalRequestService
                 return $withdrawal->fresh(['balanceHold', 'customer', 'assistedService']);
             }
             $record = $assistedServiceId === null ? null : $this->assistedServices->lockForWithdrawalLink($actor, $assistedServiceId);
-            $key = $this->createIdempotency($actor, $idempotencyKey, $payloadHash);
+            $key = $claim['key'];
             $withdrawal = WithdrawalRequest::query()->create([
                 'request_number' => $this->number('WDR'),
                 'customer_id' => $customer->id,
@@ -251,11 +270,6 @@ final readonly class WithdrawalRequestService
         }
 
         return $existing;
-    }
-
-    private function createIdempotency(User $actor, string $key, string $payloadHash): IdempotencyKey
-    {
-        return IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => self::SCOPE, 'key' => $key, 'payload_hash' => $payloadHash, 'status' => 'processing']);
     }
 
     /** @param array<string, mixed> $payload */

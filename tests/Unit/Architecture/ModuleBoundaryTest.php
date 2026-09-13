@@ -26,7 +26,6 @@ final class ModuleBoundaryTest extends TestCase
             'Reports',
             'AuditReconciliation',
             'Platform',
-            'MobileServices',
             'Notifications',
             'Corrections',
             'Operations',

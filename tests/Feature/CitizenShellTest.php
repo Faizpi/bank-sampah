@@ -30,7 +30,7 @@ final class CitizenShellTest extends TestCase
 
         self::assertStringContainsString('<!DOCTYPE html>', $html);
         self::assertStringContainsString('<html lang="id">', $html);
-        self::assertStringContainsString('<title>Beranda — Bank Sampah Digital</title>', $html);
+        self::assertStringContainsString('<title>Beranda - Bank Sampah Digital</title>', $html);
         self::assertStringContainsString('href="#konten-utama"', $html);
         self::assertStringContainsString('id="konten-utama"', $html);
         self::assertStringContainsString('tabindex="-1"', $html);
@@ -38,7 +38,7 @@ final class CitizenShellTest extends TestCase
         self::assertStringContainsString('pb-[calc(5.75rem+env(safe-area-inset-bottom))]', $html);
         self::assertStringContainsString('Ringkasan akun', $html);
         self::assertSame(1, substr_count($html, '<header'));
-        self::assertSame(1, substr_count($html, '<h1'));
+        self::assertSame(0, substr_count($html, '<h1'));
         self::assertSame(1, substr_count($html, '<main'));
         $source = file_get_contents(resource_path('views/components/layouts/citizen.blade.php'));
         self::assertIsString($source);
@@ -106,7 +106,8 @@ final class CitizenShellTest extends TestCase
         self::assertSame(5, substr_count($html, 'data-nav-item'));
         self::assertSame(1, substr_count($html, 'aria-current="page"'));
         self::assertStringContainsString('bottom-[calc(0.75rem+env(safe-area-inset-bottom))]', $html);
-        self::assertStringContainsString('rounded-full', $html);
+        self::assertStringContainsString('rounded-lg', $html);
+        self::assertStringContainsString('gap-1 rounded-md px-1', $html);
         self::assertSame(5, substr_count($html, 'min-h-touch'));
 
         $lastPosition = -1;

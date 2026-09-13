@@ -107,8 +107,26 @@
     }
 }
 
-/* Override Filament simple-page container to allow wide login layout */
+/*
+ * Single source of truth for the custom wide login screen.
+ * The login view only marks the page with .backoffice-auth-login; all layout
+ * sizing lives here so there is no inline style conflicting with this theme.
+ */
 .fi-simple-page {
-    max-width: 58rem !important;
+    max-width: 68rem !important;
     width: 100%;
+    margin: auto !important;
+}
+
+.fi-simple-layout:has(.backoffice-auth-login) {
+    align-items: stretch !important;
+    padding: 0 !important;
+    background: var(--color-warm-canvas) !important;
+}
+
+.fi-simple-layout:has(.backoffice-auth-login) .fi-simple-main {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 2rem 1.5rem !important;
+    background: transparent !important;
 }

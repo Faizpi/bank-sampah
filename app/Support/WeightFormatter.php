@@ -9,12 +9,12 @@ final class WeightFormatter
     public static function format(string|int|float|null $value, bool $fixedTwoDecimals = false): string
     {
         if ($value === null || $value === '') {
-            return '—';
+            return '-';
         }
 
         $normalized = str_replace(',', '.', (string) $value);
         if (preg_match('/^(\d+)(?:\.(\d+))?$/D', $normalized, $matches) !== 1) {
-            return '—';
+            return '-';
         }
 
         $whole = ltrim($matches[1], '0') ?: '0';

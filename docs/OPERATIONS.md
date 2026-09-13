@@ -9,7 +9,7 @@ Dokumen ini menjadi SOP harian bagi warga, petugas, bendahara, admin, dan pengel
 | Role | Tanggung jawab | Serah terima minimum |
 |---|---|---|
 | Warga | Menjaga akun/kartu, memberi data/foto benar, memeriksa bukti/saldo. | Bukti, nomor pengajuan, alasan/status. |
-| Petugas | Identifikasi, timbang, setoran, pickup, tugas, bukti, layanan berbantuan/keliling. | Rekap tugas, alat, bukti, insiden. |
+| Petugas | Identifikasi, timbang, setoran, pickup, tugas, bukti, layanan berbantuan. | Rekap tugas, alat, bukti, insiden. |
 | Bendahara | Verifikasi penerima, pembayaran disetujui, kas, bukti, laporan. | Daftar paid/pending, bukti, dan ekspor laporan. |
 | Admin | Verifikasi, master/harga, approve, kapasitas/jadwal, koreksi, laporan/audit. | Keputusan tertunda, koreksi, selisih, perubahan master. |
 | Superadmin | Seluruh tugas operasional admin, laporan atau audit, role atau permission, Health, deploy, cron, dan insiden teknis. Bersama admin membuka panel back-office (`backoffice.access`). | Keputusan operasional, release, rotasi secret atau akses, dan log insiden. |
@@ -22,10 +22,10 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 2. Pastikan tanggal/waktu aplikasi benar dan layanan/jadwal hari ini aktif.
 3. Periksa internet, perangkat, baterai/power, printer bila digunakan, kamera, dan akses storage.
 4. Pastikan timbangan rata, nol, bersih, layak, dan hasil uji beban referensi sesuai prosedur alat.
-5. Tinjau harga aktif, jenis/kondisi diterima, pengumuman, kapasitas pickup, dan jadwal keliling.
+5. Tinjau harga aktif, jenis/kondisi diterima, pengumuman, dan kapasitas pickup.
 6. Bendahara menghitung/mencatat kas awal tanpa membuka informasi kepada pihak tidak berizin.
 7. Pastikan tidak ada failed transaction/hold/selisih sebelumnya yang belum ditangani.
-8. Buka status layanan/titik keliling bila semua siap. Jika pemeriksaan kritis gagal, pelayanan finansial tidak dibuka sampai aman.
+8. Pastikan pelayanan siap. Jika pemeriksaan kritis gagal, pelayanan finansial tidak dibuka sampai aman.
 
 ## 4. SOP warga
 
@@ -106,28 +106,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 6. Serahkan paket, unggah bukti, lalu selesaikan satu kali.
 7. Pastikan saldo keluar dibuat dan hold dikonversi setelah penyerahan.
 
-## 9. SOP layanan keliling
-
-### Persiapan
-
-1. Admin menetapkan wilayah sesuai hierarki desa, dusun, RW, dan RT, lalu menetapkan titik, waktu, petugas, jenis diterima, serta kapasitas jadwal; cek benturan.
-2. Publikasikan jadwal. Setiap perubahan harus terlihat pada informasi jadwal yang dipakai warga dan petugas.
-3. Petugas membawa alat, daftar tugas, kartu/QR fallback, dan bahan bukti cetak.
-
-### Pelaksanaan
-
-1. Buka status titik saat siap; layanan keliling bukan pickup rumah per rumah.
-2. Warga datang dan diidentifikasi melalui QR/nomor.
-3. Setoran mengikuti SOP setoran langsung lengkap, termasuk snapshot, bukti, idempotensi, dan ledger.
-4. Pantau kapasitas dan antrean; jangan menerima transaksi bertipe keliling sebelum titik dibuka.
-
-### Penutupan
-
-1. Hentikan transaksi, pastikan semua request selesai/gagal jelas.
-2. Rekap warga, jumlah transaksi, berat, nilai, bukti, item ditolak, dan insiden.
-3. Tutup status titik dan serahkan rekap untuk laporan.
-
-## 10. SOP warga tanpa smartphone
+## 9. SOP warga tanpa smartphone
 
 1. Petugas menjelaskan layanan dan meminta persetujuan; bila tidak setuju, berhenti.
 2. Cari nasabah melalui nama/nomor/kartu. Bila belum ada, bantu input tanpa membuat kata sandi yang diketahui petugas; admin memverifikasi.
@@ -136,7 +115,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 5. Berikan bukti cetak, saldo setelah transaksi, status pengajuan, dan cara meminta riwayat/koreksi.
 6. Jangan menyimpan kata sandi, login sebagai warga, atau memakai satu akun warga bersama.
 
-## 11. SOP perubahan kata sandi
+## 10. SOP perubahan kata sandi
 
 ### A. Perubahan berbantuan langsung oleh admin atau superadmin
 
@@ -154,7 +133,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 3. Setelah berhasil, sistem mencabut sesi aktif lain pengguna sambil mempertahankan sesi saat ini bila memungkinkan secara teknis. Bila tidak memungkinkan, sistem mencabut seluruh sesi dan pengguna harus autentikasi ulang.
 4. Audit mencatat aktor, metode `mandiri_profil`, alasan sistem `perubahan_mandiri`, dan hasil.
 
-## 12. SOP WhatsApp manual
+## 11. SOP WhatsApp manual
 
 1. Pilih template resmi dan periksa nomor tujuan.
 2. Tekan **Buka WhatsApp**; aplikasi hanya membuka `wa.me`.
@@ -162,7 +141,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 4. Pengguna menekan kirim sendiri.
 5. Jangan menandai pesan otomatis terkirim dalam sistem. Jika WhatsApp gagal dibuka, salin pesan atau gunakan kanal resmi alternatif tanpa mengubah status bisnis.
 
-## 13. SOP koreksi dan reversal
+## 12. SOP koreksi dan reversal
 
 1. Hentikan pengulangan transaksi dan kumpulkan nomor, bukti, nilai lama, hasil timbang, serta pelapor.
 2. Admin berizin membuka transaksi final; pembuat transaksi tidak otomatis boleh mengoreksi sendiri.
@@ -173,7 +152,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 7. Warga menerima informasi sebelum/sesudah, alasan, tanggal, dan dampak yang aman.
 8. Pastikan koreksi tercermin pada laporan setelah proses resmi selesai.
 
-## 14. SOP laporan harian
+## 13. SOP laporan harian
 
 1. Pastikan pencairan dan penyerahan yang dilakukan hari itu sudah memiliki status akhir atau alasan gagal yang jelas.
 2. Buka menu **Laporan** dan pilih jenis laporan yang diperlukan.
@@ -182,7 +161,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 5. Simpan file dengan nama tanggal pelayanan dan letakkan pada folder laporan internal.
 6. Jika ada data yang tidak sesuai, gunakan alur koreksi resmi pada transaksi terkait; jangan mengubah file Excel untuk menggantikan data aplikasi.
 
-## 15. Gangguan internet
+## 14. Gangguan internet
 
 1. Jangan finalisasi berulang. Catat waktu, warga, draf/nomor, idempotency reference yang terlihat, dan layar status.
 2. Jika belum mengirim, pertahankan draf dan tunggu koneksi.
@@ -191,7 +170,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 5. Aplikasi tidak mengantrekan transaksi offline; catatan manual darurat tidak menjadi saldo sampai dimasukkan dan diverifikasi resmi.
 6. Setelah pulih, cocokkan semua catatan manual dengan sistem dan laporan.
 
-## 16. Gangguan timbangan
+## 15. Gangguan timbangan
 
 1. Hentikan penimbangan; jangan menebak berat atau memakai perkiraan pickup.
 2. Periksa permukaan, nol, baterai/daya, dan uji beban referensi.
@@ -199,7 +178,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 4. Jika tidak ada alat sah, tunda transaksi/penjemputan atau bawa ke lokasi timbang resmi; komunikasikan kepada warga.
 5. Catat alat, waktu, transaksi terdampak, dan tindakan. Transaksi yang terlanjur final salah mengikuti koreksi, bukan edit.
 
-## 17. Health dan penanganan gangguan
+## 16. Health dan penanganan gangguan
 
 Health adalah satu-satunya administrasi teknis aktif pada UI. Superadmin memerlukan `system.maintenance` untuk melihat status aman secara baca-saja; permission tersebut tidak membuka halaman atau tindakan teknis lain.
 
@@ -211,7 +190,7 @@ Jika terjadi gangguan:
 4. Jalankan koreksi atau reversal resmi bila data finansial benar-benar perlu diperbaiki. Jangan mengedit saldo langsung.
 5. Verifikasi kembali akses, transaksi, ledger, hold, dan file terkait sebelum membuka proses yang dihentikan.
 
-## 18. Pergantian petugas/admin
+## 17. Pergantian petugas/admin
 
 ### Sebelum hari terakhir
 
@@ -231,7 +210,7 @@ Jika terjadi gangguan:
 
 Tinjau audit, failed task, laporan, Health, cron, dan contact list. Permission koreksi, pembalikan, dan penyesuaian saldo hanya tersedia pada pemilik rekonsiliasi yang ditetapkan; baseline saat ini berada pada superadmin dan tetap wajib memakai alasan, bukti, serta audit.
 
-## 19. Monitoring rutin
+## 18. Monitoring rutin
 
 | Frekuensi | Pemeriksaan |
 |---|---|
@@ -241,7 +220,7 @@ Tinjau audit, failed task, laporan, Health, cron, dan contact list. Permission k
 | Bulanan | pembaruan dependency atau keamanan, performa database, kuota hosting, SSL atau domain, SOP |
 | Saat pergantian atau rilis | akses, secret, rehearsal MySQL 8.0.30 disposable sebelum UAT atau production, rollback, smoke test, dan pelatihan |
 
-## 20. Eskalasi
+## 19. Eskalasi
 
 - Saldo atau transaksi ganda, akses lintas warga, atau uang atau paket yang diserahkan tanpa record: hentikan proses terkait dan eskalasi sebagai insiden kritis.
 - Selisih kas/ledger: jangan tutup sebagai sesuai; admin+bendahara menelusuri.

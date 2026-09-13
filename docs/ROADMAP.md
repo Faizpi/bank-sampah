@@ -4,7 +4,7 @@ Roadmap ini mencatat urutan pengembangan dan evaluasi ruang lingkup aktif. Dokum
 
 ## Ruang lingkup aktif
 
-Ruang lingkup aktif mencakup fungsi inti yang dijelaskan pada [PRODUCT.md](PRODUCT.md), [REQUIREMENTS.md](REQUIREMENTS.md), dan [BUSINESS_RULES.md](BUSINESS_RULES.md). Aturan target yang masih menjadi sasaran produk, hierarki wilayah serta kapasitas layanan keliling, dan validasi penjemputan tetap normatif. Dokumentasi tidak menjadikan defect pada area tersebut sebagai perilaku yang diterima.
+Ruang lingkup aktif mencakup fungsi inti yang dijelaskan pada [PRODUCT.md](PRODUCT.md), [REQUIREMENTS.md](REQUIREMENTS.md), dan [BUSINESS_RULES.md](BUSINESS_RULES.md). Aturan target yang masih menjadi sasaran produk dan validasi penjemputan tetap normatif. Dokumentasi tidak menjadikan defect pada area tersebut sebagai perilaku yang diterima.
 
 ## Prioritas pengembangan
 
@@ -29,7 +29,6 @@ Ruang lingkup aktif mencakup fungsi inti yang dijelaskan pada [PRODUCT.md](PRODU
 
 ### Program dan pengawasan
 
-- Jadwal Bank Sampah Keliling pada hierarki desa, dusun, RW, dan RT, dengan validasi benturan serta kapasitas per jadwal
 - Data agregat pengumpulan dan statistik yang tersedia
 - QR verifikasi bukti, laporan yang tersedia, dan audit log
 - Health sebagai satu-satunya administrasi teknis aktif

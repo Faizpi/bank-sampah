@@ -10,6 +10,7 @@ use App\Domain\Identity\Models\StaffServiceArea;
 use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -217,7 +218,7 @@ final class IdentitySchemaTest extends TestCase
 
     public function test_identity_index_inventory_is_intentional(): void
     {
-        $this->assertIndexInventory('users', [['email'], ['username'], ['phone'], ['status']]);
+        $this->assertIndexInventory('users', [['email'], ['username'], ['phone'], ['status'], ['deleted_at']]);
         $this->assertIndexInventory('customer_profiles', [['customer_number'], ['rt_id'], ['joined_at'], ['qr_token_hash']]);
         $this->assertIndexInventory('staff_profiles', [['staff_number'], ['service_area_id', 'active_to']]);
         // Both session user indexes are intentional: baseline user-only lookup plus composite activity lookup.
@@ -299,6 +300,12 @@ final class IdentitySchemaTest extends TestCase
 
     private function rollbackIdentityMigration(): void
     {
+        if (Schema::hasIndex('users', 'users_deleted_at_index')) {
+            Schema::table('users', function (Blueprint $table): void {
+                $table->dropIndex('users_deleted_at_index');
+            });
+        }
+
         $migration = require database_path('migrations/2026_07_30_120000_alter_users_for_identity.php');
         $migration->down();
     }

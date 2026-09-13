@@ -93,8 +93,10 @@ final class MultiRoleRedirectAndQrActivationTest extends TestCase
         $admin = User::factory()->create(['status' => UserStatus::Active]);
         $wargaRole = Role::query()->create(['name' => 'warga', 'description' => 'Warga']);
         $verifyPerm = Permission::query()->create(['name' => 'user.verify', 'description' => 'Verify']);
+        $viewPerm = Permission::query()->create(['name' => 'user.view', 'description' => 'View']);
+        $viewAllPerm = Permission::query()->create(['name' => 'user.view.all', 'description' => 'View all']);
         $adminRole = Role::query()->create(['name' => 'admin', 'description' => 'Admin']);
-        $adminRole->permissions()->attach($verifyPerm);
+        $adminRole->permissions()->attach([$verifyPerm, $viewPerm, $viewAllPerm]);
         $admin->roles()->attach($adminRole);
 
         $dusun = Dusun::query()->create(['code' => 'DSN-2', 'name' => 'Dusun 2']);

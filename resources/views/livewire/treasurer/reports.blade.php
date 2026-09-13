@@ -111,7 +111,7 @@
                             <dt class="text-text-secondary">{{ $isWeight ? 'Estimasi berat' : 'Nilai' }}</dt>
                             <dd class="amount-tabular font-semibold text-deep-green">
                                 @if ($row['value'] === '' || $row['value'] === null)
-                                    —
+                                    -
                                 @elseif ($isWeight)
                                     {{ \App\Support\WeightFormatter::format($row['value'], fixedTwoDecimals: true) }} kg
                                 @else
@@ -129,12 +129,12 @@
             <table class="min-w-full text-left text-sm" aria-label="Hasil laporan">
                 <thead class="border-b border-border text-caption text-text-secondary">
                     <tr>
-                        <th class="px-3 py-2 font-semibold">Referensi</th>
-                        <th class="px-3 py-2 font-semibold">Waktu</th>
-                        <th class="px-3 py-2 font-semibold">Nasabah</th>
-                        <th class="px-3 py-2 font-semibold">Detail</th>
-                        <th class="px-3 py-2 font-semibold">Status</th>
-                        <th class="px-3 py-2 text-right font-semibold">Nilai</th>
+                        <th scope="col" class="px-3 py-2 font-semibold">Referensi</th>
+                        <th scope="col" class="px-3 py-2 font-semibold">Waktu</th>
+                        <th scope="col" class="px-3 py-2 font-semibold">Nasabah</th>
+                        <th scope="col" class="px-3 py-2 font-semibold">Detail</th>
+                        <th scope="col" class="px-3 py-2 font-semibold">Status</th>
+                        <th scope="col" class="px-3 py-2 text-right font-semibold">Nilai</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
@@ -148,7 +148,7 @@
                             <td class="px-3 py-2 text-text-secondary">{{ \App\Support\StatusLabel::for($row['status']) }}</td>
                             <td class="px-3 py-2 text-right amount-tabular">
                                 @if ($row['value'] === '' || $row['value'] === null)
-                                    —
+                                    -
                                 @elseif ($isWeight)
                                     {{ \App\Support\WeightFormatter::format($row['value'], fixedTwoDecimals: true) }} kg
                                 @else

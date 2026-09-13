@@ -71,8 +71,8 @@ final class BalanceHoldResource extends Resource
                 TextColumn::make('amount')->label('Nominal')->money('IDR')->sortable(),
                 TextColumn::make('status')->label('Status')->badge(),
                 TextColumn::make('held_at')->label('Dibuat')->dateTime('d M Y H:i')->sortable(),
-                TextColumn::make('released_at')->label('Dilepas')->dateTime('d M Y H:i')->placeholder('—'),
-                TextColumn::make('converted_at')->label('Dikonversi')->dateTime('d M Y H:i')->placeholder('—'),
+                TextColumn::make('released_at')->label('Dilepas')->dateTime('d M Y H:i')->placeholder('-'),
+                TextColumn::make('converted_at')->label('Dikonversi')->dateTime('d M Y H:i')->placeholder('-'),
             ])
             ->filters([
                 SelectFilter::make('status')->options([

@@ -258,15 +258,16 @@ final readonly class LedgerService
         $payloadHash = hash('sha256', json_encode(['owner_id' => $owner->id, 'delta' => $delta, 'reason' => trim($reason)], JSON_THROW_ON_ERROR));
 
         return DB::transaction(function () use ($actor, $owner, $delta, $idempotencyKey, $payloadHash): LedgerEntry {
-            $key = IdempotencyKey::activeForUpdate($actor->id, 'ledger.adjust', $idempotencyKey);
-            if ($key !== null) {
-                if ($key->payload_hash !== $payloadHash || $key->result_id === null) {
+            $claim = IdempotencyKey::acquireOrCreate($actor->id, 'ledger.adjust', $idempotencyKey, $payloadHash);
+            if (! $claim['is_new']) {
+                $existing = $claim['key'];
+                if ($existing->payload_hash !== $payloadHash || $existing->result_id === null) {
                     throw ValidationException::withMessages(['idempotency_key' => 'Permintaan penyesuaian sudah digunakan untuk payload berbeda.']);
                 }
 
-                return LedgerEntry::query()->findOrFail($key->result_id);
+                return LedgerEntry::query()->findOrFail($existing->result_id);
             }
-            $key = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => 'ledger.adjust', 'key' => $idempotencyKey, 'payload_hash' => $payloadHash, 'status' => 'processing']);
+            $key = $claim['key'];
             $account = LedgerAccount::query()->where('user_id', $owner->id)->lockForUpdate()->first();
             if ($account === null) {
                 throw ValidationException::withMessages(['account' => 'Rekening saldo tidak ditemukan.']);

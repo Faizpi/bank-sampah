@@ -147,9 +147,30 @@ final readonly class ReportQueryService
         }
         $this->authorize($actor, 'report.view');
         $this->validateFilters($filters, 'occurred_at', 'desc', 25, $type);
-        $deposits = $this->depositQuery($actor, $filters)->with(['items.wasteType', 'correction'])->get();
+        $query = $this->depositQuery($actor, $filters)->with(['items.wasteType', 'correction']);
+        $subjects = (clone $query)->distinct()->count('customer_id');
+        $depositCount = (clone $query)->count();
+        $weightGrams = 0;
+        $plasticGrams = 0;
+        $value = 0;
+        foreach ($query->lazyById(self::STREAM_CHUNK_SIZE) as $deposit) {
+            $value += $deposit->effectiveTotalValue();
+            foreach ($deposit->items as $item) {
+                $grams = (int) round((float) $item->weight_kg * 1000);
+                $weightGrams += $grams;
+                if ($item->wasteType?->is_plastic === true) {
+                    $plasticGrams += $grams;
+                }
+            }
+        }
 
-        return $this->metricService->calculate(new EloquentCollection($deposits->all()));
+        return [
+            'subject_count' => $subjects,
+            'deposit_count' => $depositCount,
+            'total_weight_kg' => $this->gramsToDecimal($weightGrams),
+            'total_value' => $value,
+            'plastic_weight_kg' => $this->gramsToDecimal($plasticGrams),
+        ];
     }
 
     /**
@@ -232,31 +253,45 @@ final readonly class ReportQueryService
         if ($type === ReportType::Deposits) {
             return $this->aggregate($actor, $filters);
         }
-        $records = $this->query($actor, $filters, $type)->get();
+        $query = $this->query($actor, $filters, $type);
+        $customerCount = (clone $query)->distinct()->count('customer_id');
+        $recordCount = (clone $query)->count();
 
         return match ($type) {
             ReportType::Withdrawals => [
-                'customer_count' => $records->pluck('customer_id')->filter()->unique()->count(),
-                'withdrawal_count' => $records->count(),
-                'total_amount' => (int) $records->sum('amount'),
+                'customer_count' => $customerCount,
+                'withdrawal_count' => $recordCount,
+                'total_amount' => (int) (clone $query)->sum('amount'),
             ],
             ReportType::Groceries => [
-                'customer_count' => $records->pluck('customer_id')->filter()->unique()->count(),
-                'redemption_count' => $records->count(),
-                'total_redeemed_value' => (int) $records->sum('value_snapshot'),
+                'customer_count' => $customerCount,
+                'redemption_count' => $recordCount,
+                'total_redeemed_value' => (int) (clone $query)->sum('value_snapshot'),
             ],
             ReportType::Pickups => [
-                'customer_count' => $records->pluck('customer_id')->filter()->unique()->count(),
-                'pickup_count' => $records->count(),
-                'estimated_weight_kg' => number_format((float) $records->sum('estimated_weight_kg'), 3, '.', ''),
+                'customer_count' => $customerCount,
+                'pickup_count' => $recordCount,
+                'estimated_weight_kg' => $this->gramsToDecimal($this->decimalToGrams((clone $query)->sum('estimated_weight_kg'))),
             ],
             ReportType::Participation => [
-                'participant_count' => $records->pluck('customer_id')->filter()->unique()->count(),
-                'participation_count' => $records->count(),
-                'collected_weight_kg' => number_format((float) $records->sum('total_weight_kg'), 3, '.', ''),
-                'collected_value' => $records->sum(static fn (Deposit $deposit): int => $deposit->effectiveTotalValue()),
+                'participant_count' => $customerCount,
+                'participation_count' => $recordCount,
+                'collected_weight_kg' => $this->gramsToDecimal($this->decimalToGrams((clone $query)->sum('total_weight_kg'))),
+                'collected_value' => $this->depositEffectiveValueSum($actor, $filters),
             ],
         };
+    }
+
+    /** @param array<string, mixed> $filters */
+    private function depositEffectiveValueSum(User $actor, array $filters): int
+    {
+        $query = $this->depositQuery($actor, $filters)->with('correction');
+        $total = 0;
+        foreach ($query->lazyById(self::STREAM_CHUNK_SIZE) as $deposit) {
+            $total += $deposit->effectiveTotalValue();
+        }
+
+        return $total;
     }
 
     /**
@@ -265,22 +300,7 @@ final readonly class ReportQueryService
      */
     public function metrics(EloquentCollection $deposits): array
     {
-        $subjects = $deposits->pluck('customer_id')->unique()->count();
-        $weight = 0.0;
-        $value = 0;
-        $plastic = 0.0;
-        foreach ($deposits as $deposit) {
-            $value += $deposit->effectiveTotalValue();
-            foreach ($deposit->items as $item) {
-                $itemWeight = (float) $item->weight_kg;
-                $weight += $itemWeight;
-                if ($item->wasteType?->is_plastic === true) {
-                    $plastic += $itemWeight;
-                }
-            }
-        }
-
-        return ['subject_count' => $subjects, 'deposit_count' => $deposits->count(), 'total_weight_kg' => number_format($weight, 3, '.', ''), 'total_value' => $value, 'plastic_weight_kg' => number_format($plastic, 3, '.', '')];
+        return $this->metricService->calculate($deposits);
     }
 
     /**
@@ -290,6 +310,44 @@ final readonly class ReportQueryService
     private function modelList(EloquentCollection $records): array
     {
         return array_values($records->all());
+    }
+
+    private function gramsToDecimal(int $grams): string
+    {
+        $sign = $grams < 0 ? '-' : '';
+        $grams = abs($grams);
+        $fraction = $grams % 1000;
+        $whole = intdiv($grams, 1000);
+
+        return $sign.$whole.'.'.str_pad((string) $fraction, 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Convert a decimal SQL aggregate (string|int|float compatible) to an exact integer gram count
+     * without introducing binary floating point drift.
+     */
+    private function decimalToGrams(mixed $value): int
+    {
+        if (is_int($value)) {
+            return $value * 1000;
+        }
+        if (! is_string($value)) {
+            // Aggregate drivers may return a float; round to the nearest gram as a last resort.
+            return (int) round((float) $value * 1000);
+        }
+        $value = trim($value);
+        if ($value === '' || preg_match('/^-?\d+(?:\.\d+)?$/', $value) !== 1) {
+            return 0;
+        }
+        $negative = str_starts_with($value, '-');
+        $value = ltrim($value, '-');
+        [$whole, $fraction] = array_pad(explode('.', $value, 2), 2, '');
+        $whole = (int) $whole;
+        // Money/weights are persisted with at most three decimals; pad or clamp to gram precision.
+        $fraction = substr(str_pad($fraction, 3, '0'), 0, 3);
+        $grams = ($whole * 1000) + (int) $fraction;
+
+        return $negative ? -$grams : $grams;
     }
 
     /**

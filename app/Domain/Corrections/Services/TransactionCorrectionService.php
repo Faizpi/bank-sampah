@@ -62,12 +62,16 @@ final readonly class TransactionCorrectionService
             $result = DB::transaction(function () use ($actor, $deposit, $newValue, $reason, $idempotencyKey, $payloadHash, $media): TransactionCorrection {
                 $idempotency = null;
                 if ($idempotencyKey !== null) {
-                    $idempotency = $this->existingIdempotency($actor, 'transaction.correct', $idempotencyKey, $payloadHash);
-                    if ($idempotency === null) {
-                        $idempotency = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => 'transaction.correct', 'key' => $idempotencyKey, 'payload_hash' => $payloadHash, 'status' => 'processing']);
-                    } else {
-                        return TransactionCorrection::query()->findOrFail($idempotency->result_id);
+                    $claim = IdempotencyKey::acquireOrCreate($actor->id, 'transaction.correct', $idempotencyKey, $payloadHash);
+                    if (! $claim['is_new']) {
+                        $existing = $claim['key'];
+                        if ($existing->payload_hash !== $payloadHash || $existing->result_id === null) {
+                            throw ValidationException::withMessages(['idempotency_key' => 'Permintaan yang sama sudah digunakan untuk data berbeda atau masih diproses.']);
+                        }
+
+                        return TransactionCorrection::query()->findOrFail($existing->result_id);
                     }
+                    $idempotency = $claim['key'];
                 }
                 $lockedDeposit = Deposit::query()->whereKey($deposit->id)->lockForUpdate()->firstOrFail();
                 if ($lockedDeposit->status !== Deposit::STATUS_FINAL) {
@@ -196,18 +200,16 @@ final readonly class TransactionCorrectionService
             return DB::transaction(function () use ($actor, $deposit, $reason, $idempotencyKey, $payloadHash, $media): TransactionReversal {
                 $idempotency = null;
                 if ($idempotencyKey !== null) {
-                    $idempotency = $this->existingIdempotency($actor, 'transaction.reverse', $idempotencyKey, $payloadHash);
-                    if ($idempotency === null) {
-                        $idempotency = IdempotencyKey::query()->create([
-                            'actor_id' => $actor->id,
-                            'scope' => 'transaction.reverse',
-                            'key' => $idempotencyKey,
-                            'payload_hash' => $payloadHash,
-                            'status' => 'processing',
-                        ]);
-                    } else {
-                        return TransactionReversal::query()->findOrFail($idempotency->result_id);
+                    $claim = IdempotencyKey::acquireOrCreate($actor->id, 'transaction.reverse', $idempotencyKey, $payloadHash);
+                    if (! $claim['is_new']) {
+                        $existing = $claim['key'];
+                        if ($existing->payload_hash !== $payloadHash || $existing->result_id === null) {
+                            throw ValidationException::withMessages(['idempotency_key' => 'Permintaan yang sama sudah digunakan untuk data berbeda atau masih diproses.']);
+                        }
+
+                        return TransactionReversal::query()->findOrFail($existing->result_id);
                     }
+                    $idempotency = $claim['key'];
                 }
 
                 $lockedDeposit = Deposit::query()->whereKey($deposit->id)->lockForUpdate()->firstOrFail();

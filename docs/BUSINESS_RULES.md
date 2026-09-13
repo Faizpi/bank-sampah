@@ -150,7 +150,7 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-WA-004:** Template menggunakan data minimal, tidak memuat saldo lengkap, identitas sensitif, secret, atau URL privat tanpa proteksi.
 - **BR-WA-005:** Kegagalan membuka WhatsApp tidak mengubah status proses bisnis.
 
-## 12. Target dan layanan keliling
+## 12. Target pengumpulan
 
 - **BR-TGT-001:** Target memiliki jenis/kelompok sampah, berat sasaran dalam satuan baku, periode, tujuan, status, dan pengaturan visibilitas.
 - **BR-TGT-002:** Periode mulai harus sebelum periode selesai; target aktif tidak boleh memiliki definisi ambigu pada scope yang sama.
@@ -158,12 +158,6 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-TGT-004:** Koreksi dan reversal memperbarui progres bersih; transaksi draf tidak dihitung.
 - **BR-TGT-005:** Target aktif dihitung saat data sah berubah; akhir periode menutup target dan menyimpan ringkasan yang dapat direproduksi.
 - **BR-TGT-006:** Publik hanya melihat agregat yang disetujui, bukan kontribusi individu.
-- **BR-MOB-001:** Layanan keliling adalah titik layanan terjadwal per RT/RW, bukan penjemputan individual.
-- **BR-MOB-002:** Jadwal wajib memiliki titik, wilayah yang mengikuti hierarki desa, dusun, RW, dan RT, waktu, petugas, jenis diterima, kapasitas, serta status.
-- **BR-MOB-003:** Jadwal tidak boleh berbenturan pada petugas atau titik dalam waktu yang sama. Kapasitas berlaku pada jadwal dan membatasi penerimaan layanan keliling tersebut.
-- **BR-MOB-004:** Transaksi hanya dapat ditandai sebagai layanan keliling ketika jadwal berstatus dibuka dan petugas berada dalam penugasan.
-- **BR-MOB-005:** Setoran keliling mengikuti seluruh aturan setoran langsung, harga snapshot, ledger, bukti, dan idempotensi.
-- **BR-MOB-006:** Penutupan layanan membuat rekap; perubahan jadwal aktif harus terlihat pada informasi jadwal yang digunakan warga dan petugas.
 
 ## 13. Estimasi dan edukasi
 

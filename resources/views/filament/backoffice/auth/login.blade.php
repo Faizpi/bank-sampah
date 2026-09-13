@@ -6,18 +6,7 @@
         ] : [];
     @endphp
 
-    {{--
-        Override fi-simple-page AND fi-simple-main (its parent) so the card
-        can go wide on desktop. fi-simple-main default is max-w-lg (512px).
-    --}}
-    <style>
-        .fi-simple-layout { align-items: stretch !important; padding: 0 !important; background: var(--color-warm-canvas) !important; }
-        .fi-simple-layout .fi-simple-main { background: transparent !important; }
-        .fi-simple-main   { max-width: none !important; width: 100% !important; padding: 2rem 1.5rem !important; }
-        .fi-simple-page   { max-width: 68rem !important; width: 100% !important; margin: auto !important; }
-    </style>
-
-    <div class="w-full overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+    <div class="backoffice-auth-login w-full overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
         <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
 
             {{-- ── Left: Branding panel ── --}}

@@ -6,6 +6,7 @@
     $statuses = [
         'pending' => ['icon' => 'clock-3', 'classes' => 'bg-warning-bg text-deep-green'],
         'in_progress' => ['icon' => 'loader-circle', 'classes' => 'bg-info-bg text-deep-green'],
+        'info' => ['icon' => 'loader-circle', 'classes' => 'bg-info-bg text-deep-green'],
         'success' => ['icon' => 'circle-check', 'classes' => 'bg-success-bg text-deep-green'],
         'error' => ['icon' => 'circle-x', 'classes' => 'bg-danger-bg text-terracotta'],
         'cancelled' => ['icon' => 'ban', 'classes' => 'bg-disabled-bg text-text-primary'],

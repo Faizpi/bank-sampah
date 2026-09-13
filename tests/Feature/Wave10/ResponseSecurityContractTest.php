@@ -14,6 +14,8 @@ use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Platform\Models\Media;
 use App\Domain\Reports\Services\ReportExportService;
 use App\Http\Middleware\ApplyResponseSecurityHeaders;
+use App\Http\Middleware\EnsureSessionIsFresh;
+use App\Http\Middleware\RequirePermission;
 use App\Models\User;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Auth\Middleware\Authorize;
@@ -160,7 +162,9 @@ it('enforces the public QR rate limit and wires every critical named limiter cen
     expect(Livewire::getPersistentMiddleware())
         ->not->toContain(ThrottleRequests::class)
         ->toContain(Authenticate::class)
-        ->toContain(Authorize::class);
+        ->toContain(Authorize::class)
+        ->toContain(EnsureSessionIsFresh::class)
+        ->toContain(RequirePermission::class);
 });
 
 it('throttles private export downloads without bypassing authorization or private cache controls', function (): void {

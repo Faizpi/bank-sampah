@@ -14,8 +14,6 @@ use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\WasteMaster\Models\WasteCategory;
@@ -24,10 +22,8 @@ use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\WasteMaster\Support\WasteMasterMutationGuard;
 use App\Livewire\Officer\GroceryTasks;
-use App\Livewire\Officer\MobileServiceTasks;
 use App\Livewire\Officer\PickupTask;
 use App\Models\User;
-use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -229,113 +225,6 @@ final class FieldOperationsTest extends TestCase
         self::assertSame('Warga tidak berada di lokasi pickup', $pickup->fresh()->cancellation_reason);
     }
 
-    public function test_mobile_service_tasks_hide_unassigned_services_and_enforce_assignment_on_open(): void
-    {
-        $assigned = $this->userWith('mobile-service.operate');
-        $other = $this->userWith('mobile-service.operate');
-        $service = $this->mobileService($assigned);
-        $this->actingAs($other);
-
-        Livewire::test(MobileServiceTasks::class)
-            ->assertDontSee($service->service_number)
-            ->call('open', $service->id);
-
-        self::assertSame(MobileServiceStatus::Published, $service->fresh()->status);
-    }
-
-    public function test_mobile_service_tasks_open_and_close_an_assigned_service_using_domain_transitions(): void
-    {
-        $officer = $this->userWith('mobile-service.operate');
-        $service = $this->mobileService($officer);
-        $this->actingAs($officer);
-
-        Livewire::test(MobileServiceTasks::class)
-            ->assertSeeHtml('wire:click="open('.$service->id.')"')
-            ->assertSee('Buka Layanan')
-            ->call('open', $service->id)
-            ->assertSee(route('officer.customer-identification', ['mobileServiceId' => $service->id]), false)
-            ->assertSee('Catat Setoran')
-            ->call('close', $service->id)
-            ->assertHasNoErrors();
-
-        self::assertSame(MobileServiceStatus::Closed, $service->fresh()->status);
-    }
-
-    public function test_mobile_service_tasks_disable_future_open_action_and_show_capacity_states(): void
-    {
-        $officer = $this->userWith('mobile-service.operate');
-        $now = CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta');
-        CarbonImmutable::setTestNow($now);
-
-        try {
-            $future = $this->mobileService($officer);
-            $future->forceFill(['point' => 'Jadwal mendatang', 'starts_at' => $now->addHour(), 'ends_at' => $now->addHours(2), 'capacity' => 5, 'served_count' => 2])->save();
-            $full = $this->mobileService($officer, MobileServiceStatus::Open);
-            $full->forceFill(['point' => 'Jadwal penuh', 'capacity' => 1, 'served_count' => 2])->save();
-
-            Livewire::actingAs($officer)
-                ->test(MobileServiceTasks::class)
-                ->assertSee('Dapat dibuka pukul 11:00')
-                ->assertDontSeeHtml('wire:click="open('.$future->id.')"')
-                ->assertSee('Slot warga/transaksi')
-                ->assertSeeHtml('<strong>3</strong>/5 tersisa')
-                ->assertSeeHtml('<strong>0</strong>/1 tersisa')
-                ->assertSee('Penuh')
-                ->assertSee(route('officer.customer-identification', ['mobileServiceId' => $full->id]), false)
-                ->assertSee('Catat Setoran');
-        } finally {
-            CarbonImmutable::setTestNow();
-        }
-    }
-
-    public function test_mobile_service_tasks_render_open_transition_errors_adjacent_to_the_service(): void
-    {
-        $officer = $this->userWith('mobile-service.operate');
-        $service = $this->mobileService($officer);
-        $service->staff()->detach($officer->id);
-        $service->staff()->attach($officer->id);
-        $service->wasteTypes()->detach();
-
-        Livewire::actingAs($officer)
-            ->test(MobileServiceTasks::class)
-            ->call('open', $service->id)
-            ->assertHasErrors('open.'.$service->id)
-            ->assertSee('Layanan dibuka harus memiliki petugas dan jenis diterima.');
-
-        self::assertSame(MobileServiceStatus::Published, $service->fresh()->status);
-    }
-
-    public function test_mobile_service_tasks_hide_expired_actionable_services_without_hiding_history(): void
-    {
-        $officer = $this->userWith('mobile-service.operate');
-        $now = CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta');
-        CarbonImmutable::setTestNow($now);
-
-        try {
-            $expired = $this->mobileService($officer, MobileServiceStatus::Published);
-            $expired->forceFill(['point' => 'Titik layanan kedaluwarsa', 'ends_at' => $now->subSecond()])->save();
-            $historical = $this->mobileService($officer, MobileServiceStatus::Open);
-            $historical->forceFill(['point' => 'Rekap layanan selesai', 'ends_at' => $now->subSecond()])->save();
-            $current = $this->mobileService($officer, MobileServiceStatus::Published);
-            $current->forceFill(['point' => 'Titik layanan sekarang', 'ends_at' => $now->addHour()])->save();
-            $this->actingAs($officer);
-
-            Livewire::test(MobileServiceTasks::class)
-                ->assertDontSee($expired->point)
-                ->assertDontSee($historical->point)
-                ->assertSee($current->point);
-
-            Livewire::test(MobileServiceTasks::class)->call('open', $expired->id);
-            Livewire::test(MobileServiceTasks::class)
-                ->call('recap', $historical->id)
-                ->assertHasNoErrors();
-
-            self::assertSame(MobileServiceStatus::Published, $expired->fresh()->status);
-        } finally {
-            CarbonImmutable::setTestNow();
-        }
-    }
-
     /** @return array{WasteType, WasteCondition} */
     private function wasteContext(): array
     {
@@ -355,8 +244,6 @@ final class FieldOperationsTest extends TestCase
             'pickup.view',
             'deposit.view',
             'grocery.view',
-            'mobile-service.view',
-            'mobile-service.operate',
         );
         $customer = User::factory()->create();
         $today = today()->toDateString();
@@ -372,7 +259,6 @@ final class FieldOperationsTest extends TestCase
             'occurred_at' => now(),
             'status' => Deposit::STATUS_DRAFT,
         ]);
-        $mobileService = $this->mobileService($officer, MobileServiceStatus::Open);
         $package = GroceryPackage::query()->create([
             'code' => 'PAKET-OFFICER-001',
             'name' => 'Paket Officer',
@@ -398,7 +284,6 @@ final class FieldOperationsTest extends TestCase
         $response->assertSeeText('PUP-LATE-001');
         $response->assertSeeText('DEP-DRAFT-001');
         $response->assertSeeText('GRC-OFFICER-001');
-        $response->assertSeeText($mobileService->service_number);
     }
 
     private function scheduledPickup(User $officer): PickupRequest
@@ -435,25 +320,6 @@ final class FieldOperationsTest extends TestCase
             'status' => $status,
             'assigned_staff_id' => $officer->id,
         ]);
-    }
-
-    private function mobileService(User $officer, MobileServiceStatus $status = MobileServiceStatus::Published): MobileService
-    {
-        [$type] = $this->wasteContext();
-        $service = MobileService::query()->create([
-            'service_number' => 'MOB-OFFICER-'.str()->upper(str()->random(8)),
-            'point' => 'Balai layanan officer',
-            'starts_at' => now()->subHour(),
-            'ends_at' => now()->addHour(),
-            'status' => $status,
-            'capacity' => 20,
-            'served_count' => 0,
-            'created_by' => $officer->id,
-        ]);
-        $service->staff()->attach($officer->id);
-        $service->wasteTypes()->attach($type->id);
-
-        return $service;
     }
 
     private function userWith(string ...$permissions): User

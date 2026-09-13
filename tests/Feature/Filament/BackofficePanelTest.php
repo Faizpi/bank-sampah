@@ -38,7 +38,6 @@ use App\Filament\Resources\Identity\Models\SessionInventories\SessionInventoryRe
 use App\Filament\Resources\Identity\Models\Users\UserResource;
 use App\Filament\Resources\Ledger\Models\BalanceHolds\BalanceHoldResource;
 use App\Filament\Resources\Ledger\Models\LedgerEntries\LedgerEntryResource;
-use App\Filament\Resources\MobileServices\Models\MobileServices\MobileServiceResource;
 use App\Filament\Resources\Pickups\Models\PickupRequests\PickupRequestResource;
 use App\Filament\Resources\Programs\Models\CollectionTargets\CollectionTargetResource;
 use App\Filament\Resources\Statistics\Models\StatisticPublications\StatisticPublicationResource;
@@ -511,7 +510,7 @@ final class BackofficePanelTest extends TestCase
             $this->navigationLabelsForGroup($panel, 'Operasional'),
         );
         self::assertSame(
-            ['Pengumuman', 'Target Pengumpulan', 'Layanan Keliling', 'Statistik Publik'],
+            ['Pengumuman', 'Target Pengumpulan', 'Statistik Publik'],
             $this->navigationLabelsForGroup($panel, 'Program'),
         );
         self::assertSame(
@@ -544,7 +543,6 @@ final class BackofficePanelTest extends TestCase
             SessionInventoryResource::class,
             PermissionResource::class,
             RoleResource::class,
-            MobileServiceResource::class,
             PickupRequestResource::class,
             CollectionTargetResource::class,
             DusunResource::class,

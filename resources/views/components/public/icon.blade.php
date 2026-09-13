@@ -30,7 +30,6 @@
         'log-in'        => 'log-in',
         'log-out'       => 'log-out',
         'map-pin'       => 'map-pin',
-        'magic-wand'    => 'magic-wand',
         'megaphone'     => 'megaphone',
         'menu'          => 'menu',
         'package-open'  => 'package-open',
@@ -127,9 +126,6 @@
             @break
         @case('map-pin')
             <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>
-            @break
-        @case('magic-wand')
-            <path d="m19 3-7.5 7.5"/><circle cx="15" cy="9" r="1"/><path d="m3 19 7.5-7.5"/><circle cx="9" cy="15" r="1"/><path d="M15 3h4v4M3 15h4v4"/>
             @break
         @case('megaphone')
             <path d="m3 11 18-5v12L3 14z"/><path d="M11.6 16.8 10 22H7l1.8-7"/><path d="M3 11v3"/>

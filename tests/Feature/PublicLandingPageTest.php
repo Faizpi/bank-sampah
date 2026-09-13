@@ -39,7 +39,6 @@ final class PublicLandingPageTest extends TestCase
             'public.catalog' => ['Katalog Sampah dan Edukasi', 'Pelajari jenis sampah yang diterima, satuan, kondisi, dan panduan pemilahannya di Bank Sampah Digital.'],
             'public.prices' => ['Harga Sampah Aktif', 'Lihat harga sampah aktif per kondisi dan satuan di Bank Sampah Digital.'],
             'public.announcements' => ['Pengumuman', 'Pengumuman resmi Bank Sampah Digital.'],
-            'public.mobile-schedule' => ['Jadwal Bank Sampah Keliling', 'Jadwal layanan keliling Bank Sampah Digital.'],
             'public.programs' => ['Target dan Statistik Program', 'Target pengumpulan dan statistik ringkasan publik Bank Sampah Digital.'],
             'public.tutorials' => ['Tutorial Penggunaan dan Panduan Video | Bank Sampah Digital', 'Kumpulan panduan video tutorial resmi Google Drive untuk warga, petugas, bendahara, dan administrator Bank Sampah Digital.'],
         ];
@@ -74,7 +73,6 @@ final class PublicLandingPageTest extends TestCase
             'public.catalog',
             'public.prices',
             'public.announcements',
-            'public.mobile-schedule',
             'public.programs',
             'public.tutorials',
         ];
@@ -83,8 +81,8 @@ final class PublicLandingPageTest extends TestCase
         $response->assertHeader('Content-Type', 'application/xml; charset=UTF-8');
         $xml = $response->getContent();
 
-        self::assertSame(8, substr_count($xml, '<url>'));
-        self::assertSame(8, substr_count($xml, '<loc>'));
+        self::assertSame(7, substr_count($xml, '<url>'));
+        self::assertSame(7, substr_count($xml, '<loc>'));
         foreach ($approvedRoutes as $routeName) {
             self::assertStringContainsString('<loc>'.route($routeName).'</loc>', $xml);
         }
@@ -94,7 +92,7 @@ final class PublicLandingPageTest extends TestCase
         self::assertStringNotContainsString('/backoffice', $xml);
     }
 
-    public function test_tutorials_page_renders_all_configured_roles_and_google_drive_links(): void
+    public function test_tutorials_page_renders_all_configured_roles_and_honest_video_state(): void
     {
         $response = $this->get(route('public.tutorials'));
         $response->assertOk();
@@ -103,8 +101,28 @@ final class PublicLandingPageTest extends TestCase
         $response->assertSee('Sesi Petugas');
         $response->assertSee('Sesi Bendahara');
         $response->assertSee('Sesi Superadmin / Admin');
-        $response->assertSee('Tonton Video (Google Drive)');
+        $response->assertSee('Video segera hadir');
+        $response->assertDontSee('Tonton Video (Google Drive)');
         $response->assertSee('1. Tutorial Masuk Aplikasi');
+    }
+
+    public function test_tutorials_page_renders_drive_links_when_urls_are_configured(): void
+    {
+        config()->set('tutorials.items', [[
+            'id' => 'warga-configured',
+            'role' => 'warga',
+            'number' => '1',
+            'title' => 'Tutorial Terkonfigurasi',
+            'summary' => 'Ringkasan tutorial terkonfigurasi.',
+            'steps' => ['Langkah satu.'],
+            'video_url' => 'https://drive.google.com/drive/folders/tutorial-terkonfigurasi',
+        ]]);
+
+        $response = $this->get(route('public.tutorials'));
+        $response->assertOk();
+        $response->assertSee('Tonton Video (Google Drive)');
+        $response->assertSee('https://drive.google.com/drive/folders/tutorial-terkonfigurasi');
+        $response->assertDontSee('Video segera hadir');
     }
 
     public function test_robots_references_absolute_sitemap_and_excludes_non_search_surfaces(): void

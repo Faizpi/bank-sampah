@@ -7,6 +7,7 @@ namespace App\Domain\AuditReconciliation\Services;
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Models\Reconciliation;
 use App\Domain\AuditReconciliation\Models\ReconciliationItem;
+use App\Domain\Corrections\Models\TransactionReversal;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Ledger\Models\BalanceHold;
@@ -118,8 +119,11 @@ final readonly class FinancialReconciliationService
         $end = $start->addDay();
         $opening = $this->availableAt($start);
         $closing = $this->availableAt($end);
-        $depositExpected = (int) Deposit::query()->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED, Deposit::STATUS_REVERSED])->where('occurred_at', '>=', $start)->where('occurred_at', '<', $end)->sum('total_value');
+        $depositGrossExpected = (int) Deposit::query()->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED, Deposit::STATUS_REVERSED])->where('occurred_at', '>=', $start)->where('occurred_at', '<', $end)->sum('total_value');
+        $depositActiveExpected = (int) Deposit::query()->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED])->where('occurred_at', '>=', $start)->where('occurred_at', '<', $end)->sum('total_value');
+        $depositReversedExpected = (int) Deposit::query()->where('status', Deposit::STATUS_REVERSED)->where('occurred_at', '>=', $start)->where('occurred_at', '<', $end)->sum('total_value');
         $depositActual = $this->ledgerTotal(Deposit::class, $start, $end);
+        $reversalActual = (int) LedgerEntry::query()->where('source_type', TransactionReversal::class)->where('effective_at', '>=', $start)->where('effective_at', '<', $end)->sum('amount');
         $withdrawalExpected = (int) WithdrawalRequest::query()->whereNotNull('paid_at')->where('paid_at', '>=', $start)->where('paid_at', '<', $end)->sum('amount');
         $withdrawalActual = $this->ledgerTotal(WithdrawalRequest::class, $start, $end);
         $groceryExpected = (int) GroceryRedemption::query()->whereNotNull('handed_over_at')->where('handed_over_at', '>=', $start)->where('handed_over_at', '<', $end)->sum('value_snapshot');
@@ -128,10 +132,21 @@ final readonly class FinancialReconciliationService
         $expectedClosing = $opening + $this->netLedgerTotal($start, $end) - $this->holdDelta($start, $end);
         $cashStatus = $cashTotal === null ? ReconciliationItem::STATUS_OPEN : ($cashTotal === $withdrawalExpected ? ReconciliationItem::STATUS_VERIFIED : ReconciliationItem::STATUS_DIFFERENCE);
 
+        $depositNote = $depositReversedExpected > 0 || $reversalActual > 0
+            ? sprintf(
+                'Mutasi masuk setoran bruto dibandingkan snapshot setoran. Setoran aktif (laporan): Rp %s, dibalik: Rp %s (pembalikan ledger: Rp %s).',
+                number_format($depositActiveExpected, 0, ',', '.'),
+                number_format($depositReversedExpected, 0, ',', '.'),
+                number_format($reversalActual, 0, ',', '.')
+            )
+            : 'Mutasi masuk setoran bruto dibandingkan snapshot setoran.';
+
+        $closingDifference = max(0, $closing) - max(0, $expectedClosing);
+
         return [
-            'totals' => ['opening_total' => max(0, $opening), 'deposit_total' => $depositActual, 'withdrawal_total' => $withdrawalActual, 'grocery_total' => $groceryActual, 'hold_total' => $holdTotal, 'cash_total' => $cashTotal, 'closing_total' => max(0, $closing), 'difference' => $closing - $expectedClosing],
+            'totals' => ['opening_total' => max(0, $opening), 'deposit_total' => $depositActual, 'withdrawal_total' => $withdrawalActual, 'grocery_total' => $groceryActual, 'hold_total' => $holdTotal, 'cash_total' => $cashTotal, 'closing_total' => max(0, $closing), 'difference' => $closingDifference],
             'items' => [
-                $this->item('deposit_ledger', $depositExpected, $depositActual, 'Mutasi masuk setoran dibandingkan snapshot setoran.'),
+                $this->item('deposit_ledger', $depositGrossExpected, $depositActual, $depositNote),
                 $this->item('withdrawal_ledger', $withdrawalExpected, $withdrawalActual, 'Mutasi keluar pencairan dibandingkan transaksi dibayar.'),
                 $this->item('grocery_ledger', $groceryExpected, $groceryActual, 'Mutasi keluar sembako dibandingkan serah-terima.'),
                 $this->item('cash_disbursement', $withdrawalExpected, $cashTotal ?? 0, $cashTotal === null ? 'Hitungan kas belum diisi.' : 'Hitungan kas fisik dibandingkan pencairan dibayar.', $cashStatus),
@@ -181,7 +196,15 @@ final readonly class FinancialReconciliationService
 
     private function refreshDifference(Reconciliation $reconciliation): void
     {
-        $difference = (int) $reconciliation->items()->sum('difference');
+        $items = $reconciliation->relationLoaded('items')
+            ? $reconciliation->items
+            : $reconciliation->items()->get();
+
+        $balanceItem = $items->firstWhere('item_type', 'available_balance');
+        $difference = $balanceItem instanceof ReconciliationItem
+            ? (int) $balanceItem->difference
+            : 0;
+
         $reconciliation->forceFill(['difference' => $difference])->save();
     }
 

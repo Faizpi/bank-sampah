@@ -5,23 +5,33 @@ import process from 'node:process';
 import { chromium } from '@playwright/test';
 
 const projectDir = process.cwd();
-const laravelEnv = loadDotEnv(path.join(projectDir, '.env'));
 const baseUrl = configuredValue('E2E_BASE_URL', 'APP_URL', 'http://bank-sampah.test').replace(/\/$/, '');
 const pwaBaseUrl = (process.env.E2E_PWA_BASE_URL ?? baseUrl.replace(/^http:/, 'https:')).replace(/\/$/, '');
 const database = configuredValue('E2E_DB_DATABASE', 'DB_DATABASE', 'bank_sampah');
-const php = process.env.PHP_BIN ?? 'C:\\Users\\Faiz\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.NTS.8.5_Microsoft.Winget.Source_8wekyb3d8bbwe\\php.exe';
-const fixture = process.env.E2E_FIXTURE ?? `${projectDir}\\final-qc-home-360-footer.png`;
-const devPassword = 'Banten123';
-const payerLabel = process.env.E2E_PAYER_LABEL ?? 'Bendahara Contoh';
-const customerId = Number(process.env.E2E_CUSTOMER_ID ?? '1');
-const customerNumber = process.env.E2E_CUSTOMER_NUMBER ?? 'CST-00000001';
+const php = process.env.PHP_BIN ?? 'php';
+const fixture = process.env.E2E_FIXTURE ?? '';
+const devPassword = process.env.E2E_DEV_PASSWORD ?? process.env.APP_DEMO_PASSWORD ?? '';
+const payerLabel = process.env.E2E_PAYER_LABEL ?? '';
+const customerId = Number(process.env.E2E_CUSTOMER_ID ?? '0');
+const customerNumber = process.env.E2E_CUSTOMER_NUMBER ?? '';
 const dbHost = configuredValue('E2E_DB_HOST', 'DB_HOST', '127.0.0.1');
 const dbPort = configuredValue('E2E_DB_PORT', 'DB_PORT', '3306');
 const dbUsername = configuredValue('E2E_DB_USERNAME', 'DB_USERNAME', 'root');
 const dbPassword = configuredValue('E2E_DB_PASSWORD', 'DB_PASSWORD', '');
-const appKey = process.env.E2E_APP_KEY ?? process.env.APP_KEY ?? laravelEnv.APP_KEY;
+const appKey = process.env.E2E_APP_KEY ?? process.env.APP_KEY;
 const artifactDirectory = process.env.E2E_ARTIFACT_DIR
     ?? path.join(projectDir, 'artifacts', 'uat', new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-'));
+
+const missingConfiguration = [];
+if (fixture === '') missingConfiguration.push('E2E_FIXTURE');
+if (devPassword === '') missingConfiguration.push('E2E_DEV_PASSWORD');
+if (payerLabel === '') missingConfiguration.push('E2E_PAYER_LABEL');
+if (customerId < 1) missingConfiguration.push('E2E_CUSTOMER_ID');
+if (customerNumber === '') missingConfiguration.push('E2E_CUSTOMER_NUMBER');
+
+if (missingConfiguration.length > 0) {
+    throw new Error(`Konfigurasi UAT belum lengkap. Isi environment: ${missingConfiguration.join(', ')}.`);
+}
 
 if (!fs.existsSync(fixture)) {
     throw new Error(`Fixture tidak ditemukan: ${fixture}`);
@@ -33,28 +43,8 @@ const results = [];
 const browserErrors = [];
 let offlineSimulation = false;
 
-function loadDotEnv(filename) {
-    if (!fs.existsSync(filename)) return {};
-
-    return Object.fromEntries(
-        fs.readFileSync(filename, 'utf8')
-            .split(/\r?\n/)
-            .map((line) => line.trim())
-            .filter((line) => line !== '' && !line.startsWith('#'))
-            .map((line) => {
-                const separator = line.indexOf('=');
-                if (separator < 0) return null;
-                const key = line.slice(0, separator).trim();
-                const rawValue = line.slice(separator + 1).trim();
-                const value = rawValue.replace(/^(["'])(.*)\1$/, '$2');
-                return key === '' ? null : [key, value];
-            })
-            .filter((entry) => entry !== null),
-    );
-}
-
 function configuredValue(e2eName, laravelName, fallback) {
-    return process.env[e2eName] ?? process.env[laravelName] ?? laravelEnv[laravelName] ?? fallback;
+    return process.env[e2eName] ?? process.env[laravelName] ?? fallback;
 }
 
 function testEnv() {
@@ -285,7 +275,7 @@ await run('Publik, manifest PWA, cache offline, dan banner koneksi', async () =>
         }
         await capture(pwaPage, 'public-pwa-online');
 
-        for (const route of ['/', '/katalog-sampah', '/harga-sampah', '/pengumuman', '/jadwal-keliling', '/target-dan-statistik', '/ketentuan-dan-privasi']) {
+        for (const route of ['/', '/katalog-sampah', '/harga-sampah', '/pengumuman', '/target-dan-statistik', '/ketentuan-dan-privasi']) {
             const response = await pwaPage.goto(`${pwaBaseUrl}${route}`, { waitUntil: 'domcontentloaded' });
             if (!response?.ok()) throw new Error(`Halaman publik ${route} mengembalikan HTTP ${response?.status() ?? 'tanpa respons'}.`);
             await pwaPage.locator('main').waitFor({ state: 'visible' });
@@ -484,16 +474,13 @@ await run('Petugas menyelesaikan pickup dan setoran aktual', async () => {
     await logout(page);
 });
 
-await run('Petugas mencari nasabah dan membuka tugas layanan keliling', async () => {
+await run('Petugas mencari nasabah dan memverifikasi identitas warga', async () => {
     await loginCitizen(page, 'petugas');
     await page.goto(`${baseUrl}/petugas/pindai`, { waitUntil: 'networkidle' });
     await page.locator('input[name="search"]').fill(customerNumber);
     await page.getByRole('button', { name: 'Cari Nasabah' }).click();
     await page.getByText('Kandidat identitas', { exact: true }).waitFor({ state: 'visible' });
-
-    await page.goto(`${baseUrl}/petugas/layanan-keliling`, { waitUntil: 'networkidle' });
-    await page.getByRole('heading', { name: 'Jadwal Layanan Keliling', exact: true }).last().waitFor({ state: 'visible' });
-    await capture(page, 'petugas-layanan-keliling');
+    await capture(page, 'petugas-identifikasi-warga');
     await logout(page);
 });
 

@@ -23,6 +23,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -324,9 +325,22 @@ final readonly class ReportExportService
         $query = $this->reports->query($actor, $filters, $type);
 
         return match ($type) {
-            ReportType::Deposits, ReportType::Participation => (clone $query)->has('items')->withCount('items')->get()->sum('items_count'),
+            ReportType::Deposits, ReportType::Participation => $this->depositItemRowCount($query),
             default => $query->count(),
         };
+    }
+
+    /**
+     * Count the flattened export rows (one per deposit item) in SQL instead of hydrating every deposit.
+     *
+     * @param  Builder<Deposit>  $query
+     */
+    private function depositItemRowCount(Builder $query): int
+    {
+        $depositIds = $query->whereHas('items')->select('id');
+        $itemQuery = DepositItem::query()->whereIn('deposit_id', $depositIds);
+
+        return $itemQuery->count();
     }
 
     private function dateValue(?DateTimeInterface $value): string

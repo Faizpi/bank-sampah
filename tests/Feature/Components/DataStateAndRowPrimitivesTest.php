@@ -137,7 +137,7 @@ final class DataStateAndRowPrimitivesTest extends TestCase
     public function test_transaction_row_is_safe_wrapping_tabular_and_explicit_about_correction(): void
     {
         $html = Blade::render(<<<'BLADE'
-            <x-ui.transaction-row type="Setoran koreksi dengan nama sangat panjang" reference="STR-2026-07-29-REFERENSI-SANGAT-PANJANG" status="success" status-label="Selesai" time="29 Juli 2026 pukul 10.30 WIB" method="Penimbangan langsung di lokasi layanan keliling" weight="12.345.678,90 kilogram" value="Rp9.999.999.999.999" href="/transaksi/1" :corrected="true" />
+            <x-ui.transaction-row type="Setoran koreksi dengan nama sangat panjang" reference="STR-2026-07-29-REFERENSI-SANGAT-PANJANG" status="success" status-label="Selesai" time="29 Juli 2026 pukul 10.30 WIB" method="Penimbangan langsung di lokasi pos penimbangan" weight="12.345.678,90 kilogram" value="Rp9.999.999.999.999" href="/transaksi/1" :corrected="true" />
         BLADE);
 
         self::assertStringContainsString('min-h-18', $html);
@@ -164,7 +164,7 @@ final class DataStateAndRowPrimitivesTest extends TestCase
     public function test_task_row_has_one_visible_action_and_group_count_context(): void
     {
         $html = Blade::render(<<<'BLADE'
-            <x-ui.task-row type="Penjemputan sampah terpilah" subject="Siti Aminah — Kampung Cibiru Hilir RT 004 RW 009 dekat balai pertemuan warga" due="Hari ini, pukul 10.30 WIB sebelum layanan keliling ditutup" status="pending" status-label="Belum dimulai dan menunggu petugas" action-label="Mulai tugas" action-href="/tugas/1" group="Belum dimulai untuk wilayah selatan" :count="4" />
+            <x-ui.task-row type="Penjemputan sampah terpilah" subject="Siti Aminah, Kampung Cibiru Hilir RT 004 RW 009 dekat balai pertemuan warga" due="Hari ini, pukul 10.30 WIB sebelum jam operasional berakhir" status="pending" status-label="Belum dimulai dan menunggu petugas" action-label="Mulai tugas" action-href="/tugas/1" group="Belum dimulai untuk wilayah selatan" :count="4" />
         BLADE);
 
         self::assertStringContainsString('min-h-16', $html);

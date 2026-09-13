@@ -23,7 +23,7 @@ Saat UAT dijalankan, catat informasi berikut:
 
 UAT harus memakai ruang lingkup aktif pada [REQUIREMENTS.md](REQUIREMENTS.md) dan struktur 36 alur pada [USER_FLOWS.md](USER_FLOWS.md). Skenario yang tidak berada dalam ruang lingkup aktif tidak boleh dicatat sebagai kapabilitas yang diterima.
 
-Setiap skenario mencatat data awal, langkah, hasil yang diharapkan, hasil aktual, bukti, severity temuan, dan keputusan. Aturan target, hierarki wilayah serta kapasitas layanan keliling, dan validasi penjemputan tetap dinilai sesuai kontrak normatif.
+Setiap skenario mencatat data awal, langkah, hasil yang diharapkan, hasil aktual, bukti, severity temuan, dan keputusan. Aturan target dan validasi penjemputan tetap dinilai sesuai kontrak normatif.
 
 ## Persetujuan stakeholder
 

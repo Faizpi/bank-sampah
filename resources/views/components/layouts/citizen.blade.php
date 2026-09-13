@@ -11,7 +11,7 @@
     <meta name="theme-color" content="#123D32">
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <link rel="icon" href="{{ asset('icons/icon-192x192.png') }}" sizes="192x192" type="image/png">
-    <title>{{ $title }} — Bank Sampah Digital</title>
+    <title>{{ $title }} - Bank Sampah Digital</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
@@ -47,7 +47,7 @@
     <header class="sticky top-0 z-sticky border-b border-border bg-surface shadow-xs">
         <div class="mx-auto flex min-h-16 max-w-citizen items-center gap-3 px-4 sm:px-5">
             <div class="min-w-0 flex-1">
-                <h1 class="truncate text-title font-bold text-deep-green">{{ $title }}</h1>
+                <p class="truncate text-title font-bold text-deep-green">{{ $title }}</p>
                 @if ($context)
                     <p class="truncate text-caption text-text-secondary">{{ $context }}</p>
                 @endif

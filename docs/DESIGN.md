@@ -93,7 +93,7 @@ Kontrak redesign ini terbatas pada presentasi dan interaksi frontend publik. Tid
   --color-warm-canvas: #F6F5EF;
   --color-surface: #FFFFFF;
   --color-harvest-gold: #D6A84B;
-  --color-terracotta: #C76B4F;
+  --color-terracotta: #A8472F;
   --color-sky-blue: #3E7D92;
   --color-text-primary: #17241F;
   --color-text-secondary: #55635D;
@@ -219,7 +219,7 @@ Tailwind breakpoint dapat memakai `sm 640`, `md 768`, `lg 1024`, `xl 1280`, teta
 
 ### Shell publik
 
-Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mobile menggunakan menu dialog/sheet yang dapat dioperasikan keyboard. Halaman: beranda, harga, edukasi, jadwal/keliling, target/statistik, pengumuman, QR verifikasi, serta [Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0](TERMS_AND_PRIVACY.md). Dokumen ketentuan/privasi tersedia tanpa login dari footer dan halaman pendaftaran.
+Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mobile menggunakan menu dialog/sheet yang dapat dioperasikan keyboard. Halaman: beranda, harga, edukasi, target/statistik, pengumuman, QR verifikasi, serta [Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0](TERMS_AND_PRIVACY.md). Dokumen ketentuan/privasi tersedia tanpa login dari footer dan halaman pendaftaran.
 
 ### Shell warga
 
@@ -227,7 +227,7 @@ Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mo
 - Konten utama saldo-first.
 - Bottom navigation menggunakan tepat lima tujuan: `Beranda`, `Kartu Nasabah`, `Layanan`, `Riwayat`, `Akun`. Label visual `Kartu Nasabah` boleh dipendekkan menjadi `Kartu` agar muat pada mobile, tetapi tujuan dan active state tetap memakai nama kontrak `Kartu Nasabah`.
 - `Kartu Nasabah` membuka identitas dan QR nasabah. Jangan menggantinya dengan tautan riwayat atau setoran.
-- `Layanan` menjadi tujuan pengajuan dan transaksi aktif: penjemputan, pencairan, sembako, estimasi, dan jadwal keliling.
+- `Layanan` menjadi tujuan pengajuan dan transaksi aktif: penjemputan, pencairan, sembako, dan estimasi.
 - `Riwayat` menjadi satu-satunya pintu arsip transaksi warga. Halaman ini menyediakan tab `Setoran`, `Pencairan`, dan `Sembako`; jangan menambahkan tujuan bottom-nav `Setoran` yang mengarah ke halaman sama karena akan menduplikasi `Riwayat`.
 - Detail atau bukti setoran mengaktifkan `Riwayat`; halaman Kartu Nasabah mengaktifkan `Kartu Nasabah`; halaman pengajuan/detail layanan aktif mengaktifkan `Layanan`.
 - Bottom nav fixed dengan safe-area padding; konten memiliki bottom padding cukup.
@@ -246,7 +246,7 @@ Filament 5 dengan custom theme. Sidebar dikelompokkan:
 
 1. **Operasional:** dashboard, setoran, penjemputan/kapasitas, pencairan, sembako, tugas/jadwal.
 2. **Data Master:** pengguna/nasabah/petugas, wilayah, jenis/kategori/satuan/kondisi, harga, paket.
-3. **Program:** target, layanan keliling, pengumuman, statistik publik/partisipasi.
+3. **Program:** target, pengumuman, statistik publik/partisipasi.
 4. **Pengawasan:** laporan/ekspor Excel, rekonsiliasi, ledger/hold, dan audit log sesuai permission.
 5. **Keamanan & Akses:** bantuan kata sandi, sesi pengguna, peran, dan izin sesuai permission.
 6. **Administrasi sistem:** Health baca-saja untuk superadmin dengan `system.maintenance`; tidak ada item teknis aktif lain.

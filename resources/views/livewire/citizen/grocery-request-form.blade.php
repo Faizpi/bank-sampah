@@ -23,7 +23,7 @@
         $selectedPackageIsAffordable = $selectedPackage !== null && $availableBalance >= $selectedPackage->value;
     @endphp
 
-    <div role="status" aria-live="polite" class="flex items-center gap-3 rounded-xl border border-forest-600 bg-success-bg px-4 py-3.5">
+    <div class="flex items-center gap-3 rounded-xl border border-forest-600 bg-success-bg px-4 py-3.5">
         <svg viewBox="0 0 24 24" class="size-5 shrink-0 text-forest-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>
         </svg>
@@ -36,18 +36,21 @@
     {{-- Package Selection --}}
      <x-ui.panel title="Paket aktif" description="Periksa isi dan nilai penukaran sebelum memilih. Ketersediaan dikonfirmasi admin.">
         @if ($serviceAreas->count() > 1)
-            <label class="mb-5 block">
-                <span class="text-label font-semibold text-deep-green">Area layanan</span>
-                <select wire:model.live="serviceAreaId" class="mt-2 block w-full rounded-xl border-border bg-warm-canvas text-body text-deep-green">
+            <div class="mb-5 block">
+                <label for="grocery-service-area" class="text-label font-semibold text-deep-green">Area layanan</label>
+                <select id="grocery-service-area" wire:model.live="serviceAreaId"
+                    aria-invalid="{{ $errors->has('serviceAreaId') ? 'true' : 'false' }}"
+                    @if ($errors->has('serviceAreaId')) aria-describedby="grocery-service-area-error" @endif
+                    class="mt-2 block min-h-touch w-full rounded-xl border {{ $errors->has('serviceAreaId') ? 'border-terracotta' : 'border-border' }} bg-warm-canvas px-4 text-body text-deep-green focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30">
                     <option value="">Pilih area layanan</option>
                     @foreach ($serviceAreas as $serviceArea)
                         <option value="{{ $serviceArea->id }}">{{ $serviceArea->name }}</option>
                     @endforeach
                 </select>
                 @error('serviceAreaId')
-                    <p role="alert" class="mt-2 text-body-sm text-terracotta">{{ $message }}</p>
+                    <p id="grocery-service-area-error" role="alert" class="mt-2 text-body-sm text-terracotta">{{ $message }}</p>
                 @enderror
-            </label>
+            </div>
         @endif
         <fieldset>
             <legend class="text-label font-semibold text-deep-green">Pilih paket sembako</legend>

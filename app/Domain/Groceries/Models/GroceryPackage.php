@@ -41,9 +41,11 @@ final class GroceryPackage extends Model
 
     public function isAvailableOn(CarbonImmutable $date): bool
     {
+        $day = $date->toDateString();
+
         return $this->status === 'aktif'
-            && ($this->active_from === null || $this->active_from->lessThanOrEqualTo($date))
-            && ($this->active_until === null || $this->active_until->greaterThanOrEqualTo($date));
+            && ($this->active_from === null || $this->active_from->toDateString() <= $day)
+            && ($this->active_until === null || $this->active_until->toDateString() >= $day);
     }
 
     protected static function booted(): void

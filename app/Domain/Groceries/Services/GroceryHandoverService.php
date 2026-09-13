@@ -62,11 +62,16 @@ final readonly class GroceryHandoverService
             $media = $this->mediaStore->handleEvidence($proof, $actor);
 
             $result = DB::transaction(function () use ($actor, $redemption, $verification, $reference, $media, $idempotencyKey, $payloadHash): GroceryRedemption {
-                $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
-                if ($existing !== null) {
+                $claim = IdempotencyKey::acquireOrCreate($actor->id, self::SCOPE, $idempotencyKey, $payloadHash);
+                if (! $claim['is_new']) {
+                    $existing = $claim['key'];
+                    if ($existing->payload_hash !== $payloadHash || $existing->result_id === null) {
+                        throw ValidationException::withMessages(['idempotency_key' => 'Permintaan berbeda menggunakan idempotency key yang sama.']);
+                    }
+
                     return GroceryRedemption::query()->findOrFail($existing->result_id);
                 }
-                $key = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => self::SCOPE, 'key' => $idempotencyKey, 'payload_hash' => $payloadHash, 'status' => 'processing']);
+                $key = $claim['key'];
                 $locked = GroceryRedemption::query()->whereKey($redemption->id)->lockForUpdate()->firstOrFail();
                 $this->assertScope($actor, $locked);
                 if ($locked->approver_id === $actor->id || $locked->requested_by_id === $actor->id || $locked->customer_id === $actor->id) {

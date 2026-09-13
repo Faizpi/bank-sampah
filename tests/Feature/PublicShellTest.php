@@ -43,7 +43,6 @@ final class PublicShellTest extends TestCase
             route('public.catalog'),
             route('public.prices'),
             route('home').'#cara-kerja',
-            route('public.mobile-schedule'),
             route('public.announcements'),
             route('public.programs'),
             route('public.tutorials'),
@@ -121,7 +120,6 @@ final class PublicShellTest extends TestCase
             route('public.catalog'),
             route('public.prices'),
             route('home').'#cara-kerja',
-            route('public.mobile-schedule'),
             route('public.announcements'),
             route('public.programs'),
             route('public.tutorials'),
@@ -140,7 +138,6 @@ final class PublicShellTest extends TestCase
             'Katalog',
             'Harga',
             'Cara kerja',
-            'Jadwal keliling',
             'Pengumuman',
             'Target dan statistik',
             'Tutorial penggunaan',
@@ -148,25 +145,24 @@ final class PublicShellTest extends TestCase
             'Masuk',
             'Daftar',
         ], $labels);
-        self::assertCount(12, $links[0]);
+        self::assertCount(11, $links[0]);
 
         foreach ($links[0] as $link) {
             self::assertStringContainsString('x-on:click="closeModal()"', $link);
             self::assertStringNotContainsString('prevent', $link);
         }
 
-        self::assertSame(12, substr_count($navigation, 'x-on:click="closeModal()"'));
+        self::assertSame(11, substr_count($navigation, 'x-on:click="closeModal()"'));
         self::assertStringNotContainsString('x-data=', $navigation);
         self::assertStringNotContainsString('openModal(', $navigation);
     }
 
-    public function test_shared_header_overlays_public_hero_routes_with_the_established_capsule_shape(): void
+    public function test_shared_header_overlays_public_hero_routes_with_the_container_radius_token(): void
     {
         foreach ([
             'home',
             'public.catalog',
             'public.prices',
-            'public.mobile-schedule',
             'public.announcements',
             'public.programs',
             'terms-and-privacy',
@@ -175,7 +171,7 @@ final class PublicShellTest extends TestCase
 
             self::assertStringContainsString('data-public-header="overlay"', $html, $routeName);
             self::assertMatchesRegularExpression(
-                '/<header\b[^>]*data-public-header="overlay"[^>]*>\s*<div class="[^"]*\brounded-full\b[^"]*"/s',
+                '/<header\b[^>]*data-public-header="overlay"[^>]*>\s*<div class="[^"]*\brounded-lg\b[^"]*"/s',
                 $html,
                 $routeName,
             );

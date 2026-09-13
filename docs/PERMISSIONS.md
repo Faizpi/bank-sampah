@@ -17,7 +17,7 @@ Kode matriks: `O` own, `A` area, `X` semua record aktif, `—` tidak diberikan s
 | Role | Tanggung jawab utama | Batas utama |
 |---|---|---|
 | `warga` | Mengelola akun sendiri, melihat saldo/riwayat, dan membuat pengajuan. | Hanya record sendiri; tidak dapat membuat mutasi atau keputusan administratif. |
-| `petugas` | Setoran, penjemputan, layanan keliling, layanan berbantuan, pembayaran/penyerahan bila ditugaskan. | Scope penugasan/area; tidak mengubah harga, role, atau saldo langsung. |
+| `petugas` | Setoran, penjemputan, layanan berbantuan, pembayaran/penyerahan bila ditugaskan. | Scope penugasan/area; tidak mengubah harga, role, atau saldo langsung. |
 | `bendahara` | Pembayaran pencairan yang telah disetujui, bukti, kas, dan laporan. | Tidak menyetujui pencairan secara default dan tidak mengoreksi saldo. |
 | `admin` | Operasional, master data, verifikasi, persetujuan, laporan, koreksi bila permission khusus diberikan. | Tidak mengelola konfigurasi teknis berisiko tinggi atau melewati mekanisme ledger. |
 | `superadmin` | Seluruh tanggung jawab dan permission baseline admin, ditambah koreksi atau reversal transaksi, penyesuaian saldo, role atau permission, dan Health. | Tetap mengikuti policy, separation of duties, serta alasan dan bukti koreksi. |
@@ -83,7 +83,6 @@ Kode matriks: `O` own, `A` area, `X` semua record aktif, `—` tidak diberikan s
 | Permission | Arti |
 |---|---|
 | `announcement.view` / `announcement.manage` / `announcement.publish` | Kelola dan terbitkan pengumuman. |
-| `mobile-service.view` / `mobile-service.manage` / `mobile-service.operate` | Jadwal dan operasi layanan keliling. |
 | `target.view` / `target.manage` / `target.publish` | Kelola target dan publikasi progres. |
 | `statistics.internal.view` | Melihat agregat internal RT/RW. |
 | `statistics.public.manage` | Mengatur allowlist publikasi agregat. |
@@ -164,9 +163,6 @@ Permission rekonsiliasi hanya melekat pada baseline `superadmin`; aktor custom t
 |---|:---:|:---:|:---:|:---:|:---:|
 | `announcement.view` | X sesuai audiens | X sesuai audiens | X | X | X |
 | `announcement.manage`, `announcement.publish` | — | — | — | X | X |
-| `mobile-service.view` | X | A | X | X | X |
-| `mobile-service.manage` | — | — | — | X | X |
-| `mobile-service.operate` | — | A | — | A | X |
 | `target.view` | X sesuai visibilitas | X | X | X | X |
 | `target.manage`, `target.publish` | — | — | — | X | X |
 | `statistics.internal.view` | — | A terbatas | X | X | X |
