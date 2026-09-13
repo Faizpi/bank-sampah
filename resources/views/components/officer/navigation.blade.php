@@ -20,7 +20,7 @@
     }
 
     $canonicalLabels = $persona === 'officer'
-        ? ['Tugas', 'Setoran', 'Layanan', 'Akun']
+        ? ['Tugas', 'Setoran', 'Akun']
         : ['Tugas', 'Pembayaran', 'Laporan', 'Akun'];
 
     if (array_diff($labels, $canonicalLabels) !== []) {
@@ -73,7 +73,6 @@
     $icons = [
         'Tugas' => 'clipboard-list',
         'Setoran' => 'wallet-cards',
-        'Layanan' => 'grid-2x2',
         'Pembayaran' => 'wallet-cards',
         'Laporan' => 'layout-dashboard',
         'Akun' => 'user-round',

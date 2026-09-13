@@ -35,12 +35,8 @@
             </div>
             <div>
                 <dt class="text-text-secondary">Metode</dt>
-                <dd class="mt-1 font-bold text-deep-green">{{ $mobileService ? 'Layanan keliling' : 'Setoran langsung' }}</dd>
-                @if ($mobileService)
-                    <dd class="text-text-secondary">{{ $mobileService->point }} · {{ $mobileService->starts_at->translatedFormat('d M, H:i') }}–{{ $mobileService->ends_at->format('H:i') }}</dd>
-                @else
-                    <dd class="text-text-secondary">Dilayani di area tugas petugas.</dd>
-                @endif
+                <dd class="mt-1 font-bold text-deep-green">Setoran langsung</dd>
+                <dd class="text-text-secondary">Dilayani di area tugas petugas.</dd>
             </div>
         </dl>
     </x-ui.panel>
@@ -80,7 +76,7 @@
                  <p class="mt-2 text-body-sm text-text-secondary">Pastikan warga, layanan, item, nilai perkiraan, dan bukti sudah benar. Nilai tetap dihitung ulang server saat dicatat.</p>
                  <dl class="mt-5 divide-y divide-border border-y border-border text-body-sm">
                      <div class="flex justify-between gap-4 py-3"><dt class="text-text-secondary">Warga</dt><dd class="text-right font-bold text-deep-green">{{ $customer->name }}<span class="block font-normal text-text-secondary">{{ $customer->customerProfile?->customer_number }}</span></dd></div>
-                     <div class="flex justify-between gap-4 py-3"><dt class="text-text-secondary">Metode</dt><dd class="text-right font-bold text-deep-green">{{ $mobileService ? 'Keliling · '.$mobileService->point : 'Setoran langsung' }}</dd></div>
+                     <div class="flex justify-between gap-4 py-3"><dt class="text-text-secondary">Metode</dt><dd class="text-right font-bold text-deep-green">Setoran langsung</dd></div>
                      @foreach ($pricePreview['lines'] as $line)
                          <div class="flex justify-between gap-4 py-3"><dt><span class="font-semibold text-deep-green">{{ $line['name'] }}</span><span class="block text-text-secondary">{{ $line['condition'] }} · {{ \App\Support\WeightFormatter::format($line['weight']) }} kg</span></dt><dd class="amount-tabular font-semibold text-deep-green">Rp {{ number_format($line['subtotal'], 0, ',', '.') }}</dd></div>
                      @endforeach

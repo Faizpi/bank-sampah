@@ -40,16 +40,12 @@
         if ($can('customer.view')) {
             $destinations['Setoran'] = route('officer.customer-identification');
         }
-        if ($can('mobile-service.operate')) {
-            $destinations['Layanan'] = route('officer.mobile-services');
-        }
         if ($can('profile.view')) {
             $destinations['Akun'] = route('profile.password');
         }
         $activeNav = match (true) {
             in_array($routeName, ['officer.dashboard', 'officer.pickup.task', 'officer.grocery.tasks'], true) => 'Tugas',
             in_array($routeName, ['officer.customer-identification', 'officer.deposit-form'], true) => 'Setoran',
-            $routeName === 'officer.mobile-services' => 'Layanan',
             default => 'Akun',
         };
     }

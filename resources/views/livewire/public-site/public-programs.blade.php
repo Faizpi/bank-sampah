@@ -13,10 +13,7 @@
                     Lihat pengumuman program
                     <x-public.icon name="megaphone" size="size-5" />
                 </a>
-                <a href="{{ route('public.mobile-schedule') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md border border-surface/40 px-5 text-label text-surface transition duration-180 ease-standard hover:border-surface hover:bg-surface/10 active:translate-y-px">
-                    Lihat jadwal layanan
-                </a>
-            </div>
+                    </div>
             </div>
             <img src="{{ asset('images/landing/mascot-8.png') }}" alt="Maskot badak menanam bibit sebagai simbol dampak program" class="mx-auto h-40 w-44 object-contain lg:h-48 lg:w-52">
         </div>
@@ -110,12 +107,11 @@
                                         'plastic_weight_kg' => 'Berat plastik',
                                         'dominant_waste_type' => 'Jenis sampah dominan',
                                         'target_progress_kg' => 'Progres target',
-                                        'mobile_service_count' => 'Jumlah layanan keliling',
                                         default => 'Metrik publik',
                                     } }}</p>
                                     <x-public.icon name="bar-chart-3" size="size-5" class="text-forest-600" />
                                 </div>
-                                <p class="mt-3 text-amount tabular-nums text-deep-green">{{ in_array($metric, ['total_weight_kg', 'plastic_weight_kg', 'target_progress_kg'], true) && is_scalar($value) ? \App\Support\WeightFormatter::format((string) $value).' kg' : (is_scalar($value) ? $value : '—') }}</p>
+                                <p class="mt-3 text-amount tabular-nums text-deep-green">{{ in_array($metric, ['total_weight_kg', 'plastic_weight_kg', 'target_progress_kg'], true) && is_scalar($value) ? \App\Support\WeightFormatter::format((string) $value).' kg' : (is_scalar($value) ? $value : '-') }}</p>
                             </article>
                         @endforeach
                     </div>

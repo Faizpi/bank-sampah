@@ -71,7 +71,6 @@ final class ApplyResponseSecurityHeaders
             'public.catalog',
             'public.prices',
             'public.announcements',
-            'public.mobile-schedule',
             'public.programs',
             'public.tutorials',
             'robots',

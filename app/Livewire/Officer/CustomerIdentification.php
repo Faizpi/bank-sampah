@@ -13,14 +13,11 @@ use App\Domain\CustomersRegions\Contracts\CustomerSummary;
 use App\Domain\CustomersRegions\Contracts\EvidenceReference;
 use App\Domain\CustomersRegions\Queries\SearchCustomers;
 use App\Domain\Ledger\Models\LedgerAccount;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Platform\Actions\StorePrivateMedia;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Livewire\Concerns\InteractsWithMediaPicker;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -56,8 +53,6 @@ final class CustomerIdentification extends Component
 
     public ?int $assistedServiceId = null;
 
-    public ?int $mobileServiceId = null;
-
     public bool $withdrawalConsent = false;
 
     public ?UploadedFile $withdrawalEvidence = null;
@@ -81,12 +76,6 @@ final class CustomerIdentification extends Component
         /** @var User|null $actor */
         $actor = auth()->user();
         abort_unless($actor instanceof User && $permissions->allows($actor, 'customer.view'), 403);
-        $requestedMobileServiceId = request()->integer('mobileServiceId');
-        $this->mobileServiceId = $requestedMobileServiceId > 0 ? $requestedMobileServiceId : null;
-        if ($this->mobileServiceId !== null && ! $this->identificationMobileService($actor) instanceof MobileService) {
-            $this->mobileServiceId = null;
-            $this->addError('mobileServiceId', 'Layanan keliling tidak aktif atau tidak ditugaskan kepada Anda. Pilih konteks lain.');
-        }
         $this->withdrawalDate = today('Asia/Jakarta')->addDay()->toDateString();
         $this->assistedWithdrawalIdempotencyKey = (string) str()->uuid();
     }
@@ -97,7 +86,7 @@ final class CustomerIdentification extends Component
         $actor = auth()->user();
         $this->resetCandidate();
         $this->validate(['search' => ['required', 'string', 'max:120']]);
-        $matches = $searchCustomers->search($actor, $this->search, 1, $this->identificationMobileService($actor));
+        $matches = $searchCustomers->search($actor, $this->search, 1);
         $this->candidate = $matches[0] ?? null;
     }
 
@@ -109,7 +98,7 @@ final class CustomerIdentification extends Component
         $this->scannerOpen = false;
 
         try {
-            $this->candidate = $identity->scan($actor, $rawToken, $this->identificationMobileService($actor));
+            $this->candidate = $identity->scan($actor, $rawToken);
         } catch (Throwable $exception) {
             if ($exception instanceof ValidationException) {
                 $this->scannerOpen = true;
@@ -150,21 +139,6 @@ final class CustomerIdentification extends Component
         }
 
         $this->selectedService = $service;
-    }
-
-    public function updatedMobileServiceId(): void
-    {
-        $this->resetValidation('mobileServiceId');
-        if ($this->mobileServiceId !== null) {
-            /** @var User $actor */
-            $actor = auth()->user();
-            if (! $this->identificationMobileService($actor) instanceof MobileService) {
-                $this->mobileServiceId = null;
-                $this->addError('mobileServiceId', 'Layanan keliling tidak aktif atau tidak ditugaskan kepada Anda. Pilih konteks lain.');
-            }
-        }
-
-        $this->resetCandidate();
     }
 
     public function updatedWithdrawalAmount(): void
@@ -363,25 +337,7 @@ final class CustomerIdentification extends Component
             'canCreateAssisted' => $permissions->allows($actor, 'customer.create-assisted'),
             'canCreateAssistedWithdrawal' => $permissions->allows($actor, 'customer.create-assisted') && $permissions->allows($actor, 'withdrawal.request'),
             'candidateAvailableBalance' => $this->candidate === null ? null : $this->availableBalanceFor($this->candidate->userId),
-            'mobileServices' => $permissions->allows($actor, 'mobile-service.operate')
-                ? MobileService::query()->whereHas('staff', static fn (Builder $staff): Builder => $staff->whereKey($actor->id))->where('status', MobileServiceStatus::Open)->where('starts_at', '<=', now())->where('ends_at', '>=', now())->orderBy('starts_at')->get()
-                : collect(),
         ]);
-    }
-
-    private function identificationMobileService(User $actor): ?MobileService
-    {
-        if ($this->mobileServiceId === null || ! app(PermissionChecker::class)->allows($actor, 'mobile-service.operate')) {
-            return null;
-        }
-
-        return MobileService::query()
-            ->whereKey($this->mobileServiceId)
-            ->whereHas('staff', static fn (Builder $staff): Builder => $staff->whereKey($actor->id))
-            ->where('status', MobileServiceStatus::Open)
-            ->where('starts_at', '<=', now())
-            ->where('ends_at', '>=', now())
-            ->first();
     }
 
     private function availableBalanceFor(int $customerId): int

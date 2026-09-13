@@ -61,8 +61,9 @@ final readonly class DepositReviewService
         $payloadHash = hash('sha256', json_encode(['deposit_id' => $deposit->id, 'decision' => $approved ? 'approve' : 'reject', 'reason' => $reason], JSON_THROW_ON_ERROR));
 
         return DB::transaction(function () use ($actor, $deposit, $reason, $idempotencyKey, $scope, $payloadHash, $approved): Deposit {
-            $existing = IdempotencyKey::activeForUpdate($actor->id, $scope, $idempotencyKey);
-            if ($existing !== null) {
+            $claim = IdempotencyKey::acquireOrCreate($actor->id, $scope, $idempotencyKey, $payloadHash);
+            if (! $claim['is_new']) {
+                $existing = $claim['key'];
                 if ($existing->payload_hash !== $payloadHash || $existing->result_id === null) {
                     throw ValidationException::withMessages(['idempotency_key' => 'Permintaan pemeriksaan sudah digunakan untuk data berbeda atau masih diproses.']);
                 }
@@ -70,7 +71,7 @@ final readonly class DepositReviewService
                 return Deposit::query()->findOrFail($existing->result_id);
             }
 
-            $key = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => $scope, 'key' => $idempotencyKey, 'payload_hash' => $payloadHash, 'status' => 'processing']);
+            $key = $claim['key'];
             $locked = Deposit::query()->whereKey($deposit->id)->lockForUpdate()->firstOrFail();
             if (! $locked->isPendingReview()) {
                 throw ValidationException::withMessages(['deposit' => 'Setoran tidak lagi menunggu persetujuan.']);

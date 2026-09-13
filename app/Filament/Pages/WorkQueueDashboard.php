@@ -12,8 +12,6 @@ use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Services\GroceryService;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Queries\VisibleUsers;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Services\PickupService;
 use App\Domain\Programs\Enums\TargetStatus;
@@ -23,7 +21,6 @@ use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Filament\Resources\Communication\Models\Announcements\AnnouncementResource;
 use App\Filament\Resources\Groceries\Models\GroceryRedemptions\GroceryRedemptionResource;
 use App\Filament\Resources\Identity\Models\CitizenVerifications\CitizenVerificationResource;
-use App\Filament\Resources\MobileServices\Models\MobileServices\MobileServiceResource;
 use App\Filament\Resources\Pickups\Models\PickupRequests\PickupRequestResource;
 use App\Filament\Resources\Programs\Models\CollectionTargets\CollectionTargetResource;
 use App\Filament\Resources\Withdrawals\Models\WithdrawalRequests\WithdrawalRequestResource;
@@ -135,23 +132,6 @@ final class WorkQueueDashboard extends Page
                 'description' => 'Periksa ketersediaan dan setujui pengajuan.',
                 'cta' => 'Tinjau sembako',
                 'href' => GroceryRedemptionResource::getUrl('index'),
-            ];
-        }
-
-        if ($permissions->allows($actor, 'mobile-service.operate') && $permissions->allows($actor, 'mobile-service.view')) {
-            $queues[] = [
-                'label' => 'Layanan menunggu dibuka',
-                'count' => MobileService::query()->where('status', MobileServiceStatus::Published)->where('starts_at', '<=', $now->copy()->addDay())->count(),
-                'description' => 'Buka titik layanan yang jadwalnya sudah dekat.',
-                'cta' => 'Tinjau layanan',
-                'href' => MobileServiceResource::getUrl('index'),
-            ];
-            $queues[] = [
-                'label' => 'Layanan perlu ditutup',
-                'count' => MobileService::query()->where('status', MobileServiceStatus::Open)->where('ends_at', '<=', $now)->count(),
-                'description' => 'Tutup titik yang sudah melewati jadwal.',
-                'cta' => 'Tinjau layanan',
-                'href' => MobileServiceResource::getUrl('index'),
             ];
         }
 

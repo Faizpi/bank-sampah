@@ -19,7 +19,6 @@ enum Module: string
     case Reports = 'Reports';
     case AuditReconciliation = 'AuditReconciliation';
     case Platform = 'Platform';
-    case MobileServices = 'MobileServices';
     case Notifications = 'Notifications';
     case Corrections = 'Corrections';
     case Operations = 'Operations';

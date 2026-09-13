@@ -9,8 +9,6 @@ use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Queries\VisibleUsers;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Programs\Enums\TargetStatus;
 use App\Domain\Programs\Models\CollectionTarget;
 use App\Domain\Programs\Services\TargetProgressService;
@@ -25,10 +23,13 @@ use Illuminate\Validation\ValidationException;
 final readonly class StatisticsService
 {
     /** @var list<string> */
-    private const METRICS = ['active_customers', 'deposit_count', 'total_weight_kg', 'plastic_weight_kg', 'dominant_waste_type', 'target_progress_kg', 'mobile_service_count'];
+    private const METRICS = ['active_customers', 'deposit_count', 'total_weight_kg', 'plastic_weight_kg', 'dominant_waste_type', 'target_progress_kg'];
 
     /** @var list<string> */
     private const DIMENSIONS = ['period', 'rt_id'];
+
+    /** Deposits stream through this many rows per database round trip so large periods stay bounded in memory. */
+    private const STREAM_CHUNK_SIZE = 200;
 
     public function __construct(
         private PermissionChecker $permissions,
@@ -55,7 +56,6 @@ final readonly class StatisticsService
             $aggregate['dominant_waste_type'] = null;
             $aggregate['active_customers'] = null;
             $aggregate['target_progress_kg'] = null;
-            $aggregate['mobile_service_count'] = null;
         }
 
         return $aggregate;
@@ -120,25 +120,27 @@ final readonly class StatisticsService
         if ($rtId !== null) {
             $query->whereHas('customer.customerProfile', static fn (Builder $profile): Builder => $profile->where('rt_id', $rtId));
         }
-        $deposits = $query->get();
-        $subjects = $deposits->pluck('customer_id')->unique()->count();
-        $weight = 0.0;
-        $plastic = 0.0;
-        $types = [];
-        foreach ($deposits as $deposit) {
+        // Counts and distinct subjects come from SQL so only the item stream is hydrated in bounded chunks.
+        $depositCount = (clone $query)->count();
+        $subjectCount = (clone $query)->distinct()->count('customer_id');
+        $weightGrams = 0;
+        $plasticGrams = 0;
+        $typeGrams = [];
+        foreach ($query->lazyById(self::STREAM_CHUNK_SIZE) as $deposit) {
             foreach ($deposit->items as $item) {
-                $current = (float) $item->weight_kg;
-                $weight += $current;
+                // Weights are persisted with at most three decimals; scaled integers avoid float drift while matching the 3-decimal output.
+                $grams = (int) round((float) $item->weight_kg * 1000);
+                $weightGrams += $grams;
                 $typeName = (string) ($item->wasteType->name ?? $item->waste_type_name ?? '');
                 if ($typeName !== '') {
-                    $types[$typeName] = ($types[$typeName] ?? 0.0) + $current;
+                    $typeGrams[$typeName] = ($typeGrams[$typeName] ?? 0) + $grams;
                 }
                 if ($item->wasteType?->is_plastic === true) {
-                    $plastic += $current;
+                    $plasticGrams += $grams;
                 }
             }
         }
-        arsort($types);
+        arsort($typeGrams);
 
         $activeCustomers = User::query()
             ->where('status', UserStatus::Active)
@@ -146,23 +148,16 @@ final readonly class StatisticsService
             ->when($rtId !== null, static fn (Builder $customers): Builder => $customers->whereHas('customerProfile', static fn (Builder $profile): Builder => $profile->where('rt_id', $rtId)))
             ->count();
         $targetProgress = $this->targetProgress($start, $end, $rtId, $publicOnly);
-        $mobileServiceCount = MobileService::query()
-            ->whereIn('status', [MobileServiceStatus::Published, MobileServiceStatus::Open, MobileServiceStatus::Closed])
-            ->whereDate('starts_at', '>=', $start)
-            ->whereDate('starts_at', '<', $end)
-            ->when($rtId !== null, static fn (Builder $services): Builder => $services->where('rt_id', $rtId))
-            ->count();
 
         return [
             'suppressed' => false,
-            'subject_count' => $subjects,
+            'subject_count' => $subjectCount,
             'active_customers' => $activeCustomers,
-            'deposit_count' => $deposits->count(),
-            'total_weight_kg' => number_format($weight, 3, '.', ''),
-            'plastic_weight_kg' => number_format($plastic, 3, '.', ''),
-            'dominant_waste_type' => array_key_first($types) ?? 'Tidak teridentifikasi',
+            'deposit_count' => $depositCount,
+            'total_weight_kg' => $this->formatGrams($weightGrams),
+            'plastic_weight_kg' => $this->formatGrams($plasticGrams),
+            'dominant_waste_type' => array_key_first($typeGrams) ?? 'Tidak teridentifikasi',
             'target_progress_kg' => number_format($targetProgress, 3, '.', ''),
-            'mobile_service_count' => $mobileServiceCount,
         ];
     }
 
@@ -188,6 +183,14 @@ final readonly class StatisticsService
     private function canViewRegion(User $actor, int $rtId): bool
     {
         return $this->visibleUsers->canAccessCustomerRt($actor, $rtId);
+    }
+
+    private function formatGrams(int $grams): string
+    {
+        $fraction = $grams % 1000;
+        $whole = intdiv($grams, 1000);
+
+        return $whole.'.'.str_pad((string) $fraction, 3, '0', STR_PAD_LEFT);
     }
 
     private function authorize(User $actor, string $permission): void

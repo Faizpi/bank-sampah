@@ -36,21 +36,7 @@
         />
     </x-ui.panel>
 
-    @if ($mobileServices->isNotEmpty())
-        <x-ui.panel title="Pilih konteks setoran" description="Tentukan setoran langsung atau layanan keliling aktif sebelum memindai dan mencari warga.">
-            <x-ui.select name="mobileServiceId" label="Metode setoran" wire:model.live="mobileServiceId" :error="$errors->first('mobileServiceId')">
-                <option value="">Setoran langsung</option>
-                @foreach ($mobileServices as $mobileService)
-                    <option value="{{ $mobileService->id }}">Keliling · {{ $mobileService->point }} · {{ $mobileService->starts_at->format('d M H:i') }}</option>
-                @endforeach
-            </x-ui.select>
-            @error('mobileServiceId')
-                <p role="alert" class="mt-2 text-body-sm font-semibold text-terracotta">{{ $message }}</p>
-            @enderror
-        </x-ui.panel>
-    @endif
-
-    @if ($scannerOpen)
+        @if ($scannerOpen)
         <x-ui.panel title="Pindai QR nasabah" description="Arahkan kamera ke QR kartu nasabah. QR hanya digunakan untuk mengenali kartu nasabah; nama tetap harus dikonfirmasi." state="success">
             <div
                 x-data="{
@@ -174,18 +160,10 @@
 
                     @if ($selectedService === 'deposit')
                         <div class="mt-5 border-t border-border pt-4">
-                            @php
-                                $depositQuery = http_build_query(array_filter([
-                                    'mobileServiceId' => $mobileServiceId,
-                                    'assistedServiceId' => $assistedServiceId,
-                                ]));
-                                $depositUrl = route('officer.deposit-form', ['customerId' => $candidate->userId]).($depositQuery !== '' ? '?'.$depositQuery : '');
-                                $depositLabel = $mobileServiceId === null ? 'Mulai Setoran Langsung' : 'Mulai Setoran Keliling';
-                            @endphp
                             <div class="rounded-xl border border-border bg-warm-canvas p-4">
                                 <div class="flex flex-col items-end">
-                                    <a href="{{ $depositUrl }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
-                                        {{ $depositLabel }}
+                                    <a href="{{ route('officer.deposit-form', ['customerId' => $candidate->userId]) }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
+                                        Mulai Setoran Langsung
                                         <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                                     </a>
                                 </div>

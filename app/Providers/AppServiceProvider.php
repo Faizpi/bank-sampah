@@ -13,7 +13,6 @@ use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
-use App\Domain\MobileServices\Models\MobileService as MobileServiceModel;
 use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Notifications\Listeners\PersistNotification;
 use App\Domain\Pickups\Models\PickupRequest;
@@ -25,13 +24,14 @@ use App\Domain\WasteMaster\Models\WastePrice;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
+use App\Http\Middleware\EnsureSessionIsFresh;
+use App\Http\Middleware\RequirePermission;
 use App\Models\User;
 use App\Policies\AnnouncementPolicy;
 use App\Policies\CollectionTargetPolicy;
 use App\Policies\DusunPolicy;
 use App\Policies\GroceryPackagePolicy;
 use App\Policies\GroceryRedemptionPolicy;
-use App\Policies\MobileServicePolicy;
 use App\Policies\PermissionPolicy;
 use App\Policies\PickupRequestPolicy;
 use App\Policies\RolePolicy;
@@ -53,6 +53,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AppServiceProvider extends ServiceProvider
@@ -70,9 +71,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Livewire update requests bypass the route middleware pipeline. Register
+        // the session freshness and permission guards as persistent middleware so
+        // an idle timeout or revoked permission cannot be bypassed by keeping a
+        // component on screen and clicking buttons indefinitely.
+        Livewire::addPersistentMiddleware([
+            EnsureSessionIsFresh::class,
+            RequirePermission::class,
+        ]);
+
         Gate::policy(Announcement::class, AnnouncementPolicy::class);
         Gate::policy(CollectionTarget::class, CollectionTargetPolicy::class);
-        Gate::policy(MobileServiceModel::class, MobileServicePolicy::class);
         Gate::policy(StatisticPublication::class, StatisticPublicationPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);

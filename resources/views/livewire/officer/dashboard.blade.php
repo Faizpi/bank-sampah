@@ -48,7 +48,7 @@
                             <span class="block break-words text-label font-bold text-deep-green">{{ $pickup->request_number }}</span>
                             <span class="mt-1 block break-words text-body-sm text-text-secondary">{{ $pickup->customer?->name ?? 'Nasabah' }} · {{ $pickup->address }}</span>
                         </span>
-                        <span class="max-w-full shrink-0 self-start rounded-full border border-info-bg bg-info-bg px-3 py-1 text-caption font-semibold text-sky-blue sm:self-auto">{{ ucwords(str_replace('_', ' ', $pickup->status->value)) }}</span>
+                        <span class="max-w-full shrink-0 self-start rounded-full border border-info-bg bg-info-bg px-3 py-1 text-caption font-semibold text-sky-blue sm:self-auto">{{ \App\Support\StatusLabel::for($pickup->status) }}</span>
                     @if ($canOperatePickups)
                     </a>
                     @else
@@ -69,7 +69,7 @@
                     <span class="text-caption font-semibold text-forest-600 uppercase tracking-wide">Petugas Bank Sampah</span>
                 </div>
                 <h2 id="officer-dashboard-title" class="mt-2 text-pretty text-h2 font-bold text-deep-green">Siap menjalankan tugas?</h2>
-                <p class="mt-1.5 text-pretty text-body-sm text-text-secondary">Pantau tugas yang ditugaskan kepada Anda, lalu lanjutkan setoran atau layanan keliling.</p>
+                <p class="mt-1.5 text-pretty text-body-sm text-text-secondary">Pantau tugas yang ditugaskan kepada Anda, lalu lanjutkan setoran yang tertunda.</p>
             </div>
             <x-ui.mascot variant="11" bubble="Siap membantu warga!" bubblePosition="top" class="h-24 w-auto shrink-0 sm:h-28" animate />
         </div>
@@ -90,22 +90,10 @@
             </a>
             @endif
 
-            @if ($canAccessMobileServices)
-            <a href="{{ route('officer.mobile-services') }}"
-                class="group flex flex-col items-center gap-2.5 rounded-xl border border-border bg-surface p-4 text-center shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-sky-blue hover:shadow-sm">
-                <div class="flex size-11 items-center justify-center rounded-xl bg-info-bg text-sky-blue transition-colors group-hover:bg-sky-blue group-hover:text-white">
-                    <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/>
-                    </svg>
-                </div>
-                <span class="text-caption font-semibold text-deep-green">Layanan keliling</span>
-            </a>
-            @endif
-
         </div>
     </section>
 
-@if ($canViewPickups || $canViewDeposits || $canShowGroceryTasks || $canViewMobileServices)
+@if ($canViewPickups || $canViewDeposits || $canShowGroceryTasks)
 <section aria-labelledby="officer-queues-title" class="grid gap-4 lg:grid-cols-2">
     <h2 id="officer-queues-title" class="sr-only">Antrean kerja petugas</h2>
     @if ($canViewPickups)
@@ -171,29 +159,12 @@
                     <div class="block rounded-xl border border-border bg-warm-canvas p-4">
                     @endif
                         <p class="text-label font-bold text-deep-green">{{ $redemption->request_number }}</p>
-                        <p class="mt-1 text-body-sm text-text-secondary">{{ $redemption->customer?->name ?? 'Nasabah' }} · {{ ucwords(str_replace('_', ' ', $redemption->status->value)) }}</p>
+                        <p class="mt-1 text-body-sm text-text-secondary">{{ $redemption->customer?->name ?? 'Nasabah' }} · {{ \App\Support\StatusLabel::for($redemption->status) }}</p>
                     @if ($canAccessGroceryTasks)
                     </a>
                     @else
                     </div>
                     @endif
-                @endforeach
-            </div>
-        @endif
-    </x-ui.panel>
-    @endif
-
-    @if ($canViewMobileServices)
-    <x-ui.panel title="Layanan keliling" description="Buka atau tutup titik yang menugaskan Anda.">
-        @if ($mobileServices->isEmpty())
-            <x-ui.empty-state title="Tidak ada jadwal keliling" description="Jadwal yang menugaskan Anda akan muncul di sini." />
-        @else
-            <div class="grid gap-3">
-                @foreach ($mobileServices as $service)
-                    <a href="{{ route('officer.mobile-services') }}" class="block rounded-xl border border-info-bg bg-info-bg p-4 transition hover:border-sky-blue">
-                        <p class="text-label font-bold text-deep-green">{{ $service->service_number }} · {{ $service->point }}</p>
-                        <p class="mt-1 text-body-sm text-text-secondary">{{ $service->starts_at->format('d M Y, H:i') }} · {{ ucwords(str_replace('_', ' ', $service->status->value)) }}</p>
-                    </a>
                 @endforeach
             </div>
         @endif

@@ -7,7 +7,6 @@ namespace App\Domain\Identity\Queries;
 use App\Authorization\PermissionChecker;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\Identity\Enums\UserStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -54,30 +53,6 @@ final readonly class VisibleUsers
         });
 
         return $query;
-    }
-
-    /** @return Builder<User> */
-    public function queryForMobileService(User $actor, MobileService $service, UserStatus ...$statuses): Builder
-    {
-        $visibleUserIds = $this->queryFor($actor, ...$statuses)->select('users.id');
-        if (! $this->permissions->allows($actor, 'mobile-service.operate') || ! $service->isOpen() || ! $service->staff()->whereKey($actor->getKey())->exists()) {
-            return User::query()->whereIn('users.id', $visibleUserIds);
-        }
-
-        return User::query()->where(function (Builder $users) use ($visibleUserIds, $service): void {
-            $users->whereIn('users.id', $visibleUserIds)
-                ->orWhere(function (Builder $mobileCustomers) use ($service): void {
-                    $mobileCustomers->where('status', UserStatus::Active->value)
-                        ->whereHas('customerProfile.rt', static function (Builder $rt) use ($service): void {
-                            $rt->where('is_active', true)
-                                ->whereHas('rw', static fn (Builder $rw): Builder => $rw
-                                    ->where('is_active', true)
-                                    ->whereHas('dusun', static fn (Builder $dusun): Builder => $dusun->where('is_active', true)))
-                                ->when($service->rt_id !== null, static fn (Builder $scope): Builder => $scope->whereKey($service->rt_id))
-                                ->when($service->rt_id === null && $service->rw_id !== null, static fn (Builder $scope): Builder => $scope->where('rw_id', $service->rw_id));
-                        });
-                });
-        });
     }
 
     public function canView(User $actor, User $subject, UserStatus ...$statuses): bool

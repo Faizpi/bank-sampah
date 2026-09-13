@@ -30,12 +30,10 @@ use App\Livewire\Officer\CustomerIdentification;
 use App\Livewire\Officer\Dashboard as OfficerDashboard;
 use App\Livewire\Officer\DepositForm;
 use App\Livewire\Officer\GroceryTasks;
-use App\Livewire\Officer\MobileServiceTasks;
 use App\Livewire\Officer\PickupTask;
 use App\Livewire\Profile\Password as ProfilePassword;
 use App\Livewire\PublicSite\Announcements;
 use App\Livewire\PublicSite\DepositVerification;
-use App\Livewire\PublicSite\MobileSchedule;
 use App\Livewire\PublicSite\PublicPrograms;
 use App\Livewire\PublicSite\WasteCatalog;
 use App\Livewire\PublicSite\WastePrices;
@@ -63,7 +61,6 @@ Route::get('/sitemap.xml', static function () {
         'public.catalog',
         'public.prices',
         'public.announcements',
-        'public.mobile-schedule',
         'public.programs',
         'public.tutorials',
     ];
@@ -89,7 +86,6 @@ Route::view('/tutorial-penggunaan', 'public.tutorials')->name('public.tutorials'
 Route::livewire('/katalog-sampah', WasteCatalog::class)->name('public.catalog');
 Route::livewire('/harga-sampah', WastePrices::class)->middleware('throttle:public-data')->name('public.prices');
 Route::livewire('/pengumuman', Announcements::class)->name('public.announcements');
-Route::livewire('/jadwal-keliling', MobileSchedule::class)->name('public.mobile-schedule');
 Route::livewire('/target-dan-statistik', PublicPrograms::class)->middleware('throttle:public-data')->name('public.programs');
 Route::livewire('/verifikasi/setoran/{token}', DepositVerification::class)->middleware('throttle:public-qr')->where('token', '[A-Za-z0-9_-]{43}')->name('public.deposit-verification');
 Route::livewire('/daftar', RegisterCitizenForm::class)->middleware(['guest', 'throttle:registration'])->name('register');
@@ -187,10 +183,6 @@ Route::livewire('/warga/sembako/{redemption}/bukti', GroceryReceipt::class)
 Route::livewire('/petugas/sembako', GroceryTasks::class)
     ->middleware(['auth', 'session.fresh:30', 'throttle:financial'])
     ->name('officer.grocery.tasks');
-
-Route::livewire('/petugas/layanan-keliling', MobileServiceTasks::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:mobile-service.operate'])
-    ->name('officer.mobile-services');
 
 Route::get('/media/pickups/{media}', PickupMediaController::class)
     ->middleware(['auth', 'session.fresh:30'])

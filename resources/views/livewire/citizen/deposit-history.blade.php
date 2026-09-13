@@ -36,7 +36,9 @@
             <x-ui.input name="dateUntil" label="Sampai tanggal" type="date" :error="$errors->first('dateUntil')" wire:model.live="dateUntil" />
         </form>
 
-        <div class="divide-y divide-border pt-4">
+        <p wire:loading wire:target="transactionNumber,status,method,dateFrom,dateUntil" role="status" aria-live="polite" class="pt-4 text-body-sm font-semibold text-text-secondary">Memuat riwayat setoran...</p>
+
+        <div class="divide-y divide-border pt-4" wire:loading.remove wire:target="transactionNumber,status,method,dateFrom,dateUntil">
             @forelse ($deposits as $deposit)
                 <a href="{{ route('citizen.deposit-receipt', $deposit) }}"
                     class="flex min-w-0 flex-col gap-3 py-4 transition hover:opacity-80 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"

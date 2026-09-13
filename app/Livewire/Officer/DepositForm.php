@@ -9,8 +9,7 @@ use App\Domain\Deposits\Data\DepositItemInput;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Deposits\Services\DepositService;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
+use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\WasteMaster\Models\WasteCondition;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Services\ResolveWastePrice;
@@ -35,9 +34,6 @@ final class DepositForm extends Component
     public int $customerId;
 
     #[Locked]
-    public ?int $mobileServiceId = null;
-
-    #[Locked]
     public ?int $assistedServiceId = null;
 
     #[Locked]
@@ -53,11 +49,15 @@ final class DepositForm extends Component
 
     public bool $finalizationReviewOpen = false;
 
-    public function mount(int $customerId, PermissionChecker $permissions): void
+    public function mount(int $customerId, PermissionChecker $permissions, VisibleUsers $visibleUsers): void
     {
         /** @var User|null $actor */
         $actor = auth()->user();
         abort_unless($actor instanceof User && $permissions->allows($actor, 'deposit.create'), 403);
+
+        $customer = User::query()->find($customerId);
+        abort_unless($customer instanceof User, 404);
+        abort_unless($visibleUsers->canView($actor, $customer), 403);
 
         $draftId = request()->query('draftId');
         if ($draftId !== null) {
@@ -74,7 +74,6 @@ final class DepositForm extends Component
 
             $this->draft = $draft;
             $this->customerId = $draft->customer_id;
-            $this->mobileServiceId = $draft->mobile_service_id;
             $this->assistedServiceId = null;
             $this->items = $draft->items->map(static fn (DepositItem $item): array => [
                 'waste_type_id' => $item->waste_type_id,
@@ -87,11 +86,6 @@ final class DepositForm extends Component
         }
 
         $this->customerId = $customerId;
-        $requestedMobileServiceId = request()->integer('mobileServiceId') ?: null;
-        if ($requestedMobileServiceId !== null) {
-            abort_unless($permissions->allows($actor, 'mobile-service.operate'), 404);
-            $this->mobileServiceId = $this->activeAssignedMobileService($actor, $requestedMobileServiceId)->id;
-        }
         $this->assistedServiceId = request()->integer('assistedServiceId') ?: null;
         $this->idempotencyKey = (string) str()->uuid();
     }
@@ -168,7 +162,7 @@ final class DepositForm extends Component
         $actor = auth()->user();
         /** @var User $customer */
         $customer = User::query()->findOrFail($this->customerId);
-        $this->draft ??= $service->createDraft($actor, $customer, $this->mobileServiceId === null ? 'langsung' : 'keliling', null, $this->mobileServiceId === null ? null : MobileService::query()->findOrFail($this->mobileServiceId));
+        $this->draft ??= $service->createDraft($actor, $customer);
         $service->replaceDraftItems($actor, $this->draft, array_map(static fn (array $item): DepositItemInput => DepositItemInput::fromArray($item), $this->items));
         $this->draft = $this->draft->fresh('items');
         session()->flash('success', 'Draf setoran tersimpan.');
@@ -204,14 +198,13 @@ final class DepositForm extends Component
         $actor = auth()->user();
         /** @var User $customer */
         $customer = User::query()->findOrFail($this->customerId);
-        $this->draft ??= $service->createDraft($actor, $customer, $this->mobileServiceId === null ? 'langsung' : 'keliling', null, $this->mobileServiceId === null ? null : MobileService::query()->findOrFail($this->mobileServiceId));
-        $mobileService = $this->mobileServiceId === null ? null : MobileService::query()->findOrFail($this->mobileServiceId);
+        $this->draft ??= $service->createDraft($actor, $customer);
         $draftId = $this->draft->id;
 
         try {
             $this->draft = $this->assistedServiceId === null
-                ? $service->finalize($actor, $this->draft, $this->idempotencyKey, $this->items, $this->evidence, $mobileService)
-                : $service->finalizeAndLinkAssisted($actor, $this->draft, $this->idempotencyKey, $this->assistedServiceId, $this->items, $this->evidence, $mobileService);
+                ? $service->finalize($actor, $this->draft, $this->idempotencyKey, $this->items, $this->evidence)
+                : $service->finalizeAndLinkAssisted($actor, $this->draft, $this->idempotencyKey, $this->assistedServiceId, $this->items, $this->evidence);
         } catch (Throwable $exception) {
             $durableDraft = Deposit::query()->find($draftId);
             if (! $durableDraft instanceof Deposit || $durableDraft->isDraft()) {
@@ -283,20 +276,16 @@ final class DepositForm extends Component
         $this->validate($this->itemRules(), $this->itemMessages());
     }
 
-    public function render(): View
+    public function render(VisibleUsers $visibleUsers): View
     {
-        $customer = User::query()->with('customerProfile')->findOrFail($this->customerId);
-        /** @var User $actor */
+        /** @var User|null $actor */
         $actor = auth()->user();
-        $mobileService = $this->mobileServiceId === null
-            ? null
-            : ($this->draft instanceof Deposit
-                ? $this->ownedDraftMobileService($actor, $this->mobileServiceId)
-                : $this->activeAssignedMobileService($actor, $this->mobileServiceId));
-        $mobileService?->loadMissing('wasteTypes');
-        $types = $mobileService === null
-            ? WasteType::query()->with(['conditions' => static fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])->where('is_active', true)->whereHas('category', static fn ($query) => $query->where('is_active', true))->orderBy('name')->get()
-            : $mobileService->wasteTypes->filter(static fn (WasteType $type): bool => $type->is_active && $type->category()->where('is_active', true)->exists())->load(['conditions' => static fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])->sortBy('name')->values();
+        abort_unless($actor instanceof User, 403);
+
+        $customer = User::query()->with('customerProfile')->findOrFail($this->customerId);
+        abort_unless($visibleUsers->canView($actor, $customer), 403);
+
+        $types = WasteType::query()->with(['conditions' => static fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])->where('is_active', true)->whereHas('category', static fn ($query) => $query->where('is_active', true))->orderBy('name')->get();
         $conditions = $types->flatMap(
             static fn (WasteType $type) => $type->conditions,
         )->unique('id')->values();
@@ -306,35 +295,10 @@ final class DepositForm extends Component
 
         return view('livewire.officer.deposit-form', [
             'customer' => $customer,
-            'mobileService' => $mobileService,
             'types' => $types,
             'conditionsByType' => $conditionsByType,
             'pricePreview' => $this->pricePreview($types, $conditions),
         ]);
-    }
-
-    private function activeAssignedMobileService(User $actor, int $serviceId): MobileService
-    {
-        $service = MobileService::query()
-            ->whereKey($serviceId)
-            ->whereHas('staff', static fn ($staff) => $staff->whereKey($actor->id))
-            ->where('status', MobileServiceStatus::Open)
-            ->where('starts_at', '<=', now())
-            ->where('ends_at', '>=', now())
-            ->first();
-
-        abort_unless($service instanceof MobileService, 404);
-
-        return $service;
-    }
-
-    private function ownedDraftMobileService(User $actor, int $serviceId): MobileService
-    {
-        abort_unless($this->draft?->staff_id === $actor->id && $this->draft->mobile_service_id === $serviceId, 404);
-        $service = MobileService::query()->whereKey($serviceId)->first();
-        abort_unless($service instanceof MobileService, 404);
-
-        return $service;
     }
 
     /**

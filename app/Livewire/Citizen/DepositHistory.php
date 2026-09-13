@@ -45,7 +45,6 @@ final class DepositHistory extends Component
     public array $methods = [
         'langsung' => 'Setor langsung',
         'penjemputan' => 'Penjemputan',
-        'keliling' => 'Bank Sampah Keliling',
     ];
 
     public function mount(PermissionChecker $permissions): void

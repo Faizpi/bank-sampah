@@ -20,8 +20,6 @@ use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
 use App\Domain\Identity\Models\StaffServiceArea;
 use App\Domain\Ledger\Services\LedgerService;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupItem;
 use App\Domain\Pickups\Models\PickupRequest;
@@ -74,16 +72,15 @@ final class LocalDataSeeder extends Seeder
         $master = WasteMasterSeeder::seed($admin);
         $master['categories'] = array_values($master['categories']);
         $prices = $master['prices'];
-        $mobileServices = $this->seedMobileServices($regions, $staff, $master['types'], $now);
         $pickups = $this->seedPickups($regions, $staff, $customers, $master['types'], $now);
 
-        DB::transaction(function () use ($admin, $customers, $staff, $master, $prices, $mobileServices, $pickups, $regions, $now): void {
+        DB::transaction(function () use ($admin, $customers, $staff, $master, $prices, $pickups, $regions, $now): void {
             $ledger = app(LedgerService::class);
             foreach ($customers as $customer) {
                 $ledger->ensureAccount($customer);
             }
 
-            $this->seedDeposits($customers, $staff, $master['types'], $master['conditions'], $prices, $mobileServices, $pickups, $ledger, $now);
+            $this->seedDeposits($customers, $staff, $master['types'], $master['conditions'], $prices, $pickups, $ledger, $now);
             $this->seedWithdrawals($admin, $customers, $staff, $ledger, $now);
             // Paket sembako dan penukaran tidak lagi dibuat oleh seeder demo;
             // data sembako historical di production tidak pernah dihapus oleh seeder.
@@ -307,44 +304,6 @@ final class LocalDataSeeder extends Seeder
         return $customers;
     }
 
-    /** @param array{rws: list<Rw>, rts: list<Rt>} $regions
-     * @param  list<User>  $staff
-     * @param  list<WasteType>  $types
-     * @return list<MobileService>
-     */
-    private function seedMobileServices(array $regions, array $staff, array $types, CarbonImmutable $now): array
-    {
-        $services = [];
-        $definitions = [
-            ['number' => $this->fixtureId('MOB', $now, 1), 'start' => $now->subDays(6)->setTime(8, 0), 'end' => $now->subDays(6)->setTime(12, 0), 'status' => MobileServiceStatus::Closed, 'point' => 'Balai Dusun Binaan'],
-            ['number' => $this->fixtureId('MOB', $now, 2), 'start' => $now->subHour(), 'end' => $now->addHours(4), 'status' => MobileServiceStatus::Open, 'point' => 'Halaman Kantor Desa Binaan'],
-            ['number' => $this->fixtureId('MOB', $now, 3), 'start' => $now->addDays(14)->setTime(8, 0), 'end' => $now->addDays(14)->setTime(13, 0), 'status' => MobileServiceStatus::Published, 'point' => 'Lapangan Dusun Binaan'],
-        ];
-        foreach ($definitions as $index => $definition) {
-            $rt = $regions['rts'][$index % count($regions['rts'])];
-            $service = MobileService::query()->updateOrCreate(
-                ['service_number' => $definition['number']],
-                [
-                    'rw_id' => $rt->rw_id,
-                    'rt_id' => $rt->id,
-                    'point' => $definition['point'],
-                    'starts_at' => $definition['start'],
-                    'ends_at' => $definition['end'],
-                    'status' => $definition['status'],
-                    'capacity' => 30,
-                    'served_count' => $definition['status'] === MobileServiceStatus::Closed ? 12 + $index : 0,
-                    'notes' => 'Jadwal layanan keliling Bank Sampah.',
-                    'created_by' => $staff[0]->id,
-                ],
-            );
-            $service->staff()->syncWithoutDetaching([$staff[$index % count($staff)]->id]);
-            $service->wasteTypes()->syncWithoutDetaching(array_map(static fn (WasteType $type): int => $type->id, $types));
-            $services[] = $service;
-        }
-
-        return $services;
-    }
-
     /** @param array{areas: list<ServiceArea>, rts: list<Rt>} $regions
      * @param  list<User>  $staff
      * @param  list<User>  $customers
@@ -417,10 +376,9 @@ final class LocalDataSeeder extends Seeder
      * @param  list<WasteType>  $types
      * @param  list<WasteCondition>  $conditions
      * @param  array<int, array<int, WastePrice>>  $prices
-     * @param  list<MobileService>  $mobileServices
      * @param  list<PickupRequest>  $pickups
      */
-    private function seedDeposits(array $customers, array $staff, array $types, array $conditions, array $prices, array $mobileServices, array $pickups, LedgerService $ledger, CarbonImmutable $now): void
+    private function seedDeposits(array $customers, array $staff, array $types, array $conditions, array $prices, array $pickups, LedgerService $ledger, CarbonImmutable $now): void
     {
         // 30 deposits across the last 30 days with a realistic method mix so the
         // dashboards, reports, and method breakdowns all show non-trivial data.
@@ -431,9 +389,6 @@ final class LocalDataSeeder extends Seeder
                 continue;
             }
 
-            $mobile = in_array($seedNumber, [5, 15, 25], true)
-                ? $mobileServices[$seedNumber % count($mobileServices)]
-                : null;
             $pickup = match ($seedNumber) {
                 3 => $pickups[0] ?? null,
                 12 => $pickups[1] ?? null,
@@ -445,7 +400,7 @@ final class LocalDataSeeder extends Seeder
                 : $customers[($seedNumber * 5) % count($customers)];
             $staffMember = $staff[($seedNumber - 1) % count($staff)];
             $occurredAt = $now->subDays($dayOffset)->setTime(8 + ($seedNumber % 8), ($seedNumber * 7) % 60);
-            $method = $mobile instanceof MobileService ? 'keliling' : ($pickup instanceof PickupRequest ? 'penjemputan' : 'langsung');
+            $method = $pickup instanceof PickupRequest ? 'penjemputan' : 'langsung';
             $token = QrToken::generate();
             $deposit = Deposit::query()->create([
                 'deposit_number' => $number,
@@ -453,8 +408,7 @@ final class LocalDataSeeder extends Seeder
                 'staff_id' => $staffMember->id,
                 'method' => $method,
                 'pickup_request_id' => $pickup?->id,
-                'mobile_service_id' => $mobile?->id,
-                'location' => $mobile instanceof MobileService ? $mobile->point : 'Loket Bank Sampah',
+                'location' => 'Loket Bank Sampah',
                 'occurred_at' => $occurredAt,
                 'status' => Deposit::STATUS_DRAFT,
             ]);
@@ -625,7 +579,7 @@ final class LocalDataSeeder extends Seeder
             ['announcement_number' => $this->fixtureId('ANN', $now, 1)],
             [
                 'title' => 'Jadwal layanan bank sampah minggu ini',
-                'body' => '<p>Layanan keliling hadir di beberapa titik selama minggu ini. Siapkan sampah yang sudah dipilah dan bawa kartu nasabah saat transaksi.</p>',
+                'body' => '<p>Layanan setoran hadir di beberapa titik selama minggu ini. Siapkan sampah yang sudah dipilah dan bawa kartu nasabah saat transaksi.</p>',
                 'audience' => AnnouncementAudience::Public,
                 'publish_start' => $now->subDays(6),
                 'publish_end' => $now->addDays(7),
@@ -657,8 +611,8 @@ final class LocalDataSeeder extends Seeder
         $nextMonth = Announcement::query()->firstOrCreate(
             ['announcement_number' => $this->fixtureId('ANN', $now, 3)],
             [
-                'title' => 'Rencana layanan keliling 30 hari',
-                'body' => '<p>Jadwal layanan dan kapasitas penjemputan tersedia untuk 30 hari ke depan di seluruh wilayah layanan. Pilih tanggal yang sesuai sebelum kapasitas penuh.</p>',
+                'title' => 'Rencana penjemputan 30 hari',
+                'body' => '<p>Jadwal penjemputan dan kapasitas layanan tersedia untuk 30 hari ke depan di seluruh wilayah layanan. Pilih tanggal yang sesuai sebelum kapasitas penuh.</p>',
                 'audience' => AnnouncementAudience::Public,
                 'publish_start' => $now,
                 'publish_end' => $now->addDays(30),
@@ -677,7 +631,7 @@ final class LocalDataSeeder extends Seeder
         StatisticPublication::query()->updateOrCreate(
             ['publication_key' => 'public-dashboard'],
             [
-                'metrics' => ['active_customers', 'deposit_count', 'total_weight_kg', 'plastic_weight_kg', 'target_progress_kg', 'mobile_service_count'],
+                'metrics' => ['active_customers', 'deposit_count', 'total_weight_kg', 'plastic_weight_kg', 'target_progress_kg'],
                 'dimensions' => ['period'],
                 'privacy_threshold' => 5,
                 'is_active' => true,

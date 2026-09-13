@@ -12,7 +12,6 @@ final class WhatsAppLinkBuilder
     /** @var array<string, array{placeholders: list<string>, text: string}> */
     private const TEMPLATES = [
         'support' => ['placeholders' => ['topic'], 'text' => 'Halo Bank Sampah Digital, saya ingin menanyakan {topic}.'],
-        'mobile-service' => ['placeholders' => ['service'], 'text' => 'Halo Bank Sampah Digital, saya ingin menanyakan layanan keliling {service}.'],
         'announcement' => ['placeholders' => ['title'], 'text' => 'Halo Bank Sampah Digital, saya ingin menanyakan pengumuman {title}.'],
     ];
 

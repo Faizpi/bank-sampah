@@ -1,7 +1,6 @@
 @php
     $isCatalog = request()->routeIs('public.catalog');
     $isPrices = request()->routeIs('public.prices');
-    $isSchedule = request()->routeIs('public.mobile-schedule');
     $isAnnouncements = request()->routeIs('public.announcements');
     $isPrograms = request()->routeIs('public.programs');
     $isTerms = request()->routeIs('terms-and-privacy');
@@ -42,7 +41,6 @@
                 <div>
                     <h2 class="text-label font-bold uppercase tracking-wide text-surface">Program publik</h2>
                     <nav class="mt-3 flex flex-col items-start gap-1" aria-label="Navigasi footer program publik">
-                        <a href="{{ route('public.mobile-schedule') }}" class="inline-flex min-h-touch items-center text-body-sm {{ $isSchedule ? $activeFooterClasses : $inactiveFooterClasses }}" @if ($isSchedule) aria-current="page" @endif>Jadwal keliling</a>
                         <a href="{{ route('public.announcements') }}" class="inline-flex min-h-touch items-center text-body-sm {{ $isAnnouncements ? $activeFooterClasses : $inactiveFooterClasses }}" @if ($isAnnouncements) aria-current="page" @endif>Pengumuman</a>
                         <a href="{{ route('public.programs') }}" class="inline-flex min-h-touch items-center text-body-sm {{ $isPrograms ? $activeFooterClasses : $inactiveFooterClasses }}" @if ($isPrograms) aria-current="page" @endif>Target dan statistik</a>
                         <a href="{{ route('public.tutorials') }}" class="inline-flex min-h-touch items-center text-body-sm {{ $isTutorials ? $activeFooterClasses : $inactiveFooterClasses }}" @if ($isTutorials) aria-current="page" @endif>Tutorial penggunaan</a>

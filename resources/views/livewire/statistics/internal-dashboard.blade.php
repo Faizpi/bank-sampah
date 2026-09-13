@@ -41,13 +41,12 @@
                 ['key' => 'total_weight_kg', 'label' => 'Total berat', 'suffix' => ' kg', 'format' => 'weight'],
                 ['key' => 'plastic_weight_kg', 'label' => 'Berat plastik', 'suffix' => ' kg', 'format' => 'weight'],
                 ['key' => 'target_progress_kg', 'label' => 'Progres target', 'suffix' => ' kg', 'format' => 'weight'],
-                ['key' => 'mobile_service_count', 'label' => 'Layanan keliling'],
                 ['key' => 'subject_count', 'label' => 'Subjek terukur'],
                 ['key' => 'dominant_waste_type', 'label' => 'Jenis dominan'],
             ] as $metric)
                 <article class="rounded-xl border border-border bg-surface p-4 shadow-xs">
                     <p class="text-caption font-semibold text-text-secondary">{{ $metric['label'] }}</p>
-                    <p class="mt-2 text-h2 font-bold tabular-nums text-deep-green">{{ ($metric['format'] ?? null) === 'weight' ? \App\Support\WeightFormatter::format($statistics[$metric['key']] ?? null) : ($statistics[$metric['key']] ?? '—') }}{{ $metric['suffix'] ?? '' }}</p>
+                    <p class="mt-2 text-h2 font-bold tabular-nums text-deep-green">{{ ($metric['format'] ?? null) === 'weight' ? \App\Support\WeightFormatter::format($statistics[$metric['key']] ?? null) : ($statistics[$metric['key']] ?? '-') }}{{ $metric['suffix'] ?? '' }}</p>
                 </article>
             @endforeach
         </div>

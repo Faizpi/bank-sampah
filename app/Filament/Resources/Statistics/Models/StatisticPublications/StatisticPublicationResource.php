@@ -71,7 +71,7 @@ final class StatisticPublicationResource extends Resource
     /** @return array<string, string> */
     private static function metrics(): array
     {
-        return ['active_customers' => 'Nasabah aktif', 'deposit_count' => 'Jumlah setoran', 'total_weight_kg' => 'Total berat', 'plastic_weight_kg' => 'Berat plastik', 'dominant_waste_type' => 'Jenis dominan', 'target_progress_kg' => 'Progres target', 'mobile_service_count' => 'Jumlah layanan keliling'];
+        return ['active_customers' => 'Nasabah aktif', 'deposit_count' => 'Jumlah setoran', 'total_weight_kg' => 'Total berat', 'plastic_weight_kg' => 'Berat plastik', 'dominant_waste_type' => 'Jenis dominan', 'target_progress_kg' => 'Progres target'];
     }
 
     public static function canViewAny(): bool

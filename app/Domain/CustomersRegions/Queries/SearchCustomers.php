@@ -9,7 +9,6 @@ use App\Domain\CustomersRegions\Contracts\CustomerNumber;
 use App\Domain\CustomersRegions\Contracts\CustomerSummary;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Queries\VisibleUsers;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,7 +23,7 @@ final readonly class SearchCustomers
     ) {}
 
     /** @return list<CustomerSummary> */
-    public function search(User $actor, string $term, int $limit = 10, ?MobileService $mobileService = null): array
+    public function search(User $actor, string $term, int $limit = 10): array
     {
         $this->ensureAllowed($actor);
         $normalized = $this->normalize($term);
@@ -33,7 +32,7 @@ final readonly class SearchCustomers
             return [];
         }
 
-        $customers = $this->scopedQuery($actor, $mobileService)
+        $customers = $this->scopedQuery($actor)
             ->where(function (Builder $query) use ($normalized): void {
                 $query->whereHas('customerProfile', static fn (Builder $profile): Builder => $profile->where('customer_number', 'like', $normalized.'%'))
                     ->orWhere('name', 'like', $normalized.'%');
@@ -57,13 +56,9 @@ final readonly class SearchCustomers
     }
 
     /** @return Builder<User> */
-    private function scopedQuery(User $actor, ?MobileService $mobileService): Builder
+    private function scopedQuery(User $actor): Builder
     {
-        $query = $mobileService === null
-            ? $this->visibleUsers->queryFor($actor, UserStatus::Active)
-            : $this->visibleUsers->queryForMobileService($actor, $mobileService, UserStatus::Active);
-
-        return $query->whereHas('customerProfile');
+        return $this->visibleUsers->queryFor($actor, UserStatus::Active)->whereHas('customerProfile');
     }
 
     private function normalize(string $term): string

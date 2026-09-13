@@ -12,7 +12,6 @@ use App\Domain\CustomersRegions\Contracts\QrToken;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Queries\VisibleUsers;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Shared\InvalidValue;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -90,7 +89,7 @@ final readonly class ManageCustomerIdentity
         });
     }
 
-    public function scan(User $actor, string $rawToken, ?MobileService $mobileService = null): CustomerSummary
+    public function scan(User $actor, string $rawToken): CustomerSummary
     {
         $this->authorize($actor, 'customer.view');
 
@@ -100,9 +99,7 @@ final readonly class ManageCustomerIdentity
             throw ValidationException::withMessages(['token' => 'QR tidak ditemukan atau sudah tidak aktif.']);
         }
 
-        $visibleUsers = $mobileService === null
-            ? $this->visibleUsers->queryFor($actor, UserStatus::Active)
-            : $this->visibleUsers->queryForMobileService($actor, $mobileService, UserStatus::Active);
+        $visibleUsers = $this->visibleUsers->queryFor($actor, UserStatus::Active);
 
         $profile = CustomerProfile::query()
             ->with('user')

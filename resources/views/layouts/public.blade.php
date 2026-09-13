@@ -3,7 +3,7 @@
     $defaultDescription = 'Layanan bank sampah digital untuk pencatatan setoran, saldo rupiah, penjemputan, dan informasi program yang transparan.';
     $pageTitle = trim((string) $__env->yieldContent('title')) ?: (string) ($title ?? $defaultTitle);
     $pageDescription = trim((string) $__env->yieldContent('description')) ?: (string) ($description ?? $defaultDescription);
-    $indexableRouteNames = ['home', 'terms-and-privacy', 'public.catalog', 'public.prices', 'public.announcements', 'public.mobile-schedule', 'public.programs', 'public.tutorials'];
+    $indexableRouteNames = ['home', 'terms-and-privacy', 'public.catalog', 'public.prices', 'public.announcements', 'public.programs', 'public.tutorials'];
     $currentRouteName = request()->route()?->getName();
     $canonicalUrl = in_array($currentRouteName, $indexableRouteNames, true) ? route($currentRouteName) : null;
     $googleSiteVerification = trim((string) config('app.google_site_verification', ''));

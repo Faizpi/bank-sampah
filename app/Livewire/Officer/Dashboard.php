@@ -8,15 +8,12 @@ use App\Authorization\PermissionChecker;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Services\GroceryService;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Models\User;
 use App\Support\Auth\AuthenticatedUserRedirector;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -68,20 +65,8 @@ final class Dashboard extends Component
         $groceryTasks = $canViewGroceries
             ? $groceries->visibleFor($actor)->whereIn('status', [GroceryStatus::Approved, GroceryStatus::Preparing, GroceryStatus::ReadyForPickup])->latest()->limit(8)->get()
             : ($canHandoverGroceries ? $groceries->readyForHandover($actor)->latest()->limit(8)->get() : collect());
-        $canAccessMobileServices = $permissions->allows($actor, 'mobile-service.operate');
-        $canViewMobileServices = $permissions->allows($actor, 'mobile-service.view') && $canAccessMobileServices;
-        $mobileServices = $canViewMobileServices ? MobileService::query()
-            ->with('rt')
-            ->whereHas('staff', static fn (Builder $staff): Builder => $staff->whereKey($actor->id))
-            ->whereIn('status', [MobileServiceStatus::Published, MobileServiceStatus::Open])
-            ->where('ends_at', '>=', now())
-            ->orderBy('starts_at')
-            ->limit(8)
-            ->get() : collect();
         $latePickup = $latePickups->first();
         $todayPickup = $todayPickups->first();
-        $mobileServiceFocus = $mobileServices->first(static fn (MobileService $service): bool => $service->isOpen())
-            ?? $mobileServices->first(static fn (MobileService $service): bool => $service->starts_at->lessThanOrEqualTo(now()->addHours(2)));
         $draftDeposit = $draftDeposits->first();
         $priorityTask = $latePickup instanceof PickupRequest
             ? [
@@ -90,12 +75,7 @@ final class Dashboard extends Component
                 'href' => $canOperatePickups ? route('officer.pickup.task', $latePickup) : null,
                 'status' => $latePickup->status,
             ]
-            : ($mobileServiceFocus instanceof MobileService ? [
-                'label' => $mobileServiceFocus->isOpen() ? 'Layani titik keliling sekarang' : 'Siapkan layanan keliling berikutnya',
-                'description' => $mobileServiceFocus->point.' · mulai '.$mobileServiceFocus->starts_at->translatedFormat('H:i'),
-                'href' => route('officer.mobile-services'),
-                'status' => $mobileServiceFocus->status,
-            ] : ($todayPickup instanceof PickupRequest ? [
+            : ($todayPickup instanceof PickupRequest ? [
                 'label' => 'Pickup berikutnya',
                 'description' => $todayPickup->customer->name.' · '.$todayPickup->address,
                 'href' => $canOperatePickups ? route('officer.pickup.task', $todayPickup) : null,
@@ -105,7 +85,7 @@ final class Dashboard extends Component
                 'description' => $draftDeposit->customer->name.' · draf belum difinalisasi',
                 'href' => $canResumeDeposits ? route('officer.deposit-form', ['customerId' => $draftDeposit->customer_id, 'draftId' => $draftDeposit->id]) : null,
                 'status' => null,
-            ] : null)));
+            ] : null));
         $canShowGroceryTasks = $canViewGroceries || $canHandoverGroceries;
 
         return view('livewire.officer.dashboard', [
@@ -116,15 +96,12 @@ final class Dashboard extends Component
             'canResumeDeposits' => $canResumeDeposits,
             'canAccessGroceryTasks' => $canAccessGroceryTasks,
             'canShowGroceryTasks' => $canShowGroceryTasks,
-            'canAccessMobileServices' => $canAccessMobileServices,
-            'canViewMobileServices' => $canViewMobileServices,
             'identificationHref' => route('officer.customer-identification'),
             'groceryTasksHref' => route('officer.grocery.tasks'),
             'todayPickups' => $todayPickups,
             'latePickups' => $latePickups,
             'draftDeposits' => $draftDeposits,
             'groceryTasks' => $groceryTasks,
-            'mobileServices' => $mobileServices,
             'priorityTask' => $priorityTask,
         ]);
     }

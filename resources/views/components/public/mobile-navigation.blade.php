@@ -2,7 +2,6 @@
     $isHome = request()->routeIs('home');
     $isCatalog = request()->routeIs('public.catalog');
     $isPrices = request()->routeIs('public.prices');
-    $isSchedule = request()->routeIs('public.mobile-schedule');
     $isAnnouncements = request()->routeIs('public.announcements');
     $isPrograms = request()->routeIs('public.programs');
     $isTerms = request()->routeIs('terms-and-privacy');
@@ -61,12 +60,6 @@
         <section aria-labelledby="public-mobile-updates">
             <h3 id="public-mobile-updates" class="text-label font-bold uppercase tracking-wide text-forest-700">Informasi publik</h3>
             <ul class="mt-2">
-                <li>
-                    <a href="{{ route('public.mobile-schedule') }}" x-on:click="closeModal()" class="flex min-h-touch items-center gap-3 py-3 pl-3 {{ $isSchedule ? $activeItemClasses : $inactiveItemClasses }}" @if ($isSchedule) aria-current="page" @endif>
-                        <x-public.icon name="calendar-days" />
-                        Jadwal keliling
-                    </a>
-                </li>
                 <li>
                     <a href="{{ route('public.announcements') }}" x-on:click="closeModal()" class="flex min-h-touch items-center gap-3 py-3 pl-3 {{ $isAnnouncements ? $activeItemClasses : $inactiveItemClasses }}" @if ($isAnnouncements) aria-current="page" @endif>
                         <x-public.icon name="megaphone" />

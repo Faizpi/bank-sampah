@@ -7,7 +7,6 @@ const PUBLIC_NAVIGATION_ALLOWLIST = new Set([
     '/katalog-sampah',
     '/harga-sampah',
     '/pengumuman',
-    '/jadwal-keliling',
     '/target-dan-statistik',
     '/ketentuan-dan-privasi',
 ]);

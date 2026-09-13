@@ -9,9 +9,9 @@
             <h1 id="announcements-page-title" class="mt-2 max-w-3xl text-h1 lg:text-h1-lg text-surface">Pengumuman untuk warga.</h1>
             <p class="mt-3 max-w-2xl text-body text-surface/80">Perubahan layanan, kegiatan, dan informasi penting yang sedang berlaku.</p>
             <div class="mt-5 flex flex-wrap gap-2">
-                <a href="{{ route('public.mobile-schedule') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md bg-surface px-5 text-label text-deep-green transition duration-180 ease-standard hover:bg-success-bg active:translate-y-px">
-                    Lihat jadwal layanan
-                    <x-public.icon name="calendar-days" size="size-5" />
+                <a href="{{ route('public.programs') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md bg-surface px-5 text-label text-deep-green transition duration-180 ease-standard hover:bg-success-bg active:translate-y-px">
+                    Lihat target dan statistik
+                    <x-public.icon name="bar-chart-3" size="size-5" />
                 </a>
                 <a href="{{ route('register') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md border border-surface/40 px-5 text-label text-surface transition duration-180 ease-standard hover:border-surface hover:bg-surface/10 active:translate-y-px">
                     Daftar untuk menggunakan layanan
@@ -36,8 +36,8 @@
                     class="mt-8"
                     title="Belum ada pengumuman"
                     description="Informasi baru akan muncul di halaman ini setelah diterbitkan."
-                    action-label="Lihat jadwal layanan"
-                    action-href="{{ route('public.mobile-schedule') }}"
+                    action-label="Lihat target dan statistik"
+                    action-href="{{ route('public.programs') }}"
                 />
             @else
                 <div class="mx-auto mt-10 max-w-3xl divide-y divide-border border-y border-border bg-surface">

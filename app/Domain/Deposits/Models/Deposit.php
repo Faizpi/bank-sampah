@@ -7,7 +7,6 @@ namespace App\Domain\Deposits\Models;
 use App\Domain\Corrections\Models\TransactionCorrection;
 use App\Domain\CustomersRegions\Contracts\QrToken;
 use App\Domain\Ledger\Models\LedgerEntry;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Platform\Models\Media;
 use App\Models\User;
@@ -43,7 +42,7 @@ final class Deposit extends Model
     public const STATUS_REVERSED = 'dibalik';
 
     protected $fillable = [
-        'deposit_number', 'customer_id', 'staff_id', 'method', 'pickup_request_id', 'mobile_service_id', 'location',
+        'deposit_number', 'customer_id', 'staff_id', 'method', 'pickup_request_id', 'location',
         'occurred_at', 'status', 'total_weight_kg', 'total_value', 'finalized_at', 'review_requested_at', 'reviewed_at', 'reviewed_by', 'review_reason',
         'idempotency_key', 'verification_token_hash', 'verification_token_encrypted',
     ];
@@ -79,12 +78,6 @@ final class Deposit extends Model
     public function pickupRequest(): BelongsTo
     {
         return $this->belongsTo(PickupRequest::class);
-    }
-
-    /** @return BelongsTo<MobileService, $this> */
-    public function mobileService(): BelongsTo
-    {
-        return $this->belongsTo(MobileService::class);
     }
 
     /** @return HasMany<DepositItem, $this> */
