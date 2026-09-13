@@ -6,8 +6,11 @@ namespace App\Policies;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Queries\VisibleUsers;
+use App\Domain\Identity\Support\SystemRoles;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 final readonly class UserPolicy
 {
@@ -31,6 +34,14 @@ final readonly class UserPolicy
     public function create(User $actor): bool
     {
         return $this->permissions->allows($actor, 'user.create');
+    }
+
+    public function createWithRole(User $actor, Role $role): Response
+    {
+        return $this->create($actor)
+            && (! SystemRoles::grantsNonDelegableAccess($role->name, SystemRoles::permissionNames($role)) || $this->permissions->allows($actor, 'role.manage'))
+                ? Response::allow()
+                : Response::deny('Anda hanya boleh menetapkan peran non-privileged tanpa izin role.manage.');
     }
 
     public function update(User $actor, User $subject): bool
@@ -76,12 +87,16 @@ final readonly class UserPolicy
 
     public function verify(User $actor, User $subject): bool
     {
-        return ! $actor->is($subject) && $this->permissions->allows($actor, 'user.verify');
+        return ! $actor->is($subject)
+            && $this->visibleUsers->canView($actor, $subject, UserStatus::PendingVerification, UserStatus::Active)
+            && $this->permissions->allows($actor, 'user.verify');
     }
 
     public function reject(User $actor, User $subject): bool
     {
-        return ! $actor->is($subject) && $this->permissions->allows($actor, 'user.reject');
+        return ! $actor->is($subject)
+            && $this->visibleUsers->canView($actor, $subject, UserStatus::PendingVerification, UserStatus::Active)
+            && $this->permissions->allows($actor, 'user.reject');
     }
 
     public function resetPassword(User $actor, User $subject): bool

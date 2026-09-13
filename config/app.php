@@ -58,6 +58,34 @@ return [
 
     'terms_version' => env('TERMS_VERSION', 'v1.0'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Production Bootstrap Credentials
+    |--------------------------------------------------------------------------
+    |
+    | Optional first-run administrator credentials for `php artisan db:seed`.
+    | The password must be set to at least 12 characters; the bootstrap seeder
+    | throws a RuntimeException when it is missing or too short. Existing
+    | accounts are never overwritten.
+    |
+    */
+
+    'initial_admin_email' => env('APP_INITIAL_ADMIN_EMAIL'),
+
+    'initial_admin_password' => env('APP_INITIAL_ADMIN_PASSWORD'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | Comma-separated list of proxies allowed to set forwarded headers. Left
+    | empty (the safe default) no proxy is trusted.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
     // Temporary demo data switch. It defaults to enabled outside production so
     // local development remains convenient, while production must opt in
     // explicitly with both APP_DEMO_MODE=true and APP_DEMO_PASSWORD.

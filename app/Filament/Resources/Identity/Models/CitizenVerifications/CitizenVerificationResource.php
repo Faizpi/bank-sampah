@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Identity\Models\CitizenVerifications;
 
 use App\Actions\Auth\ResolveCitizenVerification;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Queries\VisibleUsers;
 use App\Filament\Resources\Identity\Models\CitizenVerifications\Pages\ManageCitizenVerifications;
 use App\Models\User;
 use BackedEnum;
@@ -99,8 +100,13 @@ final class CitizenVerificationResource extends Resource
     /** @return Builder<User> */
     public static function getEloquentQuery(): Builder
     {
-        return User::query()
-            ->where('status', UserStatus::PendingVerification)
+        $actor = auth()->user();
+        if (! $actor instanceof User) {
+            return User::query()->whereKey([]);
+        }
+
+        return app(VisibleUsers::class)
+            ->queryFor($actor, UserStatus::PendingVerification)
             ->whereHas('customerProfile');
     }
 

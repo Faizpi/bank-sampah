@@ -18,7 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: null,
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(at: '*');
+        // Read raw environment here: config is not bound yet at middleware
+        // registration time. Values live in config/app.php for runtime code.
+        $rawProxies = $_ENV['TRUSTED_PROXIES'] ?? $_SERVER['TRUSTED_PROXIES'] ?? getenv('TRUSTED_PROXIES');
+        $trustedProxies = is_string($rawProxies)
+            ? array_values(array_filter(array_map('trim', explode(',', $rawProxies)), static fn (string $proxy): bool => $proxy !== ''))
+            : [];
+        $middleware->trustProxies(
+            at: $trustedProxies === [] ? null : $trustedProxies,
+        );
         $middleware->prepend(AssignCorrelationId::class);
         $middleware->append(ApplyResponseSecurityHeaders::class);
         $middleware->preventRequestsDuringMaintenance(['/health', '/operations/health']);

@@ -14,7 +14,6 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
-use App\Domain\Identity\Models\StaffServiceArea;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +21,12 @@ use Illuminate\Support\Facades\Hash;
 
 final class ProductionBootstrapSeeder extends Seeder
 {
-    public const INITIAL_PASSWORD = 'Banten123';
+    public const MINIMUM_INITIAL_PASSWORD_LENGTH = 12;
+
+    private string $initialPassword;
+
+    /** @var array<int, true> Primary keys of accounts created during this run. */
+    private array $createdUsers = [];
 
     /** @var list<array{rt: string, kampung: string, rw: string}> */
     private const REGIONS = [
@@ -72,6 +76,16 @@ final class ProductionBootstrapSeeder extends Seeder
 
     public function run(): void
     {
+        $password = config('app.initial_admin_password');
+        if (! is_string($password) || mb_strlen(trim($password)) < self::MINIMUM_INITIAL_PASSWORD_LENGTH) {
+            throw new \RuntimeException('APP_INITIAL_ADMIN_PASSWORD wajib diisi minimal 12 karakter sebelum bootstrap.');
+        }
+        $this->initialPassword = $password;
+        $email = config('app.initial_admin_email');
+        if ($email !== null && $email !== '' && (! is_string($email) || filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
+            throw new \RuntimeException('APP_INITIAL_ADMIN_EMAIL harus berupa alamat email yang valid.');
+        }
+
         DB::transaction(function (): void {
             $this->call(RolesAndPermissionsSeeder::class);
             $rts = $this->seedRegions();
@@ -108,7 +122,7 @@ final class ProductionBootstrapSeeder extends Seeder
                     ['code' => 'RT'.$region['rt']],
                     [
                         'rw_id' => $rws[$region['rw']]->id,
-                        'name' => $prefix.$region['kampung'].' — RT '.$region['rt'],
+                        'name' => $prefix.$region['kampung'].' - RT '.$region['rt'],
                         'is_active' => true,
                     ],
                 );
@@ -126,29 +140,39 @@ final class ProductionBootstrapSeeder extends Seeder
         $wargaRole = Role::query()->where('name', 'warga')->firstOrFail();
         foreach (self::RESIDENTS as $index => $resident) {
             $user = $this->upsertUser($resident['username'], $resident['name']);
-            $user->roles()->syncWithoutDetaching([$wargaRole->id => ['assigned_by' => $user->id, 'reason' => 'Bootstrap production']]);
+            if ($this->createdUsers[$user->getKey()] ?? false) {
+                $user->roles()->syncWithoutDetaching([$wargaRole->id => ['assigned_by' => $user->id, 'reason' => 'Bootstrap production']]);
+            }
             $region = collect(self::REGIONS)->firstWhere('rt', $resident['rt']);
             $profile = CustomerProfile::query()->firstOrNew(['user_id' => $user->id]);
-            $needsToken = $profile->qr_token_hash === null || $profile->qr_token_encrypted === null;
-            $token = $needsToken ? QrToken::generate() : null;
-            $customerNumber = $profile->customer_number;
-            if ($customerNumber === null || str_starts_with($customerNumber, 'SH-')) {
-                $customerNumber = 'CST-'.str_pad((string) ($index + 1), 8, '0', STR_PAD_LEFT);
+            if ($profile->exists) {
+                continue;
             }
+            $token = QrToken::generate();
             $profile->forceFill([
-                'customer_number' => $customerNumber,
+                'customer_number' => 'CST-'.str_pad((string) ($index + 1), 8, '0', STR_PAD_LEFT),
                 'rt_id' => $rts[$resident['rt']]->id,
                 'address' => $resident['address'] ?? sprintf('%s, RT %s/RW %s, Desa Binaan', $region['kampung'], $resident['rt'], $region['rw']),
-                'joined_at' => $profile->joined_at ?? now()->toDateString(),
-                'qr_token_hash' => $needsToken ? $token?->hash() : $profile->qr_token_hash,
-                'qr_token_encrypted' => $needsToken ? $token?->value() : $profile->qr_token_encrypted,
-                'qr_rotated_at' => $needsToken ? now() : $profile->qr_rotated_at,
+                'joined_at' => now()->toDateString(),
+                'qr_token_hash' => $token->hash(),
+                'qr_token_encrypted' => $token->value(),
+                'qr_rotated_at' => now(),
             ])->save();
         }
 
         $staff = [];
+        $initialAdminEmail = config('app.initial_admin_email');
         foreach (['petugas', 'bendahara', 'admin', 'superadmin'] as $roleName) {
-            $user = $this->upsertUser($roleName, ucfirst($roleName));
+            $email = $roleName === 'superadmin' && is_string($initialAdminEmail) && $initialAdminEmail !== ''
+                ? $initialAdminEmail
+                : null;
+            $user = $this->upsertUser($roleName, ucfirst($roleName), $email);
+            if (! ($this->createdUsers[$user->getKey()] ?? false)) {
+                $this->command?->warn("Akun {$roleName} sudah ada; data (status, kontak, kata sandi, peran) dibiarkan tidak berubah.");
+                $staff[$roleName] = $user;
+
+                continue;
+            }
             $role = Role::query()->where('name', $roleName)->firstOrFail();
             $user->roles()->syncWithoutDetaching([$role->id => ['assigned_by' => $user->id, 'reason' => 'Bootstrap production']]);
             $staff[$roleName] = $user;
@@ -157,24 +181,27 @@ final class ProductionBootstrapSeeder extends Seeder
         return $staff;
     }
 
-    private function upsertUser(string $username, string $name): User
+    private function upsertUser(string $username, string $name, ?string $email = null): User
     {
-        $user = User::withTrashed()->where('username', $username)->first() ?? new User;
+        $existing = User::withTrashed()->where('username', $username)->first();
+        if ($existing instanceof User) {
+            return $existing;
+        }
+
+        $user = new User;
         $user->forceFill([
             'username' => $username,
             'name' => $name,
             'phone' => null,
-            'email' => null,
+            'email' => $email,
             'status' => UserStatus::Active,
-            'verified_at' => $user->verified_at ?? now(),
-            'terms_version' => $user->terms_version ?? (string) config('app.terms_version'),
-            'terms_accepted_at' => $user->terms_accepted_at ?? now(),
-            'deleted_at' => null,
+            'verified_at' => now(),
+            'terms_version' => (string) config('app.terms_version'),
+            'terms_accepted_at' => now(),
         ]);
-        if (! $user->exists) {
-            $user->password = Hash::make(self::INITIAL_PASSWORD);
-        }
+        $user->password = Hash::make($this->initialPassword);
         $user->save();
+        $this->createdUsers[$user->getKey()] = true;
 
         return $user;
     }
@@ -193,14 +220,17 @@ final class ProductionBootstrapSeeder extends Seeder
         });
 
         foreach (['petugas' => $petugas, 'bendahara' => $bendahara] as $role => $user) {
-            $profile = StaffProfile::query()->updateOrCreate(
-                ['user_id' => $user->id],
-                ['staff_number' => $role === 'petugas' ? 'STF-BS-001' : 'STF-BS-002', 'service_area_id' => $area->id, 'active_from' => now()->toDateString(), 'active_to' => null],
-            );
-            StaffServiceArea::query()->updateOrCreate(
-                ['staff_profile_user_id' => $profile->user_id, 'service_area_id' => $area->id],
-                ['active_from' => $profile->active_from, 'active_to' => null],
-            );
+            if (StaffProfile::query()->where('user_id', $user->id)->exists()) {
+                continue;
+            }
+
+            StaffProfile::query()->create([
+                'user_id' => $user->id,
+                'staff_number' => $role === 'petugas' ? 'STF-BS-001' : 'STF-BS-002',
+                'service_area_id' => $area->id,
+                'active_from' => now()->toDateString(),
+                'active_to' => null,
+            ]);
         }
     }
 }

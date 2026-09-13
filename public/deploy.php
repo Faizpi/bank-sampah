@@ -236,13 +236,6 @@ header('X-Frame-Options: DENY');
 $cspNonce = base64_encode(random_bytes(18));
 header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; script-src 'nonce-{$cspNonce}'; font-src https://fonts.gstatic.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
 
-$configuredTinkerCodeLength = filter_var(
-    deployConsoleEnvironment('DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH'),
-    FILTER_VALIDATE_INT,
-    ['options' => ['min_range' => 1, 'max_range' => 12000]],
-);
-define('DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH', is_int($configuredTinkerCodeLength) ? $configuredTinkerCodeLength : 4000);
-
 $actionGroups = [
     'diagnostics' => 'Diagnostik read-only',
     'routine' => 'Deployment rutin',
@@ -460,20 +453,6 @@ $actions = [
     ],
 ];
 
-if (deployConsoleEnvironment('DEPLOY_CONSOLE_TINKER_ENABLED') === 'true') {
-    $tinkerAction = [
-        'tinker' => [
-            'label' => 'Jalankan kode Tinker arbitrer',
-            'description' => 'Sangat berbahaya: menjalankan kode PHP dalam konteks aplikasi production.',
-            'group' => 'destructive',
-            'risk' => 'dangerous',
-            'confirmation' => 'RUN ARBITRARY TINKER CODE',
-            'commands' => [],
-        ],
-    ];
-    $actions += $tinkerAction;
-}
-
 $results = [];
 $message = null;
 $selectedAction = (string) ($_POST['action'] ?? 'status');
@@ -487,49 +466,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     } elseif (! isset($actions[$selectedAction])) {
         http_response_code(422);
         $message = ['error', 'Aksi deployment tidak dikenal.'];
-    } elseif ($selectedAction === 'tinker' && ! hash_equals(
-        $actions[$selectedAction]['confirmation'],
-        (string) ($_POST['confirm_tinker'] ?? ''),
-    )) {
-        http_response_code(422);
-        $message = ['error', 'Konfirmasi kode Tinker berbahaya belum tepat.'];
-    } elseif ($selectedAction === 'tinker') {
-        $tinkerCode = (string) ($_POST['tinker_code'] ?? '');
-
-        if (trim($tinkerCode) === '') {
-            http_response_code(422);
-            $message = ['error', 'Kode Tinker tidak boleh kosong.'];
-        } elseif (mb_strlen($tinkerCode) > DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH) {
-            http_response_code(422);
-            $message = ['error', 'Kode Tinker melebihi batas yang diizinkan.'];
-        } else {
-            /** @var Kernel $kernel */
-            $kernel = $app->make(Kernel::class);
-            $startedAt = microtime(true);
-
-            try {
-                $exitCode = $kernel->call('tinker', ['--execute' => $tinkerCode]);
-                $output = $kernel->output();
-                $results[] = [
-                    'command' => 'tinker',
-                    'success' => $exitCode === 0,
-                    'output' => $output === '' ? '(Tidak ada output.)' : $output,
-                    'duration' => microtime(true) - $startedAt,
-                ];
-                $message = $exitCode === 0
-                    ? ['success', 'Kode Tinker selesai dijalankan.']
-                    : ['error', 'Kode Tinker gagal dijalankan.'];
-            } catch (Throwable $exception) {
-                report($exception);
-                $results[] = [
-                    'command' => 'tinker',
-                    'success' => false,
-                    'output' => deployConsoleFailureMessage($exception)."\n\nPeriksa log aplikasi melalui aksi Lihat log aplikasi untuk detail internal.",
-                    'duration' => microtime(true) - $startedAt,
-                ];
-                $message = ['error', 'Kode Tinker gagal dijalankan.'];
-            }
-        }
     } elseif (isset($actions[$selectedAction]['confirmation']) && ! hash_equals(
         $actions[$selectedAction]['confirmation'],
         (string) ($_POST['confirm_reset'] ?? ''),
@@ -652,16 +588,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             <small>Tindakan ini dapat menghapus atau menambahkan data. Pastikan database yang dipilih benar.</small>
         </div>
 
-        <?php if (isset($actions['tinker'])) { ?>
-            <div class="confirmation tinker-fields" hidden>
-                <label for="tinker_code">Kode Tinker</label>
-                <textarea id="tinker_code" name="tinker_code" rows="8" maxlength="<?= DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH ?>" autocomplete="off" spellcheck="false"></textarea>
-                <label for="confirm_tinker">Ketik <strong>RUN ARBITRARY TINKER CODE</strong> untuk melanjutkan</label>
-                <input id="confirm_tinker" name="confirm_tinker" type="text" autocomplete="off">
-                <small>Bahaya: kode ini berjalan dengan akses aplikasi production. Jangan aktifkan tanpa <code>DEPLOY_CONSOLE_TINKER_ENABLED=true</code> pada .env privat. Kode yang dikirim tidak ditampilkan kembali.</small>
-            </div>
-        <?php } ?>
-
         <button type="submit">Jalankan aksi</button>
     </form>
 
@@ -670,24 +596,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         const confirmation = document.querySelector('.confirmation');
         const confirmationInput = document.querySelector('#confirm_reset');
         const confirmationLabel = document.querySelector('[data-confirmation-phrase]');
-        const tinkerFields = document.querySelector('.tinker-fields');
-        const tinkerCode = document.querySelector('#tinker_code');
-        const tinkerConfirmation = document.querySelector('#confirm_tinker');
         const updateConfirmation = () => {
             const selected = document.querySelector('input[name="action"]:checked');
             const confirmationPhrase = selected?.dataset.confirmation ?? '';
-            const isTinker = selected?.value === 'tinker';
-            confirmation.hidden = confirmationPhrase === '' || isTinker;
-            confirmationInput.required = confirmationPhrase !== '' && !isTinker;
+            confirmation.hidden = confirmationPhrase === '';
+            confirmationInput.required = confirmationPhrase !== '';
             confirmationInput.value = '';
             confirmationLabel.textContent = confirmationPhrase;
-            if (tinkerFields !== null && tinkerCode !== null && tinkerConfirmation !== null) {
-                tinkerFields.hidden = !isTinker;
-                tinkerCode.required = isTinker;
-                tinkerConfirmation.required = isTinker;
-                tinkerCode.value = '';
-                tinkerConfirmation.value = '';
-            }
         };
         actionInputs.forEach((input) => input.addEventListener('change', updateConfirmation));
         updateConfirmation();
@@ -695,7 +610,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     <?php foreach ($results as $result) { ?>
         <section class="result <?= $result['success'] ? 'success' : 'error' ?>">
-            <strong><?= escapeDeployConsole($result['command']) ?> — <?= $result['success'] ? 'berhasil' : 'gagal' ?></strong>
+            <strong><?= escapeDeployConsole($result['command']) ?>: <?= $result['success'] ? 'berhasil' : 'gagal' ?></strong>
             <small><?= number_format($result['duration'], 2) ?> detik</small>
             <pre><?= escapeDeployConsole(compactDeployOutput($result['output'])) ?></pre>
         </section>

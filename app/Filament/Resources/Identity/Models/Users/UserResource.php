@@ -78,7 +78,7 @@ final class UserResource extends Resource
                 TextInput::make('email')->label('Email')->email()->nullable(),
                 TextInput::make('password')->label('Kata sandi')->password()->revealable()->required(fn (string $operation): bool => $operation === 'create')->minLength(8)->dehydrated(fn (?string $state): bool => filled($state)),
                 TextInput::make('password_confirmation')->label('Konfirmasi kata sandi')->password()->revealable()->required(fn (string $operation): bool => $operation === 'create')->same('password')->dehydrated(fn (string $operation): bool => $operation === 'create'),
-                Select::make('role_id')->label('Peran')->options(fn (): array => Role::query()->orderByRaw("CASE name WHEN 'superadmin' THEN 1 WHEN 'admin' THEN 2 WHEN 'bendahara' THEN 3 WHEN 'petugas' THEN 4 WHEN 'warga' THEN 5 ELSE 6 END")->orderBy('name')->pluck('name', 'id')->all())->required(fn (string $operation): bool => $operation === 'create')->dehydrated(fn (string $operation): bool => $operation === 'create'),
+                Select::make('role_id')->label('Peran')->options(fn (): array => self::grantableRoleOptions(auth()->user()))->required(fn (string $operation): bool => $operation === 'create')->dehydrated(fn (string $operation): bool => $operation === 'create'),
             ])->columns(['default' => 1, 'md' => 2]),
         ]);
     }
@@ -166,6 +166,23 @@ final class UserResource extends Resource
                 Action::make('activate')->label('Aktifkan pengguna')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->visible(fn (User $record): bool => $record->status === UserStatus::Inactive)->requiresConfirmation()->modalHeading(fn (User $record): string => "Aktifkan pengguna {$record->name}?")->modalDescription('Pengguna dapat masuk kembali dan menggunakan izin yang masih dimilikinya.')->modalSubmitActionLabel('Aktifkan pengguna')->action(fn (User $record): User => app(ManageUsers::class)->activate(self::actor(), $record))->successNotificationTitle('Pengguna diaktifkan.'),
                 Action::make('deactivate')->label('Nonaktifkan pengguna')->icon(Heroicon::OutlinedNoSymbol)->color('danger')->authorize('deactivate')->visible(fn (User $record): bool => $record->status === UserStatus::Active)->requiresConfirmation()->modalHeading(fn (User $record): string => "Nonaktifkan pengguna {$record->name}?")->modalDescription('Pengguna tidak dapat masuk atau menjalankan tugas baru. Riwayat dan data transaksi tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan pengguna')->schema([Textarea::make('reason')->label('Alasan')->required()->minLength(10)->maxLength(1000)->rows(3)])->action(fn (User $record, array $data): User => app(ManageUsers::class)->deactivate(self::actor(), $record, (string) $data['reason']))->successNotificationTitle('Pengguna dinonaktifkan.'),
             ]);
+    }
+
+    /** @return array<int, string> */
+    public static function grantableRoleOptions(?User $actor): array
+    {
+        if (! $actor instanceof User) {
+            return [];
+        }
+
+        return Role::query()
+            ->with('permissions')
+            ->orderByRaw("CASE name WHEN 'superadmin' THEN 1 WHEN 'admin' THEN 2 WHEN 'bendahara' THEN 3 WHEN 'petugas' THEN 4 WHEN 'warga' THEN 5 ELSE 6 END")
+            ->orderBy('name')
+            ->get()
+            ->filter(static fn (Role $role): bool => $actor->can('createWithRole', [User::class, $role]))
+            ->pluck('name', 'id')
+            ->all();
     }
 
     /** @return array<string, PageRegistration> */

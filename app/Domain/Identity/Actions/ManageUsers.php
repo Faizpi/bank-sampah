@@ -14,8 +14,6 @@ use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\DatabaseSession;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Queries\VisibleUsers;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
@@ -50,6 +48,7 @@ final readonly class ManageUsers
         if (! $role instanceof Role) {
             throw ValidationException::withMessages(['role_id' => 'Peran yang dipilih tidak valid.']);
         }
+        Gate::forUser($actor)->authorize('createWithRole', [User::class, $role]);
 
         return DB::transaction(function () use ($actor, $attributes, $password, $role): User {
             $user = new User;
@@ -218,18 +217,12 @@ final readonly class ManageUsers
             ->where('prepared_by_id', $user->id)
             ->whereIn('status', [GroceryStatus::Preparing, GroceryStatus::ReadyForPickup])
             ->update(['prepared_by_id' => null]);
-        $mobileAssignmentsRevoked = DB::table('mobile_service_staff')
-            ->where('staff_id', $user->id)
-            ->whereIn('mobile_service_id', MobileService::query()
-                ->whereIn('status', [MobileServiceStatus::Draft, MobileServiceStatus::Published, MobileServiceStatus::Open])
-                ->select('id'))
-            ->delete();
 
         return [
             'sessions_revoked' => $sessionsRevoked,
             'password_reset_tokens_revoked' => $passwordResetTokensRevoked,
             'role_assignments_revoked' => $roleAssignmentsRevoked,
-            'operational_assignments_revoked' => $pickupAssignmentsRevoked + $withdrawalAssignmentsRevoked + $groceryAssignmentsRevoked + $mobileAssignmentsRevoked,
+            'operational_assignments_revoked' => $pickupAssignmentsRevoked + $withdrawalAssignmentsRevoked + $groceryAssignmentsRevoked,
         ];
     }
 
