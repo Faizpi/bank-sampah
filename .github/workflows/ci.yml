@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      APP_URL: http://localhost
+      APP_TIMEZONE: Asia/Jakarta
+      APP_LOCALE: id
+      APP_FALLBACK_LOCALE: id
+      APP_FAKER_LOCALE: id_ID
+      APP_MAINTENANCE_DRIVER: file
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      DB_URL: ''
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      BROADCAST_CONNECTION: 'null'
+      BCRYPT_ROUNDS: '4'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, gmp, intl, mbstring, pdo_sqlite, sqlite3, xml, xmlreader, xmlwriter, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Generate test-only application key
+        run: php -r 'echo "APP_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL;' >> "$GITHUB_ENV"
+
+      - name: Install locked PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: npm
+
+      - name: Install locked frontend dependencies
+        run: npm ci
+
+      - name: Build frontend assets and manifest
+        run: npm run build
+
+      - name: Run Composer checks
+        run: composer check
