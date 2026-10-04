@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Statistics\Services;
 
 use App\Authorization\PermissionChecker;
+use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Statistics\Models\StatisticPublication;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 final readonly class StatisticsService
@@ -21,7 +23,7 @@ final readonly class StatisticsService
     /** @var list<string> */
     private const DIMENSIONS = ['period', 'rt_id'];
 
-    public function __construct(private PermissionChecker $permissions) {}
+    public function __construct(private PermissionChecker $permissions, private AuditLogger $auditLogger) {}
 
     /** @return array<string, mixed> */
     public function internal(User $actor, string $start, string $end, ?int $rtId = null): array
@@ -79,7 +81,14 @@ final readonly class StatisticsService
             throw ValidationException::withMessages(['publication' => 'Metrik, dimensi, atau ambang statistik tidak diizinkan.']);
         }
 
-        return DB::transaction(fn (): StatisticPublication => StatisticPublication::query()->updateOrCreate(['publication_key' => 'public-dashboard'], ['metrics' => array_values(array_unique($metrics)), 'dimensions' => array_values(array_unique($dimensions)), 'privacy_threshold' => $threshold, 'is_active' => $active, 'approved_by' => $actor->id, 'approved_at' => now()]));
+        return DB::transaction(function () use ($actor, $metrics, $dimensions, $threshold, $active): StatisticPublication {
+            $publication = StatisticPublication::query()->firstOrNew(['publication_key' => 'public-dashboard']);
+            $old = $publication->exists ? ['metrics' => $publication->metrics, 'dimensions' => $publication->dimensions, 'privacy_threshold' => $publication->privacy_threshold, 'is_active' => $publication->is_active] : [];
+            $publication->forceFill(['metrics' => array_values(array_unique($metrics)), 'dimensions' => array_values(array_unique($dimensions)), 'privacy_threshold' => $threshold, 'is_active' => $active, 'approved_by' => $actor->id, 'approved_at' => now()])->save();
+            $this->auditLogger->record($actor, 'statistics.publication.configured', $publication, $old, ['metrics' => $publication->metrics, 'dimensions' => $publication->dimensions, 'privacy_threshold' => $publication->privacy_threshold, 'is_active' => $publication->is_active], $this->correlationId());
+
+            return $publication;
+        });
     }
 
     /** @return array<string, mixed> */
@@ -129,5 +138,12 @@ final readonly class StatisticsService
         if (! $this->permissions->allows($actor, $permission)) {
             throw new AuthorizationException('Anda tidak memiliki akses statistik internal.');
         }
+    }
+
+    private function correlationId(): string
+    {
+        $value = request()->attributes->get('correlation_id');
+
+        return is_string($value) && Str::isUuid($value) ? $value : (string) Str::uuid();
     }
 }

@@ -81,6 +81,7 @@ final readonly class WithdrawalRequestService
     /** @return Builder<WithdrawalRequest> */
     public function visibleFor(User $actor): Builder
     {
+        $this->authorize($actor, 'withdrawal.view');
         $query = WithdrawalRequest::query()->with(['customer', 'payer', 'approver', 'balanceHold']);
         if ($this->permissions->allows($actor, 'withdrawal.view') && $this->permissions->allows($actor, 'user.view.all')) {
             return $query;

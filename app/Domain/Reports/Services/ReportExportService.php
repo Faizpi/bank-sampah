@@ -6,7 +6,6 @@ namespace App\Domain\Reports\Services;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
-use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Platform\Enums\MediaVisibility;
 use App\Domain\Platform\Models\Media;
 use App\Domain\Reports\Enums\ReportExportStatus;
@@ -14,10 +13,16 @@ use App\Domain\Reports\Enums\ReportFormat;
 use App\Domain\Reports\Enums\ReportType;
 use App\Domain\Reports\Models\ReportExport;
 use App\Models\User;
+use BackedEnum;
+use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -28,8 +33,7 @@ final readonly class ReportExportService
 {
     private const DISK = 'media_private';
 
-    /** @var list<string> */
-    private const COLUMNS = ['deposit_number', 'occurred_at', 'customer_id', 'status', 'total_weight_kg', 'total_value'];
+    private const int EXPORT_ROW_LIMIT = 10_000;
 
     public function __construct(private PermissionChecker $permissions, private ReportQueryService $reports, private AuditLogger $auditLogger) {}
 
@@ -42,11 +46,18 @@ final readonly class ReportExportService
         $this->authorize($actor, 'report.export');
         $type = ReportType::tryFrom($reportType);
         $fileFormat = ReportFormat::tryFrom($format);
-        $selectedColumns = $columns ?? self::COLUMNS;
-        if ($type === null || $fileFormat === null || $selectedColumns === [] || array_diff($selectedColumns, self::COLUMNS) !== []) {
-            throw ValidationException::withMessages(['export' => 'Jenis, format, atau kolom ekspor tidak diizinkan.']);
+        if ($type === null || $fileFormat === null) {
+            throw ValidationException::withMessages(['export' => 'Jenis atau format ekspor tidak diizinkan.']);
         }
-        $this->reports->paginate($actor, $filters, $sort, $direction, 1);
+        $allowedColumns = $this->reports->columnsFor($type);
+        $selectedColumns = $columns ?? $allowedColumns;
+        if ($selectedColumns === [] || array_diff($selectedColumns, $allowedColumns) !== []) {
+            throw ValidationException::withMessages(['export' => 'Kolom ekspor tidak diizinkan.']);
+        }
+        $matchingRows = $this->reports->query($actor, $filters, $type)->count();
+        if ($matchingRows > self::EXPORT_ROW_LIMIT) {
+            throw ValidationException::withMessages(['export' => 'Laporan terlalu besar untuk ekspor sinkron. Persempit periode atau filter laporan.']);
+        }
         $uuid = (string) Str::uuid();
         $export = DB::transaction(function () use ($actor, $type, $fileFormat, $filters, $selectedColumns, $sort, $direction, $uuid): ReportExport {
             $record = new ReportExport;
@@ -89,7 +100,7 @@ final readonly class ReportExportService
                 return $media;
             });
             unset($media);
-        } catch (Throwable $exception) {
+        } catch (Throwable) {
             $disk->delete($tempPath);
             $disk->delete($finalPath);
             try {
@@ -142,33 +153,43 @@ final readonly class ReportExportService
 
     private function buildContent(User $actor, ReportExport $export): string
     {
-        if ($export->report_type !== ReportType::Deposits) {
-            throw ValidationException::withMessages(['report_type' => 'Report type ini belum memiliki read model ekspor.']);
+        $rows = $this->reports->streamRecords($actor, $export->report_type, $export->filters, $export->sort, $export->direction);
+        $allowedColumns = $this->reports->columnsFor($export->report_type);
+        $headers = $export->columns ?? $allowedColumns;
+        if ($headers === [] || array_diff($headers, $allowedColumns) !== []) {
+            throw ValidationException::withMessages(['export' => 'Kolom ekspor tidak diizinkan.']);
         }
-        $rows = $this->reports->query($actor, $export->filters)->with(['customer', 'items.wasteType'])->orderBy($export->sort, $export->direction)->orderBy('id', $export->direction)->get();
-        $headers = $export->columns ?? self::COLUMNS;
-        $records = [$headers];
-        foreach ($rows as $deposit) {
-            $records[] = array_map(fn (string $column): mixed => $this->valueFor($deposit, $column), $headers);
+        if ($export->format === ReportFormat::Csv) {
+            return $this->csvStream($headers, $rows);
         }
 
-        return match ($export->format) {
-            ReportFormat::Csv => $this->csv($records),
-            ReportFormat::Xlsx => $this->xlsx($records),
-            ReportFormat::Pdf => $this->pdf($records),
-        };
+        $records = [$headers];
+        foreach ($rows as $record) {
+            $records[] = array_map(fn (string $column): mixed => $this->valueFor($record, $column), $headers);
+        }
+
+        if ($export->format === ReportFormat::Xlsx) {
+            return $this->xlsx($records);
+        }
+
+        return $this->pdf($records);
     }
 
-    /** @param list<list<mixed>> $records */
-    private function csv(array $records): string
+    /**
+     * @param  list<string>  $headers
+     * @param  LazyCollection<int, Model>  $rows
+     */
+    private function csvStream(array $headers, LazyCollection $rows): string
     {
         $stream = fopen('php://temp', 'w+');
         if ($stream === false) {
             throw new RuntimeException('Export stream unavailable.');
         }
         fwrite($stream, "\xEF\xBB\xBF");
-        foreach ($records as $record) {
-            fputcsv($stream, array_map(fn (mixed $value): string => $this->safeCell($value), $record));
+        fputcsv($stream, array_map(fn (string $value): string => $this->safeCell($value), $headers));
+        foreach ($rows as $record) {
+            $values = array_map(fn (string $column): mixed => $this->valueFor($record, $column), $headers);
+            fputcsv($stream, array_map(fn (mixed $value): string => $this->safeCell($value), $values));
         }
         rewind($stream);
         $content = stream_get_contents($stream);
@@ -255,17 +276,17 @@ final readonly class ReportExportService
         return $pdf;
     }
 
-    private function valueFor(Deposit $deposit, string $column): mixed
+    private function valueFor(Model $record, string $column): mixed
     {
-        return match ($column) {
-            'deposit_number' => $deposit->deposit_number,
-            'occurred_at' => $deposit->occurred_at->setTimezone('Asia/Jakarta')->format('Y-m-d H:i:s'),
-            'customer_id' => $deposit->customer_id,
-            'status' => $deposit->status,
-            'total_weight_kg' => $deposit->total_weight_kg,
-            'total_value' => $deposit->total_value,
-            default => throw ValidationException::withMessages(['columns' => 'Kolom ekspor tidak diizinkan.']),
-        };
+        $value = $record->getAttribute($column);
+        if ($value instanceof BackedEnum) {
+            return $value->value;
+        }
+        if ($value instanceof DateTimeInterface) {
+            return DateTimeImmutable::createFromInterface($value)->setTimezone(new DateTimeZone('Asia/Jakarta'))->format('Y-m-d H:i:s');
+        }
+
+        return $value;
     }
 
     private function safeCell(mixed $value): string

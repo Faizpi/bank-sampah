@@ -103,6 +103,8 @@ final readonly class WithdrawalPaymentService
     /** @return Builder<WithdrawalRequest> */
     public function payableFor(User $actor): Builder
     {
+        $this->authorize($actor, 'withdrawal.pay');
+
         return WithdrawalRequest::query()
             ->with(['customer', 'payer', 'balanceHold'])
             ->where('status', WithdrawalStatus::ReadyForPickup)

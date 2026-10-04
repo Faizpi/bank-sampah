@@ -9,7 +9,7 @@
             <p class="text-label font-semibold text-harvest-gold">Bendahara</p>
             <h1 id="withdrawal-payments-title" class="mt-2 text-h1 font-bold text-deep-green">Pembayaran Pencairan</h1>
             <p class="mt-3 text-body text-text-secondary">
-                Pilih pencairan yang ditugaskan kepada Anda. Verifikasi penerima dan bukti wajib sebelum saldo keluar.
+                Pembayaran hanya untuk Bendahara atau petugas yang ditugaskan sebagai payer. Pilih pencairan yang ditugaskan kepada Anda; verifikasi penerima dan bukti wajib sebelum saldo keluar.
             </p>
         </div>
         <x-ui.mascot variant="12" bubble="Bayar tepat waktu!" bubblePosition="top" class="h-28 w-auto shrink-0" />

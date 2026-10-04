@@ -26,6 +26,7 @@ final readonly class TargetService
     public function create(User $actor, string $name, string $purpose, string $periodStart, string $periodEnd, string $targetWeightKg, bool $isPublic, array $scopes = []): CollectionTarget
     {
         $this->authorize($actor, 'target.manage');
+        $scopes = $this->normalizeScopes($scopes);
         $data = $this->validatedData($name, $purpose, $periodStart, $periodEnd, $targetWeightKg, $isPublic, $scopes);
 
         return DB::transaction(function () use ($actor, $data, $scopes): CollectionTarget {
@@ -42,6 +43,7 @@ final readonly class TargetService
     public function update(User $actor, CollectionTarget $target, string $name, string $purpose, string $periodStart, string $periodEnd, string $targetWeightKg, bool $isPublic, array $scopes = []): CollectionTarget
     {
         $this->authorize($actor, 'target.manage');
+        $scopes = $this->normalizeScopes($scopes);
         $data = $this->validatedData($name, $purpose, $periodStart, $periodEnd, $targetWeightKg, $isPublic, $scopes);
 
         return DB::transaction(function () use ($actor, $target, $data, $scopes): CollectionTarget {
@@ -169,6 +171,19 @@ final readonly class TargetService
         foreach ($scopes as $scope) {
             $target->scopes()->create(['waste_type_id' => $scope['waste_type_id'] ?? null, 'waste_category_id' => $scope['waste_category_id'] ?? null, 'rt_id' => $scope['rt_id'] ?? null]);
         }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $scopes
+     * @return list<array{waste_type_id: int|null, waste_category_id: int|null, rt_id: int|null}>
+     */
+    private function normalizeScopes(array $scopes): array
+    {
+        return array_map(static fn (array $scope): array => [
+            'waste_type_id' => isset($scope['waste_type_id']) && $scope['waste_type_id'] !== '' ? (int) $scope['waste_type_id'] : null,
+            'waste_category_id' => isset($scope['waste_category_id']) && $scope['waste_category_id'] !== '' ? (int) $scope['waste_category_id'] : null,
+            'rt_id' => isset($scope['rt_id']) && $scope['rt_id'] !== '' ? (int) $scope['rt_id'] : null,
+        ], $scopes);
     }
 
     private function hasAmbiguousActiveTarget(CollectionTarget $target): bool

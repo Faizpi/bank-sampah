@@ -5,78 +5,202 @@ declare(strict_types=1);
 namespace App\Domain\Reports\Services;
 
 use App\Authorization\PermissionChecker;
+use App\Domain\AuditReconciliation\Enums\ReconciliationStatus;
+use App\Domain\AuditReconciliation\Models\Reconciliation;
 use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Reports\Enums\ReportType;
+use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
+use BackedEnum;
 use Carbon\CarbonImmutable;
+use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\LazyCollection;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * @phpstan-type ReportModel Deposit|WithdrawalRequest|GroceryRedemption|PickupRequest|Reconciliation
+ * @phpstan-type ReportBuilder Builder<Deposit>|Builder<WithdrawalRequest>|Builder<GroceryRedemption>|Builder<PickupRequest>|Builder<Reconciliation>
+ * @phpstan-type ReportModelCollection EloquentCollection<int, Model>
+ */
 final readonly class ReportQueryService
 {
+    /** Interactive report records are intentionally capped to keep display requests bounded. */
+    private const int RECORD_LIMIT = 100;
+
+    /** Export streams fetch this many models per database round trip without materializing the full report. */
+    private const int STREAM_CHUNK_SIZE = 100;
+
     /** @var list<string> */
     private const FILTERS = ['start', 'end', 'rt_id', 'service_area_id', 'status', 'waste_type_id', 'search'];
 
     /** @var list<string> */
-    private const SORTS = ['occurred_at', 'deposit_number', 'total_weight_kg', 'total_value'];
+    private const SORTS = ['occurred_at', 'deposit_number', 'request_number', 'created_at', 'total_weight_kg', 'total_value', 'amount', 'value_snapshot', 'difference'];
 
     /** @var list<string> */
     private const COLUMNS = ['deposit_number', 'occurred_at', 'customer_id', 'status', 'total_weight_kg', 'total_value'];
 
+    /** @var array<string, list<string>> */
+    private const REPORT_COLUMNS = [
+        'deposits' => ['deposit_number', 'occurred_at', 'customer_id', 'status', 'total_weight_kg', 'total_value'],
+        'withdrawals' => ['request_number', 'paid_at', 'customer_id', 'status', 'amount'],
+        'groceries' => ['request_number', 'handed_over_at', 'customer_id', 'status', 'value_snapshot'],
+        'pickups' => ['request_number', 'completed_at', 'customer_id', 'service_area_id', 'status'],
+        'participation' => ['occurred_at', 'customer_id', 'status', 'total_weight_kg', 'total_value'],
+        'reconciliation' => ['business_date', 'scope_key', 'status', 'difference', 'created_by', 'approver_id'],
+    ];
+
     public function __construct(private PermissionChecker $permissions, private DepositMetricService $metricService) {}
 
-    /** @return array{filters: list<string>, sorts: list<string>, columns: list<string>, report_types: list<string>} */
+    /** @return array{filters: list<string>, sorts: list<string>, columns: list<string>, report_types: list<string>, report_columns: array<string, list<string>>} */
     public function contract(): array
     {
-        return ['filters' => self::FILTERS, 'sorts' => self::SORTS, 'columns' => self::COLUMNS, 'report_types' => array_map(static fn (ReportType $type): string => $type->value, ReportType::cases())];
+        return ['filters' => self::FILTERS, 'sorts' => self::SORTS, 'columns' => self::COLUMNS, 'report_types' => array_map(static fn (ReportType $type): string => $type->value, ReportType::cases()), 'report_columns' => self::REPORT_COLUMNS];
+    }
+
+    /** @return list<string> */
+    public function columnsFor(string|ReportType $reportType): array
+    {
+        $type = $reportType instanceof ReportType ? $reportType : ReportType::tryFrom($reportType);
+        if ($type === null) {
+            throw ValidationException::withMessages(['report_type' => 'Jenis laporan tidak diizinkan.']);
+        }
+
+        return self::REPORT_COLUMNS[$type->value];
     }
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return LengthAwarePaginator<int, Deposit>
+     * @return LengthAwarePaginator<int, Model>
      */
-    public function paginate(User $actor, array $filters, string $sort = 'occurred_at', string $direction = 'desc', int $perPage = 25): LengthAwarePaginator
+    public function paginate(User $actor, array $filters, string $sort = 'occurred_at', string $direction = 'desc', int $perPage = 25, string|ReportType $reportType = ReportType::Deposits): LengthAwarePaginator
     {
         $this->authorize($actor, 'report.view');
-        $this->validateFilters($filters, $sort, $direction, $perPage);
+        $type = $this->type($reportType);
+        $this->validateFilters($filters, $sort, $direction, $perPage, $type);
 
-        return $this->scopedDeposits($actor, $filters)->orderBy($sort, $direction)->orderBy('id', $direction)->paginate($perPage);
+        $paginator = $this->orderedQuery($actor, $type, $filters, $sort, $direction)->paginate($perPage);
+        $records = new SupportCollection($this->modelList($paginator->getCollection()));
+
+        return new LengthAwarePaginator($records, $paginator->total(), $paginator->perPage(), $paginator->currentPage(), $paginator->getOptions());
     }
 
     /**
      * @param  array<string, mixed>  $filters
      * @return array{subject_count: int, deposit_count: int, total_weight_kg: string, total_value: int, plastic_weight_kg: string}
      */
-    public function aggregate(User $actor, array $filters): array
+    public function aggregate(User $actor, array $filters, string|ReportType $reportType = ReportType::Deposits): array
     {
+        $type = $this->type($reportType);
+        if ($type !== ReportType::Deposits) {
+            return $this->summary($actor, $type, $filters);
+        }
         $this->authorize($actor, 'report.view');
-        $this->validateFilters($filters, 'occurred_at', 'desc', 25);
-        $deposits = $this->scopedDeposits($actor, $filters)->with('items')->get();
+        $this->validateFilters($filters, 'occurred_at', 'desc', 25, $type);
+        $deposits = $this->depositQuery($actor, $filters)->with('items.wasteType')->get();
 
-        return $this->metricService->calculate($deposits);
+        return $this->metricService->calculate(new EloquentCollection($deposits->all()));
     }
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return Builder<Deposit>
+     * @return ReportBuilder
      */
-    public function query(User $actor, array $filters): Builder
+    public function query(User $actor, array $filters, string|ReportType $reportType = ReportType::Deposits): Builder
     {
         $this->authorize($actor, 'report.view');
-        $this->validateFilters($filters, 'occurred_at', 'desc', 25);
+        $type = $this->type($reportType);
+        $this->validateFilters($filters, 'occurred_at', 'desc', 25, $type);
 
-        return $this->scopedDeposits($actor, $filters);
+        return $this->scopedQuery($actor, $type, $filters);
     }
 
     /**
-     * @param  Collection<int, Deposit>  $deposits
+     * @param  array<string, mixed>  $filters
+     * @return ReportModelCollection
+     */
+    public function records(User $actor, string|ReportType $reportType, array $filters, string $sort = 'occurred_at', string $direction = 'desc'): EloquentCollection
+    {
+        $this->authorize($actor, 'report.view');
+        $type = $this->type($reportType);
+        $this->validateFilters($filters, $sort, $direction, self::RECORD_LIMIT, $type);
+
+        /** @var EloquentCollection<int, Model> $records */
+        $records = $this->orderedQuery($actor, $type, $filters, $sort, $direction)->limit(self::RECORD_LIMIT)->get();
+
+        return $records;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LazyCollection<int, Model>
+     */
+    public function streamRecords(User $actor, string|ReportType $reportType, array $filters, string $sort = 'occurred_at', string $direction = 'desc'): LazyCollection
+    {
+        $this->authorize($actor, 'report.view');
+        $type = $this->type($reportType);
+        $this->validateFilters($filters, $sort, $direction, self::RECORD_LIMIT, $type);
+
+        /** @var LazyCollection<int, Model> $records */
+        $records = $this->orderedQuery($actor, $type, $filters, $sort, $direction)->lazy(self::STREAM_CHUNK_SIZE);
+
+        return $records;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return list<array{reference: string, date: string, subject_id: string, status: string, amount: int|string}>
+     */
+    public function displayRows(User $actor, string|ReportType $reportType, array $filters, string $sort = 'occurred_at', string $direction = 'desc'): array
+    {
+        $type = $this->type($reportType);
+        $rows = [];
+        foreach ($this->records($actor, $type, $filters, $sort, $direction) as $record) {
+            $rows[] = [
+                'reference' => $this->displayReference($record, $type),
+                'date' => $this->displayDate($record, $type),
+                'subject_id' => (string) ($record->getAttribute($type === ReportType::Reconciliation ? 'created_by' : 'customer_id') ?? ''),
+                'status' => $this->displayValue($record->getAttribute('status')),
+                'amount' => $this->displayAmount($record, $type),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
      * @return array{subject_count: int, deposit_count: int, total_weight_kg: string, total_value: int, plastic_weight_kg: string}
      */
-    public function metrics(Collection $deposits): array
+    public function summary(User $actor, string|ReportType $reportType, array $filters): array
+    {
+        $type = $this->type($reportType);
+        if ($type === ReportType::Deposits) {
+            return $this->aggregate($actor, $filters);
+        }
+        $records = $this->records($actor, $type, $filters);
+        $subjects = $records->map(static fn (Model $record): mixed => $record->getAttribute('customer_id'))->filter()->unique()->count();
+        $weight = $records->sum(static fn (Model $record): float => (float) ($record->getAttribute('total_weight_kg') ?? 0));
+        $value = $records->sum(static fn (Model $record): int => (int) ($record->getAttribute('total_value') ?? $record->getAttribute('amount') ?? $record->getAttribute('value_snapshot') ?? $record->getAttribute('difference') ?? 0));
+
+        return ['subject_count' => $subjects, 'deposit_count' => $records->count(), 'total_weight_kg' => number_format($weight, 3, '.', ''), 'total_value' => $value, 'plastic_weight_kg' => '0.000'];
+    }
+
+    /**
+     * @param  EloquentCollection<int, Deposit>  $deposits
+     * @return array{subject_count: int, deposit_count: int, total_weight_kg: string, total_value: int, plastic_weight_kg: string}
+     */
+    public function metrics(EloquentCollection $deposits): array
     {
         $subjects = $deposits->pluck('customer_id')->unique()->count();
         $weight = 0.0;
@@ -97,64 +221,124 @@ final readonly class ReportQueryService
     }
 
     /**
+     * @param  EloquentCollection<int, Model>  $records
+     * @return list<Model>
+     */
+    private function modelList(EloquentCollection $records): array
+    {
+        return array_values($records->all());
+    }
+
+    /**
      * @param  array<string, mixed>  $filters
      * @return Builder<Deposit>
      */
-    private function scopedDeposits(User $actor, array $filters): Builder
+    private function depositQuery(User $actor, array $filters): Builder
     {
         $query = Deposit::query()->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED]);
-        $this->applyRecordScope($actor, $query);
-        $this->applyFilters($query, $filters);
+        $this->applyRecordScope($actor, ReportType::Deposits, $query);
+        $this->applyFilters($query, ReportType::Deposits, $filters);
 
         return $query;
     }
 
-    /** @param Builder<Deposit> $query */
-    private function applyRecordScope(User $actor, Builder $query): void
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return ReportBuilder
+     */
+    private function scopedQuery(User $actor, ReportType $type, array $filters): Builder
+    {
+        $query = match ($type) {
+            ReportType::Deposits, ReportType::Participation => Deposit::query()->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED]),
+            ReportType::Withdrawals => WithdrawalRequest::query()->whereNotNull('paid_at'),
+            ReportType::Groceries => GroceryRedemption::query()->whereNotNull('handed_over_at'),
+            ReportType::Pickups => PickupRequest::query()->whereNotNull('completed_at'),
+            ReportType::Reconciliation => Reconciliation::query()->whereIn('status', [ReconciliationStatus::Approved->value, ReconciliationStatus::Rejected->value]),
+        };
+        $this->applyRecordScope($actor, $type, $query);
+        $this->applyFilters($query, $type, $filters);
+
+        return $query;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return ReportBuilder
+     */
+    private function orderedQuery(User $actor, ReportType $type, array $filters, string $sort, string $direction): Builder
+    {
+        return $this->scopedQuery($actor, $type, $filters)
+            ->orderBy($this->sortColumn($type, $sort), $direction)
+            ->orderBy('id', $direction);
+    }
+
+    /** @param ReportBuilder $query */
+    private function applyRecordScope(User $actor, ReportType $type, Builder $query): void
     {
         if ($this->permissions->allows($actor, 'user.view.all')) {
             return;
         }
-
-        if ($this->permissions->allows($actor, 'report.view') && $actor->staffProfile !== null && $actor->staffProfile->service_area_id !== null) {
-            $query->where(function (Builder $scope) use ($actor): void {
-                $scope->where('staff_id', $actor->id)->orWhereHas('customer.customerProfile.rt.serviceAreas', static fn (Builder $area): Builder => $area->whereKey($actor->staffProfile->service_area_id));
+        $areaId = $actor->staffProfile?->service_area_id;
+        if ($areaId !== null) {
+            $query->where(function (Builder $scope) use ($actor, $type, $areaId): void {
+                if (in_array($type, [ReportType::Deposits, ReportType::Participation], true)) {
+                    $scope->where('staff_id', $actor->id)->orWhereHas('customer.customerProfile.rt.serviceAreas', static fn (Builder $area): Builder => $area->whereKey($areaId));
+                } elseif ($type === ReportType::Pickups) {
+                    $scope->where('service_area_id', $areaId)->orWhere('customer_id', $actor->id);
+                } elseif ($type === ReportType::Reconciliation) {
+                    $scope->where('service_area_id', $areaId)->orWhere('created_by', $actor->id);
+                } else {
+                    $scope->where('customer_id', $actor->id)->orWhereHas('customer.customerProfile.rt.serviceAreas', static fn (Builder $area): Builder => $area->whereKey($areaId));
+                }
             });
 
             return;
         }
-
-        $query->where('customer_id', $actor->id);
+        $query->where($type === ReportType::Reconciliation ? 'created_by' : 'customer_id', $actor->id);
     }
 
     /**
-     * @param  Builder<Deposit>  $query
+     * @param  ReportBuilder  $query
      * @param  array<string, mixed>  $filters
      */
-    private function applyFilters(Builder $query, array $filters): void
+    private function applyFilters(Builder $query, ReportType $type, array $filters): void
     {
+        $dateColumn = match ($type) {
+            ReportType::Deposits, ReportType::Participation => 'occurred_at',
+            ReportType::Withdrawals => 'paid_at',
+            ReportType::Groceries => 'handed_over_at',
+            ReportType::Pickups => 'completed_at',
+            ReportType::Reconciliation => 'business_date',
+        };
         $start = CarbonImmutable::parse((string) $filters['start'], 'Asia/Jakarta')->startOfDay();
         $end = CarbonImmutable::parse((string) $filters['end'], 'Asia/Jakarta')->startOfDay();
-        $query->where('occurred_at', '>=', $start)->where('occurred_at', '<', $end);
-        if (isset($filters['rt_id'])) {
+        $query->where($dateColumn, '>=', $start)->where($dateColumn, '<', $end);
+        if (isset($filters['rt_id']) && $type === ReportType::Pickups) {
+            $query->where('rt_id', (int) $filters['rt_id']);
+        } elseif (isset($filters['rt_id']) && $type !== ReportType::Reconciliation) {
             $query->whereHas('customer.customerProfile', static fn (Builder $profile): Builder => $profile->where('rt_id', (int) $filters['rt_id']));
         }
         if (isset($filters['service_area_id'])) {
-            $query->whereHas('customer.customerProfile.rt.serviceAreas', static fn (Builder $area): Builder => $area->whereKey((int) $filters['service_area_id']));
+            if (in_array($type, [ReportType::Deposits, ReportType::Participation, ReportType::Withdrawals, ReportType::Groceries], true)) {
+                $query->whereHas('customer.customerProfile.rt.serviceAreas', static fn (Builder $area): Builder => $area->whereKey((int) $filters['service_area_id']));
+            } else {
+                $query->where('service_area_id', (int) $filters['service_area_id']);
+            }
         }
         if (isset($filters['status'])) {
             $query->where('status', (string) $filters['status']);
         }
-        if (isset($filters['waste_type_id'])) {
+        if (isset($filters['waste_type_id']) && in_array($type, [ReportType::Deposits, ReportType::Participation], true)) {
             $query->whereHas('items', static fn (Builder $items): Builder => $items->where('waste_type_id', (int) $filters['waste_type_id']));
         }
         if (isset($filters['search']) && trim((string) $filters['search']) !== '') {
-            $query->where('deposit_number', 'like', '%'.addcslashes(trim((string) $filters['search']), '%_\\').'%');
+            $field = in_array($type, [ReportType::Deposits, ReportType::Participation], true) ? 'deposit_number' : ($type === ReportType::Reconciliation ? 'scope_key' : 'request_number');
+            $query->where($field, 'like', '%'.addcslashes(trim((string) $filters['search']), '%_\\').'%');
         }
     }
 
     /** @param array<string, mixed> $filters */
-    private function validateFilters(array $filters, string $sort, string $direction, int $perPage): void
+    private function validateFilters(array $filters, string $sort, string $direction, int $perPage, ReportType $type): void
     {
         $unknown = array_diff(array_keys($filters), self::FILTERS);
         if ($unknown !== [] || ! isset($filters['start'], $filters['end']) || ! in_array($sort, self::SORTS, true) || ! in_array($direction, ['asc', 'desc'], true) || $perPage < 1 || $perPage > 100) {
@@ -163,7 +347,14 @@ final readonly class ReportQueryService
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $filters['start']) !== 1 || preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $filters['end']) !== 1 || (string) $filters['start'] >= (string) $filters['end']) {
             throw ValidationException::withMessages(['period' => 'Periode laporan tidak valid.']);
         }
-        if (isset($filters['status']) && ! in_array($filters['status'], [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED], true)) {
+        $allowedStatuses = match ($type) {
+            ReportType::Deposits, ReportType::Participation => [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED],
+            ReportType::Withdrawals => ['sudah_dibayar'],
+            ReportType::Groceries => ['selesai'],
+            ReportType::Pickups => ['selesai'],
+            ReportType::Reconciliation => [ReconciliationStatus::Approved->value, ReconciliationStatus::Rejected->value],
+        };
+        if (isset($filters['status']) && ! in_array($filters['status'], $allowedStatuses, true)) {
             throw ValidationException::withMessages(['status' => 'Status laporan tidak diizinkan.']);
         }
         foreach (['rt_id', 'service_area_id', 'waste_type_id'] as $key) {
@@ -171,6 +362,72 @@ final readonly class ReportQueryService
                 throw ValidationException::withMessages([$key => 'Filter laporan tidak valid.']);
             }
         }
+    }
+
+    private function displayReference(Model $record, ReportType $type): string
+    {
+        $column = $type === ReportType::Reconciliation
+            ? 'scope_key'
+            : (in_array($type, [ReportType::Deposits, ReportType::Participation], true) ? 'deposit_number' : 'request_number');
+
+        return $this->displayValue($record->getAttribute($column));
+    }
+
+    private function displayDate(Model $record, ReportType $type): string
+    {
+        $column = match ($type) {
+            ReportType::Deposits, ReportType::Participation => 'occurred_at',
+            ReportType::Withdrawals => 'paid_at',
+            ReportType::Groceries => 'handed_over_at',
+            ReportType::Pickups => 'completed_at',
+            ReportType::Reconciliation => 'business_date',
+        };
+
+        $value = $record->getAttribute($column);
+        if ($value instanceof DateTimeInterface) {
+            return DateTimeImmutable::createFromInterface($value)->setTimezone(new DateTimeZone('Asia/Jakarta'))->format('Y-m-d H:i:s');
+        }
+
+        return $this->displayValue($value);
+    }
+
+    private function displayAmount(Model $record, ReportType $type): int|string
+    {
+        $column = match ($type) {
+            ReportType::Deposits, ReportType::Participation => 'total_value',
+            ReportType::Withdrawals => 'amount',
+            ReportType::Groceries => 'value_snapshot',
+            ReportType::Reconciliation => 'difference',
+            ReportType::Pickups => null,
+        };
+
+        return $column === null ? '' : (int) ($record->getAttribute($column) ?? 0);
+    }
+
+    private function displayValue(mixed $value): string
+    {
+        if ($value instanceof BackedEnum) {
+            return (string) $value->value;
+        }
+        if (is_scalar($value) || $value === null) {
+            return (string) $value;
+        }
+
+        return json_encode($value, JSON_THROW_ON_ERROR);
+    }
+
+    private function sortColumn(ReportType $type, string $sort): string
+    {
+        return match ($type) {
+            ReportType::Deposits, ReportType::Participation => in_array($sort, ['occurred_at', 'deposit_number', 'total_weight_kg', 'total_value'], true) ? $sort : 'occurred_at',
+            ReportType::Withdrawals, ReportType::Groceries, ReportType::Pickups => in_array($sort, ['occurred_at', 'request_number', 'amount', 'value_snapshot', 'created_at'], true) ? ($sort === 'occurred_at' ? ($type === ReportType::Withdrawals ? 'paid_at' : ($type === ReportType::Groceries ? 'handed_over_at' : 'completed_at')) : $sort) : 'created_at',
+            ReportType::Reconciliation => $sort === 'difference' ? 'difference' : 'business_date',
+        };
+    }
+
+    private function type(string|ReportType $value): ReportType
+    {
+        return $value instanceof ReportType ? $value : ReportType::tryFrom($value) ?? throw ValidationException::withMessages(['report_type' => 'Jenis laporan tidak diizinkan.']);
     }
 
     private function authorize(User $actor, string $permission): void
