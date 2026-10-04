@@ -412,13 +412,21 @@ final class CoreAuthenticationTest extends TestCase
 
     public function test_login_form_renders_accessible_autocomplete_and_generic_error_contracts(): void
     {
+        config()->set('app.demo_mode', true);
+
         Livewire::test(LoginForm::class)
             ->assertSeeHtml('id="login-title"')
             ->assertSeeHtml('autocomplete="username"')
             ->assertSeeHtml('autocomplete="current-password"')
             ->assertSeeHtml('wire:submit="login"')
             ->assertSeeHtml('x-data="{ showPassword: false }"')
-            ->assertSeeHtml('x-bind:aria-label="showPassword ? \'Sembunyikan kata sandi\' : \'Tampilkan kata sandi\'"');
+            ->assertSeeHtml('x-bind:aria-label="showPassword ? \'Sembunyikan kata sandi\' : \'Tampilkan kata sandi\'"')
+            ->assertSee('Akses Akun Layanan')
+            ->assertSee('layanan sesuai peran Anda')
+            ->assertSee('Halo! Yuk masuk')
+            ->assertSee('Petugas')
+            ->assertSee('Bendahara')
+            ->assertDontSee('Akses Akun Warga');
     }
 
     public function test_login_error_summary_links_to_invalid_fields_and_focuses_after_livewire_validation(): void

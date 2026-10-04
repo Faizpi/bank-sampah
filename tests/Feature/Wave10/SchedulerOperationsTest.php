@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 use App\Domain\AuditReconciliation\Models\AuditLog;
-use App\Domain\Groceries\Enums\GrocerySource;
+use App\Domain\CustomersRegions\Models\Dusun;
+use App\Domain\CustomersRegions\Models\Rt;
+use App\Domain\CustomersRegions\Models\Rw;
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
@@ -14,6 +17,8 @@ use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Notifications\Models\NotificationDeliveryFailure;
 use App\Domain\Operations\Services\ScheduledOperationsService;
 use App\Domain\Operations\Services\SchedulerHeartbeat;
+use App\Domain\Pickups\Enums\PickupStatus;
+use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Reports\Enums\ReportExportStatus;
 use App\Domain\Reports\Enums\ReportFormat;
 use App\Domain\Reports\Enums\ReportType;
@@ -21,9 +26,11 @@ use App\Domain\Reports\Models\ReportExport;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 
 uses(RefreshDatabase::class);
@@ -37,24 +44,27 @@ it('expires each eligible record through its terminal service exactly once acros
     Event::fake([NotificationRequested::class]);
     $withdrawal = w10ExpiredWithdrawal();
     $grocery = w10ExpiredGrocery();
+    $pickup = w10ExpiredPickup();
     $export = w10ExpiredExport();
 
     $first = app(ScheduledOperationsService::class)->expireEligible();
     $second = app(ScheduledOperationsService::class)->expireEligible();
 
-    expect($first)->toBe(['withdrawals' => 1, 'groceries' => 1, 'exports' => 1])
-        ->and($second)->toBe(['withdrawals' => 0, 'groceries' => 0, 'exports' => 0])
+    expect($first)->toBe(['withdrawals' => 1, 'groceries' => 1, 'pickups' => 1, 'exports' => 1])
+        ->and($second)->toBe(['withdrawals' => 0, 'groceries' => 0, 'pickups' => 0, 'exports' => 0])
         ->and($withdrawal->refresh()->status)->toBe(WithdrawalStatus::Expired)
         ->and($withdrawal->balanceHold()->sole()->status)->toBe(BalanceHold::STATUS_RELEASED)
         ->and($grocery->refresh()->status)->toBe(GroceryStatus::Expired)
         ->and($grocery->balanceHold()->sole()->status)->toBe(BalanceHold::STATUS_RELEASED)
+        ->and($pickup->refresh()->status)->toBe(PickupStatus::Cancelled)
         ->and($export->refresh()->status)->toBe(ReportExportStatus::Expired)
         ->and($export->fresh()->path)->toBeNull()
         ->and(AuditLog::query()->where('action', 'withdrawal.expired')->count())->toBe(1)
         ->and(AuditLog::query()->where('action', 'grocery.expired')->count())->toBe(1)
+        ->and(AuditLog::query()->where('action', 'pickup.expired')->count())->toBe(1)
         ->and(AuditLog::query()->where('action', 'report.export.expired')->count())->toBe(1);
 
-    Event::assertDispatchedTimes(NotificationRequested::class, 2);
+    Event::assertDispatchedTimes(NotificationRequested::class, 3);
     expect(BalanceHold::query()->where('status', BalanceHold::STATUS_RELEASED)->count())->toBe(2);
 });
 
@@ -71,11 +81,95 @@ it('excludes terminal and unexpired records from scheduled expiry', function ():
 
     $result = app(ScheduledOperationsService::class)->expireEligible();
 
-    expect($result)->toBe(['withdrawals' => 0, 'groceries' => 0, 'exports' => 0])
+    expect($result)->toBe(['withdrawals' => 0, 'groceries' => 0, 'pickups' => 0, 'exports' => 0])
         ->and($terminal->refresh()->status)->toBe(WithdrawalStatus::Paid)
         ->and($unexpired->refresh()->status)->toBe(GroceryStatus::ReadyForPickup)
         ->and($expiredExport->refresh()->status)->toBe(ReportExportStatus::Expired)
         ->and(AuditLog::query()->whereIn('action', ['withdrawal.expired', 'grocery.expired', 'report.export.expired'])->count())->toBe(0);
+});
+
+it('replaces an expired idempotency key atomically while retaining active replay keys', function (): void {
+    $actor = User::factory()->create();
+    $expired = IdempotencyKey::query()->create([
+        'actor_id' => $actor->id,
+        'scope' => 'w10.retry',
+        'key' => 'retry-after-expiry-key',
+        'payload_hash' => hash('sha256', 'payload'),
+        'status' => 'succeeded',
+        'result_type' => User::class,
+        'result_id' => $actor->id,
+        'expires_at' => now()->subSecond(),
+    ]);
+    $legacy = IdempotencyKey::query()->create([
+        'actor_id' => $actor->id,
+        'scope' => 'w10.legacy',
+        'key' => 'legacy-null-expiry-key',
+        'payload_hash' => hash('sha256', 'legacy'),
+        'status' => 'succeeded',
+        'result_type' => User::class,
+        'result_id' => $actor->id,
+    ]);
+    $legacy->forceFill(['expires_at' => null])->save();
+    $active = IdempotencyKey::query()->create([
+        'actor_id' => $actor->id,
+        'scope' => 'w10.active',
+        'key' => 'active-replay-key',
+        'payload_hash' => hash('sha256', 'active'),
+        'status' => 'succeeded',
+        'result_type' => User::class,
+        'result_id' => $actor->id,
+        'expires_at' => now()->addHour(),
+    ]);
+
+    DB::transaction(function () use ($actor, $active): void {
+        expect(IdempotencyKey::activeForUpdate($actor->id, 'w10.retry', 'retry-after-expiry-key'))->toBeNull();
+        expect(IdempotencyKey::activeForUpdate($actor->id, 'w10.legacy', 'legacy-null-expiry-key'))->toBeNull();
+        IdempotencyKey::query()->create([
+            'actor_id' => $actor->id,
+            'scope' => 'w10.retry',
+            'key' => 'retry-after-expiry-key',
+            'payload_hash' => hash('sha256', 'payload'),
+            'status' => 'processing',
+        ]);
+        expect(IdempotencyKey::activeForUpdate($actor->id, 'w10.active', 'active-replay-key')->id)->toBe($active->id);
+    });
+
+    expect(IdempotencyKey::query()->where('scope', 'w10.retry')->sole()->id)->not->toBe($expired->id)
+        ->and(IdempotencyKey::query()->where('scope', 'w10.retry')->sole()->status)->toBe('processing');
+});
+
+it('clamps idempotency retention configuration to a safe interval', function (): void {
+    $actor = User::factory()->create();
+    CarbonImmutable::setTestNow($now = CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta'));
+
+    try {
+        config()->set('operations.retention.idempotency_key_hours', 0);
+        $minimum = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => 'w10.retention', 'key' => 'minimum-retention-key', 'payload_hash' => hash('sha256', 'minimum'), 'status' => 'processing']);
+        config()->set('operations.retention.idempotency_key_hours', 99_999);
+        $maximum = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => 'w10.retention', 'key' => 'maximum-retention-key', 'payload_hash' => hash('sha256', 'maximum'), 'status' => 'processing']);
+
+        expect($minimum->expires_at)->toEqual($now->addHour())
+            ->and($maximum->expires_at)->toEqual($now->addHours(8_760));
+    } finally {
+        CarbonImmutable::setTestNow();
+    }
+});
+
+it('purges legacy idempotency keys without an expiry', function (): void {
+    $actor = User::factory()->create();
+    $legacy = IdempotencyKey::query()->create([
+        'actor_id' => $actor->id,
+        'scope' => 'w10.legacy-purge',
+        'key' => 'legacy-null-purge-key',
+        'payload_hash' => hash('sha256', 'legacy-purge'),
+        'status' => 'succeeded',
+    ]);
+    $legacy->forceFill(['expires_at' => null])->save();
+
+    expect(app(ScheduledOperationsService::class)->purgeExpiredOperationalRows())
+        ->toBe(['idempotency_keys' => 1, 'notification_failures' => 0])
+        ->and(IdempotencyKey::query()->count())->toBe(0)
+        ->and(AuditLog::query()->where('action', 'operations.idempotency_key.purged')->count())->toBe(1);
 });
 
 it('bounds cleanup batches and writes one audit record per purged row', function (): void {
@@ -120,7 +214,7 @@ it('orchestrates bounded expiration from the Artisan command and records only it
     w10ExpiredWithdrawal();
 
     $this->artisan('operations:expire')
-        ->expectsOutputToContain('Expired withdrawals: 1; groceries: 0; exports: 0.')
+        ->expectsOutputToContain('Expired withdrawals: 1; groceries: 0; pickups: 0; exports: 0.')
         ->assertExitCode(0);
 
     expect(Cache::has(SchedulerHeartbeat::EXPIRE_KEY))->toBeTrue()
@@ -216,6 +310,27 @@ function w10ExpiredWithdrawal(): WithdrawalRequest
     return $withdrawal->fresh();
 }
 
+function w10ExpiredPickup(): PickupRequest
+{
+    $customer = User::factory()->create();
+    $dusun = Dusun::query()->create(['code' => 'W10-DS-'.$customer->id, 'name' => 'Dusun W10', 'is_active' => true]);
+    $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'W10-RW-'.$customer->id, 'name' => 'RW W10', 'is_active' => true]);
+    $rt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'W10-RT-'.$customer->id, 'name' => 'RT W10', 'is_active' => true]);
+    $area = ServiceArea::query()->create(['name' => 'Area W10 '.$customer->id, 'is_active' => true]);
+
+    return PickupRequest::query()->create([
+        'request_number' => 'PUP-W10-'.$customer->id,
+        'customer_id' => $customer->id,
+        'rt_id' => $rt->id,
+        'service_area_id' => $area->id,
+        'address' => 'Alamat pickup kedaluwarsa',
+        'selected_date' => today()->subDays(2),
+        'scheduled_date' => today()->subDay(),
+        'estimated_weight_kg' => '1.000',
+        'status' => PickupStatus::Scheduled,
+    ]);
+}
+
 function w10ExpiredGrocery(): GroceryRedemption
 {
     $customer = User::factory()->create();
@@ -234,7 +349,6 @@ function w10ExpiredGrocery(): GroceryRedemption
         'grocery_package_id' => $package->id,
         'value_snapshot' => $package->value,
         'package_snapshot' => ['code' => $package->code, 'name' => $package->name, 'contents' => $package->contents, 'value' => $package->value],
-        'source_type' => GrocerySource::Balance,
         'status' => GroceryStatus::ReadyForPickup,
         'expires_at' => now()->subMinute(),
     ]);

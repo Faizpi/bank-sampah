@@ -9,11 +9,11 @@ use Illuminate\Validation\ValidationException;
 
 final class LoginRateLimiter
 {
-    public const int MAX_ATTEMPTS = 5;
+    public const MAX_ATTEMPTS = 5;
 
-    private const int DECAY_SECONDS = 60;
+    private const DECAY_SECONDS = 60;
 
-    private const string FAILURE_MESSAGE = 'Kredensial tidak valid atau akun tidak dapat digunakan.';
+    private const FAILURE_MESSAGE = 'Kredensial tidak valid atau akun tidak dapat digunakan.';
 
     public function ensureAllowed(string $phone, string $ip): void
     {

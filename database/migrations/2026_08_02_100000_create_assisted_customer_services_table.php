@@ -26,20 +26,8 @@ return new class extends Migration
         });
 
         if (DB::getDriverName() === 'sqlite') {
-            DB::unprepared(<<<'SQL'
-                CREATE TRIGGER assisted_customer_services_owner_operator_insert
-                BEFORE INSERT ON assisted_customer_services
-                WHEN NEW.owner_id = NEW.operator_id
-                BEGIN
-                    SELECT RAISE(ABORT, 'assisted service owner and operator must differ');
-                END;
-                CREATE TRIGGER assisted_customer_services_owner_operator_update
-                BEFORE UPDATE OF owner_id, operator_id ON assisted_customer_services
-                WHEN NEW.owner_id = NEW.operator_id
-                BEGIN
-                    SELECT RAISE(ABORT, 'assisted service owner and operator must differ');
-                END;
-                SQL);
+            DB::unprepared("CREATE TRIGGER assisted_customer_services_owner_operator_insert BEFORE INSERT ON assisted_customer_services WHEN NEW.owner_id = NEW.operator_id BEGIN SELECT RAISE(ABORT, 'assisted service owner and operator must differ'); END");
+            DB::unprepared("CREATE TRIGGER assisted_customer_services_owner_operator_update BEFORE UPDATE OF owner_id, operator_id ON assisted_customer_services WHEN NEW.owner_id = NEW.operator_id BEGIN SELECT RAISE(ABORT, 'assisted service owner and operator must differ'); END");
         } else {
             DB::statement('ALTER TABLE assisted_customer_services ADD CONSTRAINT assisted_customer_services_owner_operator_check CHECK (owner_id <> operator_id)');
         }

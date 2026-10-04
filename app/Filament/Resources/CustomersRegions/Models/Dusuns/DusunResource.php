@@ -28,6 +28,10 @@ final class DusunResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?string $navigationParentItem = 'Wilayah';
+
+    protected static ?int $navigationSort = 50;
+
     protected static ?string $navigationLabel = 'Dusun';
 
     protected static ?string $recordTitleAttribute = 'name';
@@ -48,7 +52,8 @@ final class DusunResource extends Resource
             IconColumn::make('is_active')->boolean(),
         ])->recordActions([
             EditAction::make()->using(fn (Dusun $record, array $data): Dusun => tap($record, fn () => app(ManageRegions::class)->updateDusun(auth()->user(), $record, $data['code'], $data['name']))),
-            Action::make('deactivate')->authorize('deactivate')->requiresConfirmation()->visible(fn (Dusun $record): bool => $record->is_active)->action(fn (Dusun $record) => app(ManageRegions::class)->deactivate(auth()->user(), $record)),
+            Action::make('activate')->label('Aktifkan kembali')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->requiresConfirmation()->modalHeading(fn (Dusun $record): string => "Aktifkan dusun {$record->name}?")->modalDescription('Dusun ini kembali tersedia untuk wilayah baru. Data historis tetap tersimpan.')->modalSubmitActionLabel('Aktifkan dusun')->visible(fn (Dusun $record): bool => ! $record->is_active)->action(fn (Dusun $record) => app(ManageRegions::class)->activate(auth()->user(), $record)),
+            Action::make('deactivate')->label('Nonaktifkan')->authorize('deactivate')->requiresConfirmation()->modalHeading(fn (Dusun $record): string => "Nonaktifkan dusun {$record->name}?")->modalDescription('Dusun ini tidak tersedia untuk data wilayah baru. Data historis tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan dusun')->visible(fn (Dusun $record): bool => $record->is_active)->action(fn (Dusun $record) => app(ManageRegions::class)->deactivate(auth()->user(), $record)),
         ]);
     }
 

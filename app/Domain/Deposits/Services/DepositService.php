@@ -100,6 +100,7 @@ final readonly class DepositService
         $locked->items()->delete();
         foreach ($items as $item) {
             $input = $item instanceof DepositItemInput ? $item : DepositItemInput::fromArray($item);
+            $this->assertItemWeightLimit($input->weightKg);
             $type = WasteType::query()->with(['unit', 'category'])->find($input->wasteTypeId);
             $condition = WasteCondition::query()->find($input->conditionId);
             if ($type === null || $condition === null || ! $type->is_active || ! $type->category->is_active || ! $condition->is_active || ! $type->conditions()->whereKey($condition->id)->exists()) {
@@ -178,7 +179,7 @@ final readonly class DepositService
                     return $lockedDeposit->fresh(['items', 'media']);
                 });
             }
-            $media = $evidence === null ? null : $this->mediaStore->handle($evidence, $actor);
+            $media = $evidence === null ? null : $this->mediaStore->handleEvidence($evidence, $actor);
 
             $result = DB::transaction(function () use ($actor, $deposit, $idempotencyKey, $payloadHash, $items, $media, $assistedServiceId): Deposit {
                 $record = $assistedServiceId === null ? null : $this->assistedServices->lockForDepositLink($actor, $assistedServiceId);
@@ -223,7 +224,9 @@ final readonly class DepositService
                     }
                     $price = $this->priceResolver->resolve($type, $condition->id, CarbonImmutable::parse((string) $locked->occurred_at, 'Asia/Jakarta'));
                     $snapshot = $price->snapshot()->withWeight((string) $item->weight_kg);
-                    $totalWeight += Weight::fromDecimal($snapshot->weightKg)->grams();
+                    $itemWeight = Weight::fromDecimal($snapshot->weightKg);
+                    $this->assertItemWeightLimit($itemWeight->decimal());
+                    $totalWeight += $itemWeight->grams();
                     $total += $snapshot->subtotal;
                     $item->forceFill([
                         'waste_type_code' => $snapshot->wasteTypeCode,
@@ -241,33 +244,41 @@ final readonly class DepositService
                     ])->save();
                 }
 
+                $this->assertTotalWeightLimit($totalWeight);
+
                 if ($media instanceof Media) {
                     $media->forceFill(['attachable_type' => Deposit::class, 'attachable_id' => $locked->id])->save();
                 }
                 $token = QrToken::generate();
                 if ($locked->mobile_service_id !== null) {
-                    $this->mobileDepositGuard->attach($actor, $locked, MobileService::query()->findOrFail($locked->mobile_service_id), WasteType::query()->findOrFail($locked->items->first()->waste_type_id));
+                    $this->mobileDepositGuard->attach($actor, $locked, MobileService::query()->findOrFail($locked->mobile_service_id), $locked->items->map(fn ($item): WasteType => WasteType::query()->findOrFail($item->waste_type_id))->all());
                 }
+                $requiresReview = $this->requiresReview($total);
                 $locked->forceFill([
-                    'status' => Deposit::STATUS_FINAL,
+                    'status' => $requiresReview ? Deposit::STATUS_PENDING_REVIEW : Deposit::STATUS_FINAL,
                     'total_weight_kg' => Weight::fromGrams($totalWeight)->decimal(),
                     'total_value' => $total,
-                    'finalized_at' => now(),
+                    'finalized_at' => $requiresReview ? null : now(),
+                    'review_requested_at' => $requiresReview ? now() : null,
                     'idempotency_key' => $idempotencyKey,
                     'verification_token_hash' => $token->hash(),
                     'verification_token_encrypted' => $token->value(),
                 ])->save();
-                $ledger = $this->ledger->postDeposit($locked, $total, 'deposit:'.$locked->id.':deposit');
-                $this->auditLogger->record($actor, 'deposit.finalized', $locked, ['status' => Deposit::STATUS_DRAFT], ['status' => Deposit::STATUS_FINAL, 'total_value' => $total, 'ledger_entry_id' => $ledger['entry']->id], $this->correlationId());
+                if ($requiresReview) {
+                    $this->auditLogger->record($actor, 'deposit.review_requested', $locked, ['status' => Deposit::STATUS_DRAFT], ['status' => Deposit::STATUS_PENDING_REVIEW, 'total_value' => $total, 'review_threshold' => $this->reviewThreshold()], $this->correlationId());
+                } else {
+                    $ledger = $this->ledger->postDeposit($locked, $total, 'deposit:'.$locked->id.':deposit');
+                    $this->auditLogger->record($actor, 'deposit.finalized', $locked, ['status' => Deposit::STATUS_DRAFT], ['status' => Deposit::STATUS_FINAL, 'total_value' => $total, 'ledger_entry_id' => $ledger['entry']->id], $this->correlationId());
+                    NotificationRequested::dispatch(new NotificationPayload(
+                        recipientId: $locked->customer_id,
+                        type: 'deposit.finalized',
+                        title: 'Setoran selesai',
+                        body: 'Setoran '.$locked->deposit_number.' telah selesai diproses.',
+                        reference: '/warga/setoran/'.$locked->id,
+                        dedupeKey: NotificationDedupeKey::for('deposit.finalized:'.$locked->deposit_number, $locked->customer_id, 'deposit-finalized-v1'),
+                    ));
+                }
                 $key->forceFill(['status' => 'succeeded', 'result_type' => Deposit::class, 'result_id' => $locked->id])->save();
-                NotificationRequested::dispatch(new NotificationPayload(
-                    recipientId: $locked->customer_id,
-                    type: 'deposit.finalized',
-                    title: 'Setoran selesai',
-                    body: 'Setoran '.$locked->deposit_number.' telah selesai diproses.',
-                    reference: '/setoran/'.$locked->deposit_number,
-                    dedupeKey: NotificationDedupeKey::for('deposit.finalized:'.$locked->deposit_number, $locked->customer_id, 'deposit-finalized-v1'),
-                ));
                 if ($record !== null) {
                     $this->assistedServices->linkDepositInTransaction($actor, $record, $locked);
                 }
@@ -304,12 +315,7 @@ final readonly class DepositService
 
     private function existingIdempotency(User $actor, string $key, string $payloadHash): ?IdempotencyKey
     {
-        $existing = IdempotencyKey::query()
-            ->where('actor_id', $actor->id)
-            ->where('scope', 'deposit.finalize')
-            ->where('key', $key)
-            ->lockForUpdate()
-            ->first();
+        $existing = IdempotencyKey::activeForUpdate($actor->id, 'deposit.finalize', $key);
         if ($existing === null) {
             return null;
         }
@@ -345,6 +351,38 @@ final readonly class DepositService
         if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{15,190}$/', $key) !== 1) {
             throw ValidationException::withMessages(['idempotency_key' => 'Idempotency key tidak valid.']);
         }
+    }
+
+    private function assertItemWeightLimit(string $weight): void
+    {
+        $actual = Weight::fromDecimal($weight);
+        $limit = Weight::fromDecimal((string) config('app.deposit_max_item_weight_kg'));
+        if ($actual->grams() > $limit->grams()) {
+            throw ValidationException::withMessages(['items' => 'Berat satu jenis sampah tidak boleh melebihi '.$limit->decimal().' kg.']);
+        }
+    }
+
+    private function assertTotalWeightLimit(int $totalGrams): void
+    {
+        $limit = Weight::fromDecimal((string) config('app.deposit_max_total_weight_kg'));
+        if ($totalGrams > $limit->grams()) {
+            throw ValidationException::withMessages(['items' => 'Total berat setoran tidak boleh melebihi '.$limit->decimal().' kg.']);
+        }
+    }
+
+    private function requiresReview(int $total): bool
+    {
+        return $total >= $this->reviewThreshold();
+    }
+
+    private function reviewThreshold(): int
+    {
+        $threshold = (int) config('app.deposit_review_threshold');
+        if ($threshold < 1) {
+            throw new \LogicException('Batas persetujuan setoran harus bernilai positif.');
+        }
+
+        return $threshold;
     }
 
     private function number(string $prefix): string

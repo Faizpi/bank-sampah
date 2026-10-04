@@ -16,7 +16,7 @@
     --color-surface: #ffffff;
     --color-harvest-gold: #d6a84b;
     --color-terracotta: #c76b4f;
-    --color-sky-blue: #3e7d92;
+    --color-sky-blue: #326d80;
     --color-text-primary: #17241f;
     --color-text-secondary: #55635d;
     --color-border: #d9e1dc;
@@ -121,6 +121,7 @@
     --public-media-radius: var(--radius-lg);
     --public-motion-duration: var(--animate-duration-default);
     --public-motion-ease: var(--ease-standard);
+    --public-hero-grid-line: color-mix(in srgb, var(--color-forest-600) 10%, transparent);
 }
 
 @layer base {
@@ -203,6 +204,20 @@
 
 @utility public-canvas {
     background-color: var(--public-canvas);
+}
+
+@utility public-hero-grid {
+    background-image:
+        linear-gradient(to right, var(--public-hero-grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--public-hero-grid-line) 1px, transparent 1px);
+    background-size: 2.5rem 2.5rem;
+}
+
+@utility customer-card-grid {
+    background-image:
+        linear-gradient(to right, color-mix(in srgb, var(--color-forest-600) 8%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--color-forest-600) 8%, transparent) 1px, transparent 1px);
+    background-size: 1.5rem 1.5rem;
 }
 
 @utility public-section-canvas {

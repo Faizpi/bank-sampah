@@ -3,12 +3,12 @@
         <div class="relative isolate overflow-hidden border-b border-border bg-warm-canvas p-6 sm:p-8 text-deep-green">
             <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div class="w-full min-w-0 max-w-lg">
-                    <span class="inline-flex rounded-full border border-forest-600 bg-success-bg px-3 py-1 text-xs font-semibold text-forest-700">Akses Akun Warga</span>
+                    <span class="inline-flex rounded-full border border-forest-600 bg-success-bg px-3 py-1 text-xs font-semibold text-forest-700">Akses Akun Layanan</span>
                     <h1 id="login-title" class="mt-2 text-pretty text-h2 font-extrabold text-deep-green lg:text-h1">Masuk ke Layanan Bank Sampah</h1>
-                    <p class="mt-2 text-body-sm text-text-secondary">Gunakan nomor telepon terdaftar dan kata sandi Anda untuk mengakses saldo & riwayat setoran.</p>
+                    <p class="mt-2 text-body-sm text-text-secondary">Gunakan nomor telepon terdaftar dan kata sandi untuk membuka layanan sesuai peran Anda.</p>
                 </div>
                 <div class="flex items-center justify-between gap-4 md:flex-col md:items-end">
-                    <x-ui.mascot variant="2" bubble="Halo warga! Yuk masuk" bubblePosition="top" class="h-28 w-auto filter drop-shadow-lg" />
+                    <x-ui.mascot variant="2" bubble="Halo! Yuk masuk" bubblePosition="top" class="h-28 w-auto filter drop-shadow-lg" />
                 </div>
             </div>
             

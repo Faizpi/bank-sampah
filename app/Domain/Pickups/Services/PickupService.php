@@ -6,7 +6,6 @@ namespace App\Domain\Pickups\Services;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
-use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Deposits\Data\DepositItemInput;
 use App\Domain\Deposits\Services\DepositService;
@@ -40,12 +39,12 @@ use Throwable;
 
 final readonly class PickupService
 {
-    private const string IDEMPOTENCY_REQUEST_SCOPE = 'pickup.request';
+    private const IDEMPOTENCY_REQUEST_SCOPE = 'pickup.request';
 
-    private const string IDEMPOTENCY_COMPLETE_SCOPE = 'pickup.complete';
+    private const IDEMPOTENCY_COMPLETE_SCOPE = 'pickup.complete';
 
     /** @var list<string> */
-    private const array RESERVING_STATUSES = [
+    private const RESERVING_STATUSES = [
         'menunggu_pemeriksaan',
         'diterima',
         'dijadwalkan',
@@ -84,12 +83,7 @@ final readonly class PickupService
 
         try {
             return DB::transaction(function () use ($actor, $customer, $area, $address, $selectedDate, $notes, $normalizedItems, $estimatedWeight, $photos, $idempotencyKey, $payloadHash, &$storedMedia): PickupRequest {
-                $existingKey = IdempotencyKey::query()
-                    ->where('actor_id', $actor->id)
-                    ->where('scope', self::IDEMPOTENCY_REQUEST_SCOPE)
-                    ->where('key', $idempotencyKey)
-                    ->lockForUpdate()
-                    ->first();
+                $existingKey = IdempotencyKey::activeForUpdate($actor->id, self::IDEMPOTENCY_REQUEST_SCOPE, $idempotencyKey);
 
                 if ($existingKey !== null) {
                     $this->assertSamePayload($existingKey, $payloadHash);
@@ -123,10 +117,10 @@ final readonly class PickupService
                 }
 
                 foreach ($photos as $photo) {
-                    $media = $this->mediaStore->handle($photo, $actor);
+                    $media = $this->mediaStore->handlePhoto($photo, $actor);
                     $storedMedia[] = $media;
-                    if (! str_starts_with($media->mime_type, 'image/')) {
-                        throw ValidationException::withMessages(['photos' => 'Foto penjemputan harus berupa JPEG, PNG, atau WebP.']);
+                    if ($media->mime_type !== 'image/jpeg' || $media->size > 1 * 1024 * 1024) {
+                        throw ValidationException::withMessages(['photos' => 'Setiap foto penjemputan harus berupa JPEG maksimal 1 MB.']);
                     }
                     $media->forceFill([
                         'attachable_type' => PickupRequest::class,
@@ -204,14 +198,36 @@ final readonly class PickupService
         });
     }
 
-    /** @return list<string> */
-    public function alternatives(ServiceArea $area, string $date, int $limit = 3): array
+    /** @return Builder<ServiceArea> */
+    public function eligibleAreasFor(User $customer): Builder
     {
-        return $this->findAlternatives($area, $this->businessDate($date), $limit);
+        $rtId = $customer->customerProfile?->rt_id;
+
+        return ServiceArea::query()
+            ->where('is_active', true)
+            ->whereHas('rts', fn (Builder $query): Builder => $query
+                ->whereKey($rtId)
+                ->where('is_active', true)
+                ->whereHas('rw', fn (Builder $query): Builder => $query
+                    ->where('is_active', true)
+                    ->whereHas('dusun', fn (Builder $query): Builder => $query->where('is_active', true))));
+    }
+
+    public function activeAreaFor(User $customer, mixed $serviceAreaId): ?ServiceArea
+    {
+        return is_numeric($serviceAreaId)
+            ? $this->eligibleAreasFor($customer)->whereKey((int) $serviceAreaId)->first()
+            : null;
     }
 
     /** @return list<string> */
-    private function findAlternatives(ServiceArea $area, CarbonImmutable $start, int $limit = 3): array
+    public function alternatives(ServiceArea $area, string $date, int $limit = 3, ?string $estimatedWeight = null): array
+    {
+        return $this->findAlternatives($area, $this->businessDate($date), $limit, $estimatedWeight);
+    }
+
+    /** @return list<string> */
+    private function findAlternatives(ServiceArea $area, CarbonImmutable $start, int $limit = 3, ?string $estimatedWeight = null): array
     {
         $alternatives = [];
         for ($offset = 1; $offset <= 14 && count($alternatives) < $limit; $offset++) {
@@ -220,10 +236,14 @@ final readonly class PickupService
             if ($capacity === null) {
                 continue;
             }
-            $reservedAddresses = PickupRequest::query()->where('service_area_id', $area->id)->whereIn('status', self::RESERVING_STATUSES)->where(function (Builder $query) use ($candidate): void {
+            $reserved = PickupRequest::query()->where('service_area_id', $area->id)->whereIn('status', self::RESERVING_STATUSES)->where(function (Builder $query) use ($candidate): void {
                 $query->whereDate('selected_date', $candidate->toDateString())->whereNull('scheduled_date')->orWhereDate('scheduled_date', $candidate->toDateString());
-            })->count();
-            if ($capacity->max_addresses !== null && $reservedAddresses >= $capacity->max_addresses) {
+            })->get();
+            if ($capacity->max_addresses !== null && $reserved->count() >= $capacity->max_addresses) {
+                continue;
+            }
+            $weightGrams = $reserved->sum(static fn (PickupRequest $request): int => $request->estimated_weight_kg === null ? 0 : Weight::fromDecimal((string) $request->estimated_weight_kg)->grams());
+            if ($capacity->max_weight_kg !== null && $estimatedWeight !== null && ($weightGrams + Weight::fromDecimal($estimatedWeight)->grams()) > Weight::fromDecimal((string) $capacity->max_weight_kg)->grams()) {
                 continue;
             }
             $alternatives[] = $candidate->toDateString();
@@ -271,7 +291,7 @@ final readonly class PickupService
         $this->authorize($actor, 'pickup.schedule');
         $this->assertRecordScope($actor, $pickup, false);
         $this->assertActiveAssignedStaff($staff, $pickup);
-        $scheduledDate = $date === null ? CarbonImmutable::parse((string) $pickup->selected_date, 'Asia/Jakarta') : $this->businessDate($date);
+        $scheduledDate = $date === null ? CarbonImmutable::parse((string) $pickup->selected_date, 'Asia/Jakarta') : $this->businessDate($date, 'scheduled_date');
 
         return DB::transaction(function () use ($actor, $pickup, $staff, $scheduledDate): PickupRequest {
             $locked = $this->lockPickup($pickup);
@@ -314,43 +334,68 @@ final readonly class PickupService
     /**
      * @param  list<array<string, mixed>|DepositItemInput>  $actualItems
      */
-    public function complete(User $actor, PickupRequest $pickup, array $actualItems, string $idempotencyKey): PickupRequest
+    public function complete(User $actor, PickupRequest $pickup, array $actualItems, string $idempotencyKey, ?UploadedFile $evidence = null): PickupRequest
     {
         $this->authorize($actor, 'pickup.complete');
         $this->assertRecordScope($actor, $pickup, true);
         $this->validateIdempotencyKey($idempotencyKey);
+        $this->assertCompletionEvidence($pickup, $evidence);
         $normalized = array_map(static fn (array|DepositItemInput $item): DepositItemInput => $item instanceof DepositItemInput ? $item : DepositItemInput::fromArray($item), $actualItems);
         if ($normalized === []) {
             throw ValidationException::withMessages(['items' => 'Minimal satu hasil timbang diperlukan.']);
         }
-        $payloadHash = hash('sha256', json_encode(['pickup' => $pickup->id, 'items' => array_map(static fn (DepositItemInput $item): array => [$item->wasteTypeId, $item->conditionId, $item->weightKg], $normalized)], JSON_THROW_ON_ERROR));
+        $evidenceChecksum = $evidence === null ? null : hash_file('sha256', $evidence->getRealPath());
+        if ($evidence !== null && ! is_string($evidenceChecksum)) {
+            throw ValidationException::withMessages(['evidence' => 'Bukti foto penjemputan tidak dapat dibaca.']);
+        }
+        $payloadHash = hash('sha256', json_encode([
+            'pickup' => $pickup->id,
+            'items' => array_map(static fn (DepositItemInput $item): array => [$item->wasteTypeId, $item->conditionId, $item->weightKg], $normalized),
+            'evidence_checksum' => $evidenceChecksum,
+        ], JSON_THROW_ON_ERROR));
+        $media = null;
 
-        return DB::transaction(function () use ($actor, $pickup, $normalized, $idempotencyKey, $payloadHash): PickupRequest {
-            $existingKey = IdempotencyKey::query()->where('actor_id', $actor->id)->where('scope', self::IDEMPOTENCY_COMPLETE_SCOPE)->where('key', $idempotencyKey)->lockForUpdate()->first();
-            if ($existingKey !== null) {
-                $this->assertSamePayload($existingKey, $payloadHash);
+        try {
+            return DB::transaction(function () use ($actor, $pickup, $normalized, $idempotencyKey, $payloadHash, $evidence, &$media): PickupRequest {
+                $existingKey = IdempotencyKey::activeForUpdate($actor->id, self::IDEMPOTENCY_COMPLETE_SCOPE, $idempotencyKey);
+                if ($existingKey !== null) {
+                    $this->assertSamePayload($existingKey, $payloadHash);
 
-                return PickupRequest::query()->findOrFail($existingKey->result_id);
+                    return PickupRequest::query()->findOrFail($existingKey->result_id);
+                }
+                $key = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => self::IDEMPOTENCY_COMPLETE_SCOPE, 'key' => $idempotencyKey, 'payload_hash' => $payloadHash, 'status' => 'processing']);
+                $locked = $this->lockPickup($pickup);
+                $this->assertTransition($locked, PickupStatus::Completed);
+                if ($locked->status !== PickupStatus::PickedUp) {
+                    throw ValidationException::withMessages(['status' => 'Penjemputan harus berstatus dijemput sebelum diselesaikan.']);
+                }
+                if ($evidence !== null) {
+                    $media = $this->mediaStore->handlePhoto($evidence, $actor);
+                    $media->forceFill([
+                        'attachable_type' => PickupRequest::class,
+                        'attachable_id' => $locked->id,
+                    ])->save();
+                }
+                $customer = $locked->customer()->firstOrFail();
+                $deposit = $this->deposits->createDraft($actor, $customer, 'penjemputan', $locked->address);
+                $deposit->forceFill(['pickup_request_id' => $locked->id])->save();
+                $deposit = $this->deposits->finalize($actor, $deposit, 'pickup-'.$locked->id.'-'.$idempotencyKey, array_map(static fn (DepositItemInput $item): array => ['waste_type_id' => $item->wasteTypeId, 'condition_id' => $item->conditionId, 'weight_kg' => $item->weightKg], $normalized));
+                $oldStatus = $locked->status;
+                $locked->forceFill(['status' => PickupStatus::Completed, 'deposit_id' => $deposit->id, 'completed_at' => now()])->save();
+                $this->recordStatus($locked, $actor, $oldStatus, PickupStatus::Completed, 'Penimbangan aktual dan setoran final berhasil.');
+                $this->auditLogger->record($actor, 'pickup.completed', $locked, ['status' => $oldStatus->value], ['status' => PickupStatus::Completed->value, 'deposit_id' => $deposit->id, 'actual_weight_kg' => $deposit->total_weight_kg], $this->correlationId());
+                $key->forceFill(['status' => 'succeeded', 'result_type' => PickupRequest::class, 'result_id' => $locked->id])->save();
+                $this->notifyStatus($locked, 'Penjemputan selesai', 'Penjemputan '.$locked->request_number.' selesai dan setoran telah dibuat.', 'pickup.completed');
+
+                return $locked->fresh(['items', 'media', 'deposit']);
+            });
+        } catch (Throwable $exception) {
+            if ($media instanceof Media) {
+                $this->deleteStoredMedia($media);
             }
-            $key = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => self::IDEMPOTENCY_COMPLETE_SCOPE, 'key' => $idempotencyKey, 'payload_hash' => $payloadHash, 'status' => 'processing']);
-            $locked = $this->lockPickup($pickup);
-            $this->assertTransition($locked, PickupStatus::Completed);
-            if ($locked->status !== PickupStatus::PickedUp) {
-                throw ValidationException::withMessages(['status' => 'Penjemputan harus berstatus dijemput sebelum diselesaikan.']);
-            }
-            $customer = $locked->customer()->firstOrFail();
-            $deposit = $this->deposits->createDraft($actor, $customer, 'penjemputan', $locked->address);
-            $deposit->forceFill(['pickup_request_id' => $locked->id])->save();
-            $deposit = $this->deposits->finalize($actor, $deposit, 'pickup-'.$locked->id.'-'.$idempotencyKey, array_map(static fn (DepositItemInput $item): array => ['waste_type_id' => $item->wasteTypeId, 'condition_id' => $item->conditionId, 'weight_kg' => $item->weightKg], $normalized));
-            $oldStatus = $locked->status;
-            $locked->forceFill(['status' => PickupStatus::Completed, 'deposit_id' => $deposit->id, 'completed_at' => now()])->save();
-            $this->recordStatus($locked, $actor, $oldStatus, PickupStatus::Completed, 'Penimbangan aktual dan setoran final berhasil.');
-            $this->auditLogger->record($actor, 'pickup.completed', $locked, ['status' => $oldStatus->value], ['status' => PickupStatus::Completed->value, 'deposit_id' => $deposit->id, 'actual_weight_kg' => $deposit->total_weight_kg], $this->correlationId());
-            $key->forceFill(['status' => 'succeeded', 'result_type' => PickupRequest::class, 'result_id' => $locked->id])->save();
-            $this->notifyStatus($locked, 'Penjemputan selesai', 'Penjemputan '.$locked->request_number.' selesai dan setoran telah dibuat.', 'pickup.completed');
 
-            return $locked->fresh(['items', 'media', 'deposit']);
-        });
+            throw $exception;
+        }
     }
 
     public function cancel(User $actor, PickupRequest $pickup, ?string $reason = null): PickupRequest
@@ -468,13 +513,12 @@ final readonly class PickupService
         if (! is_numeric($serviceAreaId)) {
             throw ValidationException::withMessages(['service_area_id' => 'Area pelayanan wajib dipilih.']);
         }
-        $profile = $customer->customerProfile;
-        if (! $profile instanceof CustomerProfile) {
+        if (! $customer->customerProfile instanceof CustomerProfile) {
             throw ValidationException::withMessages(['customer_id' => 'Profil nasabah tidak tersedia.']);
         }
-        $rt = Rt::query()->with(['rw.dusun'])->whereKey($profile->rt_id)->first();
-        $area = ServiceArea::query()->whereKey((int) $serviceAreaId)->where('is_active', true)->first();
-        if ($rt === null || ! $rt->is_active || $rt->rw?->is_active !== true || $rt->rw->dusun?->is_active !== true || $area === null || ! $area->rts()->whereKey($rt->id)->exists()) {
+
+        $area = $this->activeAreaFor($customer, $serviceAreaId);
+        if ($area === null) {
             throw ValidationException::withMessages(['service_area_id' => 'Alamat berada di luar area pelayanan aktif.']);
         }
 
@@ -537,8 +581,15 @@ final readonly class PickupService
     /** @param list<UploadedFile> $photos */
     private function validatePhotos(array $photos): void
     {
-        if (count($photos) < 1 || count($photos) > 5) {
-            throw ValidationException::withMessages(['photos' => 'Unggah minimal satu dan maksimal lima foto.']);
+        if (count($photos) < 1 || count($photos) > 2) {
+            throw ValidationException::withMessages(['photos' => 'Unggah minimal satu dan maksimal dua foto.']);
+        }
+    }
+
+    private function assertCompletionEvidence(PickupRequest $pickup, ?UploadedFile $evidence): void
+    {
+        if ($evidence === null && ! $pickup->media()->exists()) {
+            throw ValidationException::withMessages(['evidence' => 'Tambahkan bukti foto penjemputan melalui kamera atau galeri sebelum menyelesaikan tugas.']);
         }
     }
 
@@ -546,7 +597,7 @@ final readonly class PickupService
     {
         $capacity = PickupCapacity::query()->where('service_area_id', $area->id)->whereDate('service_date', $date->toDateString())->where('is_active', true)->lockForUpdate()->first();
         if ($capacity === null) {
-            throw new PickupCapacityUnavailable('Tanggal layanan tidak tersedia.', $this->findAlternatives($area, $date));
+            throw new PickupCapacityUnavailable('Tanggal layanan tidak tersedia.', $this->findAlternatives($area, $date, estimatedWeight: $estimatedWeight));
         }
         $reserved = PickupRequest::query()->where('service_area_id', $area->id)->whereIn('status', self::RESERVING_STATUSES)->where(function (Builder $query) use ($date): void {
             $query->whereDate('selected_date', $date->toDateString())->whereNull('scheduled_date')->orWhereDate('scheduled_date', $date->toDateString());
@@ -554,10 +605,10 @@ final readonly class PickupService
         $addressCount = $reserved->count();
         $weightGrams = $reserved->sum(static fn (PickupRequest $request): int => $request->estimated_weight_kg === null ? 0 : Weight::fromDecimal((string) $request->estimated_weight_kg)->grams());
         if ($capacity->max_addresses !== null && $addressCount >= $capacity->max_addresses) {
-            throw new PickupCapacityUnavailable('Kapasitas alamat untuk tanggal tersebut penuh.', $this->findAlternatives($area, $date));
+            throw new PickupCapacityUnavailable('Kapasitas alamat untuk tanggal tersebut penuh.', $this->findAlternatives($area, $date, estimatedWeight: $estimatedWeight));
         }
         if ($capacity->max_weight_kg !== null && $estimatedWeight !== null && ($weightGrams + Weight::fromDecimal($estimatedWeight)->grams()) > Weight::fromDecimal((string) $capacity->max_weight_kg)->grams()) {
-            throw new PickupCapacityUnavailable('Kapasitas berat untuk tanggal tersebut penuh.', $this->findAlternatives($area, $date));
+            throw new PickupCapacityUnavailable('Kapasitas berat untuk tanggal tersebut penuh.', $this->findAlternatives($area, $date, estimatedWeight: $estimatedWeight));
         }
 
         return $capacity;
@@ -660,7 +711,7 @@ final readonly class PickupService
             type: $type,
             title: $title,
             body: $body,
-            reference: '/notifikasi',
+            reference: '/warga/penjemputan/'.$pickup->id,
             dedupeKey: NotificationDedupeKey::for($type.':'.$pickup->request_number, $pickup->customer_id, 'pickup-v1'),
         ));
     }
@@ -672,10 +723,10 @@ final readonly class PickupService
         }
     }
 
-    private function businessDate(mixed $value): CarbonImmutable
+    private function businessDate(mixed $value, string $field = 'selected_date'): CarbonImmutable
     {
         if (! is_string($value) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
-            throw ValidationException::withMessages(['selected_date' => 'Tanggal layanan harus berformat YYYY-MM-DD.']);
+            throw ValidationException::withMessages([$field => 'Tanggal layanan harus berformat YYYY-MM-DD.']);
         }
         try {
             $date = CarbonImmutable::createFromFormat('!Y-m-d', $value, 'Asia/Jakarta');
@@ -683,7 +734,7 @@ final readonly class PickupService
             $date = false;
         }
         if (! $date instanceof CarbonImmutable || $date->format('Y-m-d') !== $value || $date->isBefore(today('Asia/Jakarta')) || $date->diffInDays(today('Asia/Jakarta')) > (int) config('app.pickup_booking_horizon_days', 30)) {
-            throw ValidationException::withMessages(['selected_date' => 'Tanggal layanan tidak tersedia dalam horizon pemesanan.']);
+            throw ValidationException::withMessages([$field => 'Tanggal layanan tidak tersedia: pilih hari ini hingga batas horizon pemesanan.']);
         }
 
         return $date;

@@ -37,6 +37,7 @@ use App\Livewire\PublicSite\MobileSchedule;
 use App\Livewire\PublicSite\PublicPrograms;
 use App\Livewire\PublicSite\WasteCatalog;
 use App\Livewire\PublicSite\WastePrices;
+use App\Livewire\Statistics\InternalDashboard;
 use App\Livewire\Treasurer\Dashboard as TreasurerDashboard;
 use App\Livewire\Treasurer\Reports;
 use App\Livewire\Treasurer\WithdrawalPayments;
@@ -74,6 +75,10 @@ Route::livewire('/dashboard/warga', CitizenDashboard::class)
 Route::livewire('/dashboard/petugas', OfficerDashboard::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:user.view'])
     ->name('officer.dashboard');
+
+Route::livewire('/statistik/internal', InternalDashboard::class)
+    ->middleware(['auth', 'session.fresh:30', 'permission:statistics.internal.view'])
+    ->name('statistics.internal');
 
 Route::livewire('/petugas/pindai', CustomerIdentification::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:customer.view'])
@@ -139,7 +144,7 @@ Route::livewire('/warga/sembako/{redemption}/bukti', GroceryReceipt::class)
     ->name('citizen.grocery.receipt');
 
 Route::livewire('/petugas/sembako', GroceryTasks::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:grocery.prepare', 'throttle:financial'])
+    ->middleware(['auth', 'session.fresh:30', 'throttle:financial'])
     ->name('officer.grocery.tasks');
 
 Route::livewire('/petugas/layanan-keliling', MobileServiceTasks::class)

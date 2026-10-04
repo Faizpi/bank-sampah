@@ -12,6 +12,7 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
+use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Exceptions\PickupCapacityUnavailable;
@@ -24,14 +25,20 @@ use App\Domain\WasteMaster\Models\WasteCondition;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\WasteMaster\Support\WasteMasterMutationGuard;
+use App\Filament\Resources\Pickups\Models\PickupRequests\Pages\ManagePickupRequests;
+use App\Livewire\Citizen\PickupRequestForm;
+use App\Livewire\Citizen\PickupShow;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Filament\Actions\Testing\TestAction;
+use Filament\Notifications\Notification;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class PickupWaveTest extends TestCase
@@ -85,6 +92,27 @@ final class PickupWaveTest extends TestCase
         self::assertDatabaseCount('ledger_entries', 0);
     }
 
+    public function test_lane_a_rejects_more_than_two_pickup_photos(): void
+    {
+        [$customer, $area, $type] = $this->context();
+        $this->grant($customer, ['pickup.request']);
+        $this->capacity($area, 5, '50.000');
+
+        $this->expectException(ValidationException::class);
+
+        app(PickupService::class)->submit(
+            $customer,
+            $this->requestData($customer, $area),
+            [['waste_type_id' => $type->id, 'estimated_quantity' => 1]],
+            [
+                UploadedFile::fake()->image('pickup-one.jpg'),
+                UploadedFile::fake()->image('pickup-two.jpg'),
+                UploadedFile::fake()->image('pickup-three.jpg'),
+            ],
+            'w5-too-many-photos-0001',
+        );
+    }
+
     public function test_lane_a_idor_does_not_allow_customer_to_read_or_download_other_customer_media(): void
     {
         [$customer, $area, $type] = $this->context();
@@ -97,6 +125,174 @@ final class PickupWaveTest extends TestCase
 
         self::assertFalse(app(PickupService::class)->canView($other, $pickup));
         self::assertFalse(app(PickupService::class)->canDownloadMedia($other, $pickup->media->sole()));
+    }
+
+    public function test_citizen_pickup_detail_shows_submitted_items_notes_and_private_media_route(): void
+    {
+        [$customer, $area, $type] = $this->context();
+        $this->grant($customer, ['pickup.request', 'pickup.view']);
+        $this->capacity($area, 5, '50.000');
+        Storage::fake('media_private');
+        $pickup = app(PickupService::class)->submit(
+            $customer,
+            array_replace($this->requestData($customer, $area), ['notes' => 'Simpan di teras rumah']),
+            [['waste_type_id' => $type->id, 'estimated_weight_kg' => '2.500']],
+            [UploadedFile::fake()->image('pickup-detail.jpg')],
+            'w5-detail-key-0001',
+        );
+
+        Livewire::actingAs($customer)
+            ->test(PickupShow::class, ['pickup' => $pickup])
+            ->assertSee('Sampah yang diajukan')
+            ->assertSee($type->name)
+            ->assertSee('2,5 kg')
+            ->assertSee('Simpan di teras rumah')
+            ->assertSeeHtml('href="'.route('pickup.media', $pickup->media()->sole()).'"');
+    }
+
+    public function test_pickup_form_only_exposes_areas_attached_to_the_customers_active_rt_hierarchy(): void
+    {
+        [$customer, $area] = $this->context();
+        $manager = User::factory()->create();
+        $this->grant($manager, ['region.manage']);
+        $regions = app(ManageRegions::class);
+        $dusun = $regions->createDusun($manager, 'W5-OTHER-DS-'.$customer->id, 'Dusun lain');
+        $rw = $regions->createRw($manager, $dusun, 'W5-OTHER-RW-'.$customer->id, 'RW lain');
+        $rt = $regions->createRt($manager, $rw, 'W5-OTHER-RT-'.$customer->id, 'RT lain');
+        $unrelated = $regions->createServiceArea($manager, 'Area tidak terkait '.$customer->id, [$rt]);
+
+        $this->actingAs($customer);
+
+        Livewire::test(PickupRequestForm::class)
+            ->assertSee($area->name)
+            ->assertDontSee($unrelated->name);
+    }
+
+    public function test_pickup_form_rejects_available_dates_for_an_active_but_unrelated_area(): void
+    {
+        [$customer] = $this->context();
+        $manager = User::factory()->create();
+        $this->grant($manager, ['region.manage']);
+        $regions = app(ManageRegions::class);
+        $dusun = $regions->createDusun($manager, 'W5-DATES-DS-'.$customer->id, 'Dusun tanggal lain');
+        $rw = $regions->createRw($manager, $dusun, 'W5-DATES-RW-'.$customer->id, 'RW tanggal lain');
+        $rt = $regions->createRt($manager, $rw, 'W5-DATES-RT-'.$customer->id, 'RT tanggal lain');
+        $unrelated = $regions->createServiceArea($manager, 'Area tanggal tidak terkait '.$customer->id, [$rt]);
+        $this->capacity($unrelated, 5, '50.000');
+
+        $this->actingAs($customer);
+
+        Livewire::test(PickupRequestForm::class)
+            ->set('serviceAreaId', (string) $unrelated->id)
+            ->assertSet('availableDates', [])
+            ->assertHasErrors(['serviceAreaId']);
+    }
+
+    public function test_pickup_form_rejects_tampered_unrelated_area_inline_and_preserves_state(): void
+    {
+        [$customer, $area, $type] = $this->context();
+        $this->grant($customer, ['pickup.request']);
+        $manager = User::factory()->create();
+        $this->grant($manager, ['region.manage']);
+        $regions = app(ManageRegions::class);
+        $dusun = $regions->createDusun($manager, 'W5-TAMPER-DS-'.$customer->id, 'Dusun tamper');
+        $rw = $regions->createRw($manager, $dusun, 'W5-TAMPER-RW-'.$customer->id, 'RW tamper');
+        $rt = $regions->createRt($manager, $rw, 'W5-TAMPER-RT-'.$customer->id, 'RT tamper');
+        $unrelated = $regions->createServiceArea($manager, 'Area tamper '.$customer->id, [$rt]);
+        $date = today()->addDay()->toDateString();
+        $this->capacity($area, 5, '50.000', $date);
+        $this->capacity($unrelated, 5, '50.000', $date);
+        $component = new PickupRequestForm;
+        $component->mount();
+        $component->step = 3;
+        $component->serviceAreaId = (string) $unrelated->id;
+        $component->selectedDate = $date;
+        $component->address = 'Alamat penjemputan warga yang lengkap';
+        $component->notes = 'Pertahankan state ketika area ditolak';
+        $component->items = [['waste_type_id' => (string) $type->id, 'estimated_weight_kg' => '1.000', 'estimated_quantity' => '1']];
+        $photo = UploadedFile::fake()->image('pickup.jpg');
+        $component->photos = [$photo];
+        $this->actingAs($customer);
+
+        $component->submit(app(PickupService::class));
+
+        self::assertTrue($component->getErrorBag()->has('serviceAreaId'));
+        self::assertFalse($component->getErrorBag()->has('service_area_id'));
+        self::assertSame(3, $component->step);
+        self::assertSame('Pertahankan state ketika area ditolak', $component->notes);
+        self::assertSame([$photo], $component->photos);
+        self::assertDatabaseCount('pickup_requests', 0);
+    }
+
+    public function test_pickup_form_rejects_a_selected_date_when_its_capacity_row_is_missing(): void
+    {
+        [$customer, $area, $type] = $this->context();
+        $this->grant($customer, ['pickup.request']);
+        $photo = UploadedFile::fake()->image('pickup.png');
+
+        $component = new PickupRequestForm;
+        $component->mount();
+        $component->step = 3;
+        $component->serviceAreaId = (string) $area->id;
+        $component->selectedDate = today()->addDay()->toDateString();
+        $component->address = 'Alamat penjemputan warga yang lengkap';
+        $component->items = [['waste_type_id' => (string) $type->id, 'estimated_weight_kg' => '1.000', 'estimated_quantity' => '1']];
+        $component->photos = [$photo];
+        $this->actingAs($customer);
+
+        $component->submit(app(PickupService::class));
+
+        self::assertTrue($component->getErrorBag()->has('selectedDate'));
+        self::assertSame(3, $component->step);
+        self::assertSame([$photo], $component->photos);
+        self::assertDatabaseCount('pickup_requests', 0);
+    }
+
+    public function test_pickup_form_recovers_when_capacity_becomes_full_after_review_and_preserves_state(): void
+    {
+        [$customer, $area, $type] = $this->context();
+        $this->grant($customer, ['pickup.request']);
+        $date = today()->addDay()->toDateString();
+        $alternative = today()->addDays(2)->toDateString();
+        $capacity = $this->capacity($area, 1, '10.000', $date);
+        $this->capacity($area, 3, '10.000', $alternative);
+        $photo = UploadedFile::fake()->image('pickup.png');
+        $component = new PickupRequestForm;
+        $component->mount();
+        $component->serviceAreaId = (string) $area->id;
+        $component->selectedDate = $date;
+        $component->address = 'Alamat penjemputan warga yang lengkap';
+        $component->notes = 'Rumah berpagar hijau';
+        $component->items = [['waste_type_id' => (string) $type->id, 'estimated_weight_kg' => '1.000', 'estimated_quantity' => '1']];
+        $component->photos = [$photo];
+        $component->step = 3;
+        $component->availableDates = [$date, $alternative];
+        $capacity->delete();
+        $this->actingAs($customer);
+
+        $component->submit(app(PickupService::class));
+
+        self::assertTrue($component->getErrorBag()->has('selectedDate'));
+        self::assertSame(3, $component->step);
+        self::assertSame('Alamat penjemputan warga yang lengkap', $component->address);
+        self::assertSame('Rumah berpagar hijau', $component->notes);
+        self::assertSame((string) $type->id, $component->items[0]['waste_type_id']);
+        self::assertSame([$photo], $component->photos);
+        self::assertDatabaseCount('pickup_requests', 0);
+    }
+
+    public function test_alternatives_exclude_dates_without_remaining_estimated_weight_capacity(): void
+    {
+        [$customer, $area] = $this->context();
+        $weightFull = today()->addDay()->toDateString();
+        $available = today()->addDays(2)->toDateString();
+        $this->capacity($area, 3, '2.000', $weightFull);
+        $this->capacity($area, 3, '10.000', $available);
+
+        $alternatives = app(PickupService::class)->alternatives($area, today()->toDateString(), 3, '3.000');
+
+        self::assertNotContains($weightFull, $alternatives);
+        self::assertContains($available, $alternatives);
     }
 
     public function test_lane_b_full_capacity_returns_alternatives_without_creating_request(): void
@@ -123,6 +319,30 @@ final class PickupWaveTest extends TestCase
         self::assertSame(PickupStatus::PendingReview, $existing->fresh()->status);
     }
 
+    public function test_lane_b_reuses_an_expired_submission_key_without_stale_replay(): void
+    {
+        [$customer, $area, $type] = $this->context();
+        $this->grant($customer, ['pickup.request']);
+        $this->capacity($area, 3, '10.000');
+        $key = 'w5-expired-submission-key';
+        IdempotencyKey::query()->create([
+            'actor_id' => $customer->id,
+            'scope' => 'pickup.request',
+            'key' => $key,
+            'payload_hash' => hash('sha256', 'stale'),
+            'status' => 'succeeded',
+            'result_type' => PickupRequest::class,
+            'result_id' => 1,
+            'expires_at' => now()->subSecond(),
+        ]);
+
+        $pickup = app(PickupService::class)->submit($customer, $this->requestData($customer, $area), [['waste_type_id' => $type->id, 'estimated_quantity' => 1]], [UploadedFile::fake()->image('pickup.png')], $key);
+
+        self::assertSame(PickupStatus::PendingReview, $pickup->status);
+        self::assertSame(1, PickupRequest::query()->count());
+        self::assertSame(1, IdempotencyKey::query()->where('scope', 'pickup.request')->count());
+    }
+
     public function test_lane_b_rejects_duplicate_idempotency_payload_and_rolls_back_capacity_request(): void
     {
         [$customer, $area, $type] = $this->context();
@@ -134,6 +354,67 @@ final class PickupWaveTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $service->submit($customer, $data, [['waste_type_id' => $type->id, 'estimated_quantity' => 9]], [UploadedFile::fake()->image('pickup.png')], 'w5-payload-key-0001');
+    }
+
+    public function test_filament_accept_capacity_failure_keeps_pending_status_and_notifies_alternatives(): void
+    {
+        [$customer, $area] = $this->context();
+        $admin = User::factory()->create();
+        $this->grant($admin, ['backoffice.access', 'pickup.review', 'pickup.view', 'user.view.all']);
+        $alternative = today()->addDays(2)->toDateString();
+        $this->capacity($area, 3, '10.000', $alternative);
+        $pickup = PickupRequest::query()->create([
+            'request_number' => 'PUP-FILAMENT-ACCEPT-0001', 'customer_id' => $customer->id, 'rt_id' => $customer->customerProfile->rt_id,
+            'service_area_id' => $area->id, 'address' => 'Alamat pengajuan Filament', 'selected_date' => today()->addDay(),
+            'estimated_weight_kg' => '1.000', 'status' => PickupStatus::PendingReview,
+        ]);
+        $this->actingAs($admin);
+
+        Livewire::test(ManagePickupRequests::class)
+            ->callAction(TestAction::make('accept')->table($pickup))
+            ->assertNotified(Notification::make()
+                ->title('Kapasitas penjemputan tidak tersedia')
+                ->body('Tanggal layanan tidak tersedia. Alternatif: '.CarbonImmutable::parse($alternative)->locale('id')->translatedFormat('d F Y').'.')
+                ->danger());
+
+        self::assertSame(PickupStatus::PendingReview, $pickup->fresh()->status);
+        self::assertNull($pickup->fresh()->accepted_at);
+    }
+
+    public function test_filament_schedule_capacity_failure_keeps_acceptance_and_assignment_unchanged(): void
+    {
+        [$customer, $area] = $this->context();
+        $admin = User::factory()->create();
+        $staff = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($admin, ['backoffice.access', 'pickup.schedule', 'pickup.view', 'user.view.all']);
+        $staffRole = Role::query()->firstOrCreate(['name' => 'petugas'], ['description' => 'Petugas']);
+        $pickupExecute = Permission::query()->firstOrCreate(['name' => 'pickup.execute'], ['description' => 'pickup.execute']);
+        $staffRole->permissions()->syncWithoutDetaching([$pickupExecute->id]);
+        $staff->roles()->attach($staffRole);
+        StaffProfile::query()->create(['user_id' => $staff->id, 'staff_number' => 'STF-FILAMENT-0001', 'service_area_id' => $area->id, 'active_from' => today(), 'active_to' => null]);
+        $alternative = today()->addDays(3)->toDateString();
+        $this->capacity($area, 3, '10.000', $alternative);
+        $pickup = PickupRequest::query()->create([
+            'request_number' => 'PUP-FILAMENT-SCHEDULE-0001', 'customer_id' => $customer->id, 'rt_id' => $customer->customerProfile->rt_id,
+            'service_area_id' => $area->id, 'address' => 'Alamat jadwal Filament', 'selected_date' => today()->addDay(),
+            'estimated_weight_kg' => '1.000', 'status' => PickupStatus::Accepted, 'accepted_at' => now(),
+        ]);
+        $scheduledDate = today()->addDays(2)->toDateString();
+        $this->actingAs($admin);
+
+        Livewire::test(ManagePickupRequests::class)
+            ->assertTableActionVisible('schedule', $pickup)
+            ->callTableAction('schedule', $pickup, data: ['assigned_staff_id' => $staff->id, 'scheduled_date' => $scheduledDate])
+            ->assertHasNoActionErrors()
+            ->assertNotified(Notification::make()
+                ->title('Kapasitas penjemputan tidak tersedia')
+                ->body('Tanggal layanan tidak tersedia. Alternatif: '.CarbonImmutable::parse($alternative)->locale('id')->translatedFormat('d F Y').'.')
+                ->danger());
+
+        $pickup->refresh();
+        self::assertSame(PickupStatus::Accepted, $pickup->status);
+        self::assertNull($pickup->scheduled_date);
+        self::assertNull($pickup->assigned_staff_id);
     }
 
     public function test_lane_c_review_reject_requires_reason_and_schedule_requires_area_assigned_active_staff(): void
@@ -216,12 +497,14 @@ final class PickupWaveTest extends TestCase
         $pickup = $service->schedule($admin, $service->review($admin, $pickup, true), $staff);
         $pickup = $service->begin($staff, $pickup);
         $pickup = $service->markPickedUp($staff, $pickup);
-        $completed = $service->complete($staff, $pickup, [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.250']], 'w5-complete-key-0001');
-        $retry = $service->complete($staff, $pickup, [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.250']], 'w5-complete-key-0001');
+        $evidence = UploadedFile::fake()->image('pickup-evidence.jpg');
+        $completed = $service->complete($staff, $pickup, [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.250']], 'w5-complete-key-0001', $evidence);
+        $retry = $service->complete($staff, $pickup, [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.250']], 'w5-complete-key-0001', $evidence);
 
         self::assertSame(PickupStatus::Completed, $completed->status);
         self::assertSame('1.250', (string) $completed->deposit->total_weight_kg);
         self::assertSame($completed->deposit_id, $retry->deposit_id);
+        self::assertSame(2, $completed->media()->count());
         self::assertSame(1, Deposit::query()->where('method', 'penjemputan')->count());
         self::assertSame(3_750, (int) $customer->fresh()->ledgerAccount?->availableBalance());
         self::assertSame(1, AuditLog::query()->where('action', 'pickup.completed')->count());

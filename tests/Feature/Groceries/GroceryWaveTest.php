@@ -7,7 +7,6 @@ namespace Tests\Feature\Groceries;
 use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\CustomersRegions\Actions\ManageRegions;
 use App\Domain\Groceries\Actions\ManageGroceryPackages;
-use App\Domain\Groceries\Enums\GrocerySource;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
@@ -15,19 +14,24 @@ use App\Domain\Groceries\Services\GroceryService;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
+use App\Domain\Identity\Models\StaffProfile;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Ledger\Services\LedgerService;
 use App\Domain\Notifications\Events\NotificationRequested;
+use App\Livewire\Citizen\GroceryRequestForm;
+use App\Livewire\Officer\GroceryTasks;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use LogicException;
 use Tests\TestCase;
 
@@ -52,6 +56,48 @@ final class GroceryWaveTest extends TestCase
         self::assertFalse(array_key_exists('quantity', $package->getAttributes()));
     }
 
+    public function test_citizen_request_form_shows_package_contents_and_value_before_selection(): void
+    {
+        [$customer, $package] = $this->customerAndPackage();
+        $this->grant($customer, ['grocery.package.view', 'grocery.request']);
+
+        Livewire::actingAs($customer)
+            ->test(GroceryRequestForm::class)
+            ->assertSee($package->name)
+            ->assertSee($package->contents)
+            ->assertSee('Rp75.000')
+            ->assertDontSee('Bantuan gratis');
+    }
+
+    public function test_citizen_request_form_marks_the_selected_package_and_blocks_packages_above_available_balance(): void
+    {
+        [$customer, $expensivePackage] = $this->customerAndPackage();
+        $this->grant($customer, ['grocery.package.view', 'grocery.request']);
+        $this->credit($customer, 50_000);
+        $affordablePackage = GroceryPackage::query()->create([
+            'code' => 'GRC-W7-AFFORDABLE-'.$customer->id,
+            'name' => 'Paket Terjangkau',
+            'contents' => 'Beras dan minyak',
+            'value' => 25_000,
+            'status' => 'aktif',
+        ]);
+
+        $component = Livewire::actingAs($customer)
+            ->test(GroceryRequestForm::class)
+            ->assertSee('Saldo tersedia')
+            ->assertSee('Rp50.000')
+            ->assertSee('Saldo belum cukup')
+            ->assertSeeHtml('wire:model.live="packageId"')
+            ->set('packageId', (string) $affordablePackage->id)
+            ->assertSet('packageId', (string) $affordablePackage->id)
+            ->assertSee('Paket dipilih');
+
+        $component
+            ->set('packageId', (string) $expensivePackage->id)
+            ->assertSee('Saldo belum cukup')
+            ->assertSee('kurang Rp25.000');
+    }
+
     public function test_lane_a_package_validation_rejects_non_positive_value_and_invalid_period(): void
     {
         $manager = User::factory()->create(['status' => UserStatus::Active]);
@@ -69,6 +115,71 @@ final class GroceryWaveTest extends TestCase
         $action->create($manager, 'GRC-A-003', 'Paket Valid', 'Beras dan minyak', 50_000, '2026-08-10', '2026-08-09');
     }
 
+    public function test_lane_b_ready_for_handover_query_requires_direct_handover_permission(): void
+    {
+        [$customer, $package] = $this->customerAndPackage();
+        $this->grant($customer, ['grocery.request', 'grocery.view']);
+        $this->credit($customer, 100_000);
+
+        $this->expectException(AuthorizationException::class);
+        app(GroceryService::class)->readyForHandover($customer)->get();
+    }
+
+    public function test_officer_grocery_lane_accepts_handover_only_staff_and_denies_users_without_staff_action_permission(): void
+    {
+        $handoverOfficer = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($handoverOfficer, ['user.view', 'user.view.all', 'grocery.view', 'grocery.handover']);
+
+        Livewire::actingAs($handoverOfficer)
+            ->test(GroceryTasks::class)
+            ->assertSee('Tugas sembako')
+            ->assertSee('Serah-terima hanya tersedia bagi petugas dengan izin penyerahan dan memerlukan verifikasi penerima serta bukti privat.')
+            ->assertDontSee('Catat bantuan gratis');
+
+        $unauthorized = User::factory()->create(['status' => UserStatus::Active]);
+
+        Livewire::actingAs($unauthorized)
+            ->test(GroceryTasks::class)
+            ->assertForbidden();
+        $this->actingAs($unauthorized)->get(route('officer.grocery.tasks'))->assertForbidden();
+    }
+
+    public function test_filament_grocery_path_denies_handover_without_direct_handover_permission(): void
+    {
+        [$customer, $package] = $this->customerAndPackage();
+        $this->grant($customer, ['grocery.request', 'grocery.view']);
+        $this->credit($customer, 100_000);
+        $redemption = app(GroceryService::class)->request($customer, ['package_id' => $package->id], 'w7-filament-handover-denial-0001');
+        $admin = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($admin, ['user.view', 'user.view.all', 'grocery.view', 'grocery.approve', 'grocery.prepare']);
+
+        self::assertFalse(Gate::forUser($admin)->allows('handover', $redemption));
+    }
+
+    public function test_authorized_handover_ui_exposes_ready_action_and_private_proof_form(): void
+    {
+        [$customer, $package] = $this->customerAndPackage();
+        $this->grant($customer, ['grocery.request', 'grocery.view']);
+        $this->credit($customer, 100_000);
+        $approver = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($approver, ['grocery.approve', 'grocery.view', 'user.view.all']);
+        $officer = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($officer, ['grocery.view', 'grocery.prepare', 'grocery.handover', 'grocery.package.view', 'user.view.all']);
+        $service = app(GroceryService::class);
+        $redemption = $service->request($customer, ['package_id' => $package->id], 'w7-ui-handover-request-0001');
+        $redemption = $service->approve($approver, $redemption, true, 'Ketersediaan UI dikonfirmasi.');
+        $redemption = $service->ready($officer, $service->prepare($officer, $redemption));
+
+        Livewire::actingAs($officer)
+            ->test(GroceryTasks::class)
+            ->assertSee($redemption->request_number)
+            ->assertSee('Proses serah-terima')
+            ->call('select', $redemption->id)
+            ->assertSee('Verifikasi penerima dan bukti')
+            ->assertSee('Bukti serah-terima')
+            ->assertSee('Bukti disimpan privat');
+    }
+
     public function test_lane_b_request_snapshots_value_creates_one_hold_and_same_retry_returns_original(): void
     {
         [$customer, $package] = $this->customerAndPackage();
@@ -77,8 +188,8 @@ final class GroceryWaveTest extends TestCase
         Event::fake([NotificationRequested::class]);
         $service = app(GroceryService::class);
 
-        $created = $service->request($customer, ['package_id' => $package->id, 'source_type' => GrocerySource::Balance->value], 'w7-request-key-0001');
-        $retry = $service->request($customer, ['package_id' => $package->id, 'source_type' => GrocerySource::Balance->value], 'w7-request-key-0001');
+        $created = $service->request($customer, ['package_id' => $package->id], 'w7-request-key-0001');
+        $retry = $service->request($customer, ['package_id' => $package->id], 'w7-request-key-0001');
 
         self::assertSame($created->id, $retry->id);
         self::assertSame(GroceryStatus::PendingVerification, $created->status);
@@ -116,8 +227,15 @@ final class GroceryWaveTest extends TestCase
 
         $package->forceFill(['value' => 25_000])->save();
         $service->request($customer, ['package_id' => $package->id], 'w7-conflict-key-0001');
-        $this->expectException(AuthorizationException::class);
-        $service->request($customer, ['package_id' => $package->id, 'source_type' => GrocerySource::FreeAid->value], 'w7-conflict-key-0001');
+        $otherPackage = GroceryPackage::query()->create([
+            'code' => 'GRC-W7-CONFLICT-'.$customer->id,
+            'name' => 'Paket Konflik',
+            'contents' => 'Beras dan minyak',
+            'value' => 25_000,
+            'status' => 'aktif',
+        ]);
+        $this->expectException(ValidationException::class);
+        $service->request($customer, ['package_id' => $otherPackage->id], 'w7-conflict-key-0001');
     }
 
     public function test_lane_b_snapshot_is_immutable_and_approval_cannot_be_self_approved(): void
@@ -188,6 +306,36 @@ final class GroceryWaveTest extends TestCase
         self::assertSame('private', $completed->proofMedia()->firstOrFail()->getRawOriginal('visibility'));
         Storage::disk('media_private')->assertExists($completed->proofMedia->path);
         self::assertSame(1, AuditLog::query()->where('action', 'grocery.handed_over')->count());
+    }
+
+    public function test_same_area_officers_can_continue_preparation_and_handover_without_a_personal_assignment(): void
+    {
+        Storage::fake('media_private');
+        [$customer, $package] = $this->customerAndPackage();
+        $this->grant($customer, ['grocery.request', 'grocery.view']);
+        $this->credit($customer, 100_000);
+        $approver = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($approver, ['grocery.approve', 'grocery.view', 'user.view.all']);
+        $areaManager = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($areaManager, ['region.manage']);
+        $rt = $customer->customerProfile()->firstOrFail()->rt()->firstOrFail();
+        $area = app(ManageRegions::class)->createServiceArea($areaManager, 'Area W7 '.$customer->id, [$rt]);
+        $preparer = User::factory()->create(['status' => UserStatus::Active]);
+        $handoverOfficer = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($preparer, ['user.view', 'user.view.area', 'grocery.view', 'grocery.prepare']);
+        $this->grant($handoverOfficer, ['user.view', 'user.view.area', 'grocery.view', 'grocery.prepare', 'grocery.handover']);
+        StaffProfile::query()->create(['user_id' => $preparer->id, 'staff_number' => 'STF-W7-P-'.$preparer->id, 'service_area_id' => $area->id, 'active_from' => today()->subDay()]);
+        StaffProfile::query()->create(['user_id' => $handoverOfficer->id, 'staff_number' => 'STF-W7-H-'.$handoverOfficer->id, 'service_area_id' => $area->id, 'active_from' => today()->subDay()]);
+        $service = app(GroceryService::class);
+        $redemption = $service->approve($approver, $service->request($customer, ['package_id' => $package->id], 'w7-shared-area-request-0001'), true, 'Paket tersedia.');
+
+        $preparing = $service->prepare($preparer, $redemption);
+        $ready = $service->ready($handoverOfficer, $preparing);
+        $completed = $service->handover($handoverOfficer, $ready, 'nomor_nasabah', (string) $customer->customerProfile?->customer_number, UploadedFile::fake()->image('shared-area-proof.png'), 'w7-shared-area-handover-0001');
+
+        self::assertSame($preparer->id, $completed->prepared_by_id);
+        self::assertSame($handoverOfficer->id, $completed->handover_actor_id);
+        self::assertSame(GroceryStatus::Completed, $completed->status);
     }
 
     public function test_lane_c_rejects_invalid_recipient_and_approval_handover_self_action(): void
@@ -269,28 +417,25 @@ final class GroceryWaveTest extends TestCase
         $audit->delete();
     }
 
-    public function test_lane_d_free_aid_has_no_hold_or_outgoing_ledger_and_handover_still_completes(): void
+    public function test_lane_d_rejects_removed_free_aid_and_assisted_request_paths(): void
     {
-        Storage::fake('media_private');
         [$customer, $package] = $this->customerAndPackage();
         $requester = User::factory()->create(['status' => UserStatus::Active]);
         $this->grant($requester, ['grocery.request', 'grocery.view', 'user.view', 'user.view.all']);
-        $approver = User::factory()->create(['status' => UserStatus::Active]);
-        $this->grant($approver, ['grocery.approve', 'grocery.view', 'user.view', 'user.view.all']);
-        $staff = User::factory()->create(['status' => UserStatus::Active]);
-        $this->grant($staff, ['grocery.prepare', 'grocery.handover', 'grocery.view', 'user.view', 'user.view.all']);
+        $this->grant($customer, ['grocery.request', 'grocery.view']);
+        $this->credit($customer, 100_000);
         $service = app(GroceryService::class);
-        $redemption = $service->request($requester, ['customer_id' => $customer->id, 'package_id' => $package->id, 'source_type' => GrocerySource::FreeAid->value], 'w7-free-aid-request-0001');
 
-        self::assertNull($redemption->balance_hold_id);
-        self::assertSame(0, BalanceHold::query()->where('source_type', GroceryRedemption::class)->where('source_id', $redemption->id)->count());
-        $redemption = $service->approve($approver, $redemption, true, 'Bantuan gratis tersedia.');
-        $redemption = $service->prepare($staff, $redemption);
-        $redemption = $service->ready($staff, $redemption);
-        $redemption = $service->handover($staff, $redemption, 'nomor_nasabah', (string) $customer->customerProfile?->customer_number, UploadedFile::fake()->image('free-aid.png'), 'w7-free-aid-handover-0001');
+        try {
+            $service->request($customer, ['package_id' => $package->id, 'source_type' => 'bantuan_gratis'], 'w7-removed-source-request-0001');
+            self::fail('Bantuan gratis must not be accepted.');
+        } catch (ValidationException) {
+            self::assertDatabaseCount('grocery_redemptions', 0);
+            self::assertDatabaseCount('balance_holds', 0);
+        }
 
-        self::assertSame(GroceryStatus::Completed, $redemption->status);
-        self::assertSame(0, LedgerEntry::query()->where('source_type', GroceryRedemption::class)->where('source_id', $redemption->id)->count());
+        $this->expectException(AuthorizationException::class);
+        $service->request($requester, ['customer_id' => $customer->id, 'package_id' => $package->id], 'w7-assisted-request-0001');
     }
 
     public function test_lane_d_cancel_and_expiry_release_hold_once_and_invalid_transition_stops(): void

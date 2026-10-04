@@ -11,5 +11,4 @@ enum ReportType: string
     case Groceries = 'groceries';
     case Pickups = 'pickups';
     case Participation = 'participation';
-    case Reconciliation = 'reconciliation';
 }

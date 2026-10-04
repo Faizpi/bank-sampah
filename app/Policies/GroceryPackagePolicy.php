@@ -36,4 +36,9 @@ final readonly class GroceryPackagePolicy
     {
         return $this->permissions->allows($actor, 'grocery.package.manage');
     }
+
+    public function activate(User $actor, GroceryPackage $package): bool
+    {
+        return $this->permissions->allows($actor, 'grocery.package.manage');
+    }
 }

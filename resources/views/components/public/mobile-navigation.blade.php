@@ -26,13 +26,13 @@
             <ul class="mt-2">
                 <li>
                     <a href="{{ route('home') }}" x-on:click="closeModal()" class="flex min-h-touch items-center gap-3 py-3 pl-3 {{ $isHome ? $activeItemClasses : $inactiveItemClasses }}" @if ($isHome) aria-current="page" @endif>
-                        <x-public.icon name="leaf" />
+                        <x-public.icon name="home" />
                         Beranda
                     </a>
                 </li>
                 <li>
                     <a href="{{ route('home') }}#layanan" x-on:click="closeModal()" class="flex min-h-touch items-center gap-3 py-3 pl-3 {{ $inactiveItemClasses }}">
-                        <x-public.icon name="recycle" />
+                        <x-public.icon name="grid-2x2" />
                         Layanan
                     </a>
                 </li>

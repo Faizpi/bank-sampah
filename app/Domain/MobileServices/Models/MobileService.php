@@ -66,6 +66,6 @@ final class MobileService extends Model
 
     public function isOpen(): bool
     {
-        return $this->status === MobileServiceStatus::Open;
+        return $this->status === MobileServiceStatus::Open && $this->ends_at->greaterThanOrEqualTo(now());
     }
 }

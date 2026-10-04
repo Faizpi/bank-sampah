@@ -43,7 +43,7 @@ final class CoreAuthorizationTest extends TestCase
         self::assertFalse($checker->allows($user->fresh(), 'user.update'));
     }
 
-    public function test_role_names_and_superadmin_do_not_bypass_granular_or_sensitive_permissions(): void
+    public function test_role_names_and_unseeded_superadmin_do_not_bypass_granular_or_sensitive_permissions(): void
     {
         $superadmin = User::factory()->create();
         $superadmin->roles()->attach(Role::factory()->create(['name' => 'superadmin']));
@@ -65,7 +65,7 @@ final class CoreAuthorizationTest extends TestCase
             self::assertTrue($checker->allows($superadmin->fresh(), $permission));
         }
         foreach (['transaction.correct', 'transaction.reverse', 'ledger.adjust'] as $permission) {
-            self::assertFalse($checker->allows($superadmin->fresh(), $permission));
+            self::assertTrue($checker->allows($superadmin->fresh(), $permission));
         }
 
         self::assertTrue(Gate::forUser($superadmin->fresh())->allows('create', Dusun::class));

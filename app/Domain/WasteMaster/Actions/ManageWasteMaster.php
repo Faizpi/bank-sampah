@@ -109,12 +109,19 @@ final readonly class ManageWasteMaster
     public function deactivate(User $actor, WasteMasterModel $record): void
     {
         $this->authorize($actor, 'deactivate', $record);
+        $this->persist($record, ['is_active' => false]);
+    }
 
-        if ($record instanceof WasteUnit) {
-            throw ValidationException::withMessages(['waste_unit' => 'Waste units cannot be deactivated until the master schema supports active status.']);
+    public function activate(User $actor, WasteMasterModel $record): void
+    {
+        $this->authorize($actor, 'activate', $record);
+
+        if ($record instanceof WasteType) {
+            $record->loadMissing(['category', 'unit', 'conditions']);
+            $this->ensureTypeReferencesAreValid($record->category, $record->unit, true, $record->conditions->modelKeys());
         }
 
-        $this->persist($record, ['is_active' => false]);
+        $this->persist($record, ['is_active' => true]);
     }
 
     /**
@@ -149,8 +156,9 @@ final readonly class ManageWasteMaster
             throw ValidationException::withMessages(['waste_category_id' => 'The selected waste category must be active.']);
         }
 
-        if ($unit->fresh() === null) {
-            throw ValidationException::withMessages(['waste_unit_id' => 'The selected waste unit must exist.']);
+        $unit = $unit->fresh();
+        if ($unit === null || ! $unit->is_active) {
+            throw ValidationException::withMessages(['waste_unit_id' => 'The selected waste unit must exist and be active.']);
         }
 
         if (! $isActive) {

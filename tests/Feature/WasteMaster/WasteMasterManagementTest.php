@@ -77,6 +77,7 @@ final class WasteMasterManagementTest extends TestCase
 
         self::assertDatabaseHas('waste_categories', ['id' => $category->id, 'code' => 'CAT-02', 'sort_order' => 4]);
         self::assertDatabaseHas('waste_units', ['id' => $unit->id, 'code' => 'G', 'conversion_factor_to_kg' => '0.001000']);
+        self::assertTrue($unit->fresh()->is_active);
         self::assertDatabaseHas('waste_conditions', ['id' => $condition->id, 'code' => 'COND-02', 'sort_order' => 5]);
         self::assertDatabaseHas('waste_types', ['id' => $type->id, 'code' => 'TYPE-02', 'is_active' => true]);
         self::assertDatabaseHas('waste_type_conditions', ['waste_type_id' => $type->id, 'waste_condition_id' => $condition->id]);
@@ -113,11 +114,11 @@ final class WasteMasterManagementTest extends TestCase
         $type = app(ManageWasteMaster::class)->createType($manager, $category, $unit, 'TYPE-01', 'PET', null, 0, false, true, [$condition->id]);
 
         app(ManageWasteMaster::class)->deactivate($manager, $type);
-        $this->assertValidationError('waste_unit', function () use ($manager, $unit): void {
-            app(ManageWasteMaster::class)->deactivate($manager, $unit);
-        });
+        app(ManageWasteMaster::class)->deactivate($manager, $unit);
+        app(ManageWasteMaster::class)->activate($manager, $unit);
 
         self::assertFalse($type->fresh()->is_active);
+        self::assertTrue($unit->fresh()->is_active);
         self::assertDatabaseHas('waste_types', ['id' => $type->id, 'is_active' => false]);
         self::assertDatabaseHas('waste_type_conditions', ['waste_type_id' => $type->id, 'waste_condition_id' => $condition->id]);
 

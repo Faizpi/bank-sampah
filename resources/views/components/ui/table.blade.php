@@ -37,7 +37,7 @@
                 <span class="inline-flex min-h-touch items-center gap-2 rounded-sm border border-border bg-surface px-3 text-body-sm text-deep-green">
                     <span>{{ $filterLabelText }}</span>
                     @if ($removeHref)
-                        <a href="{{ $removeHref }}" aria-label="Hapus filter {{ $filterLabelText }}" class="inline-flex size-8 items-center justify-center rounded-sm hover:bg-success-bg focus-visible:bg-success-bg">
+                        <a href="{{ $removeHref }}" aria-label="Hapus filter {{ $filterLabelText }}" class="inline-flex min-h-touch min-w-touch items-center justify-center rounded-sm hover:bg-success-bg focus-visible:bg-success-bg">
                             <svg data-lucide="x" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
                         </a>
                     @endif

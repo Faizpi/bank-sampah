@@ -21,7 +21,7 @@ final class WasteUnit extends WasteMasterModel
     /** @use HasFactory<WasteUnitFactory> */
     use HasFactory;
 
-    protected $fillable = ['code', 'name', 'symbol', 'classification', 'conversion_factor_to_kg'];
+    protected $fillable = ['code', 'name', 'symbol', 'classification', 'conversion_factor_to_kg', 'is_active'];
 
     protected static function newFactory(): WasteUnitFactory
     {
@@ -30,7 +30,7 @@ final class WasteUnit extends WasteMasterModel
 
     protected function casts(): array
     {
-        return ['conversion_factor_to_kg' => 'decimal:6'];
+        return ['conversion_factor_to_kg' => 'decimal:6', 'is_active' => 'boolean'];
     }
 
     protected static function booted(): void

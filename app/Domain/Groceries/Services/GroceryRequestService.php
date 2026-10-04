@@ -6,7 +6,6 @@ namespace App\Domain\Groceries\Services;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
-use App\Domain\Groceries\Enums\GrocerySource;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
@@ -25,7 +24,7 @@ use Illuminate\Validation\ValidationException;
 
 final readonly class GroceryRequestService
 {
-    private const string SCOPE = 'grocery.request';
+    private const SCOPE = 'grocery.request';
 
     public function __construct(
         private PermissionChecker $permissions,
@@ -39,18 +38,13 @@ final readonly class GroceryRequestService
     {
         $this->authorize($actor, 'grocery.request');
         $this->validateIdempotencyKey($idempotencyKey);
-        $customer = $this->customer($data['customer_id'] ?? $actor->id);
-        if ($customer->id !== $actor->id && ! $this->visibleUsers->canView($actor, $customer)) {
-            throw new AuthorizationException('Nasabah berada di luar scope tugas Anda.');
-        }
-        $source = $this->source($data['source_type'] ?? GrocerySource::Balance->value);
-        if ($source === GrocerySource::FreeAid && $customer->id === $actor->id) {
-            throw new AuthorizationException('Bantuan gratis harus diajukan oleh petugas untuk warga.');
-        }
+        $this->assertCustomerIsActor($actor, $data['customer_id'] ?? null);
+        $this->rejectRemovedSource($data['source_type'] ?? null);
+        $customer = $this->customer($actor->id);
         $packageId = $this->packageId($data['package_id'] ?? null);
-        $payloadHash = $this->payloadHash(['customer_id' => $customer->id, 'package_id' => $packageId, 'source_type' => $source->value]);
+        $payloadHash = $this->payloadHash(['customer_id' => $customer->id, 'package_id' => $packageId]);
 
-        return DB::transaction(function () use ($actor, $customer, $packageId, $source, $idempotencyKey, $payloadHash): GroceryRedemption {
+        return DB::transaction(function () use ($actor, $customer, $packageId, $idempotencyKey, $payloadHash): GroceryRedemption {
             $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
             if ($existing !== null) {
                 return GroceryRedemption::query()->findOrFail($existing->result_id);
@@ -70,15 +64,12 @@ final readonly class GroceryRequestService
                 'grocery_package_id' => $package->id,
                 'value_snapshot' => $package->value,
                 'package_snapshot' => ['code' => $package->code, 'name' => $package->name, 'contents' => $package->contents, 'value' => $package->value],
-                'source_type' => $source,
                 'status' => GroceryStatus::PendingVerification,
             ]);
-            $hold = $source->usesBalance() ? $this->ledger->createHold($customer, $redemption, $package->value, 'grocery:'.$redemption->id.':hold') : null;
-            if ($hold !== null) {
-                $redemption->forceFill(['balance_hold_id' => $hold->id])->save();
-            }
+            $hold = $this->ledger->createHold($customer, $redemption, $package->value, 'grocery:'.$redemption->id.':hold');
+            $redemption->forceFill(['balance_hold_id' => $hold->id])->save();
             $redemption->statusHistory()->create(['old_status' => null, 'new_status' => GroceryStatus::PendingVerification->value, 'actor_id' => $actor->id, 'reason' => 'Pengajuan penukaran sembako dibuat.', 'occurred_at' => now()]);
-            $this->auditLogger->record($actor, 'grocery.requested', $redemption, [], ['status' => GroceryStatus::PendingVerification->value, 'value_snapshot' => $package->value, 'source_type' => $source->value, 'hold_id' => $hold?->id], $this->correlationId());
+            $this->auditLogger->record($actor, 'grocery.requested', $redemption, [], ['status' => GroceryStatus::PendingVerification->value, 'value_snapshot' => $package->value, 'hold_id' => $hold->id], $this->correlationId());
             $key->forceFill(['status' => 'succeeded', 'result_type' => GroceryRedemption::class, 'result_id' => $redemption->id])->save();
             $this->notify($redemption, 'Pengajuan sembako diterima', 'Pengajuan '.$redemption->request_number.' telah diterima.', 'grocery.requested');
 
@@ -125,12 +116,21 @@ final readonly class GroceryRequestService
         return $customer;
     }
 
-    private function source(mixed $value): GrocerySource
+    private function assertCustomerIsActor(User $actor, mixed $customerId): void
     {
-        try {
-            return GrocerySource::from((string) $value);
-        } catch (\ValueError) {
-            throw ValidationException::withMessages(['source_type' => 'Jenis sumber bantuan tidak valid.']);
+        if ($customerId === null) {
+            return;
+        }
+
+        if (! is_numeric($customerId) || (int) $customerId !== $actor->id) {
+            throw new AuthorizationException('Penukaran sembako hanya dapat diajukan oleh pemilik saldo.');
+        }
+    }
+
+    private function rejectRemovedSource(mixed $source): void
+    {
+        if ($source !== null && (string) $source !== 'saldo') {
+            throw ValidationException::withMessages(['source_type' => 'Bantuan gratis sudah tidak tersedia. Penukaran sembako menggunakan saldo warga.']);
         }
     }
 
@@ -159,7 +159,7 @@ final readonly class GroceryRequestService
 
     private function existingIdempotency(User $actor, string $key, string $payloadHash): ?IdempotencyKey
     {
-        $existing = IdempotencyKey::query()->where('actor_id', $actor->id)->where('scope', self::SCOPE)->where('key', $key)->lockForUpdate()->first();
+        $existing = IdempotencyKey::activeForUpdate($actor->id, self::SCOPE, $key);
         if ($existing === null) {
             return null;
         }

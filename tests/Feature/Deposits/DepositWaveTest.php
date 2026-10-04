@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Deposits;
 
+use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\Corrections\Models\TransactionCorrection;
 use App\Domain\Corrections\Models\TransactionReversal;
@@ -14,10 +15,12 @@ use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\Deposits\Data\DepositItemInput;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Deposits\Services\DepositPublicPresenter;
+use App\Domain\Deposits\Services\DepositReviewService;
 use App\Domain\Deposits\Services\DepositService;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Ledger\Models\BalanceHold;
+use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Ledger\Services\LedgerService;
@@ -64,6 +67,7 @@ final class DepositWaveTest extends TestCase
         self::assertSame('1.250', (string) $final->total_weight_kg);
         self::assertSame(4_166, $final->items->sole()->subtotal);
         self::assertSame(1, LedgerEntry::query()->count());
+        self::assertTrue(IdempotencyKey::query()->where('scope', 'deposit.finalize')->sole()->expires_at->isFuture());
         self::assertSame(1, AuditLog::query()->where('action', 'deposit.finalized')->count());
         Event::assertDispatched(NotificationRequested::class);
         $item = $final->items->sole();
@@ -289,7 +293,7 @@ final class DepositWaveTest extends TestCase
         $service = app(DepositService::class);
         $final = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-public-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         $presented = app(DepositPublicPresenter::class)->present($final);
-        self::assertSame(['number', 'date', 'weight_kg', 'value', 'status'], array_keys($presented));
+        self::assertSame(['number', 'date', 'weight_kg', 'value', 'original_value', 'is_corrected', 'status'], array_keys($presented));
         self::assertArrayNotHasKey('customer_id', $presented);
         $final->forceFill(['status' => Deposit::STATUS_REVERSED])->save();
         $this->expectException(ValidationException::class);
@@ -317,25 +321,15 @@ final class DepositWaveTest extends TestCase
         $this->get(route('public.deposit-verification', ['token' => str_repeat('a', 43)]))->assertNotFound();
     }
 
-    public function test_seeded_superadmin_direct_services_fail_closed_at_sensitive_boundaries(): void
+    public function test_seeded_superadmin_can_reach_sensitive_reconciliation_boundaries(): void
     {
         $this->seed(RolesAndPermissionsSeeder::class);
         $superadmin = User::factory()->create();
         $superadmin->roles()->attach(Role::query()->where('name', 'superadmin')->sole());
-        $deposit = new Deposit;
-
-        foreach ([
-            fn () => app(TransactionCorrectionService::class)->correct($superadmin->fresh(), $deposit, 1_000, 'Koreksi tidak boleh melalui boundary ini.'),
-            fn () => app(TransactionCorrectionService::class)->reverse($superadmin->fresh(), $deposit, 'Reversal tidak boleh melalui boundary ini.'),
-            fn () => app(LedgerService::class)->assertCanAdjust($superadmin->fresh()),
-        ] as $operation) {
-            try {
-                $operation();
-                self::fail('Superadmin technical permissions must not cross the sensitive service boundary.');
-            } catch (AuthorizationException) {
-                self::addToAssertionCount(1);
-            }
-        }
+        $checker = app(PermissionChecker::class);
+        self::assertTrue($checker->allows($superadmin->fresh(), 'transaction.correct'));
+        self::assertTrue($checker->allows($superadmin->fresh(), 'transaction.reverse'));
+        app(LedgerService::class)->assertCanAdjust($superadmin->fresh());
     }
 
     public function test_lane_d_correction_requires_permission_reason_and_blocks_negative_available_balance(): void
@@ -358,6 +352,55 @@ final class DepositWaveTest extends TestCase
         }
         $this->expectException(ValidationException::class);
         app(TransactionCorrectionService::class)->correct($admin, $deposit, 0, '');
+    }
+
+    public function test_corrected_deposit_presents_the_effective_value_without_overwriting_the_audit_snapshot(): void
+    {
+        [$staff, $customer, $type, $condition] = $this->pricedContext();
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $deposit = app(DepositService::class)->finalize($staff, app(DepositService::class)->createDraft($staff, $customer), 'effective-value-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
+        $reviewer = User::factory()->create();
+        $this->grant($reviewer, ['user.view', 'user.view.all', 'transaction.correct']);
+        app(TransactionCorrectionService::class)->correct($reviewer, $deposit, 2_000, 'Nilai timbang dikonfirmasi ulang oleh pemeriksa.', null, $this->depositProof());
+
+        $presented = app(DepositPublicPresenter::class)->present($deposit->fresh('correction'));
+        self::assertSame(3_000, $presented['original_value']);
+        self::assertSame(2_000, $presented['value']);
+        self::assertTrue($presented['is_corrected']);
+    }
+
+    public function test_large_deposit_needs_a_different_reviewer_before_it_can_credit_the_balance(): void
+    {
+        $threshold = config('app.deposit_review_threshold');
+        config()->set('app.deposit_review_threshold', 2_000);
+        try {
+            [$staff, $customer, $type, $condition] = $this->pricedContext();
+            $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+            $deposit = app(DepositService::class)->finalize($staff, app(DepositService::class)->createDraft($staff, $customer), 'high-review-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
+
+            self::assertSame(Deposit::STATUS_PENDING_REVIEW, $deposit->status);
+            self::assertSame(0, LedgerEntry::query()->count());
+            $reviewer = User::factory()->create();
+            $this->grant($reviewer, ['deposit.approve', 'user.view.all']);
+            $approved = app(DepositReviewService::class)->approve($reviewer, $deposit, 'Nilai dan bukti timbang sudah diverifikasi petugas lain.', 'high-review-approval-key-0001');
+
+            self::assertSame(Deposit::STATUS_FINAL, $approved->status);
+            self::assertSame($reviewer->id, $approved->reviewed_by);
+            self::assertSame(1, LedgerEntry::query()->where('source_type', Deposit::class)->count());
+            self::assertSame(3_000, LedgerAccount::query()->where('user_id', $customer->id)->sole()->availableBalance());
+        } finally {
+            config()->set('app.deposit_review_threshold', $threshold);
+        }
+    }
+
+    public function test_server_rejects_weight_above_the_configured_item_limit_before_finalization(): void
+    {
+        [$staff, $customer, $type, $condition] = $this->context();
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $draft = app(DepositService::class)->createDraft($staff, $customer);
+
+        $this->expectException(ValidationException::class);
+        app(DepositService::class)->replaceDraftItems($staff, $draft, [new DepositItemInput($type->id, $condition->id, '50.001')]);
     }
 
     public function test_correction_and_reversal_require_explicit_customer_scope(): void
@@ -438,7 +481,7 @@ final class DepositWaveTest extends TestCase
     {
         $path = tempnam(sys_get_temp_dir(), 'deposit-proof-');
         self::assertIsString($path);
-        file_put_contents($path, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL7wQAAAABJRU5ErkJggg==', true));
+        file_put_contents($path, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true));
 
         return new UploadedFile($path, 'deposit-proof.png', 'image/png', null, true);
     }

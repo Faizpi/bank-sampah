@@ -234,17 +234,19 @@ Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mo
 - Header: konteks tanggal/lokasi, status koneksi, profil.
 - Tugas hari ini sebagai halaman awal.
 - Bottom navigation maksimal lima: `Tugas`, `Setoran`, `Pindai`, `Riwayat`, `Akun`.
-- Bendahara dapat mengganti `Setoran/Pindai` dengan `Pembayaran/Rekonsiliasi` sesuai permission tanpa melebihi lima.
+- Bendahara dapat mengganti `Setoran/Pindai` dengan `Pembayaran/Laporan` sesuai permission tanpa melebihi lima.
 - Aksi scan memiliki alternatif input nomor nasabah.
 
 ### Shell admin/superadmin
 
 Filament 5 dengan custom theme. Sidebar dikelompokkan:
 
-1. **Operasional:** dashboard, setoran, penjemputan/kapasitas, pencairan, sembako, tugas/jadwal, rekonsiliasi.
+1. **Operasional:** dashboard, setoran, penjemputan/kapasitas, pencairan, sembako, tugas/jadwal.
 2. **Data Master:** pengguna/nasabah/petugas, wilayah, jenis/kategori/satuan/kondisi, harga, paket.
 3. **Program:** target, layanan keliling, pengumuman, statistik publik/partisipasi.
-4. **Pengawasan:** laporan/ekspor, koreksi/reversal, ledger/hold, audit log, konfigurasi teknis/backup sesuai role.
+4. **Pengawasan:** laporan/ekspor Excel, rekonsiliasi, ledger/hold, dan audit log sesuai permission.
+5. **Keamanan & Akses:** bantuan kata sandi, sesi pengguna, peran, dan izin sesuai permission.
+6. **Administrasi sistem:** kontrol teknis yang hanya tersedia untuk superadmin sesuai permission.
 
 Sidebar menampilkan item sesuai permission. Tabel admin tidak dipaksakan ke layout kartu pada desktop; mobile memakai list/stack atau horizontal region yang diberi label dan fokus terkelola hanya bila tak terhindarkan.
 
@@ -263,7 +265,8 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 ### Input, select, textarea
 
 - Label selalu terlihat di atas; placeholder bukan label.
-- Tinggi input/select 48 px; textarea minimum 120 px.
+- Untuk warga, petugas, dan bendahara, tinggi input/select 48 px; textarea minimum 120 px.
+- Untuk field custom back-office desktop, tinggi kontrol minimum 44 px, padding horizontal 16 px, dan jarak label-ke-kontrol minimum 8 px. Kontrol tanggal/waktu tetap menyisakan ruang untuk ikon bawaannya.
 - Border default, hover lebih gelap, focus ring, disabled surface abu, error Terracotta + ikon `circle-alert` + teks.
 - Hint dan error terhubung `aria-describedby`.
 - Rupiah dan berat memakai input mode sesuai, pemformatan visual, nilai canonical di server.
@@ -293,6 +296,12 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 
 - Satu surface, border, radius-lg, padding 16–24.
 - Tidak menaruh card di dalam card. Gunakan divider, section, atau inset datar.
+
+### Disclosure dan panduan berurutan
+
+- Konten yang dapat dibuka memakai kontrol `details`/`summary` atau tombol yang setara secara semantik, label yang menjelaskan aksi, indikator chevron, dan state terbuka/tertutup yang terlihat.
+- Chevron mengarah ke bawah saat tertutup dan berubah arah saat terbuka; kontrol memiliki target sentuh dan focus ring yang sama dengan tombol lain.
+- Langkah pemeriksaan memakai daftar bernomor semantik. Nomor, judul langkah, dan penjelasan dipisahkan secara visual agar mudah dipindai; pada layar sempit daftar menjadi satu kolom.
 - Klik seluruh panel hanya jika satu tujuan; tetap sediakan nama link aksesibel.
 
 ### Bottom navigation
@@ -407,7 +416,7 @@ Filter “Hari ini”, area, status; task row; CTA kontekstual; indikator offlin
 
 ### Dashboard admin
 
-Action queue di atas (verifikasi, pickup, approve, rekonsiliasi), metrik ringkas, trend, operasional hari ini, anomali/selisih, aktivitas audit. Maksimal satu level panel; grafik tidak mendominasi tindakan.
+Action queue di atas (verifikasi, pickup, approve), metrik ringkas, trend, operasional hari ini, aktivitas audit. Maksimal satu level panel; grafik tidak mendominasi tindakan.
 
 ## 10. Responsif wajib
 
@@ -442,8 +451,9 @@ Filament 5 hanya untuk back-office. Theme harus:
 - menggunakan Plus Jakarta Sans;
 - memakai Warm Canvas dan Surface;
 - menyamakan radius, shadow, focus ring, badge, button, form, table, chart, dan spacing;
-- mengelompokkan sidebar sesuai empat kelompok;
+- mengelompokkan sidebar sesuai enam kelompok yang ditetapkan pada shell admin/superadmin;
 - mempertahankan density admin tanpa mengecilkan aksesibilitas;
+- menggunakan kontrol form custom minimum 44 px dengan padding dan jarak label yang konsisten, serta disclosure dengan chevron dan state terbuka/tertutup yang jelas;
 - mengotorisasi resource/action dengan policy dan permission granular;
 - tidak menjadi sumber komponen UI warga/petugas.
 

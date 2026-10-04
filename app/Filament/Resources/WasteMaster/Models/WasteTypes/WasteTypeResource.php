@@ -34,6 +34,10 @@ final class WasteTypeResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?string $navigationParentItem = 'Katalog Sampah';
+
+    protected static ?int $navigationSort = 90;
+
     protected static ?string $navigationLabel = 'Jenis Sampah';
 
     protected static ?string $modelLabel = 'jenis sampah';
@@ -49,7 +53,7 @@ final class WasteTypeResource extends Resource
                 TextInput::make('code')->label('Kode')->required()->maxLength(30)->regex('/^[A-Za-z0-9_-]+$/')->unique(ignoreRecord: true),
                 TextInput::make('name')->label('Nama')->required()->minLength(2)->maxLength(120),
                 Select::make('waste_category_id')->label('Kategori')->relationship('category', 'name', modifyQueryUsing: fn ($query) => $query->where('is_active', true))->required()->searchable()->preload(),
-                Select::make('waste_unit_id')->label('Satuan')->relationship('unit', 'name')->required()->searchable()->preload(),
+                Select::make('waste_unit_id')->label('Satuan')->relationship('unit', 'name', modifyQueryUsing: fn ($query) => $query->where('is_active', true))->required()->searchable()->preload(),
                 Select::make('condition_ids')->label('Kondisi diterima')->relationship('conditions', 'name', modifyQueryUsing: fn ($query) => $query->where('is_active', true))->multiple()->required()->minItems(1)->searchable()->preload(),
                 TextInput::make('sort_order')->label('Urutan')->numeric()->integer()->minValue(0)->maxValue(9999)->default(0)->required(),
                 Checkbox::make('is_plastic')->label('Kelompok plastik'),
@@ -76,7 +80,8 @@ final class WasteTypeResource extends Resource
                 $unit = WasteUnit::query()->findOrFail($data['waste_unit_id']);
                 app(ManageWasteMaster::class)->updateType(auth()->user(), $record, $category, $unit, $data['code'], $data['name'], $data['education_description'] ?? null, (int) $data['sort_order'], (bool) ($data['is_plastic'] ?? false), (bool) ($data['is_active'] ?? false), array_map('intval', $data['condition_ids'] ?? []));
             })),
-            Action::make('deactivate')->label('Nonaktifkan')->authorize('deactivate')->requiresConfirmation()->visible(fn (WasteType $record): bool => $record->is_active)->action(fn (WasteType $record) => app(ManageWasteMaster::class)->deactivate(auth()->user(), $record)),
+            Action::make('activate')->label('Aktifkan kembali')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->requiresConfirmation()->modalHeading(fn (WasteType $record): string => "Aktifkan jenis {$record->name}?")->modalDescription('Jenis ini kembali tersedia untuk transaksi baru. Kategori dan kondisi yang dipakai harus aktif.')->modalSubmitActionLabel('Aktifkan jenis')->visible(fn (WasteType $record): bool => ! $record->is_active)->action(fn (WasteType $record) => app(ManageWasteMaster::class)->activate(auth()->user(), $record)),
+            Action::make('deactivate')->label('Nonaktifkan')->authorize('deactivate')->requiresConfirmation()->modalHeading(fn (WasteType $record): string => "Nonaktifkan jenis {$record->name}?")->modalDescription('Jenis ini tidak tersedia untuk transaksi baru. Data transaksi lama tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan jenis')->visible(fn (WasteType $record): bool => $record->is_active)->action(fn (WasteType $record) => app(ManageWasteMaster::class)->deactivate(auth()->user(), $record)),
         ]);
     }
 

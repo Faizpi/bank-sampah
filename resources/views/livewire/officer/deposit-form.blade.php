@@ -1,6 +1,6 @@
 <x-slot:title>Setoran baru</x-slot:title>
 <x-slot:date>{{ now()->translatedFormat('d F Y') }}</x-slot:date>
-<x-slot:connectivity>Terhubung</x-slot:connectivity>
+<x-slot:connectivity><x-ui.connectivity-status /></x-slot:connectivity>
 
 <section aria-labelledby="deposit-title" class="space-y-6">
     {{-- Page header --}}
@@ -20,7 +20,20 @@
             <svg viewBox="0 0 24 24" class="size-5 shrink-0 text-forest-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z"/><path d="m9 12 2 2 4-4"/>
             </svg>
-            {{ session('success') }}
+            <div>{{ session('success') }}</div>
+            @if ($draft?->isFinal() || $draft?->isPendingReview())
+                <div class="ml-auto text-right text-body-sm"><strong>{{ $draft->deposit_number }}</strong> · Rp {{ number_format((int) $draft->total_value, 0, ',', '.') }} · {{ $draft->occurred_at->translatedFormat('d F Y, H:i') }} · {{ $draft->status }}</div>
+            @endif
+        </div>
+    @endif
+
+    @if ($finalizationReviewOpen)
+        <div class="fixed inset-0 z-overlay flex items-end justify-center bg-overlay p-4 sm:items-center" role="presentation">
+            <div class="w-full max-w-form rounded-lg border border-border bg-surface p-5 shadow-dialog sm:p-6" role="dialog" aria-modal="true" aria-labelledby="deposit-finalization-title">
+                <h2 id="deposit-finalization-title" class="text-h2 font-bold text-deep-green">Finalisasi setoran?</h2>
+                <p class="mt-2 text-body-sm text-text-secondary">Nilai final akan dihitung ulang di server, bukti privat disimpan, dan saldo dapat bertambah setelah finalisasi atau persetujuan pemeriksa.</p>
+                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><x-ui.button type="button" variant="secondary" wire:click="cancelFinalizationReview">Ubah data</x-ui.button><x-ui.button type="button" wire:click="finalize" wire:loading.attr="disabled" wire:target="finalize"><span wire:loading.remove wire:target="finalize">Finalisasi setoran</span><span wire:loading wire:target="finalize">Memproses...</span></x-ui.button></div>
+            </div>
         </div>
     @endif
 
@@ -64,18 +77,42 @@
                 </div>
             @endforelse
 
+            <div class="rounded-md border border-border bg-surface p-4" aria-live="polite">
+                <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+                    <div>
+                        <h3 class="text-label font-bold text-deep-green">Review nilai setoran</h3>
+                        <p class="text-body-sm text-text-secondary">Harga aktif dan subtotal akan dihitung ulang server saat finalisasi.</p>
+                    </div>
+                    @if ($pricePreview['complete'])
+                        <strong class="amount-tabular text-title text-forest-700">Rp {{ number_format($pricePreview['total'], 0, ',', '.') }}</strong>
+                    @else
+                        <span class="text-body-sm font-semibold text-harvest-gold">Lengkapi item untuk melihat nilai</span>
+                    @endif
+                </div>
+                @if ($pricePreview['lines'] !== [])
+                    <dl class="mt-3 divide-y divide-border border-t border-border text-body-sm">
+                        @foreach ($pricePreview['lines'] as $line)
+                            <div class="flex items-center justify-between gap-3 py-2">
+                                <dt class="min-w-0"><span class="block font-semibold text-deep-green">{{ $line['name'] }}</span><span class="text-text-secondary">{{ $line['condition'] }} · {{ \App\Support\WeightFormatter::format($line['weight']) }} kg</span></dt>
+                                <dd class="shrink-0 amount-tabular font-semibold text-deep-green">Rp {{ number_format($line['subtotal'], 0, ',', '.') }}</dd>
+                            </div>
+                        @endforeach
+                    </dl>
+                @endif
+            </div>
+
             <div class="flex flex-col gap-3 pt-2 sm:flex-row">
                 <x-ui.button type="button" wire:click="addItem" variant="secondary">
                     <svg viewBox="0 0 24 24" class="mr-2 size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     Tambah Item
                 </x-ui.button>
-                <x-ui.button type="button" wire:click="saveDraft" wire:loading.attr="disabled">
+                <x-ui.button type="button" wire:click="saveDraft" wire:loading.attr="disabled" data-photo-picker-action>
                     <span wire:loading.remove wire:target="saveDraft">Simpan Draf</span>
                     <span wire:loading wire:target="saveDraft">Menyimpan...</span>
                 </x-ui.button>
-                <x-ui.button type="button" wire:click="finalize" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="finalize">Finalisasi Setoran</span>
-                    <span wire:loading wire:target="finalize">Memproses...</span>
+                <x-ui.button type="button" wire:click="reviewFinalization" wire:loading.attr="disabled" data-photo-picker-action>
+                    <span wire:loading.remove wire:target="reviewFinalization">Tinjau Finalisasi</span>
+                    <span wire:loading wire:target="reviewFinalization">Memeriksa...</span>
                 </x-ui.button>
              </div>
          </div>
@@ -87,16 +124,18 @@
          </x-ui.panel>
      @endif
 
-     <x-ui.panel title="Bukti setoran" description="Unggah bukti JPEG, PNG, WebP, atau PDF. File disimpan privat dan wajib saat finalisasi.">
-         <div class="space-y-1.5">
-             <label for="deposit-evidence" class="block text-label font-semibold text-deep-green">Bukti transaksi</label>
-             <input id="deposit-evidence" wire:model="evidence" type="file"
-                 accept="image/jpeg,image/png,image/webp,application/pdf"
-                 class="block min-h-touch w-full rounded-xl border-2 border-dashed border-border bg-warm-canvas p-4 text-body text-text-secondary transition hover:border-forest-600 focus:outline-none focus:ring-2 focus:ring-focus">
-             @error('evidence')
-                 <p class="text-body-sm text-terracotta">{{ $message }}</p>
-             @enderror
-         </div>
+     <x-ui.panel title="Bukti setoran" description="Unggah bukti foto atau PDF. File disimpan privat dan wajib saat finalisasi.">
+         <x-ui.media-picker
+             id="deposit-evidence"
+             property="evidence"
+             label="Bukti transaksi"
+             hint="Foto JPEG, PNG, atau WebP dikompres menjadi JPEG maksimal 1 MB. PDF diterima maksimal 5 MB."
+             :allow-pdf="true"
+             remove-method="clearEvidence"
+             confirm-method="confirmEvidenceUpload"
+         />
+         @error('evidence')
+             <p class="mt-2 text-body-sm font-semibold text-terracotta">{{ $message }}</p>
+         @enderror
      </x-ui.panel>
 </section>
-

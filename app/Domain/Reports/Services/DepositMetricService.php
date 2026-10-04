@@ -20,7 +20,7 @@ final readonly class DepositMetricService
         $value = 0;
         $plastic = 0.0;
         foreach ($deposits as $deposit) {
-            $value += (int) $deposit->total_value;
+            $value += $deposit->effectiveTotalValue();
             foreach ($deposit->items as $item) {
                 $itemWeight = (float) $item->weight_kg;
                 $weight += $itemWeight;

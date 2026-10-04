@@ -2,15 +2,10 @@
 
 @section('content')
     {{-- Hero Section --}}
-    <section class="relative isolate overflow-hidden border-b border-border/60 bg-surface" aria-labelledby="landing-title">
-        <div class="public-container grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.05fr_.95fr] lg:gap-12 lg:py-20">
+    <section class="public-hero-grid relative isolate overflow-hidden border-b border-border/60 bg-surface" aria-labelledby="landing-title">
+        <div class="public-container grid items-center gap-10 pb-12 pt-28 sm:pb-16 sm:pt-32 lg:grid-cols-[1.05fr_.95fr] lg:gap-12 lg:pb-20 lg:pt-36">
             <div class="relative z-10 max-w-2xl">
-                <div class="inline-flex items-center gap-2 rounded-full border border-border bg-success-bg px-4 py-1.5 text-xs font-bold text-forest-600">
-                    <x-public.icon name="circle-check" size="size-4" />
-                    <span>Transparansi untuk setiap setoran</span>
-                </div>
-
-                <h1 id="landing-title" class="mt-6 text-balance text-display font-extrabold tracking-tight text-deep-green lg:text-display-lg">
+                <h1 id="landing-title" class="text-balance text-display font-extrabold tracking-tight text-deep-green lg:text-display-lg">
                     Sampah tercatat. <span class="text-forest-600">Nilai terjaga.</span> Desa bergerak bersama.
                 </h1>
                 <p class="mt-5 max-w-xl text-body leading-relaxed text-text-secondary">
@@ -95,7 +90,7 @@
 
                     <article class="group grid gap-5 rounded-2xl border border-border bg-surface p-5 shadow-xs transition-all duration-200 hover:border-forest-600/40 hover:shadow-sm sm:grid-cols-[96px_1fr_auto] sm:items-center sm:p-6">
                         <div class="flex justify-center">
-                            <x-ui.mascot variant="7" class="h-20 w-auto" />
+                            <x-ui.mascot variant="8" class="h-20 w-auto" />
                         </div>
                         <div>
                             <h3 class="text-title font-bold text-deep-green transition-colors group-hover:text-forest-600">Penjemputan yang Terjadwal</h3>
@@ -112,7 +107,7 @@
                             <h3 class="text-title font-bold text-deep-green transition-colors group-hover:text-forest-600">Saldo Rupiah yang Jelas</h3>
                             <p class="mt-1.5 text-body-sm leading-relaxed text-text-secondary">Saldo tersedia, tertahan, masuk, keluar, dan koreksi dapat diperiksa tanpa kebingungan poin.</p>
                         </div>
-                        <span class="inline-flex self-start justify-center rounded-full border border-border bg-warm-canvas px-3 py-1 text-xs font-bold text-deep-green sm:self-center">Ledger Tercatat</span>
+                        <span class="inline-flex self-start justify-center rounded-full border border-border bg-warm-canvas px-3 py-1 text-xs font-bold text-deep-green sm:self-center">Mutasi tercatat</span>
                     </article>
                 </div>
             </div>
@@ -142,7 +137,7 @@
                 <li class="relative flex flex-col items-center rounded-2xl border border-border bg-warm-canvas p-6 text-center shadow-xs sm:p-8">
                     <span class="absolute -top-3.5 rounded-full bg-forest-600 px-3.5 py-1 text-xs font-extrabold text-surface shadow-xs">Langkah 2</span>
                     <div class="mt-2 flex h-32 items-center justify-center">
-                        <x-ui.mascot variant="8" bubble="Timbang akurat!" class="h-28 w-auto" />
+                        <x-ui.mascot variant="7" bubble="Timbang akurat!" class="h-28 w-auto" />
                     </div>
                     <h3 class="mt-4 text-h3 font-bold text-deep-green">Timbang &amp; Konfirmasi</h3>
                     <p class="mt-2.5 text-body-sm leading-relaxed text-text-secondary">Petugas mencatat berat aktual per jenis dan sistem mengambil harga pasar yang berlaku.</p>
@@ -167,7 +162,7 @@
                 id="mascot-stories-title"
                 eyebrow="Warga dan Lingkungan"
                 title="Kebiasaan kecil, dampak yang terlihat."
-                description="Maskot Sindangheula hadir di titik-titik yang paling dekat dengan keputusan warga: memilih, memahami, dan merawat hasilnya."
+                description="Bank Sampah Sindangheula mendampingi warga di setiap langkah: memilih, memahami, dan mengelola sampah secara bertanggung jawab."
             />
             <div class="mt-12 grid gap-6 md:grid-cols-3">
                 <article class="flex flex-col items-center rounded-2xl border border-border bg-surface p-6 text-center shadow-xs">
@@ -222,4 +217,3 @@
         </div>
     </section>
 @endsection
-

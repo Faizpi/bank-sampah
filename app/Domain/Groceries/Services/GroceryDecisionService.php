@@ -73,10 +73,6 @@ final readonly class GroceryDecisionService
 
     public function ready(User $actor, GroceryRedemption $redemption): GroceryRedemption
     {
-        if ($redemption->prepared_by_id !== null && $redemption->prepared_by_id !== $actor->id) {
-            throw new AuthorizationException('Paket hanya dapat diselesaikan oleh petugas yang menyiapkannya.');
-        }
-
         return $this->advanceStaffStatus($actor, $redemption, GroceryStatus::ReadyForPickup, 'grocery.prepare', 'grocery.ready', 'Paket siap diambil.');
     }
 

@@ -98,7 +98,15 @@ final readonly class AuthenticatedUserRedirector
             ];
         }
 
-        if (array_intersect(['petugas', 'admin', 'superadmin'], $roleNames) !== []) {
+        if (array_intersect(['admin', 'superadmin'], $roleNames) !== []) {
+            return [
+                ['filament.backoffice.home', 'backoffice.access'],
+                ['officer.dashboard', 'user.view'],
+                ['citizen.dashboard', 'profile.view'],
+            ];
+        }
+
+        if (in_array('petugas', $roleNames, true)) {
             return [
                 ['officer.dashboard', 'user.view'],
                 ['treasurer.dashboard', 'withdrawal.view'],

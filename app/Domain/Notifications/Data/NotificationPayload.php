@@ -11,7 +11,7 @@ use RuntimeException;
 
 final readonly class NotificationPayload
 {
-    private const array SENSITIVE_TERMS = [
+    private const SENSITIVE_TERMS = [
         'password',
         'kata sandi',
         'token',

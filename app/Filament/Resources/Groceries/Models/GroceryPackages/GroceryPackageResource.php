@@ -32,7 +32,7 @@ final class GroceryPackageResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
-    protected static ?int $navigationSort = 50;
+    protected static ?int $navigationSort = 80;
 
     protected static ?string $navigationLabel = 'Paket Sembako';
 
@@ -63,16 +63,30 @@ final class GroceryPackageResource extends Resource
             TextColumn::make('name')->label('Nama')->searchable()->sortable(),
             TextColumn::make('value')->label('Nilai')->money('IDR')->sortable(),
             TextColumn::make('active_from')->label('Mulai')->date('d M Y'),
-            TextColumn::make('active_until')->label('Berakhir')->date('d M Y')->placeholder('Tidak dibatasi'),
+            TextColumn::make('active_until')->label('Berakhir')->date('d M Y')->placeholder('Tanpa batas'),
             IconColumn::make('status')->label('Aktif')->boolean(fn (string $state): bool => $state === 'aktif'),
         ])->recordActions([
             EditAction::make()->using(fn (GroceryPackage $record, array $data): GroceryPackage => app(ManageGroceryPackageAction::class)->update(auth()->user(), $record, (string) $data['code'], (string) $data['name'], (string) $data['contents'], (int) $data['value'], $data['active_from'] ?? null, $data['active_until'] ?? null)),
+            Action::make('activate')
+                ->label('Aktifkan kembali')
+                ->icon(Heroicon::OutlinedCheckCircle)
+                ->color('success')
+                ->authorize('activate')
+                ->requiresConfirmation()
+                ->modalHeading(fn (GroceryPackage $record): string => "Aktifkan paket {$record->name}?")
+                ->modalDescription('Paket ini kembali tersedia untuk penukaran baru. Data historis tetap tersimpan.')
+                ->modalSubmitActionLabel('Aktifkan paket')
+                ->visible(fn (GroceryPackage $record): bool => $record->status === 'nonaktif')
+                ->action(fn (GroceryPackage $record): GroceryPackage => app(ManageGroceryPackageAction::class)->activate(auth()->user(), $record)),
             Action::make('deactivate')
                 ->label('Nonaktifkan')
                 ->icon(Heroicon::OutlinedArchiveBox)
                 ->color('danger')
                 ->authorize('deactivate')
                 ->requiresConfirmation()
+                ->modalHeading(fn (GroceryPackage $record): string => "Nonaktifkan paket {$record->name}?")
+                ->modalDescription('Paket ini tidak tersedia untuk penukaran baru. Data penukaran lama tetap tersimpan.')
+                ->modalSubmitActionLabel('Nonaktifkan paket')
                 ->visible(fn (GroceryPackage $record): bool => $record->status === 'aktif')
                 ->action(fn (GroceryPackage $record): GroceryPackage => app(ManageGroceryPackageAction::class)->deactivate(auth()->user(), $record)),
         ]);

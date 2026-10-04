@@ -6,7 +6,6 @@ namespace App\Domain\Groceries\Services;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
-use App\Domain\Groceries\Enums\GrocerySource;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Queries\VisibleUsers;
@@ -28,7 +27,7 @@ use Illuminate\Validation\ValidationException;
 
 final readonly class GroceryHandoverService
 {
-    private const string SCOPE = 'grocery.handover';
+    private const SCOPE = 'grocery.handover';
 
     public function __construct(
         private PermissionChecker $permissions,
@@ -60,7 +59,7 @@ final readonly class GroceryHandoverService
         $media = null;
 
         try {
-            $media = $this->mediaStore->handle($proof, $actor);
+            $media = $this->mediaStore->handleEvidence($proof, $actor);
 
             $result = DB::transaction(function () use ($actor, $redemption, $verification, $reference, $media, $idempotencyKey, $payloadHash): GroceryRedemption {
                 $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
@@ -82,7 +81,7 @@ final readonly class GroceryHandoverService
                 }
                 $old = $locked->status;
                 $media->forceFill(['attachable_type' => GroceryRedemption::class, 'attachable_id' => $locked->id])->save();
-                $entry = $locked->source_type === GrocerySource::Balance ? $this->ledger->convertHold($locked->balanceHold()->firstOrFail(), 'grocery:'.$locked->id.':handover') : null;
+                $entry = $this->ledger->convertHold($locked->balanceHold()->firstOrFail(), 'grocery:'.$locked->id.':handover');
                 $locked->forceFill([
                     'status' => GroceryStatus::Completed,
                     'handover_actor_id' => $actor->id,
@@ -90,10 +89,10 @@ final readonly class GroceryHandoverService
                     'recipient_verification' => $verification,
                     'recipient_reference' => $reference,
                     'proof_media_id' => $media->id,
-                    'receipt_ledger_entry_id' => $entry?->id,
+                    'receipt_ledger_entry_id' => $entry->id,
                 ])->save();
                 $locked->statusHistory()->create(['old_status' => $old->value, 'new_status' => GroceryStatus::Completed->value, 'actor_id' => $actor->id, 'reason' => 'Penerima diverifikasi dan paket diserahkan.', 'occurred_at' => now()]);
-                $this->auditLogger->record($actor, 'grocery.handed_over', $locked, ['status' => $old->value], ['status' => GroceryStatus::Completed->value, 'ledger_entry_id' => $entry?->id, 'proof_media_id' => $media->id], $this->correlationId());
+                $this->auditLogger->record($actor, 'grocery.handed_over', $locked, ['status' => $old->value], ['status' => GroceryStatus::Completed->value, 'ledger_entry_id' => $entry->id, 'proof_media_id' => $media->id], $this->correlationId());
                 $key->forceFill(['status' => 'succeeded', 'result_type' => GroceryRedemption::class, 'result_id' => $locked->id])->save();
                 $this->notify($locked);
 
@@ -176,7 +175,7 @@ final readonly class GroceryHandoverService
 
     private function existingIdempotency(User $actor, string $key, string $payloadHash): ?IdempotencyKey
     {
-        $existing = IdempotencyKey::query()->where('actor_id', $actor->id)->where('scope', self::SCOPE)->where('key', $key)->lockForUpdate()->first();
+        $existing = IdempotencyKey::activeForUpdate($actor->id, self::SCOPE, $key);
         if ($existing === null) {
             return null;
         }
@@ -203,7 +202,7 @@ final readonly class GroceryHandoverService
 
     private function notify(GroceryRedemption $redemption): void
     {
-        NotificationRequested::dispatch(new NotificationPayload(recipientId: $redemption->customer_id, type: 'grocery.completed', title: 'Penukaran sembako selesai', body: 'Paket '.$redemption->request_number.' telah diserahkan.', reference: '/notifikasi', dedupeKey: NotificationDedupeKey::for('grocery.completed:'.$redemption->request_number, $redemption->customer_id, 'grocery-v1')));
+        NotificationRequested::dispatch(new NotificationPayload(recipientId: $redemption->customer_id, type: 'grocery.completed', title: 'Penukaran sembako selesai', body: 'Paket '.$redemption->request_number.' telah diserahkan.', reference: '/warga/sembako/'.$redemption->id.'/bukti', dedupeKey: NotificationDedupeKey::for('grocery.completed:'.$redemption->request_number, $redemption->customer_id, 'grocery-v1')));
     }
 
     private function correlationId(): string

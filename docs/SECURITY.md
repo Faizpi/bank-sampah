@@ -17,7 +17,7 @@ Keamanan melindungi saldo, transaksi, identitas warga, bukti privat, operasi pet
 - Password di-hash menggunakan driver Laravel yang direkomendasikan dan tersedia pada PHP 8.5, dengan Argon2id bila lingkungan mendukung secara stabil; parameter ditinjau dan rehash saat login bila kebijakan berubah.
 - Password plaintext tidak disimpan, dicatat, dikirim kembali, atau diketahui admin.
 - Minimal 10 karakter, konfirmasi, dan penolakan password umum mengikuti [VALIDATION.md](VALIDATION.md).
-- Perubahan kata sandi hanya melalui dua jalur. Jalur berbantuan langsung hanya untuk pengguna yang benar-benar lupa kata sandi dan tidak dapat login: admin dengan `user.reset-password` dan `session.revoke` mengubah target lain dalam scope sah sesudah verifikasi `tatap_muka` atau `callback_nomor_terdaftar` dan alasan tervalidasi 10–1000 karakter. Admin tidak dapat menargetkan diri sendiri.
+- Perubahan kata sandi hanya melalui dua jalur. Jalur berbantuan langsung hanya untuk pengguna yang benar-benar lupa kata sandi dan tidak dapat login: admin atau superadmin berizin melalui alur PasswordAssistance, dengan `user.reset-password` dan `session.revoke`, mengubah target lain dalam scope sah sesudah verifikasi `tatap_muka` atau `callback_nomor_terdaftar` dan alasan tervalidasi 10–1000 karakter. Aktor berizin tidak dapat menargetkan diri sendiri.
 - Jalur mandiri hanya dari profil pengguna terautentikasi dengan verifikasi kata sandi saat ini, kata sandi baru, dan konfirmasi tervalidasi.
 - Kata sandi tidak disimpan, diketahui admin, diaudit, atau dicatat pada log. Audit hanya mencatat aktor, metode, alasan, dan hasil.
 - Jalur berbantuan menyimpan hash kata sandi baru, mencabut seluruh sesi aktif target, dan mengaudit secara atomik. Jalur mandiri menyimpan hash dan mencabut sesi aktif lain sambil mempertahankan sesi saat ini bila memungkinkan secara teknis, atau mencabut seluruh sesi dan meminta autentikasi ulang bila tidak memungkinkan. Tidak ada reset publik, token, masa berlaku, penyimpanan atau pengiriman token, email, SMS, WhatsApp, rate limit reset, maupun respons permintaan reset.
@@ -77,7 +77,7 @@ Nilai numerik ditentukan setelah load test/UAT dan dicatat sebagai konfigurasi, 
 2. Query list menerapkan scope sebelum pagination/agregasi; action detail mengulang policy pada record.
 3. Livewire method dan Filament action mengotorisasi setiap pemanggilan; visibility menu bukan kontrol.
 4. File, ekspor, QR rotation, audit, dan dashboard turut diotorisasi.
-5. Warga hanya record sendiri; petugas hanya assignment/area; bendahara hanya pembayaran/rekonsiliasi terkait; admin sesuai permission; superadmin tidak otomatis mengakses bisnis/ledger. Admission panel teknis Filament memerlukan `backoffice.access`, yang baseline-nya dimiliki `admin` dan `superadmin`, dan tidak menggantikan pemeriksaan permission, action, atau record scope.
+5. Warga hanya record sendiri; petugas hanya assignment/area; bendahara hanya pembayaran/laporan terkait; admin dan superadmin mengikuti permission serta policy operasional, dengan superadmin mewarisi seluruh baseline admin dan permission teknis tambahan. Permission khusus ledger/koreksi tetap eksplisit. Admission panel teknis Filament memerlukan `backoffice.access` dan tidak menggantikan pemeriksaan permission, action, atau record scope.
 6. IDOR diuji dengan mengganti ID warga, transaksi, file, pengajuan, dan export.
 7. Approve/pay serta approve/handover memakai permission terpisah sebagaimana [PERMISSIONS.md](PERMISSIONS.md).
 
@@ -89,7 +89,7 @@ Nilai numerik ditentukan setelah load test/UAT dan dicatat sebagai konfigurasi, 
 - Saldo tersedia dihitung/diperiksa ulang di bawah lock dan tidak boleh negatif.
 - Audit aksi finansial berada dalam transaction yang sama atau operasi gagal.
 - Jalur gagal rollback penuh; notifikasi nonkritis diproses setelah commit.
-- Rekonsiliasi harian membuktikan ledger, hold, bukti, dan kas.
+- Laporan harian menampilkan transaksi, bukti, dan status yang dapat diekspor sesuai scope.
 
 ## 8. File privat dan upload
 
@@ -138,6 +138,7 @@ Gunakan incident ID dan masking. Akses ke log dibatasi pengelola teknis.
 
 ## 11. Secret dan konfigurasi
 
+- Pengaturan teknis non-secret dapat dikelola melalui UI terotorisasi dengan `system.settings.manage`, validasi server, scope teknis, dan audit. UI ini tidak menerima, menampilkan, atau menyimpan secret.
 - Secret hanya melalui `.env`/secret store CI/hosting; `.env` tidak di-commit dan tidak berada di document root.
 - `APP_KEY`, credential DB/mail/S3, token deployment, dan credential backup berbeda antar-environment.
 - `APP_DEBUG=false` di produksi.
@@ -147,7 +148,7 @@ Gunakan incident ID dan masking. Akses ke log dibatasi pengelola teknis.
 
 ## 12. Database dan backup
 
-- MariaDB memakai user least privilege, password kuat, host restriction bila tersedia, dan TLS bila didukung.
+- MySQL 8.0.30 memakai user least privilege, password kuat, host restriction bila tersedia, dan TLS bila didukung.
 - Backup database harian dan media berkala; salinan terenkripsi/terproteksi berada terpisah dari hosting utama.
 - Backup memuat checksum, status, waktu, dan retensi; akses terbatas.
 - Uji restore berkala dilakukan pada environment terisolasi, bukan menimpa produksi.
@@ -190,11 +191,11 @@ Gunakan incident ID dan masking. Akses ke log dibatasi pengelola teknis.
 3. **Preservasi:** simpan log/audit/checksum dan snapshot yang diperlukan tanpa memodifikasi bukti.
 4. **Analisis:** tentukan akar masalah, rentang waktu, record/pengguna terdampak, dan integritas ledger.
 5. **Eradikasi:** perbaiki kontrol, dependency, permission, secret, atau data melalui koreksi/reversal resmi.
-6. **Pemulihan:** restore bila diperlukan, jalankan migration/test, rekonsiliasi, verifikasi akses dan monitoring.
+6. **Pemulihan:** restore bila diperlukan, jalankan migration/test, verifikasi laporan, akses, dan monitoring.
 7. **Komunikasi:** pengelola menentukan pemberitahuan pihak terdampak dan kewajiban yang berlaku; informasi akurat tanpa klaim belum terbukti.
 8. **Tinjauan:** dokumentasikan timeline, dampak, tindakan, test regresi, dan perbaikan SOP.
 
-Khusus dugaan saldo ganda: hentikan pengulangan, periksa idempotency/audit/ledger, jangan edit saldo langsung, lakukan koreksi/reversal berizin, lalu rekonsiliasi.
+Khusus dugaan saldo ganda: hentikan pengulangan, periksa idempotency/audit/ledger, jangan edit saldo langsung, dan lakukan koreksi/reversal berizin.
 
 ## 16. Checklist rilis keamanan
 
@@ -204,10 +205,10 @@ Khusus dugaan saldo ganda: hentikan pengulangan, periksa idempotency/audit/ledge
 - Klik ganda dan konkurensi ledger lulus.
 - Upload privat dan signed route lulus.
 - QR/statistik tidak membuka data pribadi.
-- CSV formula injection dan XSS konten lulus.
+- Formula injection pada Excel dan XSS konten lulus.
 - Dependency audit tanpa risiko kritis tak tertangani.
 - Backup terbaru valid dan rollback tersedia.
-- Rehearsal MariaDB disposable release tercatat sebelum UAT/production; bila IMP-107 termasuk baseline rilis, bukti trigger append-only/immutability MariaDB terisolasi tersedia. Hasil SQLite tidak diperlakukan sebagai bukti MariaDB.
+- Rehearsal MySQL 8.0.30 disposable release tercatat sebelum UAT/production; bila IMP-107 termasuk baseline rilis, bukti trigger append-only/immutability MySQL terisolasi tersedia. Hasil SQLite tidak diperlakukan sebagai bukti MySQL production.
 - Cron/timezone serta queue terbatas terverifikasi.
 - Secret scan source/build/log lulus.
 

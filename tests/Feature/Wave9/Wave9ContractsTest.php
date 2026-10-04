@@ -4,19 +4,28 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Wave9;
 
-use App\Domain\AuditReconciliation\Enums\ReconciliationStatus;
 use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\AuditReconciliation\Services\AuditQueryService;
 use App\Domain\AuditReconciliation\Services\AuditRetentionService;
-use App\Domain\AuditReconciliation\Services\ReconciliationService;
+use App\Domain\CustomersRegions\Models\Dusun;
+use App\Domain\CustomersRegions\Models\Rt;
+use App\Domain\CustomersRegions\Models\Rw;
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Groceries\Enums\GroceryStatus;
+use App\Domain\Groceries\Models\GroceryPackage;
+use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
+use App\Domain\Pickups\Enums\PickupStatus;
+use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Platform\Models\Media;
 use App\Domain\Reports\Enums\ReportExportStatus;
 use App\Domain\Reports\Services\ReportExportService;
 use App\Domain\Reports\Services\ReportQueryService;
+use App\Domain\Withdrawals\Enums\WithdrawalStatus;
+use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -81,6 +90,106 @@ final class Wave9ContractsTest extends TestCase
         self::assertThrows(fn (): mixed => app(ReportExportService::class)->download($owner, $expired), ModelNotFoundException::class);
     }
 
+    public function test_all_documented_operational_report_types_can_be_exported_with_private_scope(): void
+    {
+        Storage::fake('media_private');
+        $actor = $this->userWith('report.view', 'report.export');
+
+        foreach (['deposits', 'withdrawals', 'groceries', 'pickups', 'participation'] as $reportType) {
+            $export = app(ReportExportService::class)->export($actor, $reportType, ['start' => '2026-08-01', 'end' => '2026-08-02'], 'csv');
+
+            self::assertSame(ReportExportStatus::Succeeded, $export->status);
+            self::assertTrue(Storage::disk('media_private')->exists((string) $export->path));
+            self::assertSame($actor->id, $export->requester_id);
+        }
+    }
+
+    public function test_report_center_contract_exposes_scope_filters_and_operational_types(): void
+    {
+        $actor = $this->userWith('report.view');
+        $contract = app(ReportQueryService::class)->contract();
+
+        self::assertContains('service_area_id', $contract['filters']);
+        self::assertContains('status', $contract['filters']);
+        self::assertSame(['deposits', 'withdrawals', 'groceries', 'pickups', 'participation'], $contract['report_types']);
+        self::assertSame('paid_at', $contract['report_columns']['withdrawals'][1]);
+        self::assertSame('handed_over_at', $contract['report_columns']['groceries'][1]);
+        self::assertSame('completed_at', $contract['report_columns']['pickups'][1]);
+        self::assertCount(0, app(ReportQueryService::class)->paginate($actor, ['start' => '2026-08-01', 'end' => '2026-08-02'], perPage: 25));
+    }
+
+    public function test_operational_report_dates_are_used_for_display_and_export(): void
+    {
+        Storage::fake('media_private');
+        $actor = $this->userWith('report.view', 'report.export');
+        $reports = app(ReportQueryService::class);
+        $withdrawalAt = '2026-08-01 09:10:11';
+        $groceryAt = '2026-08-01 10:20:21';
+        $pickupAt = '2026-08-01 11:30:31';
+        WithdrawalRequest::query()->create([
+            'request_number' => 'WDR-W9-DATE', 'customer_id' => $actor->id, 'requested_by_id' => $actor->id,
+            'amount' => 12_000, 'status' => WithdrawalStatus::Paid, 'paid_at' => $withdrawalAt,
+        ]);
+        $package = GroceryPackage::query()->create(['code' => 'W9-PACKAGE', 'name' => 'Paket W9', 'contents' => 'Isi', 'value' => 20_000, 'status' => 'aktif']);
+        GroceryRedemption::query()->create([
+            'request_number' => 'GRC-W9-DATE', 'customer_id' => $actor->id, 'requested_by_id' => $actor->id,
+            'grocery_package_id' => $package->id, 'value_snapshot' => 20_000, 'package_snapshot' => ['code' => 'W9-PACKAGE'],
+            'status' => GroceryStatus::Completed, 'handed_over_at' => $groceryAt,
+        ]);
+        $dusun = Dusun::query()->create(['code' => 'W9-DS', 'name' => 'Dusun W9', 'is_active' => true]);
+        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'W9-RW', 'name' => 'RW W9', 'is_active' => true]);
+        $rt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'W9-RT', 'name' => 'RT W9', 'is_active' => true]);
+        $area = ServiceArea::query()->create(['name' => 'Area W9', 'is_active' => true]);
+        PickupRequest::query()->create([
+            'request_number' => 'PUP-W9-DATE', 'customer_id' => $actor->id, 'rt_id' => $rt->id, 'service_area_id' => $area->id,
+            'address' => 'Alamat W9', 'selected_date' => '2026-08-01', 'status' => PickupStatus::Completed, 'completed_at' => $pickupAt,
+        ]);
+
+        self::assertSame($withdrawalAt, $reports->displayRows($actor, 'withdrawals', ['start' => '2026-08-01', 'end' => '2026-08-02'])[0]['date']);
+        self::assertSame($groceryAt, $reports->displayRows($actor, 'groceries', ['start' => '2026-08-01', 'end' => '2026-08-02'])[0]['date']);
+        self::assertSame($pickupAt, $reports->displayRows($actor, 'pickups', ['start' => '2026-08-01', 'end' => '2026-08-02'])[0]['date']);
+        foreach ([['withdrawals', 'paid_at', $withdrawalAt], ['groceries', 'handed_over_at', $groceryAt], ['pickups', 'completed_at', $pickupAt]] as [$type, $column, $date]) {
+            $export = app(ReportExportService::class)->export($actor, $type, ['start' => '2026-08-01', 'end' => '2026-08-02'], 'csv');
+            $content = Storage::disk('media_private')->get((string) $export->path);
+            self::assertStringContainsString($column, $content);
+            self::assertStringContainsString($date, $content);
+        }
+    }
+
+    public function test_records_are_bounded_and_export_streams_all_rows_under_explicit_limit(): void
+    {
+        Storage::fake('media_private');
+        $actor = $this->userWith('report.view', 'report.export');
+        foreach (range(1, 101) as $number) {
+            $this->seedDeposit($actor, $number, '2026-08-01 10:00:00', 'DEP-W9-LIMIT-'.$number);
+        }
+        $reports = app(ReportQueryService::class);
+        self::assertCount(100, $reports->records($actor, 'deposits', ['start' => '2026-08-01', 'end' => '2026-08-02']));
+        $export = app(ReportExportService::class)->export($actor, 'deposits', ['start' => '2026-08-01', 'end' => '2026-08-02'], 'csv');
+        $content = Storage::disk('media_private')->get((string) $export->path);
+        self::assertSame(102, substr_count(trim($content), "\n") + 1);
+        self::assertStringContainsString('DEP-W9-LIMIT-101-'.$actor->id, $content);
+    }
+
+    public function test_display_rows_preserve_report_scope_and_format_empty_results(): void
+    {
+        $actor = $this->userWith('report.view');
+        $reports = app(ReportQueryService::class);
+
+        self::assertSame([], $reports->displayRows($actor, 'deposits', ['start' => '2026-08-01', 'end' => '2026-08-02']));
+
+        $this->seedDeposit($actor, 20_000, '2026-08-01 10:00:00', 'DEP-W9-ROWS');
+        self::assertSame([
+            [
+                'reference' => 'DEP-W9-ROWS-'.$actor->id,
+                'date' => '2026-08-01 10:00:00',
+                'subject_id' => (string) $actor->id,
+                'status' => 'final',
+                'amount' => 20_000,
+            ],
+        ], $reports->displayRows($actor, 'deposits', ['start' => '2026-08-01', 'end' => '2026-08-02']));
+    }
+
     public function test_xlsx_formula_injection_is_neutralized_and_failure_has_no_partial_file(): void
     {
         Storage::fake('media_private');
@@ -89,10 +198,13 @@ final class Wave9ContractsTest extends TestCase
         $xlsx = app(ReportExportService::class)->export($actor, 'deposits', ['start' => '2026-08-01', 'end' => '2026-08-02'], 'xlsx');
         self::assertTrue(Storage::disk('media_private')->exists((string) $xlsx->path));
         self::assertStringContainsString('&apos;=XLSX', $this->unzipSheet(Storage::disk('media_private')->get((string) $xlsx->path)));
-        $failed = app(ReportExportService::class)->export($actor, 'reconciliation', ['start' => '2026-08-01', 'end' => '2026-08-02'], 'csv');
-        self::assertSame(ReportExportStatus::Failed, $failed->status);
-        self::assertNull($failed->path);
-        self::assertSame([], Storage::disk('media_private')->allFiles('exports/'.$failed->uuid));
+        $filesBeforeInvalidRequest = Storage::disk('media_private')->allFiles('exports');
+        try {
+            app(ReportExportService::class)->export($actor, 'deposits', ['start' => '2026-08-01', 'end' => '2026-08-02'], 'csv', ['not-allowed']);
+            self::fail('Expected invalid export columns to be rejected.');
+        } catch (ValidationException) {
+            self::assertSame($filesBeforeInvalidRequest, Storage::disk('media_private')->allFiles('exports'));
+        }
     }
 
     public function test_audit_view_is_sanitized_and_append_only(): void
@@ -112,48 +224,6 @@ final class Wave9ContractsTest extends TestCase
         $audit = app(AuditLogger::class)->record($admin, 'test.audit', $admin, [], [], (string) Str::uuid());
         $this->assertThrowsException(fn (): mixed => app(AuditQueryService::class)->find($other, $audit->id), AuthorizationException::class);
         $this->assertThrowsException(fn (): mixed => app(AuditRetentionService::class)->execute($admin, '2026-08-02'), AuthorizationException::class);
-    }
-
-    public function test_reconciliation_uses_versioned_state_machine_sod_and_blocks_open_discrepancy(): void
-    {
-        $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
-        $approver = $this->userWith('reconciliation.approve', 'reconciliation.view', 'user.view.all', 'report.view');
-        $this->seedDeposit($creator, 1_000, '2026-08-01 10:00:00', 'DEP-W9-REC');
-        $record = app(ReconciliationService::class)->create($creator, '2026-08-01', null, 'Penutupan layanan harian');
-        self::assertSame(1, $record->version);
-        app(ReconciliationService::class)->submit($creator, $record);
-        $this->expectException(ValidationException::class);
-        app(ReconciliationService::class)->approve($approver, $record);
-    }
-
-    public function test_reconciliation_invalid_transition_scope_and_approval_are_audited(): void
-    {
-        $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
-        $approver = $this->userWith('reconciliation.approve', 'reconciliation.view', 'user.view.all', 'report.view');
-        $record = app(ReconciliationService::class)->create($creator, '2026-08-01', null);
-        $this->expectException(ValidationException::class);
-        app(ReconciliationService::class)->approve($approver, $record);
-        app(ReconciliationService::class)->submit($creator, $record);
-        $rejected = app(ReconciliationService::class)->reject($approver, $record, 'Selisih perlu ditelusuri ulang.');
-        self::assertSame(ReconciliationStatus::Rejected, $rejected->status);
-        self::assertSame(1, AuditLog::query()->where('action', 'reconciliation.rejected')->count());
-    }
-
-    public function test_reconciliation_discrepancy_resolution_allows_approval_and_revision_is_parented(): void
-    {
-        $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
-        $approver = $this->userWith('reconciliation.approve', 'reconciliation.view', 'user.view.all', 'report.view');
-        $this->seedDeposit($creator, 1_000, '2026-08-01 10:00:00', 'DEP-W9-RESOLVE');
-        $record = app(ReconciliationService::class)->create($creator, '2026-08-01', null);
-        $resolved = app(ReconciliationService::class)->resolveDiscrepancy($creator, $record, ['note' => 'Selisih diverifikasi melalui bukti kas dan koreksi resmi.']);
-        app(ReconciliationService::class)->submit($creator, $resolved);
-        $approved = app(ReconciliationService::class)->approve($approver, $resolved);
-        self::assertSame(ReconciliationStatus::Approved, $approved->status);
-        $revision = app(ReconciliationService::class)->revise($creator, $approved, 'Revisi setelah bukti tambahan.');
-        self::assertSame($approved->id, $revision->parent_id);
-        self::assertSame(2, $revision->version);
-        self::assertDatabaseHas('reconciliations', ['id' => $revision->id, 'scope_key' => 'all']);
-        self::assertSame(1, AuditLog::query()->where('action', 'reconciliation.discrepancy.resolved')->count());
     }
 
     private function seedDeposit(User $owner, int $value, string $occurredAt, string $number = 'DEP-W9-OK'): object

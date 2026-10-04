@@ -30,8 +30,34 @@ final class IdempotencyKey extends Model
         return $this->belongsTo(User::class, 'actor_id');
     }
 
+    public static function activeForUpdate(int $actorId, string $scope, string $key): ?self
+    {
+        $record = self::query()
+            ->where('actor_id', $actorId)
+            ->where('scope', $scope)
+            ->where('key', $key)
+            ->lockForUpdate()
+            ->first();
+        if ($record !== null && ($record->expires_at === null || $record->expires_at->lessThanOrEqualTo(now()))) {
+            $record->delete();
+
+            return null;
+        }
+
+        return $record;
+    }
+
+    private static function retentionHours(): int
+    {
+        return min(8_760, max(1, (int) config('operations.retention.idempotency_key_hours', 24)));
+    }
+
     protected static function booted(): void
     {
+        self::creating(static function (self $key): void {
+            $key->expires_at ??= now()->addHours(self::retentionHours());
+        });
+
         self::updating(static function (self $key): void {
             if ($key->isDirty(['actor_id', 'scope', 'key', 'payload_hash'])) {
                 throw new LogicException('Idempotency identity is immutable.');

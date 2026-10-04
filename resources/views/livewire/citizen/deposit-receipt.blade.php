@@ -28,7 +28,7 @@
             </div>
             <div class="rounded-lg bg-warm-canvas px-3 py-2">
                 <dt class="text-caption font-medium text-text-secondary">Total Berat</dt>
-                <dd class="mt-0.5 amount-tabular text-label font-bold text-deep-green">{{ $receipt['weight_kg'] }} kg</dd>
+                <dd class="mt-0.5 amount-tabular text-label font-bold text-deep-green">{{ \App\Support\WeightFormatter::format($receipt['weight_kg']) }} kg</dd>
             </div>
             <div class="rounded-lg bg-success-bg px-3 py-2">
                 <dt class="text-caption font-medium text-forest-700">Total Nilai</dt>
@@ -37,13 +37,13 @@
         </dl>
     </x-ui.panel>
 
-    <x-ui.panel title="Item tersnapshot" description="Perubahan harga master tidak mengubah bukti ini.">
+    <x-ui.panel title="Item saat transaksi" :description="$receipt['is_corrected'] ? 'Rincian ini adalah snapshot transaksi asli. Nilai akhir di atas mengikuti koreksi resmi.' : 'Perubahan harga master tidak mengubah bukti ini.'">
         <div class="divide-y divide-border">
             @foreach ($deposit->items as $item)
                 <div class="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
                     <div>
                         <p class="text-label font-semibold text-deep-green">{{ $item->waste_type_name }} · {{ $item->condition_name }}</p>
-                        <p class="mt-0.5 text-body-sm text-text-secondary">{{ $item->weight_kg }} kg × Rp {{ number_format((int) $item->price_per_unit, 0, ',', '.') }}</p>
+                        <p class="mt-0.5 text-body-sm text-text-secondary">{{ \App\Support\WeightFormatter::format($item->weight_kg) }} kg × Rp {{ number_format((int) $item->price_per_unit, 0, ',', '.') }}</p>
                     </div>
                     <p class="amount-tabular text-title font-bold text-deep-green">Rp {{ number_format((int) $item->subtotal, 0, ',', '.') }}</p>
                 </div>

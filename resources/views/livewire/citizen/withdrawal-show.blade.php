@@ -1,12 +1,33 @@
 <x-slot:title>Detail pencairan</x-slot:title>
 <x-slot:context>Layanan warga</x-slot:context>
 
+@php
+    $withdrawalStages = [
+        ['title' => 'Diajukan', 'description' => 'Pengajuan tercatat dan menunggu pemeriksaan.', 'icon' => 'file-check', 'statuses' => ['menunggu_verifikasi']],
+        ['title' => 'Disetujui', 'description' => 'Nominal disetujui dan dana yang ditahan tetap tercatat.', 'icon' => 'clipboard-check', 'statuses' => ['disetujui']],
+        ['title' => 'Siap diambil', 'description' => 'Pembayaran sudah siap diproses bendahara.', 'icon' => 'calendar-days', 'statuses' => ['siap_diambil']],
+        ['title' => 'Sudah dibayar', 'description' => 'Penerimaan diverifikasi dan bukti pembayaran tersimpan.', 'icon' => 'banknote', 'statuses' => ['sudah_dibayar']],
+    ];
+    $withdrawalStatus = $withdrawal->status->value;
+    $withdrawalTerminalStep = in_array($withdrawalStatus, ['ditolak', 'dibatalkan', 'kedaluwarsa'], true)
+        ? [
+            'status' => $withdrawalStatus,
+            'title' => match ($withdrawalStatus) {
+                'ditolak' => 'Pengajuan ditolak',
+                'dibatalkan' => 'Pengajuan dibatalkan',
+                default => 'Pengajuan kedaluwarsa',
+            },
+            'description' => 'Tahap berikutnya tidak dilanjutkan dan dana yang ditahan mengikuti aturan status ini.',
+        ]
+        : null;
+@endphp
+
 <section aria-labelledby="withdrawal-detail-title" class="grid gap-6">
     {{-- Page header --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <p class="text-label font-semibold text-forest-600">Pencairan {{ $withdrawal->request_number }}</p>
-            <h1 id="withdrawal-detail-title" class="mt-2 text-h1 font-bold text-deep-green">Status Pencairan</h1>
+            <h1 id="withdrawal-detail-title" class="mt-2 text-h1 font-bold text-deep-green">Status pencairan</h1>
         </div>
         <x-ui.mascot variant="5" bubble="Status saldo terpantau!" bubblePosition="top" class="h-24 w-auto shrink-0" />
     </div>
@@ -15,7 +36,7 @@
         <x-ui.success-state title="Berhasil" :description="session('success')" />
     @endif
 
-    <x-ui.panel title="Ringkasan pencairan" description="Nominal tersnapshot dan tidak dapat diubah.">
+    <x-ui.panel title="Ringkasan pencairan" description="Nominal dicatat saat pengajuan dan tidak dapat diubah.">
         <dl class="grid gap-3 text-body md:grid-cols-2">
             <div class="rounded-lg bg-success-bg px-3 py-2">
                 <dt class="text-caption font-medium text-forest-700">Nominal</dt>
@@ -40,24 +61,30 @@
         </dl>
     </x-ui.panel>
 
-    <x-ui.panel title="Perjalanan status" description="Hold dilepas pada penolakan, pembatalan, atau kedaluwarsa; saldo keluar hanya saat dibayar.">
-        <x-ui.timeline :steps="$withdrawal->statusHistory->map(fn ($history): array => [
-            'title'  => ucwords(str_replace('_', ' ', $history->new_status)),
-            'note'   => $history->reason ?? '',
-            'time'   => $history->occurred_at->translatedFormat('d F Y, H:i'),
-            'status' => match(true) {
-                $history->new_status === 'sudah_dibayar'                                       => 'success',
-                in_array($history->new_status, ['ditolak', 'dibatalkan', 'kedaluwarsa'], true) => 'error',
-                default                                                                        => 'in_progress',
-            },
-        ])->all()" />
+    <x-ui.panel title="Tahapan pencairan" description="Tahap yang belum tercapai tetap terlihat agar status dan langkah berikutnya mudah dipahami.">
+        <x-ui.status-stepper
+            :steps="$withdrawalStages"
+            :current-status="$withdrawalStatus"
+            :history="$withdrawal->statusHistory"
+            :terminal-step="$withdrawalTerminalStep"
+            :completed-statuses="['sudah_dibayar']"
+            label="Tahapan pencairan"
+        />
     </x-ui.panel>
 
-    @if (in_array($withdrawal->status->value, ['menunggu_verifikasi', 'disetujui', 'siap_diambil'], true))
+    @if ($withdrawal->status->value === 'sudah_dibayar')
+        <a href="{{ route('citizen.withdrawal.receipt', $withdrawal) }}"
+            class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">
+            <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h9l3 3v17H6z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+            Buka Bukti Pencairan
+        </a>
+    @endif
+
+    @if ($withdrawal->status->value === 'menunggu_verifikasi')
         <button type="button" wire:click="cancel"
-            wire:confirm="Batalkan pengajuan pencairan ini? Hold akan dilepas."
+            wire:confirm="Batalkan pengajuan pencairan ini? Dana yang ditahan akan dilepas."
             class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
-            Batalkan Pengajuan
+            Batalkan pengajuan
         </button>
     @endif
 </section>

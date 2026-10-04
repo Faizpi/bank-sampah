@@ -4,25 +4,44 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Filament;
 
+use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\WasteMaster\Models\WasteCategory;
 use App\Domain\WasteMaster\Models\WastePrice;
+use App\Filament\Pages\OperationsDashboard;
+use App\Filament\Pages\Reconciliation;
+use App\Filament\Pages\Reports as ReportsPage;
+use App\Filament\Pages\TechnicalAuditRetentionPage;
+use App\Filament\Pages\TechnicalBackupsPage;
+use App\Filament\Pages\TechnicalHealthPage;
+use App\Filament\Pages\TechnicalMaintenancePage;
+use App\Filament\Pages\TechnicalMediaRetentionPage;
+use App\Filament\Pages\TechnicalSettingsPage;
+use App\Filament\Pages\WorkQueueDashboard;
 use App\Filament\Resources\AuditReconciliation\Models\AuditLogs\AuditLogResource;
-use App\Filament\Resources\AuditReconciliation\Models\Reconciliations\ReconciliationResource;
+use App\Filament\Resources\Communication\Models\Announcements\AnnouncementResource;
 use App\Filament\Resources\CustomersRegions\Models\Dusuns\DusunResource;
 use App\Filament\Resources\CustomersRegions\Models\Rts\RtResource;
 use App\Filament\Resources\CustomersRegions\Models\Rws\RwResource;
 use App\Filament\Resources\CustomersRegions\Models\ServiceAreas\ServiceAreaResource;
+use App\Filament\Resources\Deposits\Models\Deposits\DepositResource;
 use App\Filament\Resources\Groceries\Models\GroceryPackages\GroceryPackageResource;
 use App\Filament\Resources\Groceries\Models\GroceryRedemptions\GroceryRedemptionResource;
 use App\Filament\Resources\Identity\Models\CitizenVerifications\CitizenVerificationResource;
+use App\Filament\Resources\Identity\Models\Customers\CustomerResource;
 use App\Filament\Resources\Identity\Models\PasswordAssistances\PasswordAssistanceResource;
 use App\Filament\Resources\Identity\Models\Permissions\PermissionResource;
 use App\Filament\Resources\Identity\Models\Roles\RoleResource;
 use App\Filament\Resources\Identity\Models\SessionInventories\SessionInventoryResource;
+use App\Filament\Resources\Identity\Models\Users\UserResource;
+use App\Filament\Resources\Ledger\Models\BalanceHolds\BalanceHoldResource;
+use App\Filament\Resources\Ledger\Models\LedgerEntries\LedgerEntryResource;
+use App\Filament\Resources\MobileServices\Models\MobileServices\MobileServiceResource;
 use App\Filament\Resources\Pickups\Models\PickupCapacities\PickupCapacityResource;
 use App\Filament\Resources\Pickups\Models\PickupRequests\PickupRequestResource;
+use App\Filament\Resources\Programs\Models\CollectionTargets\CollectionTargetResource;
+use App\Filament\Resources\Statistics\Models\StatisticPublications\StatisticPublicationResource;
 use App\Filament\Resources\WasteMaster\Models\WasteCategories\WasteCategoryResource;
 use App\Filament\Resources\WasteMaster\Models\WasteConditions\WasteConditionResource;
 use App\Filament\Resources\WasteMaster\Models\WastePrices\WastePriceResource;
@@ -30,42 +49,341 @@ use App\Filament\Resources\WasteMaster\Models\WasteTypes\WasteTypeResource;
 use App\Filament\Resources\WasteMaster\Models\WasteUnits\WasteUnitResource;
 use App\Filament\Resources\Withdrawals\Models\WithdrawalRequests\WithdrawalRequestResource;
 use App\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Facades\Filament;
 use Filament\Navigation\NavigationManager;
 use Filament\Panel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Route as LaravelRoute;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 final class BackofficePanelTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_only_users_with_explicit_backoffice_access_can_access_the_technical_panel(): void
+    public function test_admin_and_superadmin_with_seeded_backoffice_access_can_access_the_technical_panel(): void
     {
+        $this->seed(RolesAndPermissionsSeeder::class);
         $admin = User::factory()->create();
         $superadmin = User::factory()->create();
-        $this->grant($admin, 'admin', 'backoffice.access');
-        $this->grant($superadmin, 'superadmin');
+        $admin->roles()->attach(Role::query()->where('name', 'admin')->sole());
+        $superadmin->roles()->attach(Role::query()->where('name', 'superadmin')->sole());
 
         $panel = Filament::getPanel('backoffice');
 
         self::assertTrue($admin->fresh()->canAccessPanel($panel));
-        self::assertFalse($superadmin->fresh()->canAccessPanel($panel));
+        self::assertTrue($superadmin->fresh()->canAccessPanel($panel));
         self::assertFalse(User::factory()->create()->canAccessPanel($panel));
 
         $this->get('/backoffice')->assertRedirect('/backoffice/login');
-        $this->actingAs($superadmin->fresh())->get('/backoffice')->assertForbidden();
         $this->actingAs($admin->fresh())->get('/backoffice/login')->assertRedirect('/backoffice');
+        self::assertNotContains(
+            'Kontrol teknis',
+            $this->navigationLabelsForGroup($panel, 'Administrasi sistem'),
+        );
+        self::assertNotContains(
+            'Rekonsiliasi',
+            $this->navigationLabelsForGroup($panel, 'Pengawasan'),
+        );
+
+        $this->actingAs($superadmin->fresh())->get('/backoffice/login')->assertRedirect('/backoffice');
+        self::assertContains(
+            'Kontrol teknis',
+            $this->navigationLabelsForGroup($panel, 'Administrasi sistem'),
+        );
+        self::assertSame(
+            ['Kontrol teknis', 'Health', 'Pengaturan', 'Pemeliharaan', 'Cadangan', 'Retensi audit', 'Retensi foto'],
+            $this->navigationLabelsForGroup($panel, 'Administrasi sistem', includeChildren: true),
+        );
+        self::assertContains(
+            'Rekonsiliasi',
+            $this->navigationLabelsForGroup($panel, 'Pengawasan'),
+        );
     }
 
-    public function test_backoffice_navigation_has_exactly_the_four_technical_groups(): void
+    public function test_work_queue_links_pending_withdrawals_to_the_existing_status_filter(): void
+    {
+        $user = User::factory()->create();
+        $this->grant($user, 'withdrawal-reviewer', 'backoffice.access', 'withdrawal.approve', 'withdrawal.view');
+        $this->actingAs($user->fresh());
+
+        $page = app(WorkQueueDashboard::class);
+        $method = new \ReflectionMethod($page, 'getViewData');
+        $queues = $method->invoke($page)['queues'];
+        $pendingWithdrawal = collect($queues)->firstWhere('label', 'Pencairan menunggu keputusan');
+
+        self::assertIsArray($pendingWithdrawal);
+        self::assertSame(
+            WithdrawalRequestResource::getUrl('index', ['filters' => ['status' => ['value' => 'menunggu_verifikasi']]]),
+            $pendingWithdrawal['href'],
+        );
+    }
+
+    public function test_technical_dashboard_is_discovered_and_permission_gated(): void
+    {
+        self::assertContains(OperationsDashboard::class, array_values(Filament::getPanel('backoffice')->getPages()));
+        self::assertContains(TechnicalHealthPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
+        self::assertContains(TechnicalSettingsPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
+        self::assertContains(TechnicalMaintenancePage::class, array_values(Filament::getPanel('backoffice')->getPages()));
+        self::assertContains(TechnicalBackupsPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
+        self::assertContains(TechnicalAuditRetentionPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
+        self::assertContains(TechnicalMediaRetentionPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
+
+        $technical = User::factory()->create();
+        $viewer = User::factory()->create();
+        $this->grant($technical, 'technical-dashboard', 'system.maintenance');
+        $this->grant($viewer, 'viewer-dashboard', 'backoffice.access');
+
+        $this->actingAs($technical->fresh());
+        self::assertTrue(OperationsDashboard::canAccess());
+        $this->actingAs($viewer->fresh());
+        self::assertFalse(OperationsDashboard::canAccess());
+    }
+
+    public function test_backoffice_uses_the_shared_restrained_forest_palette(): void
+    {
+        self::assertSame(
+            [
+                50 => '#F3F7F4',
+                100 => '#E2ECE6',
+                200 => '#C7D9CF',
+                300 => '#A3BEAF',
+                400 => '#729B87',
+                500 => '#477B67',
+                600 => '#185746',
+                700 => '#123D32',
+                800 => '#0F3028',
+                900 => '#0A251E',
+                950 => '#061712',
+            ],
+            Filament::getPanel('backoffice')->getColors()['primary'],
+        );
+    }
+
+    public function test_backoffice_theme_compiles_shared_actions_at_a_usable_size(): void
+    {
+        $theme = file_get_contents(resource_path('css/filament/backoffice/theme.css'));
+
+        self::assertIsString($theme);
+        self::assertStringContainsString("@source '../../../../resources/views/components/ui/**/*.blade.php';", $theme);
+        self::assertStringContainsString("@source '../../../../resources/views/livewire/treasurer/**/*.blade.php';", $theme);
+        self::assertStringContainsString('--spacing-touch: 2.75rem;', $theme);
+        self::assertStringContainsString('--spacing-admin-control: 2.5rem;', $theme);
+        self::assertStringContainsString('min-height: var(--spacing-admin-control);', $theme);
+        self::assertStringContainsString('--spacing-form-textarea: 7.5rem;', $theme);
+        self::assertStringContainsString('.backoffice-form-control {', $theme);
+        self::assertStringContainsString('px-4 py-2', $theme);
+        self::assertStringContainsString("input.backoffice-form-control[type='datetime-local']", $theme);
+    }
+
+    public function test_technical_forms_use_the_spacious_shared_control_style(): void
+    {
+        foreach ([
+            'filament/backoffice/technical-settings.blade.php',
+            'filament/backoffice/technical-maintenance.blade.php',
+            'filament/backoffice/technical-backups.blade.php',
+            'filament/backoffice/technical-audit-retention.blade.php',
+            'filament/backoffice/technical-media-retention.blade.php',
+        ] as $view) {
+            $contents = file_get_contents(resource_path('views/'.$view));
+
+            self::assertIsString($contents);
+            self::assertStringContainsString('mt-2 backoffice-form-control', $contents);
+            self::assertStringNotContainsString('rounded-lg border-gray-300 text-sm shadow-sm', $contents);
+        }
+    }
+
+    public function test_consolidated_hubs_render_for_authorized_backoffice_users(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $admin = User::factory()->create();
+        $superadmin = User::factory()->create();
+        $admin->roles()->attach(Role::query()->where('name', 'admin')->sole());
+        $superadmin->roles()->attach(Role::query()->where('name', 'superadmin')->sole());
+
+        $this->actingAs($admin->fresh());
+        $this->get('/backoffice/directory')->assertOk()->assertSee('Nasabah');
+        $this->get('/backoffice/regions')->assertOk()->assertSee('Area pelayanan');
+        $this->get('/backoffice/waste-catalog')->assertOk()->assertSee('Kategori');
+        self::assertFalse(Reconciliation::canAccess());
+
+        $this->actingAs($superadmin->fresh());
+        $this->get('/backoffice/reconciliation')->assertOk()->assertSee('Rekonsiliasi saldo harian');
+        $this->get('/backoffice/technical-health-page')->assertOk()->assertSee('Health sistem');
+        $this->get('/backoffice/technical-settings-page')->assertOk()->assertSee('Pengaturan teknis');
+        $this->get('/backoffice/technical-maintenance-page')->assertOk()->assertSee('Pemeliharaan aplikasi');
+        $this->get('/backoffice/technical-backups-page')->assertOk()->assertSee('Cadangan dan pemulihan');
+        $this->get('/backoffice/technical-audit-retention-page')->assertOk()->assertSee('Retensi audit');
+        $this->get('/backoffice/technical-media-retention-page')->assertOk()->assertSee('Pembersihan foto penjemputan');
+    }
+
+    public function test_backoffice_hubs_use_the_shared_light_intro_surface(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $superadmin = User::factory()->create();
+        $superadmin->roles()->attach(Role::query()->where('name', 'superadmin')->sole());
+
+        $this->actingAs($superadmin->fresh());
+
+        foreach ([
+            '/backoffice/directory',
+            '/backoffice/regions',
+            '/backoffice/waste-catalog',
+            '/backoffice/reports',
+            '/backoffice/work-queue-dashboard',
+            '/backoffice/operations-dashboard',
+            '/backoffice/technical-health-page',
+        ] as $uri) {
+            $this->get($uri)
+                ->assertOk()
+                ->assertSee('backoffice-page-intro');
+        }
+    }
+
+    public function test_admin_and_superadmin_can_open_the_permission_gated_report_page(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $admin = User::factory()->create();
+        $superadmin = User::factory()->create();
+        $panelViewer = User::factory()->create();
+        $admin->roles()->attach(Role::query()->where('name', 'admin')->sole());
+        $superadmin->roles()->attach(Role::query()->where('name', 'superadmin')->sole());
+        $this->grant($panelViewer, 'report-panel-viewer', 'backoffice.access');
+
+        self::assertContains(ReportsPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
+
+        $this->actingAs($panelViewer->fresh());
+        self::assertFalse(ReportsPage::canAccess());
+
+        $this->actingAs($admin->fresh());
+        self::assertTrue(ReportsPage::canAccess());
+        $this->get('/backoffice/reports')
+            ->assertOk()
+            ->assertSee('Ringkasan transaksi dan ekspor Excel')
+            ->assertSee('Unduh Excel')
+            ->assertDontSee('CSV')
+            ->assertDontSee('PDF');
+
+        $this->actingAs($superadmin->fresh());
+        self::assertTrue(ReportsPage::canAccess());
+        $this->get('/backoffice/reports')
+            ->assertOk()
+            ->assertSee('Ringkasan transaksi dan ekspor Excel')
+            ->assertSee('Unduh Excel');
+    }
+
+    public function test_work_queue_only_renders_queues_with_pending_work(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $admin = User::factory()->create();
+        $admin->roles()->attach(Role::query()->where('name', 'admin')->sole());
+        $pendingCitizen = User::factory()->pendingVerification()->create();
+        CustomerProfile::factory()->for($pendingCitizen)->create();
+
+        $this->actingAs($admin->fresh());
+
+        $this->get('/backoffice/work-queue-dashboard')
+            ->assertOk()
+            ->assertSee('Verifikasi warga')
+            ->assertSee('data-disclosure-chevron')
+            ->assertSee('Panduan pemeriksaan yang aman')
+            ->assertDontSee('Pickup hari ini')
+            ->assertDontSee('Pencairan menunggu keputusan')
+            ->assertDontSee('Setoran perlu ditinjau');
+    }
+
+    public function test_backoffice_disclosures_have_visible_expansion_cues(): void
+    {
+        foreach (['work-queue-dashboard.blade.php', 'technical-backups.blade.php'] as $view) {
+            $contents = file_get_contents(resource_path('views/filament/backoffice/'.$view));
+
+            self::assertIsString($contents);
+            self::assertStringContainsString('<details class="group', $contents);
+            self::assertStringContainsString('data-disclosure-chevron', $contents);
+            self::assertStringContainsString('group-open:rotate-180', $contents);
+        }
+    }
+
+    public function test_every_registered_backoffice_resource_and_page_renders_for_superadmin(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $superadmin = User::factory()->create();
+        $superadmin->roles()->attach(Role::query()->where('name', 'superadmin')->sole());
+
+        $routes = collect(Route::getRoutes()->getRoutes())
+            ->filter(static function (LaravelRoute $route): bool {
+                $name = $route->getName() ?? '';
+
+                return in_array('GET', $route->methods(), true)
+                    && (str_starts_with($name, 'filament.backoffice.resources.')
+                        || str_starts_with($name, 'filament.backoffice.pages.'));
+            });
+
+        self::assertNotEmpty($routes);
+
+        $this->actingAs($superadmin->fresh());
+
+        foreach ($routes as $route) {
+            $this->get('/'.$route->uri())
+                ->assertOk();
+        }
+    }
+
+    public function test_backoffice_navigation_has_the_focused_taxonomy_groups_in_order(): void
     {
         $panel = Filament::getPanel('backoffice');
 
         self::assertSame(
-            ['Operasional', 'Data Master', 'Program', 'Pengawasan'],
-            array_map(static fn ($group): string => $group->getLabel(), $panel->getNavigationGroups()),
+            [
+                'Operasional',
+                'Data Master',
+                'Program',
+                'Pengawasan',
+                'Keamanan & Akses',
+                'Administrasi sistem',
+            ],
+            collect($panel->getNavigationGroups())->map(static fn ($group): string => $group->getLabel())->all(),
         );
+
+        $groups = collect($panel->getNavigationGroups())->keyBy(static fn ($group): string => $group->getLabel());
+
+        self::assertFalse($groups['Operasional']->isCollapsed());
+        foreach (['Data Master', 'Program', 'Pengawasan', 'Keamanan & Akses', 'Administrasi sistem'] as $group) {
+            self::assertTrue($groups[$group]->isCollapsed());
+        }
+    }
+
+    public function test_admin_navigation_uses_the_stable_resource_order_for_each_group(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $admin = User::factory()->create();
+        $admin->roles()->attach(Role::query()->where('name', 'admin')->sole());
+        $panel = Filament::getPanel('backoffice');
+
+        $this->actingAs($admin->fresh());
+
+        self::assertSame(
+            ['Setoran', 'Penjemputan', 'Kapasitas Penjemputan', 'Pencairan', 'Penukaran Sembako'],
+            $this->navigationLabelsForGroup($panel, 'Operasional'),
+        );
+        self::assertSame(
+            ['Pengumuman', 'Target Pengumpulan', 'Layanan Keliling', 'Statistik Publik'],
+            $this->navigationLabelsForGroup($panel, 'Program'),
+        );
+        self::assertSame(
+            ['Laporan'],
+            $this->navigationLabelsForGroup($panel, 'Pengawasan'),
+        );
+        self::assertSame(
+            ['Bantuan Kata Sandi', 'Sesi Pengguna', 'Peran', 'Izin'],
+            $this->navigationLabelsForGroup($panel, 'Keamanan & Akses'),
+        );
+        self::assertSame(
+            ['Direktori', 'Verifikasi Warga', 'Wilayah', 'Dusun', 'RW', 'RT', 'Katalog Sampah', 'Jenis Sampah', 'Kondisi Sampah', 'Harga Sampah', 'Satuan Sampah', 'Paket Sembako'],
+            $this->navigationLabelsForGroup($panel, 'Data Master', includeChildren: true),
+        );
+        self::assertSame([], $this->navigationLabelsForGroup($panel, 'Administrasi sistem'));
     }
 
     public function test_backoffice_panel_discovers_only_the_regional_resources(): void
@@ -75,13 +393,18 @@ final class BackofficePanelTest extends TestCase
         self::assertSame([app_path('Filament/Resources')], $panel->getResourceDirectories());
         self::assertSame(['App\\Filament\\Resources'], $panel->getResourceNamespaces());
         self::assertEqualsCanonicalizing([
+            AnnouncementResource::class,
             CitizenVerificationResource::class,
+            CustomerResource::class,
+            UserResource::class,
             PasswordAssistanceResource::class,
             SessionInventoryResource::class,
             PermissionResource::class,
             RoleResource::class,
+            MobileServiceResource::class,
             PickupRequestResource::class,
             PickupCapacityResource::class,
+            CollectionTargetResource::class,
             DusunResource::class,
             RwResource::class,
             RtResource::class,
@@ -93,9 +416,12 @@ final class BackofficePanelTest extends TestCase
             WastePriceResource::class,
             WithdrawalRequestResource::class,
             GroceryPackageResource::class,
+            StatisticPublicationResource::class,
             GroceryRedemptionResource::class,
             AuditLogResource::class,
-            ReconciliationResource::class,
+            DepositResource::class,
+            LedgerEntryResource::class,
+            BalanceHoldResource::class,
         ], array_values($panel->getResources()));
     }
 
@@ -110,7 +436,7 @@ final class BackofficePanelTest extends TestCase
 
         self::assertTrue($regionalManager->fresh()->canAccessPanel($panel));
         $this->actingAs($regionalManager->fresh());
-        self::assertSame(['Area Pelayanan', 'Dusun', 'RT', 'RW'], $this->dataMasterNavigationLabels($panel));
+        self::assertSame(['Dusun', 'RT', 'RW', 'Wilayah'], $this->dataMasterNavigationLabels($panel));
 
         self::assertTrue($panelUserWithoutRegionalPermission->fresh()->canAccessPanel($panel));
         $this->actingAs($panelUserWithoutRegionalPermission->fresh());
@@ -127,11 +453,11 @@ final class BackofficePanelTest extends TestCase
         $panel = Filament::getPanel('backoffice');
 
         $this->actingAs($viewer->fresh());
-        self::assertSame(['Jenis Sampah', 'Kategori Sampah', 'Kondisi Sampah', 'Satuan Sampah'], $this->dataMasterNavigationLabels($panel));
+        self::assertSame(['Jenis Sampah', 'Katalog Sampah', 'Kondisi Sampah', 'Satuan Sampah'], $this->dataMasterNavigationLabels($panel));
         self::assertFalse($viewer->fresh()->can('create', WasteCategory::class));
 
         $this->actingAs($manager->fresh());
-        self::assertSame(['Jenis Sampah', 'Kategori Sampah', 'Kondisi Sampah', 'Satuan Sampah'], $this->dataMasterNavigationLabels($panel));
+        self::assertSame(['Jenis Sampah', 'Katalog Sampah', 'Kondisi Sampah', 'Satuan Sampah'], $this->dataMasterNavigationLabels($panel));
         self::assertTrue($manager->fresh()->can('create', WasteCategory::class));
     }
 
@@ -156,20 +482,34 @@ final class BackofficePanelTest extends TestCase
     /** @return list<string> */
     private function dataMasterNavigationLabels(Panel $panel): array
     {
+        return $this->navigationLabelsForGroup($panel, 'Data Master', sortLabels: true, includeChildren: true);
+    }
+
+    /** @return list<string> */
+    private function navigationLabelsForGroup(Panel $panel, string $label, bool $sortLabels = false, bool $includeChildren = false): array
+    {
         app()->forgetInstance(NavigationManager::class);
 
         foreach ($panel->getNavigation() as $group) {
-            if ($group->getLabel() !== 'Data Master') {
+            if ($group->getLabel() !== $label) {
                 continue;
             }
 
-            $labels = [];
+            $labels = $group->getItems()->flatMap(function ($item) use ($includeChildren): array {
+                $labels = [$item->getLabel()];
 
-            foreach ($group->getItems() as $item) {
-                $labels[] = $item->getLabel();
+                if ($includeChildren) {
+                    foreach ($item->getChildItems() as $childItem) {
+                        $labels[] = $childItem->getLabel();
+                    }
+                }
+
+                return $labels;
+            })->all();
+
+            if ($sortLabels) {
+                sort($labels);
             }
-
-            sort($labels);
 
             return $labels;
         }

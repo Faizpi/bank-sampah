@@ -1,6 +1,28 @@
 <x-slot:title>Detail sembako</x-slot:title>
 <x-slot:context>Layanan warga</x-slot:context>
 
+@php
+    $groceryStages = [
+        ['title' => 'Diajukan', 'description' => 'Permintaan tercatat dan menunggu verifikasi.', 'icon' => 'file-check', 'statuses' => ['menunggu_verifikasi']],
+        ['title' => 'Disetujui', 'description' => 'Permintaan disetujui dan paket masuk tahap persiapan.', 'icon' => 'clipboard-check', 'statuses' => ['disetujui']],
+        ['title' => 'Sedang disiapkan', 'description' => 'Paket sedang disiapkan sesuai rekaman saat pengajuan.', 'icon' => 'package-open', 'statuses' => ['sedang_disiapkan']],
+        ['title' => 'Siap diambil', 'description' => 'Paket tersedia untuk diserahkan kepada penerima.', 'icon' => 'calendar-days', 'statuses' => ['siap_diambil']],
+        ['title' => 'Selesai diserahkan', 'description' => 'Paket diserahkan dan bukti penyerahan tersimpan.', 'icon' => 'package-check', 'statuses' => ['selesai']],
+    ];
+    $groceryStatus = $redemption->status->value;
+    $groceryTerminalStep = in_array($groceryStatus, ['ditolak', 'dibatalkan', 'kedaluwarsa'], true)
+        ? [
+            'status' => $groceryStatus,
+            'title' => match ($groceryStatus) {
+                'ditolak' => 'Permintaan ditolak',
+                'dibatalkan' => 'Permintaan dibatalkan',
+                default => 'Permintaan kedaluwarsa',
+            },
+            'description' => 'Tahap persiapan dan penyerahan tidak dilanjutkan.',
+        ]
+        : null;
+@endphp
+
 <section aria-labelledby="grocery-detail-title" class="grid gap-6">
     {{-- Page header --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -15,19 +37,15 @@
         <x-ui.success-state title="Berhasil" :description="session('success')" />
     @endif
 
-    <x-ui.panel title="Snapshot paket" description="Data ini tidak berubah walaupun master paket diperbarui setelah pengajuan.">
+    <x-ui.panel title="Rekaman paket" description="Data ini tidak berubah walaupun master paket diperbarui setelah pengajuan.">
         <dl class="grid gap-3 text-body md:grid-cols-2">
             <div class="rounded-lg bg-warm-canvas px-3 py-2">
                 <dt class="text-caption font-medium text-text-secondary">Paket</dt>
                 <dd class="mt-0.5 font-semibold text-deep-green">{{ $redemption->package_snapshot['name'] ?? 'Paket sembako' }}</dd>
             </div>
             <div class="rounded-lg bg-warning-bg px-3 py-2">
-                <dt class="text-caption font-medium text-text-secondary">Nilai Snapshot</dt>
+                <dt class="text-caption font-medium text-text-secondary">Nilai saat pengajuan</dt>
                 <dd class="mt-0.5 amount-tabular font-bold text-deep-green">Rp{{ number_format($redemption->value_snapshot, 0, ',', '.') }}</dd>
-            </div>
-            <div class="rounded-lg bg-warm-canvas px-3 py-2">
-                <dt class="text-caption font-medium text-text-secondary">Sumber</dt>
-                <dd class="mt-0.5 font-semibold text-deep-green">{{ $redemption->source_type->value === 'saldo' ? 'Saldo warga' : 'Bantuan gratis' }}</dd>
             </div>
             <div class="rounded-lg bg-warm-canvas px-3 py-2">
                 <dt class="text-caption font-medium text-text-secondary">Status</dt>
@@ -40,17 +58,15 @@
         </dl>
     </x-ui.panel>
 
-    <x-ui.panel title="Perjalanan status" description="Approval terpisah dari handover. Hold dilepas pada terminal tanpa saldo keluar.">
-        <x-ui.timeline :steps="$redemption->statusHistory->map(fn ($history): array => [
-            'title'  => ucwords(str_replace('_', ' ', $history->new_status)),
-            'note'   => $history->reason ?? '',
-            'time'   => $history->occurred_at->translatedFormat('d F Y, H:i'),
-            'status' => match(true) {
-                $history->new_status === 'selesai'                                              => 'success',
-                in_array($history->new_status, ['ditolak', 'dibatalkan', 'kedaluwarsa'], true) => 'error',
-                default                                                                        => 'in_progress',
-            },
-        ])->all()" />
+    <x-ui.panel title="Tahapan penukaran" description="Persetujuan terpisah dari serah-terima. Dana yang ditahan dilepas pada tahap akhir tanpa menjadi saldo keluar.">
+        <x-ui.status-stepper
+            :steps="$groceryStages"
+            :current-status="$groceryStatus"
+            :history="$redemption->statusHistory"
+            :terminal-step="$groceryTerminalStep"
+            :completed-statuses="['selesai']"
+            label="Tahapan penukaran sembako"
+        />
     </x-ui.panel>
 
     @if ($redemption->status->value === 'selesai')
@@ -63,9 +79,9 @@
 
     @if ($redemption->status->value === 'menunggu_verifikasi')
         <button type="button" wire:click="cancel"
-            wire:confirm="Batalkan pengajuan sembako ini? Hold akan dilepas bila ada."
+            wire:confirm="Batalkan pengajuan sembako ini? Dana yang ditahan akan dilepas bila ada."
             class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
-            Batalkan Pengajuan
+            Batalkan pengajuan
         </button>
     @endif
 </section>

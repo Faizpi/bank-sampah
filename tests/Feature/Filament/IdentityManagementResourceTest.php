@@ -76,6 +76,24 @@ final class IdentityManagementResourceTest extends TestCase
         self::assertTrue(CustomerResource::getEloquentQuery()->whereKey($outsideCustomer)->exists());
     }
 
+    public function test_customer_query_orders_newest_records_first(): void
+    {
+        $actor = User::factory()->create();
+        $older = User::factory()->create(['created_at' => now()->subMinute()]);
+        $newer = User::factory()->create(['created_at' => now()]);
+        CustomerProfile::factory()->for($older)->create();
+        CustomerProfile::factory()->for($newer)->create();
+        $this->grant($actor, 'customer-viewer', 'customer.view', 'user.view', 'user.view.all');
+        $this->actingAs($actor->fresh());
+
+        self::assertSame([$newer->id, $older->id], CustomerResource::getEloquentQuery()->latest('created_at')->pluck('id')->all());
+    }
+
+    public function test_pickup_review_exposes_private_proof_links(): void
+    {
+        self::assertStringContainsString("route('pickup.media'", file_get_contents(app_path('Filament/Resources/Pickups/Models/PickupRequests/PickupRequestResource.php')));
+    }
+
     public function test_customer_resource_actions_use_domain_identity_action_without_exposing_qr_token(): void
     {
         $actor = User::factory()->create();
@@ -138,6 +156,25 @@ final class IdentityManagementResourceTest extends TestCase
         $systemRole = Role::factory()->create(['name' => 'admin']);
         $this->expectException(AuthorizationException::class);
         app(ManageRoles::class)->deleteRole($actor->fresh(), $systemRole);
+    }
+
+    public function test_role_assignment_requires_exactly_one_role_without_altering_existing_assignments(): void
+    {
+        $actor = User::factory()->create();
+        $target = User::factory()->create();
+        $first = Role::factory()->create(['name' => 'first-role']);
+        $second = Role::factory()->create(['name' => 'second-role']);
+        $target->roles()->attach($first, ['assigned_by' => $actor->id, 'reason' => 'Penugasan awal yang tetap harus ada.']);
+        $this->grant($actor, 'single-role-manager', 'role.manage', 'user.view', 'user.view.all', 'user.update');
+
+        try {
+            app(ManageRoles::class)->assignRoles($actor->fresh(), $target->fresh(), [$first->id, $second->id], 'Permintaan assignment dengan dua role.');
+            self::fail('Expected role assignment validation failure.');
+        } catch (ValidationException $exception) {
+            self::assertSame('Setiap pengguna harus memiliki tepat satu role.', $exception->errors()['roles'][0]);
+        }
+
+        self::assertSame([$first->id], $target->fresh()->roles()->pluck('roles.id')->all());
     }
 
     public function test_lifecycle_mutations_are_scoped_and_audited(): void

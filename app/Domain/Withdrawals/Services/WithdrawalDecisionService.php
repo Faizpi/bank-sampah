@@ -77,7 +77,7 @@ final readonly class WithdrawalDecisionService
         if ($withdrawal->approver_id === $payer->id) {
             throw new AuthorizationException('Separation of duties memerlukan payer berbeda dari approver.');
         }
-        if ($payer->status !== UserStatus::Active || ! $this->permissions->allows($payer, 'withdrawal.pay') || ! $this->isStaffInArea($payer, $withdrawal)) {
+        if ($payer->status !== UserStatus::Active || ! $payer->roles()->where('name', 'bendahara')->exists() || ! $this->permissions->allows($payer, 'withdrawal.pay') || ! $this->isStaffInArea($payer, $withdrawal)) {
             throw ValidationException::withMessages(['payer_id' => 'Payer aktif dengan permission dan area yang sesuai wajib dipilih.']);
         }
 

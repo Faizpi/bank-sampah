@@ -3,20 +3,27 @@
 
 @source '../../../../app/Filament/**/*.php';
 @source '../../../../resources/views/filament/**/*.blade.php';
+@source '../../../../resources/views/components/ui/**/*.blade.php';
+@source '../../../../resources/views/livewire/treasurer/**/*.blade.php';
 
 @theme {
     --font-sans: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-    --color-primary-50: #edf8f3;
-    --color-primary-100: #d7f0e4;
-    --color-primary-200: #b3dfcb;
-    --color-primary-300: #83c8ac;
-    --color-primary-400: #4fa986;
-    --color-primary-500: #2d886a;
-    --color-primary-600: #1e6a56;
-    --color-primary-700: #185746;
-    --color-primary-800: #123d32;
-    --color-primary-900: #0f3028;
-    --color-primary-950: #071b16;
+    /*
+     * A restrained sage-to-forest range for the operational panel. It shares
+     * the public portal's forest/deep-green anchors while avoiding a bright,
+     * saturated control color across dense admin tables and forms.
+     */
+    --color-primary-50: #f3f7f4;
+    --color-primary-100: #e2ece6;
+    --color-primary-200: #c7d9cf;
+    --color-primary-300: #a3beaf;
+    --color-primary-400: #729b87;
+    --color-primary-500: #477b67;
+    --color-primary-600: #185746;
+    --color-primary-700: #123d32;
+    --color-primary-800: #0f3028;
+    --color-primary-900: #0a251e;
+    --color-primary-950: #061712;
 
     --color-forest-600: #1e6a56;
     --color-forest-700: #185746;
@@ -25,7 +32,7 @@
     --color-surface: #ffffff;
     --color-harvest-gold: #d6a84b;
     --color-terracotta: #c76b4f;
-    --color-sky-blue: #3e7d92;
+    --color-sky-blue: #326d80;
     --color-text-primary: #17241f;
     --color-text-secondary: #55635d;
     --color-border: #d9e1dc;
@@ -53,6 +60,50 @@
     --text-caption: 0.75rem;
     --text-caption--line-height: 1.4;
     --text-caption--font-weight: 500;
+
+    /*
+     * Backoffice remains compact for dense operational work, while keeping
+     * every actionable control comfortably usable. Shared UI actions inherit
+     * the 44 px target; Filament's compact table controls retain a 40 px
+     * minimum target.
+     */
+    --spacing-touch: 2.75rem;
+    --spacing-admin-control: 2.5rem;
+    --spacing-form-textarea: 7.5rem;
+}
+
+@layer components {
+    .backoffice-page-intro {
+        @apply rounded-xl border border-border bg-warm-canvas p-5 sm:p-6;
+    }
+
+    .fi-btn,
+    .fi-icon-btn {
+        min-height: var(--spacing-admin-control);
+    }
+
+    .fi-icon-btn {
+        min-width: var(--spacing-admin-control);
+    }
+
+    .backoffice-form-control {
+        @apply block w-full rounded-lg border border-border bg-surface px-4 py-2 text-sm leading-6 text-text-primary shadow-xs transition duration-180 placeholder:text-text-secondary hover:border-primary-500 focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30 disabled:cursor-not-allowed disabled:border-border disabled:bg-disabled-bg disabled:text-text-secondary;
+    }
+
+    input.backoffice-form-control,
+    select.backoffice-form-control {
+        min-height: var(--spacing-touch);
+    }
+
+    textarea.backoffice-form-control {
+        min-height: var(--spacing-form-textarea);
+        resize: vertical;
+    }
+
+    input.backoffice-form-control[type='date'],
+    input.backoffice-form-control[type='datetime-local'] {
+        padding-right: 2.75rem;
+    }
 }
 
 /* Override Filament simple-page container to allow wide login layout */

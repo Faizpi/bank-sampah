@@ -30,7 +30,7 @@ final class ApplyResponseSecurityHeaders
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', self::REFERRER_POLICY);
         $response->headers->set('Content-Security-Policy', self::CONTENT_SECURITY_POLICY);
-        $response->headers->set('Permissions-Policy', self::PERMISSIONS_POLICY);
+        $response->headers->set('Permissions-Policy', self::permissionsPolicy($request));
 
         if (config('app.env') === 'production' && $request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', self::STRICT_TRANSPORT_SECURITY);
@@ -43,6 +43,15 @@ final class ApplyResponseSecurityHeaders
         }
 
         return $response;
+    }
+
+    private static function permissionsPolicy(Request $request): string
+    {
+        if ($request->route()?->getName() === 'officer.customer-identification') {
+            return str_replace('camera=()', 'camera=(self)', self::PERMISSIONS_POLICY);
+        }
+
+        return self::PERMISSIONS_POLICY;
     }
 
     private static function mustNotStore(Request $request): bool

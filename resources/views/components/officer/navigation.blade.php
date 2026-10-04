@@ -9,19 +9,19 @@
         throw new InvalidArgumentException('Officer navigation persona must be officer or treasurer.');
     }
 
-    if (count($destinations) < 3 || count($destinations) > 5) {
-        throw new InvalidArgumentException('Officer navigation must contain between three and five destinations.');
+    if (count($destinations) < 1 || count($destinations) > 5) {
+        throw new InvalidArgumentException('Officer navigation must contain between one and five destinations.');
     }
 
     $labels = array_keys($destinations);
-    $requiredLabels = ['Tugas', 'Akun'];
+    $requiredLabels = ['Tugas'];
     if (array_diff($requiredLabels, $labels) !== []) {
-        throw new InvalidArgumentException('Officer navigation must contain Tugas and Akun.');
+        throw new InvalidArgumentException('Officer navigation must contain Tugas.');
     }
 
     $canonicalLabels = $persona === 'officer'
         ? ['Tugas', 'Setoran', 'Layanan', 'Akun']
-        : ['Tugas', 'Pembayaran', 'Rekonsiliasi', 'Akun'];
+        : ['Tugas', 'Pembayaran', 'Laporan', 'Akun'];
 
     if (array_diff($labels, $canonicalLabels) !== []) {
         throw new InvalidArgumentException("Officer navigation destinations are invalid for persona {$persona}.");
@@ -75,7 +75,7 @@
         'Setoran' => 'wallet-cards',
         'Layanan' => 'grid-2x2',
         'Pembayaran' => 'wallet-cards',
-        'Rekonsiliasi' => 'grid-2x2',
+        'Laporan' => 'layout-dashboard',
         'Akun' => 'user-round',
     ];
 

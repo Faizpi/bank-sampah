@@ -20,9 +20,10 @@ final class ExpireOperationalRecords extends Command
         $heartbeat->record(SchedulerHeartbeat::EXPIRE_KEY);
 
         $this->components->info(sprintf(
-            'Expired withdrawals: %d; groceries: %d; exports: %d.',
+            'Expired withdrawals: %d; groceries: %d; pickups: %d; exports: %d.',
             $result['withdrawals'],
             $result['groceries'],
+            $result['pickups'],
             $result['exports'],
         ));
 

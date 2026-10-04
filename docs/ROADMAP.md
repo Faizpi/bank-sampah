@@ -15,7 +15,7 @@ Urutan berikut adalah urutan pengerjaan, bukan pembagian ruang lingkup.
 ### Fondasi
 
 - Laravel 13, PHP 8.5, Livewire 4, Tailwind CSS 4.1+, Filament 5, Pest 4.
-- MariaDB, autentikasi, role/permission, audit, penyimpanan privat, dan design system.
+- MySQL 8.0.30, autentikasi, role/permission, audit, penyimpanan privat, dan design system.
 - Konfigurasi test, formatting, static analysis, dan build aset.
 
 ### Akun dan master data
@@ -53,9 +53,8 @@ Urutan berikut adalah urutan pengerjaan, bukan pembagian ruang lingkup.
 
 ### Pengawasan dan peluncuran
 
-- Laporan web, CSV, Excel, dan PDF.
+- Laporan web dan ekspor Excel.
 - Audit log.
-- Rekonsiliasi harian.
 - Pengujian keamanan, aksesibilitas, responsif, UAT, deployment, dan pelatihan.
 
 ## Di Luar Baseline

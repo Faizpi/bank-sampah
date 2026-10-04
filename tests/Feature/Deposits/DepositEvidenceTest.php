@@ -20,6 +20,8 @@ use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Ledger\Models\LedgerEntry;
+use App\Domain\MobileServices\Enums\MobileServiceStatus;
+use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Platform\Enums\MediaVisibility;
 use App\Domain\Platform\Models\Media;
 use App\Domain\WasteMaster\Actions\ManageWastePricing;
@@ -28,6 +30,7 @@ use App\Domain\WasteMaster\Models\WasteCondition;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\WasteMaster\Support\WasteMasterMutationGuard;
+use App\Livewire\Officer\Dashboard as OfficerDashboard;
 use App\Livewire\Officer\DepositForm;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -60,6 +63,109 @@ final class DepositEvidenceTest extends TestCase
         self::assertDatabaseCount('media', 0);
     }
 
+    public function test_officer_dashboard_resume_link_is_scoped_to_the_selected_draft(): void
+    {
+        [$staff, $customer] = $this->context();
+        $this->grant($staff, ['deposit.create', 'deposit.view', 'customer.view', 'user.view', 'user.view.all']);
+        $draft = app(DepositService::class)->createDraft($staff, $customer);
+
+        Livewire::actingAs($staff)
+            ->test(OfficerDashboard::class)
+            ->assertSee(route('officer.deposit-form', ['customerId' => $customer->id, 'draftId' => $draft->id]), false);
+    }
+
+    public function test_deposit_form_resumes_owned_draft_hydrates_items_and_finalizes_without_duplicate(): void
+    {
+        Storage::fake('media_private');
+        [$staff, $customer, $type, $condition] = $this->pricedContext();
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $service = app(DepositService::class);
+        $draft = $service->createDraft($staff, $customer);
+        $service->replaceDraftItems($staff, $draft, [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.250']]);
+
+        $component = Livewire::actingAs($staff)
+            ->withQueryParams(['draftId' => $draft->id])
+            ->test(DepositForm::class, ['customerId' => $customer->id])
+            ->assertSet('draft.id', $draft->id)
+            ->assertSet('customerId', $customer->id)
+            ->assertSet('items.0.waste_type_id', $type->id)
+            ->assertSet('items.0.condition_id', $condition->id)
+            ->assertSet('items.0.weight_kg', '1.250')
+            ->call('saveDraft')
+            ->assertHasNoErrors()
+            ->assertSet('draft.id', $draft->id);
+
+        self::assertDatabaseCount('deposits', 1);
+
+        $component->set('evidence', UploadedFile::fake()->image('deposit-form-proof.png', 1, 1))
+            ->call('reviewFinalization')
+            ->assertHasNoErrors()
+            ->call('finalize')
+            ->assertHasNoErrors()
+            ->assertSet('draft.id', $draft->id)
+            ->assertSet('draft.status', Deposit::STATUS_FINAL);
+
+        self::assertDatabaseCount('deposits', 1);
+        self::assertDatabaseHas('deposits', ['id' => $draft->id, 'status' => Deposit::STATUS_FINAL]);
+        self::assertDatabaseCount('ledger_entries', 1);
+    }
+
+    public function test_deposit_form_rejects_resume_for_another_officer(): void
+    {
+        [$staff, $customer] = $this->context();
+        $otherStaff = User::factory()->create();
+        $this->grant($staff, ['deposit.create', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($otherStaff, ['deposit.create', 'customer.view', 'user.view', 'user.view.all']);
+        $draft = app(DepositService::class)->createDraft($staff, $customer);
+
+        Livewire::actingAs($otherStaff)
+            ->withQueryParams(['draftId' => $draft->id])
+            ->test(DepositForm::class, ['customerId' => $customer->id])
+            ->assertNotFound();
+    }
+
+    public function test_deposit_form_rejects_resume_when_customer_does_not_match_draft(): void
+    {
+        [$staff, $customer, $type, $condition] = $this->context();
+        $otherCustomer = User::factory()->create();
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'customer.view', 'user.view', 'user.view.all']);
+        $draft = app(DepositService::class)->createDraft($staff, $customer);
+
+        Livewire::actingAs($staff)
+            ->withQueryParams(['draftId' => $draft->id])
+            ->test(DepositForm::class, ['customerId' => $otherCustomer->id])
+            ->assertNotFound();
+    }
+
+    public function test_deposit_form_rejects_resume_for_a_final_deposit(): void
+    {
+        [$staff, $customer, $type, $condition] = $this->pricedContext();
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $service = app(DepositService::class);
+        $final = $service->finalize($staff, $service->createDraft($staff, $customer), 'resume-final-deposit-key-1', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->uploadedFile('deposit-proof.png', self::png()));
+
+        Livewire::actingAs($staff)
+            ->withQueryParams(['draftId' => $final->id])
+            ->test(DepositForm::class, ['customerId' => $customer->id])
+            ->assertNotFound();
+    }
+
+    public function test_deposit_form_resume_preserves_mobile_service_context(): void
+    {
+        [$staff, $customer, $type, $condition] = $this->context();
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'customer.view', 'user.view', 'user.view.all']);
+        $mobileService = $this->mobileService($staff, $type);
+        $draft = app(DepositService::class)->createDraft($staff, $customer, 'keliling', null, $mobileService);
+        app(DepositService::class)->replaceDraftItems($staff, $draft, [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']]);
+
+        Livewire::actingAs($staff)
+            ->withQueryParams(['draftId' => $draft->id, 'mobileServiceId' => 999999])
+            ->test(DepositForm::class, ['customerId' => $customer->id])
+            ->assertSet('draft.id', $draft->id)
+            ->assertSet('mobileServiceId', $mobileService->id)
+            ->assertSet('items.0.waste_type_id', $type->id);
+    }
+
     public function test_deposit_form_requires_evidence_and_clears_it_after_successful_finalization(): void
     {
         Storage::fake('media_private');
@@ -71,9 +177,11 @@ final class DepositEvidenceTest extends TestCase
         Livewire::actingAs($staff)
             ->test(DepositForm::class, ['customerId' => $customer->id])
             ->set('items', $items)
-            ->call('finalize')
+            ->call('reviewFinalization')
             ->assertHasErrors(['evidence' => 'required'])
             ->set('evidence', $proof)
+            ->call('reviewFinalization')
+            ->assertHasNoErrors()
             ->call('finalize')
             ->assertHasNoErrors()
             ->assertSet('evidence', null);
@@ -303,6 +411,23 @@ final class DepositEvidenceTest extends TestCase
         return [$staff, $customer, $type, $condition];
     }
 
+    private function mobileService(User $staff, WasteType $type): MobileService
+    {
+        $service = MobileService::query()->create([
+            'service_number' => 'MOB-RESUME-'.str()->upper(str()->random(10)),
+            'point' => 'Titik layanan resume',
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addHour(),
+            'status' => MobileServiceStatus::Open,
+            'capacity' => 20,
+            'created_by' => $staff->id,
+        ]);
+        $service->staff()->attach($staff->id);
+        $service->wasteTypes()->attach($type->id);
+
+        return $service->fresh();
+    }
+
     /** @param list<string> $names */
     private function grant(User $user, array $names): void
     {
@@ -325,6 +450,6 @@ final class DepositEvidenceTest extends TestCase
 
     private static function png(): string
     {
-        return base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL7wQAAAABJRU5ErkJggg==', true) ?: throw new \LogicException('Invalid PNG fixture.');
+        return base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true) ?: throw new \LogicException('Invalid PNG fixture.');
     }
 }

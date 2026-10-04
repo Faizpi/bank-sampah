@@ -24,22 +24,22 @@ Status: `Accepted`, `Superseded`, atau `Deprecated`. Semua keputusan di bawah be
 
 ### Fondasi teknis IMP-019
 
-IMP-019 menetapkan fondasi teknis back-office Filament 5 sesuai ADR ini: instalasi paket, custom theme Sindangheula Green Ledger, sidebar dengan empat kelompok, dan enforcement admission `backoffice.access` untuk `admin` dan `superadmin`. Fondasi ini tidak membuat resource bisnis, tidak mengubah policy atau permission domain, dan tidak menjadi bypass authorization. Resource, action, serta editor role/permission tetap mengikuti dependency dan audit masing-masing.
+IMP-019 menetapkan fondasi teknis back-office Filament 5 sesuai ADR ini: instalasi paket, custom theme Sindangheula Green Ledger, sidebar dengan enam kelompok, dan enforcement admission `backoffice.access` untuk `admin` dan `superadmin`. Fondasi ini tidak membuat resource bisnis, tidak mengubah policy atau permission domain, dan tidak menjadi bypass authorization. Resource, action, serta editor role/permission tetap mengikuti dependency dan audit masing-masing.
 
 ## ADR-003 — Hostinger shared hosting
 
 - **Status:** Accepted
-- **Konteks:** Infrastruktur final adalah Hostinger Web Hosting Premium/Business dengan hPanel, SSH/SFTP, Composer 2, MariaDB, dan cron.
+- **Konteks:** Infrastruktur final adalah Hostinger Web Hosting Premium/Business dengan hPanel, SSH/SFTP, Composer 2, MySQL 8.0.30-compatible, dan cron.
 - **Keputusan:** Arsitektur/deploy mengikuti batas shared hosting. Aset Vite dibangun lokal/CI. Queue `sync` atau database one-shot berbatas waktu via cron. PHP web/CLI wajib 8.5.
 - **Konsekuensi:** Biaya/operasi sederhana, tetapi tidak ada root, Supervisor, Redis, Horizon, WebSocket, worker permanen, atau konfigurasi Nginx sendiri. Job harus singkat dan dapat dipulihkan.
 - **Alternatif ditolak:** asumsi VPS karena tidak sesuai hosting final.
 - **Referensi:** [DEPLOYMENT.md](DEPLOYMENT.md), [OPERATIONS.md](OPERATIONS.md).
 
-## ADR-004 — MariaDB terkelola kompatibel MySQL
+## ADR-004 — MySQL 8.0.30 melalui Laragon
 
 - **Status:** Accepted
-- **Konteks:** Hostinger menyediakan MariaDB terkelola dan aplikasi memerlukan transaksi ACID, FK, index, serta locking.
-- **Keputusan:** Gunakan MariaDB/InnoDB melalui driver MySQL Laravel. SQLite `:memory:` adalah runtime test normatif untuk gate implementasi harian; migration dan query diuji terhadap versi MariaDB aktual melalui release-validation disposable terjadwal sebelum UAT/production. Perilaku engine-specific, termasuk trigger IMP-107, tetap membutuhkan bukti MariaDB tersendiri dan tidak dibuktikan oleh SQLite.
+- **Konteks:** Pengembangan lokal memakai Laragon dengan MySQL 8.0.30 dan aplikasi memerlukan transaksi ACID, FK, index, serta locking.
+- **Keputusan:** Gunakan MySQL 8.0.30/InnoDB melalui driver MySQL Laravel. SQLite `:memory:` adalah runtime test normatif untuk gate implementasi harian; migration dan query diuji terhadap MySQL aktual melalui release-validation disposable terjadwal sebelum UAT/production. Perilaku engine-specific, termasuk trigger IMP-107, tetap membutuhkan bukti MySQL tersendiri dan tidak dibuktikan oleh SQLite.
 - **Konsekuensi:** Dapat memakai transaction/row lock/constraint, tetapi fitur khusus MySQL yang tidak kompatibel harus dihindari atau diuji. Rupiah BIGINT, berat DECIMAL.
 - **Alternatif ditolak:** database embedded atau layanan terpisah yang menambah operasi.
 - **Referensi:** [DATA_MODEL.md](DATA_MODEL.md).
@@ -56,9 +56,9 @@ IMP-019 menetapkan fondasi teknis back-office Filament 5 sesuai ADR ini: instala
 ## ADR-006 — Ledger sebagai sumber kebenaran saldo
 
 - **Status:** Accepted
-- **Konteks:** Saldo harus transparan, tidak negatif, dapat direkonsiliasi, dan tahan koreksi/transaksi ganda.
+- **Konteks:** Saldo harus transparan, tidak negatif, dapat diperiksa melalui ledger/laporan, dan tahan koreksi/transaksi ganda.
 - **Keputusan:** Saldo bersumber dari ledger append-only dan hold aktif. Rumus: total masuk dikurangi total keluar dan saldo tertahan. Koreksi/reversal membuat mutasi baru; tidak ada edit saldo langsung.
-- **Konsekuensi:** Semua operasi finansial membutuhkan transaction, lock, idempotensi, unique source, audit, dan rekonsiliasi. Query lebih disiplin, tetapi integritas dapat dibuktikan.
+- **Konsekuensi:** Semua operasi finansial membutuhkan transaction, lock, idempotensi, unique source, audit, dan laporan yang dapat ditelusuri. Query lebih disiplin, tetapi integritas dapat dibuktikan.
 - **Alternatif ditolak:** satu kolom saldo yang bebas diperbarui karena sulit diaudit dan rentan race condition.
 - **Referensi:** [BUSINESS_RULES.md](BUSINESS_RULES.md), [DATA_MODEL.md](DATA_MODEL.md).
 
@@ -132,3 +132,11 @@ IMP-019 menetapkan fondasi teknis back-office Filament 5 sesuai ADR ini: instala
 - **Keputusan:** IMP-049 tetap ditunda sampai kebijakan attachable media menetapkan pemetaan setiap `attachable_type` ke policy dan scope bisnis, serta kontrak signed URL. Permission download media tidak ditambahkan sebelum kebijakan tersebut ada. Editor checkbox assignment permission ditunda sampai IMP-019 dan IMP-107 selesai, dengan audit nilai lama/baru, alasan, pelaku, dan scope. CMS landing terstruktur juga ditunda sampai model konten, workflow publikasi, authorization, validasi, dan auditnya disetujui melalui change request.
 - **Konsekuensi:** Tidak ada bypass berdasarkan uploader, role, atau media attachment. Tidak ada UI checkbox permission atau CMS landing yang diimplementasikan atau diberi ID tracker baru hanya dari keputusan ini.
 - **Referensi:** [SECURITY.md](SECURITY.md), [PERMISSIONS.md](PERMISSIONS.md), IMP-049, IMP-019, IMP-107.
+
+## ADR-015 — Audit-gap settings dan batas artefak backup/restore
+
+- **Status:** Accepted
+- **Konteks:** Audit-gap implementation memerlukan pengaturan teknis yang aman untuk operator, sementara secret dan eksekusi artefak backup/restore tetap berada di boundary deployment/SOP.
+- **Keputusan:** UI terotorisasi untuk konfigurasi teknis non-secret termasuk scope implementasi, menggunakan `system.settings.manage`, validasi server, dan audit. Secret tetap environment-only. UI aplikasi hanya mengelola metadata, status, dan verifikasi backup/restore; dump, penyalinan, dan pemulihan artefak aktual dilakukan melalui deployment/SOP.
+- **Konsekuensi:** `backup.run`, `backup.view`, dan `backup.restore` tidak menjadi klaim eksekusi artefak aktual dari aplikasi. Status tracker dan bukti implementasi harus memisahkan metadata/verification dari backup/restore nyata. Perubahan tetap tunduk pada permission, scope, audit, dan gate rilis.
+- **Referensi:** [PERMISSIONS.md](PERMISSIONS.md), [SECURITY.md](SECURITY.md), [OPERATIONS.md](OPERATIONS.md), [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).

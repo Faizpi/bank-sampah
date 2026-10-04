@@ -29,14 +29,14 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 
 ### FL-04 — Diagram Konteks Sistem
 - **Aktor:** warga, petugas, bendahara, admin, superadmin.
-- **Alur utama:** warga mengirim pendaftaran/pengajuan; petugas memasukkan hasil operasional; admin mengelola dan memutuskan; bendahara membayar; superadmin memelihara teknis.
+- **Alur utama:** warga mengirim pendaftaran/pengajuan; petugas memasukkan hasil operasional; admin mengelola dan memutuskan; bendahara membayar; superadmin menjalankan seluruh alur admin sekaligus memelihara teknis.
 - **Keputusan/gagal:** semua interaksi ditolak bila role, permission, atau scope record tidak sah.
 - **Hasil:** pertukaran data terkontrol dan aktivitas penting diaudit.
 - **Jejak:** USR-001–002; [PERMISSIONS.md](PERMISSIONS.md).
 
 ### FL-05 — Arsitektur Sistem Tingkat Tinggi
 - **Aktor:** pengguna, pengelola teknis.
-- **Alur utama:** perangkat → browser/PWA → Blade/Livewire/Alpine/Tailwind → Laravel/PHP → modul domain → MariaDB/storage privat → Hostinger terkelola → backup terpisah.
+- **Alur utama:** perangkat → browser/PWA → Blade/Livewire/Alpine/Tailwind → Laravel/PHP → modul domain → MySQL 8.0.30/storage privat → Hostinger terkelola → backup terpisah.
 - **Keputusan/gagal:** pekerjaan yang melampaui batas shared hosting tidak mengasumsikan worker permanen; gunakan proses sinkron/cron terbatas.
 - **Hasil:** modular monolith dapat dioperasikan di Hostinger.
 - **Jejak:** NFR-HOST-001, PWA-001; [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -190,8 +190,8 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 ## 6. Administrasi dan pemeliharaan
 
 ### FL-26 — Pembuatan Laporan dan Statistik
-- **Aktor:** admin, sistem.
-- **Alur utama:** pilih laporan/filter → tentukan publik/internal → agregasi+redaksi atau otorisasi → proses langsung/queue cron → web/grafik/CSV/Excel/PDF → audit → tampil/unduh.
+- **Aktor:** admin, superadmin, bendahara/petugas berizin, sistem.
+- **Alur utama:** pilih laporan dan filter → otorisasi sesuai scope → tampilkan ringkasan/detail web → buat Excel privat → audit → unduh.
 - **Keputusan/gagal:** data besar masuk antrean terbatas; proses gagal tidak menerbitkan file parsial.
 - **Hasil:** laporan konsisten dan statistik publik teragregasi.
 - **Jejak:** RPT-001, PUB-001–002; BR-RPT-*, BR-PUB-*.
@@ -204,7 +204,7 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 - **Jejak:** AUD-001; BR-AUD-001–006.
 
 ### FL-28 — Backup dan Pemulihan Data
-- **Aktor:** superadmin/pengelola teknis.
+- **Aktor:** superadmin.
 - **Alur utama:** jadwal → backup database/media → enkripsi+simpan terpisah → verifikasi integritas → retensi → uji restore berkala.
 - **Keputusan/gagal:** backup invalid dicatat dan diulang; restore gagal memperbaiki prosedur lalu mengulang dari backup.
 - **Hasil:** sasaran RPO/RTO dapat dibuktikan.
@@ -215,14 +215,14 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 - **Alur utama:** deteksi → hentikan pengulangan manual → periksa transaksi/mutasi → gunakan hasil lengkap atau rollback parsial → bila saldo terlanjur berubah buat koreksi → insiden/audit → verifikasi.
 - **Keputusan/gagal:** transaksi lengkap tidak dibuat ulang; koreksi hanya jika saldo benar-benar terdampak.
 - **Hasil:** sistem pulih tanpa efek ganda.
-- **Jejak:** DEP-003, BAL-002, REC-001.
+- **Jejak:** DEP-003, BAL-002.
 
-### FL-30 — Rekonsiliasi Harian
+### FL-30 — Laporan dan Ekspor Excel
 - **Aktor:** admin, bendahara, petugas.
-- **Alur utama:** tutup layanan → ambil saldo/transaksi → hitung setoran/pencairan/sembako/koreksi → cocokkan kas/bukti → sahkan → simpan laporan.
-- **Keputusan/gagal:** bila selisih, telusuri dan koreksi resmi lalu ulangi pencocokan; tidak boleh disahkan sesuai.
-- **Hasil:** rekap harian dapat direproduksi.
-- **Jejak:** REC-001; BR-REC-001–006.
+- **Alur utama:** pilih jenis laporan → pilih hari ini, minggu ini, bulan, atau tanggal custom → terapkan filter → lihat ringkasan → unduh Excel.
+- **Keputusan/gagal:** periode atau filter tidak valid ditolak; akses dan scope record tetap diperiksa.
+- **Hasil:** laporan operasional dapat dibaca di web dan disimpan sebagai file Excel privat.
+- **Jejak:** RPT-001; BR-RPT-001–006.
 
 ## 7. Program, transparansi, dan inklusi
 

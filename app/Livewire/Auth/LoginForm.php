@@ -34,7 +34,7 @@ final class LoginForm extends Component
             return;
         }
 
-        if (app()->environment('production')) {
+        if (! config('app.demo_mode')) {
             return;
         }
 
@@ -56,7 +56,7 @@ final class LoginForm extends Component
 
     public function fillDemo(string $role): void
     {
-        if (app()->environment('production') || $this->demoAccounts === null) {
+        if (! config('app.demo_mode') || $this->demoAccounts === null) {
             return;
         }
 
@@ -65,7 +65,7 @@ final class LoginForm extends Component
         }
 
         $this->phone = $this->demoAccounts[$role]['phone'];
-        $this->password = DeveloperUsersSeeder::DEV_PASSWORD;
+        $this->password = DeveloperUsersSeeder::password();
     }
 
     public function login(AuthenticateUser $authenticateUser): void

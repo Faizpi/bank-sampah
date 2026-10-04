@@ -60,32 +60,42 @@ final readonly class VisibleUsers
 
     public function canAccessCustomerRt(User $actor, int $rtId): bool
     {
+        return in_array($rtId, $this->accessibleRtIds($actor), true);
+    }
+
+    /** @return list<int> */
+    public function accessibleRtIds(User $actor): array
+    {
         $query = Rt::query()
-            ->whereKey($rtId)
             ->where('is_active', true)
             ->whereHas('rw', static fn (Builder $rw): Builder => $rw
                 ->where('is_active', true)
                 ->whereHas('dusun', static fn (Builder $dusun): Builder => $dusun->where('is_active', true)));
 
         if ($this->permissions->allows($actor, 'user.view') && $this->permissions->allows($actor, 'user.view.all')) {
-            return $query->exists();
+            return $query->pluck('id')->map(static fn (mixed $id): int => (int) $id)->values()->all();
         }
 
         if (! $this->permissions->allows($actor, 'user.view') || ! $this->permissions->allows($actor, 'user.view.area')) {
-            return false;
+            return [];
         }
 
         $today = today()->toDateString();
 
-        return $query->whereHas('serviceAreas', static fn (Builder $serviceAreas): Builder => $serviceAreas
-            ->where('is_active', true)
-            ->whereHas('staffProfiles', static fn (Builder $staffProfiles): Builder => $staffProfiles
-                ->where('user_id', $actor->getKey())
-                ->where(static function (Builder $dates) use ($today): void {
-                    $dates->whereNull('active_from')->orWhere('active_from', '<=', $today);
-                })
-                ->where(static function (Builder $dates) use ($today): void {
-                    $dates->whereNull('active_to')->orWhere('active_to', '>=', $today);
-                })))->exists();
+        return $query
+            ->whereHas('serviceAreas', static fn (Builder $serviceAreas): Builder => $serviceAreas
+                ->where('is_active', true)
+                ->whereHas('staffProfiles', static fn (Builder $staffProfiles): Builder => $staffProfiles
+                    ->where('user_id', $actor->getKey())
+                    ->where(static function (Builder $dates) use ($today): void {
+                        $dates->whereNull('active_from')->orWhere('active_from', '<=', $today);
+                    })
+                    ->where(static function (Builder $dates) use ($today): void {
+                        $dates->whereNull('active_to')->orWhere('active_to', '>=', $today);
+                    })))
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
     }
 }

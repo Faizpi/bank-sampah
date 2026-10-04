@@ -1,6 +1,6 @@
 <x-slot:title>Pembayaran pencairan</x-slot:title>
 <x-slot:date>{{ now()->translatedFormat('d F Y') }}</x-slot:date>
-<x-slot:connectivity>Terhubung</x-slot:connectivity>
+<x-slot:connectivity><x-ui.connectivity-status /></x-slot:connectivity>
 
 <section aria-labelledby="withdrawal-payments-title" class="grid gap-6">
     {{-- Page header --}}
@@ -9,7 +9,7 @@
             <p class="text-label font-semibold text-harvest-gold">Bendahara</p>
             <h1 id="withdrawal-payments-title" class="mt-2 text-h1 font-bold text-deep-green">Pembayaran Pencairan</h1>
             <p class="mt-3 text-body text-text-secondary">
-                Pembayaran hanya untuk Bendahara atau petugas yang ditugaskan sebagai payer. Pilih pencairan yang ditugaskan kepada Anda; verifikasi penerima dan bukti wajib sebelum saldo keluar.
+                Pembayaran hanya untuk Bendahara atau petugas yang ditugaskan. Pilih pencairan yang menjadi tugas Anda; verifikasi penerima dan bukti wajib sebelum saldo keluar.
             </p>
         </div>
         <x-ui.mascot variant="12" bubble="Bayar tepat waktu!" bubblePosition="top" class="h-28 w-auto shrink-0" />
@@ -33,6 +33,7 @@
                             · {{ $withdrawal->pickup_location }}
                         @endif
                     </p>
+                    <p class="text-body-sm text-text-secondary">Dana ditahan: <strong class="text-deep-green">Rp {{ number_format($withdrawal->balanceHold?->amount ?? $withdrawal->amount, 0, ',', '.') }}</strong></p>
                 </div>
                 <button type="button" wire:click="select({{ $withdrawal->id }})"
                     class="inline-flex min-h-touch shrink-0 items-center justify-center gap-2 rounded-xl bg-harvest-gold px-5 text-label font-bold text-deep-green shadow-xs transition hover:opacity-90">
@@ -52,26 +53,64 @@
     @endforelse
 
     {{-- Verification Form --}}
-    @if ($selectedWithdrawalId !== null)
-        <x-ui.panel title="Verifikasi dan bukti pembayaran" description="Pastikan nama penerima dan nominal sesuai sebelum mengirim." state="success">
+    @if ($selectedWithdrawal !== null)
+        @php
+            $isCardVerification = $recipientVerification === 'kartu_nasabah';
+            $verificationHint = $isCardVerification
+                ? 'Kartu nasabah adalah media identitas fisik atau digital. Periksa kartu yang ditunjukkan warga, lalu cocokkan nama dan nomor yang tercetak.'
+                : 'Nomor nasabah adalah kode unik warga. Minta warga menyebutkan nomornya, lalu cocokkan dengan nama penerima pada ringkasan.';
+        @endphp
+        <x-ui.panel wire:key="withdrawal-payment-{{ $selectedWithdrawal->id }}" title="Verifikasi dan bukti pembayaran" description="Pastikan nama penerima dan nominal sesuai sebelum pembayaran dicatat." state="success">
             <div class="grid gap-4">
-                <x-ui.select wire:model="recipientVerification" label="Metode verifikasi penerima" name="recipientVerification"
+                <dl class="grid gap-3 rounded-md bg-warm-canvas p-4 text-body-sm sm:grid-cols-2">
+                    <div><dt class="text-text-secondary">Penerima</dt><dd class="mt-1 text-label font-bold text-deep-green">{{ $selectedWithdrawal->customer?->name ?? 'Nasabah' }}</dd></div>
+                    <div><dt class="text-text-secondary">Nominal</dt><dd class="mt-1 amount-tabular text-title font-bold text-deep-green">Rp {{ number_format($selectedWithdrawal->amount, 0, ',', '.') }}</dd></div>
+                    <div><dt class="text-text-secondary">Saldo tersedia sebelum bayar</dt><dd class="mt-1 amount-tabular font-bold text-forest-700">{{ $availableBalance === null ? 'Akan dicek saat pembayaran' : 'Rp '.number_format($availableBalance, 0, ',', '.') }}</dd></div>
+                    <div><dt class="text-text-secondary">Dana ditahan</dt><dd class="mt-1 amount-tabular font-bold text-harvest-gold">Rp {{ number_format($selectedWithdrawal->balanceHold?->amount ?? $selectedWithdrawal->amount, 0, ',', '.') }}</dd></div>
+                    <div><dt class="text-text-secondary">Tanggal pengambilan</dt><dd class="mt-1 font-semibold text-deep-green">{{ $selectedWithdrawal->pickup_date?->translatedFormat('d F Y') ?? 'Belum tersedia' }}</dd></div>
+                    <div><dt class="text-text-secondary">Batas pengambilan</dt><dd class="mt-1 font-semibold text-deep-green">{{ $selectedWithdrawal->expires_at?->translatedFormat('d F Y, H:i') ?? 'Belum tersedia' }}</dd></div>
+                </dl>
+                <x-ui.select wire:model.live="recipientVerification" label="Cara verifikasi penerima" name="recipientVerification"
+                    hint="{{ $verificationHint }}"
                     :options="['kartu_nasabah' => 'Kartu nasabah', 'nomor_nasabah' => 'Nomor nasabah']" />
-                <x-ui.input wire:model="recipientReference" label="Referensi verifikasi" name="recipientReference"
-                    placeholder="Contoh nomor nasabah" />
-                <div class="space-y-1.5">
-                    <label for="payment-proof" class="block text-label font-semibold text-deep-green">Bukti pembayaran</label>
-                    <input id="payment-proof" wire:model="proof" type="file"
-                        accept="image/jpeg,image/png,image/webp,application/pdf"
-                        class="block min-h-touch w-full rounded-xl border-2 border-dashed border-border bg-warm-canvas p-4 text-body text-text-secondary transition hover:border-harvest-gold focus:outline-none focus:ring-2 focus:ring-focus">
-                    @error('proof')
-                        <p class="text-body-sm text-terracotta">{{ $message }}</p>
-                    @enderror
+                <x-ui.input wire:model="recipientReference" label="Nomor nasabah yang diverifikasi" name="recipientReference"
+                    placeholder="Masukkan CST-########"
+                    hint="Masukkan nomor yang tercetak pada kartu atau yang disebutkan warga. Jangan isi nomor pengajuan pencairan."
+                    :error="$errors->first('recipientReference')" />
+                <div class="rounded-md border border-info-bg bg-info-bg p-4 text-body-sm text-text-primary" role="note">
+                    <p class="font-semibold text-deep-green">Kartu dan nomor nasabah berbeda</p>
+                    <p class="mt-1">Kartu adalah media identitasnya; nomor nasabah adalah kode unik di dalam kartu. Pilihan di atas mencatat cara Anda memeriksa penerima, sedangkan field berikut mencatat kode yang dicocokkan sistem.</p>
                 </div>
-                <x-ui.button type="button" wire:click="pay" wire:loading.attr="disabled">
-                    <span wire:loading.remove>Konfirmasi Pembayaran</span>
-                    <span wire:loading>Memproses...</span>
+                <x-ui.media-picker
+                    id="payment-proof"
+                    property="proof"
+                    label="Satu foto bukti pembayaran"
+                    hint="Ambil foto melalui kamera atau pilih satu foto dari galeri. Foto dikompres menjadi JPEG maksimal 1 MB sebelum dimasukkan ke formulir."
+                    remove-method="clearProof"
+                    confirm-method="confirmProofUpload"
+                    wire:key="payment-proof-picker-{{ $selectedWithdrawal->id }}"
+                />
+                @error('proof')
+                    <p class="mt-2 text-body-sm font-semibold text-terracotta">{{ $message }}</p>
+                @enderror
+                <x-ui.button type="button" wire:click="reviewPayment" wire:loading.attr="disabled" wire:target="reviewPayment" data-photo-picker-action>
+                    <span wire:loading.remove wire:target="reviewPayment">Tinjau sebelum bayar</span>
+                    <span wire:loading wire:target="reviewPayment">Memeriksa...</span>
                 </x-ui.button>
+
+                @if ($showPaymentReview)
+                    <div class="rounded-md border-2 border-harvest-gold bg-warning-bg p-4" role="alert">
+                        <h3 class="text-title font-bold text-deep-green">Konfirmasi pembayaran final</h3>
+                        <p class="mt-1 text-body-sm text-text-primary">Pembayaran akan mengubah dana ditahan menjadi saldo keluar dan tidak dapat diulang. Pastikan penerima, nominal, dan bukti sudah benar.</p>
+                        <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+                            <x-ui.button type="button" variant="secondary" wire:click="cancelPaymentReview">Ubah data</x-ui.button>
+                            <x-ui.button type="button" wire:click="pay" wire:loading.attr="disabled" wire:target="pay">
+                                <span wire:loading.remove wire:target="pay">Bayar dan catat bukti</span>
+                                <span wire:loading wire:target="pay">Memproses...</span>
+                            </x-ui.button>
+                        </div>
+                    </div>
+                @endif
             </div>
         </x-ui.panel>
     @endif

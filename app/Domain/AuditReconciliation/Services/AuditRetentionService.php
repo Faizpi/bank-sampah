@@ -62,7 +62,7 @@ final readonly class AuditRetentionService
     /** @return list<string> */
     private function protectedActions(): array
     {
-        return ['reconciliation.created', 'reconciliation.approved', 'reconciliation.rejected', 'reconciliation.discrepancy.resolved', 'report.export.requested', 'report.export.completed', 'report.export.downloaded', 'audit.retention.executed'];
+        return ['report.export.requested', 'report.export.completed', 'report.export.downloaded', 'audit.retention.executed', 'media.pickup_photo_retention.executed'];
     }
 
     private function validatedBefore(string $before): string

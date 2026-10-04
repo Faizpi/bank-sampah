@@ -18,6 +18,11 @@
         <x-ui.success-state title="Berhasil" :description="session('success')" />
     @endif
 
+    @php
+        $requestedAmount = ctype_digit($amount) ? (int) $amount : null;
+        $isAmountOverBalance = $requestedAmount !== null && $requestedAmount > $availableBalance;
+    @endphp
+
     {{-- Balance Info --}}
     @isset($availableBalance)
         <div class="flex items-center gap-3 rounded-xl border border-forest-600 bg-success-bg px-4 py-3.5">
@@ -36,9 +41,9 @@
     {{-- Withdrawal Form --}}
     <x-ui.panel title="Detail pengambilan" description="Pastikan lokasi dan tanggal mudah diverifikasi petugas.">
         <div class="grid gap-4 md:grid-cols-2">
-            <x-ui.input wire:model="amount" label="Nominal (rupiah)" name="amount"
+            <x-ui.input wire:model.live.debounce.300ms="amount" label="Nominal (rupiah)" name="amount"
                 inputmode="numeric" placeholder="Minimal Rp10.000"
-                hint="Nominal final tidak dapat diubah setelah diajukan."
+                :hint="$isAmountOverBalance ? 'Nominal melebihi saldo tersedia.' : 'Nominal final tidak dapat diubah setelah diajukan.'"
                 :error="$errors->first('amount')" />
             <x-ui.input wire:model="pickupDate" label="Tanggal pengambilan" name="pickupDate"
                 type="date"
@@ -50,8 +55,12 @@
         </div>
     </x-ui.panel>
 
-    <x-ui.button type="button" wire:click="submit" wire:loading.attr="disabled">
-        <span wire:loading.remove>Ajukan Pencairan</span>
-        <span wire:loading>Memproses...</span>
+    @error('request')
+        <p role="alert" class="text-body-sm font-semibold text-terracotta">{{ $message }}</p>
+    @enderror
+
+    <x-ui.button type="button" wire:click="submit" wire:loading.attr="disabled" wire:target="submit" :disabled="$isAmountOverBalance">
+        <span wire:loading.remove wire:target="submit">Ajukan Pencairan</span>
+        <span wire:loading wire:target="submit">Memproses...</span>
     </x-ui.button>
 </section>

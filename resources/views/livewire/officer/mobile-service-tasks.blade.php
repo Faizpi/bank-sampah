@@ -1,6 +1,6 @@
 <x-slot:title>Jadwal layanan keliling</x-slot:title>
 <x-slot:date>{{ now()->translatedFormat('d F Y') }}</x-slot:date>
-<x-slot:connectivity>Terhubung</x-slot:connectivity>
+<x-slot:connectivity><x-ui.connectivity-status /></x-slot:connectivity>
 
 <section aria-labelledby="mobile-task-title" class="grid gap-6">
     {{-- Page header --}}
@@ -33,7 +33,7 @@
                             <h2 class="mt-1 text-title font-bold text-deep-green">{{ $service->point }}</h2>
                         </div>
                         <span class="inline-flex items-center rounded-full border border-info-bg bg-info-bg px-3 py-1 text-caption font-semibold text-sky-blue">
-                            {{ $service->status->value }}
+                            {{ \App\Support\StatusLabel::for($service->status) }}
                         </span>
                     </div>
 
@@ -49,8 +49,12 @@
                                 <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4V8z"/></svg>
                                 Buka Layanan
                             </button>
-                        @elseif ($service->status === \App\Domain\MobileServices\Enums\MobileServiceStatus::Open)
-                            <button wire:click="close({{ $service->id }})"
+                            @elseif ($service->status === \App\Domain\MobileServices\Enums\MobileServiceStatus::Open)
+                            <button wire:click="recap({{ $service->id }})" wire:loading.attr="disabled"
+                                class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl border-2 border-forest-600 px-5 text-label font-bold text-forest-700 transition hover:bg-success-bg disabled:cursor-wait">
+                                Rekap Layanan
+                            </button>
+                            <button wire:click="requestClose({{ $service->id }})"
                                 wire:loading.attr="disabled"
                                 class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg disabled:cursor-wait">
                                 <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6"/></svg>
@@ -58,9 +62,32 @@
                             </button>
                         @endif
                     </div>
+                    @if (session('mobile-recap-'.$service->id))
+                        @php($recap = session('mobile-recap-'.$service->id))
+                        <dl class="mt-4 grid gap-2 rounded-xl bg-warm-canvas p-4 text-body-sm sm:grid-cols-3">
+                            <div><dt class="text-text-secondary">Transaksi</dt><dd class="font-bold text-deep-green">{{ $recap['transaction_count'] }}</dd></div>
+                            <div><dt class="text-text-secondary">Berat</dt><dd class="font-bold text-deep-green">{{ \App\Support\WeightFormatter::format($recap['total_weight_kg']) }} kg</dd></div>
+                            <div><dt class="text-text-secondary">Nilai</dt><dd class="font-bold text-deep-green">Rp {{ number_format($recap['total_value'], 0, ',', '.') }}</dd></div>
+                        </dl>
+                    @endif
                 </article>
             @endforeach
         </div>
     @endif
-</section>
 
+    @if ($pendingCloseServiceId !== null)
+        @php($pendingService = $services->firstWhere('id', $pendingCloseServiceId))
+        <div class="fixed inset-0 z-overlay flex items-end justify-center bg-overlay p-4 sm:items-center" role="presentation">
+            <div class="w-full max-w-form rounded-lg border border-border bg-surface p-5 shadow-dialog sm:p-6" role="dialog" aria-modal="true" aria-labelledby="close-mobile-service-title">
+                <h2 id="close-mobile-service-title" class="text-h2 font-bold text-deep-green">Tutup layanan keliling?</h2>
+                <p class="mt-2 text-body text-text-secondary">
+                    {{ $pendingService?->point ?? 'Layanan ini' }} akan berhenti menerima transaksi keliling. Pastikan setoran yang sudah diterima sudah tercatat dan warga sudah mendapat informasi.
+                </p>
+                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <x-ui.button type="button" variant="secondary" wire:click="cancelClose">Kembali</x-ui.button>
+                    <x-ui.button type="button" variant="danger" wire:click="close({{ $pendingCloseServiceId }})" wire:loading.attr="disabled" wire:target="close">Tutup layanan</x-ui.button>
+                </div>
+            </div>
+        </div>
+    @endif
+</section>

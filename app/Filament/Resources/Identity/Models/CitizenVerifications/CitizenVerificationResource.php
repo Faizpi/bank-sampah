@@ -29,7 +29,11 @@ final class CitizenVerificationResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?int $navigationSort = 30;
+
     protected static ?string $navigationLabel = 'Verifikasi Warga';
+
+    protected static ?string $navigationParentItem = 'Direktori';
 
     protected static ?string $modelLabel = 'verifikasi warga';
 
@@ -46,6 +50,7 @@ final class CitizenVerificationResource extends Resource
     {
         return $table
             ->recordTitleAttribute('name')
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('name')->label('Nama')->searchable(),
                 TextColumn::make('customerProfile.customer_number')->label('Nomor nasabah')->searchable(),

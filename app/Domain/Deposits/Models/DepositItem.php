@@ -55,13 +55,13 @@ final class DepositItem extends Model
     protected static function booted(): void
     {
         self::updating(static function (self $item): void {
-            if ($item->deposit?->isFinal()) {
+            if ($item->deposit?->isFinal() || $item->deposit?->isPendingReview()) {
                 throw new LogicException('Final deposit items are immutable.');
             }
         });
 
         self::deleting(static function (self $item): void {
-            if ($item->deposit?->isFinal()) {
+            if ($item->deposit?->isFinal() || $item->deposit?->isPendingReview()) {
                 throw new LogicException('Final deposit items are immutable.');
             }
         });

@@ -56,7 +56,7 @@ final readonly class TransactionCorrectionService
             return TransactionCorrection::query()->findOrFail($existing->result_id);
         }
 
-        $media = $evidence === null ? null : $this->mediaStore->handle($evidence, $actor);
+        $media = $evidence === null ? null : $this->mediaStore->handleEvidence($evidence, $actor);
 
         try {
             $result = DB::transaction(function () use ($actor, $deposit, $newValue, $reason, $idempotencyKey, $payloadHash, $media): TransactionCorrection {
@@ -143,8 +143,8 @@ final readonly class TransactionCorrectionService
         }
 
         $query = Deposit::query()
-            ->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED, Deposit::STATUS_REVERSED])
-            ->with(['customer', 'staff', 'items', 'media', 'ledgerEntries']);
+            ->whereIn('status', [Deposit::STATUS_PENDING_REVIEW, Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED, Deposit::STATUS_REVERSED, Deposit::STATUS_REJECTED])
+            ->with(['customer', 'staff', 'reviewer', 'items', 'media', 'ledgerEntries', 'correction']);
         if ($this->permissions->allows($actor, 'user.view.all')) {
             return $query;
         }
@@ -190,7 +190,7 @@ final readonly class TransactionCorrectionService
             return TransactionReversal::query()->findOrFail($existing->result_id);
         }
 
-        $media = $this->mediaStore->handle($evidence, $actor);
+        $media = $this->mediaStore->handleEvidence($evidence, $actor);
 
         try {
             return DB::transaction(function () use ($actor, $deposit, $reason, $idempotencyKey, $payloadHash, $media): TransactionReversal {
@@ -296,12 +296,7 @@ final readonly class TransactionCorrectionService
             return null;
         }
 
-        $existing = IdempotencyKey::query()
-            ->where('actor_id', $actor->id)
-            ->where('scope', $scope)
-            ->where('key', $key)
-            ->lockForUpdate()
-            ->first();
+        $existing = IdempotencyKey::activeForUpdate($actor->id, $scope, $key);
         if ($existing === null) {
             return null;
         }

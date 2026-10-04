@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Groceries\Models;
 
-use App\Domain\Groceries\Enums\GrocerySource;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerEntry;
@@ -26,7 +25,6 @@ use LogicException;
  * @property int $grocery_package_id
  * @property int $value_snapshot
  * @property array<string, mixed> $package_snapshot
- * @property GrocerySource $source_type
  * @property GroceryStatus $status
  * @property int|null $balance_hold_id
  * @property int|null $approver_id
@@ -45,7 +43,7 @@ final class GroceryRedemption extends Model
     }
 
     protected $fillable = [
-        'request_number', 'customer_id', 'requested_by_id', 'grocery_package_id', 'value_snapshot', 'package_snapshot', 'source_type', 'status',
+        'request_number', 'customer_id', 'requested_by_id', 'grocery_package_id', 'value_snapshot', 'package_snapshot', 'status',
         'balance_hold_id', 'approver_id', 'prepared_by_id', 'handover_actor_id', 'proof_media_id', 'receipt_ledger_entry_id',
         'availability_note', 'rejection_reason', 'cancellation_reason', 'approved_at', 'expires_at', 'prepared_at', 'ready_at', 'handed_over_at',
         'recipient_verification', 'recipient_reference',
@@ -56,7 +54,6 @@ final class GroceryRedemption extends Model
         return [
             'value_snapshot' => 'integer',
             'package_snapshot' => 'array',
-            'source_type' => GrocerySource::class,
             'status' => GroceryStatus::class,
             'approved_at' => 'immutable_datetime',
             'expires_at' => 'immutable_datetime',
@@ -135,7 +132,7 @@ final class GroceryRedemption extends Model
     {
         self::updating(static function (self $redemption): void {
             $dirty = array_keys($redemption->getDirty());
-            $immutable = ['customer_id', 'requested_by_id', 'grocery_package_id', 'value_snapshot', 'package_snapshot', 'source_type', 'request_number'];
+            $immutable = ['customer_id', 'requested_by_id', 'grocery_package_id', 'value_snapshot', 'package_snapshot', 'request_number'];
             $holdIsBeingAttached = $redemption->isDirty('balance_hold_id') && $redemption->getOriginal('balance_hold_id') === null;
             if (array_intersect($immutable, $dirty) !== [] && ! ($holdIsBeingAttached && count(array_diff($dirty, ['balance_hold_id', 'updated_at'])) === 0)) {
                 throw new LogicException('Snapshot dan identitas penukaran sembako immutable setelah pengajuan.');

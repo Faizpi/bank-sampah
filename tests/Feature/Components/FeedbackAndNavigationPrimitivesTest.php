@@ -73,7 +73,8 @@ final class FeedbackAndNavigationPrimitivesTest extends TestCase
         self::assertStringContainsString('aria-label="Navigasi utama"', $html);
         self::assertSame(5, substr_count($html, 'data-nav-item'));
         self::assertStringContainsString('aria-current="page"', $html);
-        self::assertStringContainsString('data-active-indicator', $html);
+        self::assertStringNotContainsString('data-active-indicator', $html);
+        self::assertStringContainsString('font-semibold text-forest-600', $html);
         self::assertStringContainsString('min-h-touch', $html);
         self::assertStringContainsString('aria-label="2 notifikasi"', $html);
 

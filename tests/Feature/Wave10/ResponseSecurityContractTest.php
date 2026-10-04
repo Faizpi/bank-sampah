@@ -53,6 +53,10 @@ it('prevents caching for authentication and authenticated private responses', fu
     $privateResponse = $this->actingAs(User::factory()->create())->get(route('citizen.dashboard'));
     $privateResponse->assertForbidden();
     expect((string) $privateResponse->headers->get('Cache-Control'))->toContain('no-store')->toContain('private');
+
+    $cameraDisabled = $this->actingAs(User::factory()->create())->get(route('citizen.customer-card'));
+    $cameraDisabled->assertForbidden();
+    expect((string) $cameraDisabled->headers->get('Permissions-Policy'))->toContain('camera=()');
 });
 
 it('keeps private media IDOR hidden and omits storage paths from headers and error bodies', function (): void {

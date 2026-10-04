@@ -36,13 +36,13 @@
         'Beranda' => 'home',
         'Setoran' => 'wallet-cards',
         'Layanan' => 'grid-2x2',
-        'Kartu Nasabah' => 'user-round',
+        'Kartu Nasabah' => 'scan-line',
         'Akun' => 'user-round',
     ];
 
     $items = array_map(
         static fn (string $label): array => [
-            'label' => $label,
+            'label' => $label === 'Kartu Nasabah' ? 'Kartu' : $label,
             'href' => $destinations[$label],
             'icon' => $icons[$label],
             'active' => $active === $label,

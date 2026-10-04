@@ -73,12 +73,14 @@ final class PwaContractTest extends TestCase
         $publicLayout = file_get_contents(resource_path('views/layouts/public.blade.php'));
         $citizenLayout = file_get_contents(resource_path('views/components/layouts/citizen.blade.php'));
         $officerLayout = file_get_contents(resource_path('views/components/layouts/officer.blade.php'));
+        $offlineStatus = file_get_contents(resource_path('views/components/public/offline-status.blade.php'));
 
         self::assertIsString($manifest);
         self::assertIsString($script);
         self::assertIsString($publicLayout);
         self::assertIsString($citizenLayout);
         self::assertIsString($officerLayout);
+        self::assertIsString($offlineStatus);
         self::assertStringContainsString('"display": "standalone"', $manifest);
         self::assertStringContainsString("navigator.serviceWorker.register('/sw.js')", $script);
         self::assertStringNotContainsString('localStorage', $script);
@@ -87,7 +89,7 @@ final class PwaContractTest extends TestCase
         self::assertStringContainsString('Livewire.interceptRequest', $script);
         self::assertStringContainsString('request.cancel()', $script);
         self::assertStringContainsString("document.addEventListener('livewire:init'", $script);
-        self::assertStringContainsString('Koneksi diperlukan untuk melanjutkan tindakan ini.', $script);
+        self::assertStringContainsString('Koneksi diperlukan untuk mengirim perubahan ini.', $script);
         self::assertStringContainsString("document.addEventListener('submit'", $script);
         self::assertStringContainsString('HTMLFormElement', $script);
         self::assertStringContainsString('blockNativeOfflineAction', $script);
@@ -114,6 +116,11 @@ final class PwaContractTest extends TestCase
         self::assertStringContainsString('<x-public.offline-status />', $publicLayout);
         self::assertStringContainsString('<x-public.offline-status />', $citizenLayout);
         self::assertStringContainsString('<x-public.offline-status />', $officerLayout);
+        self::assertStringContainsString('x-on:public:offline-action-blocked.window', $offlineStatus);
+        self::assertStringContainsString('Mode offline aktif', $offlineStatus);
+        self::assertStringContainsString('Aksi belum dikirim', $offlineStatus);
+        self::assertStringContainsString('Tidak ada data yang disimpan atau diantrikan.', $offlineStatus);
+        self::assertStringContainsString('role="status"', $offlineStatus);
     }
 
     public function test_livewire_offline_guard_covers_server_bound_directives_without_touching_local_events_or_navigation(): void

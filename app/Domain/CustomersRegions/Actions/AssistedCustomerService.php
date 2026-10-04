@@ -18,6 +18,7 @@ use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\Ledger\Services\LedgerService;
 use App\Domain\Platform\Enums\MediaVisibility;
 use App\Domain\Platform\Models\Media;
+use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -74,6 +75,7 @@ final readonly class AssistedCustomerService
                 $contract->consent->givenAt,
                 $record->evidence_media_id,
                 $record->deposit_id === null ? null : (int) $record->deposit_id,
+                $record->withdrawal_id === null ? null : (int) $record->withdrawal_id,
             );
         });
     }
@@ -116,6 +118,44 @@ final readonly class AssistedCustomerService
         return $this->toRecord($record);
     }
 
+    public function linkWithdrawal(User $operator, int $serviceId, WithdrawalRequest $withdrawal): AssistedServiceRecord
+    {
+        return DB::transaction(function () use ($operator, $serviceId, $withdrawal): AssistedServiceRecord {
+            $record = $this->lockForWithdrawalLink($operator, $serviceId);
+
+            return $this->linkWithdrawalInTransaction($operator, $record, $withdrawal);
+        });
+    }
+
+    public function lockForWithdrawalLink(User $operator, int $serviceId): AssistedCustomerServiceModel
+    {
+        $record = AssistedCustomerServiceModel::query()->with('owner')->lockForUpdate()->findOrFail($serviceId);
+        $this->assertCanLinkWithdrawal($operator, $record);
+
+        return $record;
+    }
+
+    public function linkWithdrawalInTransaction(User $operator, AssistedCustomerServiceModel $record, WithdrawalRequest $withdrawal): AssistedServiceRecord
+    {
+        $this->assertCanLinkWithdrawal($operator, $record);
+        $lockedWithdrawal = WithdrawalRequest::query()->whereKey($withdrawal->id)->lockForUpdate()->firstOrFail();
+        if ($record->service_type !== 'pencairan' || $lockedWithdrawal->customer_id !== $record->owner_id || $lockedWithdrawal->requested_by_id !== $operator->id) {
+            throw ValidationException::withMessages(['withdrawal' => 'Pengajuan pencairan tidak cocok dengan layanan berbantuan.']);
+        }
+        $linkedWithdrawalId = $record->withdrawal_id === null ? null : (int) $record->withdrawal_id;
+        if ($linkedWithdrawalId !== null && $linkedWithdrawalId !== $lockedWithdrawal->id) {
+            throw ValidationException::withMessages(['withdrawal' => 'Layanan berbantuan sudah memiliki pengajuan pencairan.']);
+        }
+        if ($linkedWithdrawalId === $lockedWithdrawal->id) {
+            return $this->toRecord($record);
+        }
+
+        $record->forceFill(['withdrawal_id' => $lockedWithdrawal->id])->save();
+        $this->auditLogger->record($operator, 'assisted-service.withdrawal-linked', $record, [], ['withdrawal_id' => $lockedWithdrawal->id], $this->correlationId());
+
+        return $this->toRecord($record);
+    }
+
     public function handoff(User $operator, int $serviceId): AssistedServiceHandoff
     {
         $this->authorizeOperatorForRecord($operator, $serviceId);
@@ -141,11 +181,27 @@ final readonly class AssistedCustomerService
         if (! $this->permissions->allows($operator, 'user.view.all') && ! $this->visibleUsers->canView($operator, $record->owner)) {
             throw new AuthorizationException('Warga berada di luar scope operator.');
         }
+        if ($record->service_type !== 'layanan_nasabah') {
+            throw new AuthorizationException('Layanan berbantuan ini bukan layanan setoran.');
+        }
+    }
+
+    private function assertCanLinkWithdrawal(User $operator, AssistedCustomerServiceModel $record): void
+    {
+        if ($record->operator_id !== $operator->id || ! $this->permissions->allows($operator, 'customer.create-assisted') || ! $this->permissions->allows($operator, 'customer.view') || ! $this->permissions->allows($operator, 'withdrawal.request')) {
+            throw new AuthorizationException('Layanan pencairan berbantuan berada di luar scope operator.');
+        }
+        if (! $this->permissions->allows($operator, 'user.view.all') && ! $this->visibleUsers->canView($operator, $record->owner)) {
+            throw new AuthorizationException('Warga berada di luar scope operator.');
+        }
+        if ($record->service_type !== 'pencairan') {
+            throw new AuthorizationException('Layanan berbantuan ini bukan layanan pencairan.');
+        }
     }
 
     private function toRecord(AssistedCustomerServiceModel $record): AssistedServiceRecord
     {
-        return new AssistedServiceRecord($record->id, $record->owner_id, $record->operator_id, $record->service_type, $record->consent_version, new \DateTimeImmutable((string) $record->consented_at), $record->evidence_media_id, $record->deposit_id === null ? null : (int) $record->deposit_id);
+        return new AssistedServiceRecord($record->id, $record->owner_id, $record->operator_id, $record->service_type, $record->consent_version, new \DateTimeImmutable((string) $record->consented_at), $record->evidence_media_id, $record->deposit_id === null ? null : (int) $record->deposit_id, $record->withdrawal_id === null ? null : (int) $record->withdrawal_id);
     }
 
     private function correlationId(): string

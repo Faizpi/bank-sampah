@@ -1,6 +1,12 @@
 # Dokumentasi Bank Sampah Digital Sindangheula
 
-Dokumentasi ini menjadi kontrak pengembangan Sistem Informasi Bank Sampah Digital Desa Sindangheula setelah proposal disetujui.
+Dokumentasi ini menjelaskan kontrak produk, teknis, antarmuka, dan operasional Sistem Informasi Bank Sampah Digital Desa Sindangheula setelah proposal disetujui.
+
+## Mulai dari sini
+
+- Untuk memahami atau mengubah fitur, mulai dari [definisi produk](PRODUCT.md), [requirement](REQUIREMENTS.md), dan [aturan bisnis](BUSINESS_RULES.md).
+- Untuk implementasi atau review kode, lanjutkan ke [arsitektur](ARCHITECTURE.md), [model data](DATA_MODEL.md), [validasi](VALIDATION.md), dan [desain antarmuka](DESIGN.md).
+- Untuk rilis atau operasi, gunakan [rencana pengujian](TEST_PLAN.md), [panduan deployment](DEPLOYMENT.md), [operasi](OPERATIONS.md), serta [changelog](CHANGELOG.md). Snapshot pengujian lokal tidak menggantikan UAT, bukti deployment, atau persetujuan rilis.
 
 ## Status
 
@@ -15,14 +21,15 @@ Dokumentasi ini menjadi kontrak pengembangan Sistem Informasi Bank Sampah Digita
 - Blade, Livewire 4, Alpine.js bawaan Livewire.
 - Tailwind CSS 4.1+.
 - Filament 5 untuk back-office.
-- MariaDB terkelola yang kompatibel dengan MySQL.
+- MySQL 8.0.30 melalui Laragon.
 - Hostinger Web Hosting Premium atau Business.
 - Pest 4.
+- Laravel Truss 1.8.3 untuk inspeksi skema development lokal.
 
 ## Dokumen Acuan
 
-- Proposal: [`../documents/Pengajuan_Bank_Sampah_Digital_Desa_Sindangheula.pdf`](../documents/Pengajuan_Bank_Sampah_Digital_Desa_Sindangheula.pdf)
-- Flowchart: [`../documents/Kumpulan_Flowchart_Bank_Sampah_Digital_Sindangheula.pdf`](../documents/Kumpulan_Flowchart_Bank_Sampah_Digital_Sindangheula.pdf)
+- [Proposal pengajuan Bank Sampah Digital Desa Sindangheula](../documents/Pengajuan_Bank_Sampah_Digital_Desa_Sindangheula.pdf)
+- [Kumpulan flowchart Bank Sampah Digital Sindangheula](../documents/Kumpulan_Flowchart_Bank_Sampah_Digital_Sindangheula.pdf)
 
 ## Kontrak Produk dan Bisnis
 
@@ -50,7 +57,7 @@ Dokumentasi ini menjadi kontrak pengembangan Sistem Informasi Bank Sampah Digita
 ## Kualitas dan Operasional
 
 - [TEST_PLAN.md](TEST_PLAN.md) — strategi test, Given/When/Then, coverage, UAT, dan traceability.
-- [OPERATIONS.md](OPERATIONS.md) — SOP seluruh role, layanan, gangguan, rekonsiliasi, dan pemulihan.
+- [OPERATIONS.md](OPERATIONS.md) — SOP seluruh role, layanan, gangguan, laporan, dan pemulihan.
 - [DECISIONS.md](DECISIONS.md) — ADR ringan keputusan final.
 - [CHANGELOG.md](CHANGELOG.md) — riwayat perubahan baseline dan dokumentasi.
 

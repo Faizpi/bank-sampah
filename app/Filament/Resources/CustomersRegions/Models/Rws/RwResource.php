@@ -30,6 +30,10 @@ final class RwResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?string $navigationParentItem = 'Wilayah';
+
+    protected static ?int $navigationSort = 60;
+
     protected static ?string $navigationLabel = 'RW';
 
     protected static ?string $recordTitleAttribute = 'name';
@@ -52,7 +56,8 @@ final class RwResource extends Resource
             IconColumn::make('is_active')->boolean(),
         ])->recordActions([
             EditAction::make()->using(fn (Rw $record, array $data): Rw => tap($record, fn () => app(ManageRegions::class)->updateRw(auth()->user(), $record, Dusun::query()->findOrFail($data['dusun_id']), $data['code'], $data['name']))),
-            Action::make('deactivate')->authorize('deactivate')->requiresConfirmation()->visible(fn (Rw $record): bool => $record->is_active)->action(fn (Rw $record) => app(ManageRegions::class)->deactivate(auth()->user(), $record)),
+            Action::make('activate')->label('Aktifkan kembali')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->requiresConfirmation()->modalHeading(fn (Rw $record): string => "Aktifkan RW {$record->name}?")->modalDescription('RW ini kembali tersedia untuk data wilayah baru. Data historis tetap tersimpan.')->modalSubmitActionLabel('Aktifkan RW')->visible(fn (Rw $record): bool => ! $record->is_active)->action(fn (Rw $record) => app(ManageRegions::class)->activate(auth()->user(), $record)),
+            Action::make('deactivate')->label('Nonaktifkan')->authorize('deactivate')->requiresConfirmation()->modalHeading(fn (Rw $record): string => "Nonaktifkan RW {$record->name}?")->modalDescription('RW ini tidak tersedia untuk data wilayah baru. Data historis tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan RW')->visible(fn (Rw $record): bool => $record->is_active)->action(fn (Rw $record) => app(ManageRegions::class)->deactivate(auth()->user(), $record)),
         ]);
     }
 

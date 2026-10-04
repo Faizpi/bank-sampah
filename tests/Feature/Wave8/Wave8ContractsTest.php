@@ -88,6 +88,18 @@ final class Wave8ContractsTest extends TestCase
         self::assertSame($before, [DB::table('deposits')->count(), DB::table('ledger_entries')->count(), DB::table('balance_holds')->count()]);
     }
 
+    public function test_estimate_preserves_a_hundred_rupiah_fractional_weight_value(): void
+    {
+        [$type, $condition] = $this->priceFixture();
+        $depositSubtotal = WastePrice::query()->where('waste_type_id', $type->id)->where('waste_condition_id', $condition->id)->firstOrFail()->snapshot()->withWeight('0.100')->subtotal;
+
+        $result = app(EstimateService::class)->calculate($type->id, $condition->id, '0.100');
+
+        self::assertSame('0.1', $result['weight_kg']);
+        self::assertSame(100, $depositSubtotal);
+        self::assertSame($depositSubtotal, $result['estimated_value']);
+    }
+
     public function test_target_transition_requires_permission_and_invalid_transition_is_rejected(): void
     {
         $admin = $this->userWith('target.manage', 'target.publish');

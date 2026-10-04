@@ -38,7 +38,7 @@
                         </section>
                         <section aria-labelledby="privacy-data">
                             <h2 id="privacy-data" class="text-h2 text-deep-green">Data dan tujuan penggunaan</h2>
-                            <p class="mt-3">Sistem menggunakan data yang diperlukan untuk verifikasi akun dan pencegahan duplikasi, penyediaan layanan bank sampah, pemberitahuan dalam aplikasi, keamanan, audit, rekonsiliasi, backup, dan operasi layanan.</p>
+                            <p class="mt-3">Sistem menggunakan data yang diperlukan untuk verifikasi akun dan pencegahan duplikasi, penyediaan layanan bank sampah, pemberitahuan dalam aplikasi, keamanan, audit, cadangan, dan operasi layanan.</p>
                         </section>
                         <section aria-labelledby="privacy-access">
                             <h2 id="privacy-access" class="text-h2 text-deep-green">Akses dan keterbukaan terbatas</h2>

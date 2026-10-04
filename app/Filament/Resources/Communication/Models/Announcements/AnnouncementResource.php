@@ -34,7 +34,7 @@ final class AnnouncementResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Program & Publikasi';
+    protected static string|UnitEnum|null $navigationGroup = 'Program';
 
     protected static ?int $navigationSort = 10;
 
@@ -63,17 +63,17 @@ final class AnnouncementResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->recordTitleAttribute('title')->columns([
+        return $table->recordTitleAttribute('title')->defaultSort('publish_start', 'desc')->columns([
             TextColumn::make('announcement_number')->label('Nomor')->searchable()->sortable(),
             TextColumn::make('title')->label('Judul')->searchable(),
             TextColumn::make('audience')->label('Audiens')->badge(),
             TextColumn::make('publish_start')->label('Mulai')->dateTime('d M Y H:i')->sortable(),
-            TextColumn::make('publish_end')->label('Berakhir')->dateTime('d M Y H:i')->placeholder('Tidak dibatasi'),
+            TextColumn::make('publish_end')->label('Berakhir')->dateTime('d M Y H:i')->placeholder('Tanpa batas'),
             TextColumn::make('status')->label('Status')->badge(),
         ])->recordActions([
             EditAction::make()->visible(fn (Announcement $record): bool => in_array($record->status->value, ['draf', 'nonaktif'], true))->using(fn (Announcement $record, array $data): Announcement => self::service()->update(self::actor(), $record, (string) $data['title'], (string) $data['body'], (string) $data['audience'], (string) $data['publish_start'], $data['publish_end'] ?? null, array_map('intval', $data['rt_ids'] ?? []), (int) $data['priority'])),
-            Action::make('publish')->label('Terbitkan')->icon(Heroicon::OutlinedMegaphone)->color('success')->visible(fn (Announcement $record): bool => in_array($record->status->value, ['draf', 'nonaktif'], true))->authorize('publish')->requiresConfirmation()->action(fn (Announcement $record): Announcement => self::service()->publish(self::actor(), $record)),
-            Action::make('unpublish')->label('Nonaktifkan')->icon(Heroicon::OutlinedEyeSlash)->color('warning')->visible(fn (Announcement $record): bool => $record->status === AnnouncementStatus::Published)->authorize('publish')->requiresConfirmation()->action(fn (Announcement $record): Announcement => self::service()->unpublish(self::actor(), $record)),
+            Action::make('publish')->label('Terbitkan')->icon(Heroicon::OutlinedMegaphone)->color('success')->visible(fn (Announcement $record): bool => in_array($record->status->value, ['draf', 'nonaktif'], true))->authorize('publish')->requiresConfirmation()->modalHeading(fn (Announcement $record): string => "Terbitkan pengumuman {$record->title}?")->modalDescription('Pengumuman akan tampil kepada audiens yang dipilih sesuai periode tayang.')->modalSubmitActionLabel('Terbitkan pengumuman')->action(fn (Announcement $record): Announcement => self::service()->publish(self::actor(), $record)),
+            Action::make('unpublish')->label('Nonaktifkan')->icon(Heroicon::OutlinedEyeSlash)->color('warning')->visible(fn (Announcement $record): bool => $record->status === AnnouncementStatus::Published)->authorize('publish')->requiresConfirmation()->modalHeading(fn (Announcement $record): string => "Nonaktifkan pengumuman {$record->title}?")->modalDescription('Pengumuman tidak lagi tampil kepada audiens. Data historis tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan pengumuman')->action(fn (Announcement $record): Announcement => self::service()->unpublish(self::actor(), $record)),
         ]);
     }
 

@@ -14,7 +14,7 @@ Sistem dibangun sebagai modular monolith Laravel yang aman untuk Hostinger share
 | Interaksi ringan | Alpine.js bawaan Livewire; tidak dimuat kedua kali |
 | Styling | Tailwind CSS 4.1+ |
 | Back-office | Filament 5 dengan custom theme; hanya admin/back-office |
-| Database | MariaDB terkelola, kompatibel MySQL |
+| Database | MySQL 8.0.30 melalui Laragon |
 | Test | Pest 4 |
 | Build aset | Vite/Tailwind di lokal atau CI |
 | Hosting | Hostinger Web Hosting Premium/Business, hPanel, SSH/SFTP, Composer 2, cron |
@@ -35,7 +35,7 @@ flowchart LR
     CitizenUI --> App
     OfficerUI --> App
     Panel --> App
-    App --> DB[(MariaDB)]
+    App --> DB[(MySQL 8.0.30)]
     App --> Private[(Storage Privat)]
     App --> PublicFiles[(Aset Publik Terkontrol)]
     App --> WA[wa.me: dibuka manual]
@@ -63,8 +63,8 @@ WhatsApp bukan integrasi pengiriman. Aplikasi hanya membentuk tautan dan membuka
 | Groceries | Paket deskriptif, approve, prepare, handover, bukti. | Mengelola stok rinci. |
 | Programs | Target, layanan keliling, partisipasi wilayah, statistik publik. | Mengelola produksi paving block. |
 | Communications | Notifikasi, pengingat, pengumuman, template `wa.me`. | Menyatakan WhatsApp terkirim otomatis. |
-| Reporting | Laporan web/CSV/XLSX/PDF dan file ekspor privat. | Melewati scope record. |
-| AuditReconciliation | Audit append-oriented, rekonsiliasi, insiden operasional. | Menghapus audit lewat fungsi operasional. |
+| Reporting | Laporan web/XLSX dan file ekspor privat. | Melewati scope record. |
+| AuditReconciliation | Audit append-oriented dan insiden operasional. | Menghapus audit lewat fungsi operasional. |
 | Platform | Media, setting, scheduler, queue terbatas, health, backup log, PWA. | Memerlukan layanan daemon shared hosting. |
 
 ### 4.2 Struktur kode yang disarankan
@@ -121,7 +121,7 @@ flowchart TD
     Action --> Domain[Domain Services / Value Objects / State Machines]
     Action --> Models[Eloquent Models / Query Objects]
     Domain --> Models
-    Models --> DB[(MariaDB)]
+    Models --> DB[(MySQL 8.0.30)]
     Action --> Events[Domain Events after commit]
     Events --> Notifications[Notification / Export / Reminder]
     Action --> Audit[Audit Writer]
@@ -147,7 +147,7 @@ sequenceDiagram
     actor P as Petugas
     participant UI as Livewire
     participant A as FinalizeDeposit
-    participant DB as MariaDB
+    participant DB as MySQL 8.0.30
     participant L as Ledger
     participant AU as Audit
     P->>UI: Konfirmasi + idempotency key
@@ -178,7 +178,7 @@ Penolakan/batal/kedaluwarsa mengikuti action berbeda yang hanya melepas hold.
 
 ## 7. Data dan transaction
 
-- MariaDB memakai InnoDB, foreign key, unique index, composite index, dan check constraint bila versi managed mendukung dengan benar.
+- MySQL 8.0.30 memakai InnoDB, foreign key, unique index, composite index, dan check constraint.
 - Rupiah berupa `BIGINT`; berat `DECIMAL(p,3)`; nilai domain tidak memakai `FLOAT/DOUBLE`.
 - Status direpresentasikan PHP backed enum/value object dan kolom string terbatas/check atau lookup sesuai keputusan migrasi.
 - Waktu disimpan konsisten dan dikonversi ke `Asia/Jakarta` pada boundary tampilan/bisnis.
@@ -201,11 +201,11 @@ Shell khusus mobile-first, saldo-first, maksimal lima bottom navigation item. Bu
 
 ### Petugas/bendahara
 
-Shell khusus task-first untuk smartphone lapangan, scan/nomor, setoran, pickup, pay/handover, layanan keliling, warga berbantuan, dan rekonsiliasi sesuai assignment. Bukan Filament.
+Shell khusus task-first untuk smartphone lapangan, scan/nomor, setoran, pickup, pay/handover, layanan keliling, warga berbantuan, dan laporan sesuai assignment. Bukan Filament.
 
 ### Admin/superadmin
 
-Filament 5 untuk back-office data-dense dan action-first. Resource/action tetap memanggil application action dan policy yang sama; Filament bukan bypass domain. Tema memakai token [DESIGN.md](DESIGN.md).
+Filament 5 untuk back-office data-dense dan action-first. Admin dan superadmin mendapat entry point **Laporan** di grup **Pengawasan**; halaman memakai query scope yang sama, read-only untuk data, dan ekspor privat XLSX. Superadmin juga dapat melihat **Rekonsiliasi** pada grup ini sesuai permission. Resource/action tetap memanggil application action dan policy yang sama; Filament bukan bypass domain. Tema memakai token [DESIGN.md](DESIGN.md).
 
 ## 9. Livewire dan Alpine
 
@@ -264,7 +264,7 @@ Manifest menyediakan instalasi. Offline tidak berarti transaksi offline.
 | Integrasi | Kontrak |
 |---|---|
 | WhatsApp | URL `https://wa.me/<nomor>?text=<encoded>`; pengguna mengirim manual; tidak ada webhook/status kirim. |
-| MariaDB Hostinger | TLS bila tersedia/diwajibkan, least-privilege credential, koneksi dari aplikasi hosting. |
+| MySQL 8.0.30 | TLS bila tersedia/diwajibkan, least-privilege credential, koneksi dari aplikasi hosting. |
 | Object storage kompatibel S3 | Opsional jika dipilih; credential melalui environment; private bucket; signed URL. |
 | Email | Driver yang tersedia pada hosting untuk notifikasi yang disetujui; tidak digunakan untuk reset kata sandi atau pengiriman token; failure tidak membocorkan akun; queue sesuai batas. |
 
@@ -311,7 +311,7 @@ Jika hPanel tidak mendukung pemilihan document root secara langsung, gunakan mek
 
 1. Format/static analysis sesuai konfigurasi proyek.
 2. Pest unit/feature SQLite `:memory:` lulus sebagai gate engineering harian normatif; browser/E2E kritis lulus sebelum rilis.
-3. Migration dan perilaku production-engine diuji pada rehearsal MariaDB disposable yang tercatat sebelum UAT/production; ini release-validation, bukan blocker harian per-IMP, dan hasil SQLite tidak membuktikan MariaDB.
+3. Migration dan perilaku production-engine diuji pada rehearsal MySQL 8.0.30 disposable yang tercatat sebelum UAT/production; ini release-validation, bukan blocker harian per-IMP, dan hasil SQLite tidak membuktikan MySQL production.
 4. Build Vite selesai di lokal/CI dan manifest tersedia.
 5. Pemeriksaan permission, idempotensi, ledger, file privat, dan statistik publik lulus.
 6. PHP web dan CLI sama-sama terverifikasi 8.5.

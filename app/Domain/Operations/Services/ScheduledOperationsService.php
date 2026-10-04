@@ -10,6 +10,9 @@ use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Groceries\Services\GroceryService;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Notifications\Models\NotificationDeliveryFailure;
+use App\Domain\Pickups\Enums\PickupStatus;
+use App\Domain\Pickups\Models\PickupRequest;
+use App\Domain\Pickups\Services\PickupService;
 use App\Domain\Reports\Enums\ReportExportStatus;
 use App\Domain\Reports\Models\ReportExport;
 use App\Domain\Reports\Services\ReportExportService;
@@ -26,11 +29,12 @@ final readonly class ScheduledOperationsService
     public function __construct(
         private WithdrawalService $withdrawals,
         private GroceryService $groceries,
+        private PickupService $pickups,
         private ReportExportService $exports,
         private AuditLogger $auditLogger,
     ) {}
 
-    /** @return array{withdrawals: int, groceries: int, exports: int} */
+    /** @return array{withdrawals: int, groceries: int, pickups: int, exports: int} */
     public function expireEligible(): array
     {
         $now = now();
@@ -38,6 +42,7 @@ final readonly class ScheduledOperationsService
         return [
             'withdrawals' => $this->expireWithdrawals($now),
             'groceries' => $this->expireGroceries($now),
+            'pickups' => $this->expirePickups($now),
             'exports' => $this->expireExports($now),
         ];
     }
@@ -97,6 +102,31 @@ final readonly class ScheduledOperationsService
         return $expired;
     }
 
+    private function expirePickups(CarbonInterface $now): int
+    {
+        $ids = $this->ids(
+            PickupRequest::query()
+                ->whereIn('status', [
+                    PickupStatus::PendingReview->value,
+                    PickupStatus::Accepted->value,
+                    PickupStatus::Scheduled->value,
+                ])
+                ->where(static function (Builder $query) use ($now): void {
+                    $query->whereDate('scheduled_date', '<', $now->toDateString())
+                        ->orWhere(static function (Builder $query) use ($now): void {
+                            $query->whereNull('scheduled_date')->whereDate('selected_date', '<', $now->toDateString());
+                        });
+                }),
+        );
+
+        $expired = 0;
+        foreach ($ids as $id) {
+            $expired += $this->expirePickup($id, $now) ? 1 : 0;
+        }
+
+        return $expired;
+    }
+
     private function expireExports(CarbonInterface $now): int
     {
         $ids = $this->ids(
@@ -142,6 +172,20 @@ final readonly class ScheduledOperationsService
         }, 3);
     }
 
+    private function expirePickup(int $id, CarbonInterface $now): bool
+    {
+        return DB::transaction(function () use ($id, $now): bool {
+            $pickup = PickupRequest::query()->lockForUpdate()->find($id);
+            if (! $pickup instanceof PickupRequest || ! $this->isExpiredPickup($pickup, $now)) {
+                return false;
+            }
+
+            $this->pickups->expire($pickup);
+
+            return true;
+        }, 3);
+    }
+
     private function expireExport(int $id, CarbonInterface $now, string $correlationId): bool
     {
         return DB::transaction(function () use ($id, $now, $correlationId): bool {
@@ -168,9 +212,9 @@ final readonly class ScheduledOperationsService
     private function purgeIdempotencyKeys(CarbonInterface $now, string $correlationId): int
     {
         $ids = $this->ids(
-            IdempotencyKey::query()
-                ->whereNotNull('expires_at')
-                ->where('expires_at', '<=', $now),
+            IdempotencyKey::query()->where(static function (Builder $query) use ($now): void {
+                $query->whereNull('expires_at')->orWhere('expires_at', '<=', $now);
+            }),
         );
         $purged = 0;
 
@@ -204,7 +248,7 @@ final readonly class ScheduledOperationsService
     {
         return DB::transaction(function () use ($id, $now, $correlationId): bool {
             $key = IdempotencyKey::query()->lockForUpdate()->find($id);
-            if (! $key instanceof IdempotencyKey || $key->expires_at === null || $key->expires_at->isAfter($now)) {
+            if (! $key instanceof IdempotencyKey || ($key->expires_at !== null && $key->expires_at->isAfter($now))) {
                 return false;
             }
 
@@ -242,6 +286,12 @@ final readonly class ScheduledOperationsService
         return ! $redemption->status->isTerminal()
             && $redemption->expires_at !== null
             && $redemption->expires_at->lessThanOrEqualTo($now);
+    }
+
+    private function isExpiredPickup(PickupRequest $pickup, CarbonInterface $now): bool
+    {
+        return ! $pickup->isTerminal()
+            && ($pickup->scheduled_date ?? $pickup->selected_date)->isBefore($now->copy()->startOfDay());
     }
 
     private function isExpiredExport(ReportExport $export, CarbonInterface $now): bool

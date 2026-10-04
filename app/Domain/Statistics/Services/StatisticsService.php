@@ -7,6 +7,13 @@ namespace App\Domain\Statistics\Services;
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Queries\VisibleUsers;
+use App\Domain\MobileServices\Enums\MobileServiceStatus;
+use App\Domain\MobileServices\Models\MobileService;
+use App\Domain\Programs\Enums\TargetStatus;
+use App\Domain\Programs\Models\CollectionTarget;
+use App\Domain\Programs\Services\TargetProgressService;
 use App\Domain\Statistics\Models\StatisticPublication;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -23,7 +30,12 @@ final readonly class StatisticsService
     /** @var list<string> */
     private const DIMENSIONS = ['period', 'rt_id'];
 
-    public function __construct(private PermissionChecker $permissions, private AuditLogger $auditLogger) {}
+    public function __construct(
+        private PermissionChecker $permissions,
+        private AuditLogger $auditLogger,
+        private TargetProgressService $targetProgress,
+        private VisibleUsers $visibleUsers,
+    ) {}
 
     /** @return array<string, mixed> */
     public function internal(User $actor, string $start, string $end, ?int $rtId = null): array
@@ -41,6 +53,9 @@ final readonly class StatisticsService
             $aggregate['total_weight_kg'] = null;
             $aggregate['plastic_weight_kg'] = null;
             $aggregate['dominant_waste_type'] = null;
+            $aggregate['active_customers'] = null;
+            $aggregate['target_progress_kg'] = null;
+            $aggregate['mobile_service_count'] = null;
         }
 
         return $aggregate;
@@ -53,7 +68,7 @@ final readonly class StatisticsService
         if ($publication === null) {
             return ['suppressed' => true, 'metrics' => []];
         }
-        $aggregate = $this->aggregate($start, $end, null);
+        $aggregate = $this->aggregate($start, $end, null, true);
         if ($aggregate['subject_count'] < $publication->privacy_threshold) {
             return ['suppressed' => true, 'metrics' => []];
         }
@@ -92,7 +107,7 @@ final readonly class StatisticsService
     }
 
     /** @return array<string, mixed> */
-    private function aggregate(string $start, string $end, ?int $rtId): array
+    private function aggregate(string $start, string $end, ?int $rtId, bool $publicOnly = false): array
     {
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $start) !== 1 || preg_match('/^\d{4}-\d{2}-\d{2}$/', $end) !== 1 || $start >= $end) {
             throw ValidationException::withMessages(['period' => 'Periode statistik tidak valid.']);
@@ -121,16 +136,54 @@ final readonly class StatisticsService
         }
         arsort($types);
 
-        return ['suppressed' => false, 'subject_count' => $subjects, 'deposit_count' => $deposits->count(), 'total_weight_kg' => number_format($weight, 3, '.', ''), 'plastic_weight_kg' => number_format($plastic, 3, '.', ''), 'dominant_waste_type' => array_key_first($types)];
+        $activeCustomers = User::query()
+            ->where('status', UserStatus::Active)
+            ->whereHas('customerProfile')
+            ->when($rtId !== null, static fn (Builder $customers): Builder => $customers->whereHas('customerProfile', static fn (Builder $profile): Builder => $profile->where('rt_id', $rtId)))
+            ->count();
+        $targetProgress = $this->targetProgress($start, $end, $rtId, $publicOnly);
+        $mobileServiceCount = MobileService::query()
+            ->whereIn('status', [MobileServiceStatus::Published, MobileServiceStatus::Open, MobileServiceStatus::Closed])
+            ->whereDate('starts_at', '>=', $start)
+            ->whereDate('starts_at', '<', $end)
+            ->when($rtId !== null, static fn (Builder $services): Builder => $services->where('rt_id', $rtId))
+            ->count();
+
+        return [
+            'suppressed' => false,
+            'subject_count' => $subjects,
+            'active_customers' => $activeCustomers,
+            'deposit_count' => $deposits->count(),
+            'total_weight_kg' => number_format($weight, 3, '.', ''),
+            'plastic_weight_kg' => number_format($plastic, 3, '.', ''),
+            'dominant_waste_type' => array_key_first($types) ?? 'Tidak teridentifikasi',
+            'target_progress_kg' => number_format($targetProgress, 3, '.', ''),
+            'mobile_service_count' => $mobileServiceCount,
+        ];
+    }
+
+    private function targetProgress(string $start, string $end, ?int $rtId, bool $publicOnly): float
+    {
+        $targets = CollectionTarget::query()
+            ->with('scopes')
+            ->whereIn('status', [TargetStatus::Active, TargetStatus::Closed])
+            ->whereDate('period_start', '<', $end)
+            ->whereDate('period_end', '>=', $start)
+            ->when($publicOnly, static fn (Builder $query): Builder => $query->where('is_public', true))
+            ->get();
+
+        return (float) $targets->sum(function (CollectionTarget $target) use ($rtId): float {
+            if ($rtId === null) {
+                return (float) $this->targetProgress->progress($target);
+            }
+
+            return (float) $this->targetProgress->progressForRtIds($target, [$rtId]);
+        });
     }
 
     private function canViewRegion(User $actor, int $rtId): bool
     {
-        if ($this->permissions->allows($actor, 'user.view.all')) {
-            return true;
-        }
-
-        return $actor->staffProfile?->serviceArea?->rts()->whereKey($rtId)->exists() ?? false;
+        return $this->visibleUsers->canAccessCustomerRt($actor, $rtId);
     }
 
     private function authorize(User $actor, string $permission): void

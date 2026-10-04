@@ -15,7 +15,7 @@
             <div><dt class="text-body-sm text-text-secondary">Dibayar</dt><dd class="mt-1 font-semibold">{{ $withdrawal->paid_at?->format('d M Y H:i') }}</dd></div>
             <div><dt class="text-body-sm text-text-secondary">Verifikasi</dt><dd class="mt-1 font-semibold">{{ str_replace('_', ' ', $withdrawal->recipient_verification) }}</dd></div>
             <div><dt class="text-body-sm text-text-secondary">Referensi penerima</dt><dd class="mt-1 font-semibold">{{ $withdrawal->recipient_reference }}</dd></div>
-            <div><dt class="text-body-sm text-text-secondary">Payer</dt><dd class="mt-1 font-semibold">{{ $withdrawal->payer?->name }}</dd></div>
+            <div><dt class="text-body-sm text-text-secondary">Petugas pembayaran</dt><dd class="mt-1 font-semibold">{{ $withdrawal->payer?->name }}</dd></div>
         </dl>
     </x-ui.panel>
 

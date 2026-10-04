@@ -12,6 +12,9 @@ use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\CustomersRegions\Support\RegionMutationGuard;
 use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Groceries\Enums\GroceryStatus;
+use App\Domain\Groceries\Models\GroceryPackage;
+use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
@@ -22,6 +25,8 @@ use App\Domain\WasteMaster\Models\WasteCondition;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Filament\Resources\Deposits\Models\Deposits\DepositResource;
 use App\Filament\Resources\Deposits\Models\Deposits\Pages\ManageDeposits;
+use App\Filament\Resources\Groceries\Models\GroceryRedemptions\GroceryRedemptionResource;
+use App\Filament\Resources\Groceries\Models\GroceryRedemptions\Pages\ManageGroceryRedemptions;
 use App\Filament\Resources\Ledger\Models\BalanceHolds\BalanceHoldResource;
 use App\Filament\Resources\Ledger\Models\BalanceHolds\Pages\ManageBalanceHolds;
 use App\Filament\Resources\Ledger\Models\LedgerEntries\LedgerEntryResource;
@@ -63,6 +68,123 @@ final class TransactionLaneResourceTest extends TestCase
         self::assertSame($customer->id, $account->user_id);
         self::assertSame(LedgerEntry::KIND_DEPOSIT, $entry->kind);
         self::assertSame(BalanceHold::STATUS_ACTIVE, $hold->status);
+    }
+
+    public function test_deposits_default_to_newest_finalized_setoran_for_all_scope_backoffice_actor(): void
+    {
+        $customer = User::factory()->create();
+        $staff = User::factory()->create();
+        $earlier = Deposit::query()->create([
+            'deposit_number' => 'DEP-20260813145455-EARLIER',
+            'customer_id' => $customer->id,
+            'staff_id' => $staff->id,
+            'method' => 'langsung',
+            'occurred_at' => '2026-08-13 14:54:55',
+            'status' => Deposit::STATUS_FINAL,
+            'total_value' => 10_000,
+            'finalized_at' => '2026-08-13 14:54:55',
+        ]);
+        $later = Deposit::query()->create([
+            'deposit_number' => 'DEP-20260814145455-LATER',
+            'customer_id' => $customer->id,
+            'staff_id' => $staff->id,
+            'method' => 'langsung',
+            'occurred_at' => '2026-08-14 14:54:55',
+            'status' => Deposit::STATUS_FINAL,
+            'total_value' => 10_000,
+            'finalized_at' => '2026-08-14 14:54:55',
+        ]);
+        $admin = User::factory()->create();
+        $this->grant($admin, 'deposit-viewer-all', 'backoffice.access', 'deposit.view', 'user.view', 'user.view.all');
+        $this->actingAs($admin);
+
+        Livewire::test(ManageDeposits::class)
+            ->assertCanSeeTableRecords([$later, $earlier], inOrder: true);
+    }
+
+    public function test_grocery_redemptions_default_to_newest_requests_for_all_scope_backoffice_actor(): void
+    {
+        $customer = User::factory()->create();
+        $package = GroceryPackage::query()->create([
+            'code' => 'GRC-TABLE-ORDER',
+            'name' => 'Paket Urutan Tabel',
+            'contents' => 'Beras dan minyak',
+            'value' => 50_000,
+            'status' => 'aktif',
+        ]);
+        $earlier = GroceryRedemption::query()->create([
+            'request_number' => 'GRC-20260813-EARLIER',
+            'customer_id' => $customer->id,
+            'requested_by_id' => $customer->id,
+            'grocery_package_id' => $package->id,
+            'value_snapshot' => $package->value,
+            'package_snapshot' => ['code' => $package->code, 'name' => $package->name, 'contents' => $package->contents, 'value' => $package->value],
+            'status' => GroceryStatus::PendingVerification,
+            'created_at' => '2026-08-13 14:54:55',
+            'updated_at' => '2026-08-13 14:54:55',
+        ]);
+        $later = GroceryRedemption::query()->create([
+            'request_number' => 'GRC-20260814-LATER',
+            'customer_id' => $customer->id,
+            'requested_by_id' => $customer->id,
+            'grocery_package_id' => $package->id,
+            'value_snapshot' => $package->value,
+            'package_snapshot' => ['code' => $package->code, 'name' => $package->name, 'contents' => $package->contents, 'value' => $package->value],
+            'status' => GroceryStatus::PendingVerification,
+            'created_at' => '2026-08-14 14:54:55',
+            'updated_at' => '2026-08-14 14:54:55',
+        ]);
+        $admin = User::factory()->create();
+        $this->grant($admin, 'grocery-viewer-all', 'backoffice.access', 'grocery.view', 'user.view', 'user.view.all');
+        $this->actingAs($admin);
+
+        Livewire::test(ManageGroceryRedemptions::class)
+            ->assertCanSeeTableRecords([$later, $earlier], inOrder: true);
+    }
+
+    public function test_grocery_redemption_resource_exposes_operational_triage_controls(): void
+    {
+        $customer = User::factory()->create();
+        $requester = User::factory()->create();
+        $package = GroceryPackage::query()->create([
+            'code' => 'GRC-TRIAGE',
+            'name' => 'Paket Triage',
+            'contents' => 'Beras dan minyak',
+            'value' => 50_000,
+            'status' => 'aktif',
+        ]);
+        $redemption = GroceryRedemption::query()->create([
+            'request_number' => 'GRC-TRIAGE-001',
+            'customer_id' => $customer->id,
+            'requested_by_id' => $requester->id,
+            'grocery_package_id' => $package->id,
+            'value_snapshot' => $package->value,
+            'package_snapshot' => ['code' => $package->code, 'name' => $package->name, 'contents' => $package->contents, 'value' => $package->value],
+            'status' => GroceryStatus::PendingVerification,
+        ]);
+        $admin = User::factory()->create();
+        $this->grant($admin, 'grocery-triage', 'backoffice.access', 'grocery.view', 'grocery.approve', 'grocery.prepare', 'user.view', 'user.view.all');
+        $this->actingAs($admin);
+
+        Livewire::test(ManageGroceryRedemptions::class)
+            ->assertCanSeeTableRecords([$redemption])
+            ->assertTableFilterExists('status')
+            ->assertTableFilterExists('grocery_package_id')
+            ->assertTableActionVisible('inspect', $redemption)
+            ->assertTableActionVisible('approve', $redemption)
+            ->assertTableActionVisible('reject', $redemption)
+            ->assertTableActionHidden('prepare', $redemption)
+            ->assertTableActionHidden('ready', $redemption)
+            ->mountTableAction('inspect', $redemption)
+            ->assertSchemaStateSet([
+                'package' => 'Paket Triage',
+                'held_amount' => 'Rp 50.000',
+                'status' => 'Menunggu verifikasi',
+                'customer' => $customer->name,
+                'requested_by' => $requester->name,
+            ]);
+
+        self::assertTrue(GroceryRedemptionResource::canViewAny());
     }
 
     public function test_missing_permission_and_missing_explicit_scope_fail_closed(): void

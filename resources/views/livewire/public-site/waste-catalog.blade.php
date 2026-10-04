@@ -53,7 +53,7 @@
                             <div class="flex items-start justify-between gap-4">
                                 <div class="flex min-w-0 gap-3">
                                     <span class="grid size-10 shrink-0 place-items-center rounded-md bg-success-bg text-forest-700" aria-hidden="true">
-                                        <x-public.icon name="recycle" size="size-5" />
+                                        <x-public.icon name="package-open" size="size-5" />
                                     </span>
                                     <div class="min-w-0">
                                         <p class="text-label font-semibold text-forest-600">{{ $wasteType->category->name }}</p>

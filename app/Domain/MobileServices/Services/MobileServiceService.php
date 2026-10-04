@@ -133,19 +133,23 @@ final readonly class MobileServiceService
         if (! $this->permissions->allows($actor, 'mobile-service.operate') || ! $this->canOperate($actor, $service)) {
             throw new AuthorizationException('Rekap layanan keliling berada di luar scope petugas.');
         }
-        $query = Deposit::query()->where('mobile_service_id', $service->id)->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED]);
+        $deposits = Deposit::query()->with('correction')->where('mobile_service_id', $service->id)->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED])->get();
 
         return [
-            'transaction_count' => (clone $query)->count(),
-            'total_weight_kg' => number_format((float) (clone $query)->sum('total_weight_kg'), 3, '.', ''),
-            'total_value' => (int) (clone $query)->sum('total_value'),
+            'transaction_count' => $deposits->count(),
+            'total_weight_kg' => number_format((float) $deposits->sum('total_weight_kg'), 3, '.', ''),
+            'total_value' => $deposits->sum(static fn (Deposit $deposit): int => $deposit->effectiveTotalValue()),
         ];
     }
 
     /** @return Builder<MobileService> */
     public function publicQuery(): Builder
     {
-        return MobileService::query()->select(['id', 'service_number', 'rt_id', 'point', 'starts_at', 'ends_at', 'status', 'capacity', 'served_count', 'notes'])->whereIn('status', [MobileServiceStatus::Published, MobileServiceStatus::Open])->orderBy('starts_at');
+        return MobileService::query()
+            ->select(['id', 'service_number', 'rt_id', 'point', 'starts_at', 'ends_at', 'status', 'capacity', 'served_count', 'notes'])
+            ->whereIn('status', [MobileServiceStatus::Published, MobileServiceStatus::Open])
+            ->where('ends_at', '>=', now())
+            ->orderBy('starts_at');
     }
 
     /**
@@ -170,8 +174,8 @@ final readonly class MobileServiceService
         if ($rwId !== null && ! Rw::query()->whereKey($rwId)->where('is_active', true)->exists()) {
             throw ValidationException::withMessages(['rw_id' => 'RW layanan harus aktif.']);
         }
-        if (User::query()->whereIn('id', $staffIds)->where('status', UserStatus::Active)->count() !== count(array_unique($staffIds)) || WasteType::query()->whereIn('id', $wasteTypeIds)->where('is_active', true)->count() !== count(array_unique($wasteTypeIds))) {
-            throw ValidationException::withMessages(['assignment' => 'Petugas atau jenis sampah harus aktif.']);
+        if (User::query()->whereIn('id', $staffIds)->where('status', UserStatus::Active)->whereHas('staffProfile')->whereHas('roles.permissions', fn (Builder $permissions): Builder => $permissions->where('permissions.name', 'mobile-service.operate'))->count() !== count(array_unique($staffIds)) || WasteType::query()->whereIn('id', $wasteTypeIds)->where('is_active', true)->count() !== count(array_unique($wasteTypeIds))) {
+            throw ValidationException::withMessages(['assignment' => 'Pilih petugas aktif yang berwenang dan jenis sampah aktif.']);
         }
 
         return ['rw_id' => $rwId, 'rt_id' => $rtId, 'point' => $point, 'starts_at' => $start, 'ends_at' => $end, 'capacity' => $capacity, 'notes' => trim($notes) ?: null];

@@ -29,8 +29,8 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Jejak:** FL-06; BR-AUTH-004; TC-AUTH-002.
 
 #### AUTH-003 — Perubahan kata sandi
-- **Aktor:** pengguna terautentikasi untuk perubahan mandiri, atau admin berizin, sistem, dan pengguna target untuk perubahan berbantuan langsung.
-- **Jalur A, perubahan berbantuan langsung oleh admin:** hanya untuk pengguna yang benar-benar lupa kata sandi dan tidak dapat login. Admin memiliki `user.reset-password` dan `session.revoke`; target adalah pengguna lain dalam scope yang diizinkan; admin memverifikasi target secara `tatap_muka` atau `callback_nomor_terdaftar`, serta mengisi alasan 10–1000 karakter. Admin memilih target yang bukan dirinya sendiri, memasukkan kata sandi baru dan konfirmasi; server memvalidasi konfirmasi, panjang minimum, dan kebijakan password umum. Dalam satu transaksi atomik, sistem menyimpan hash kata sandi, mencabut seluruh sesi aktif target, dan mencatat aktor, metode verifikasi, alasan, serta hasil tanpa mencatat kata sandi.
+- **Aktor:** pengguna terautentikasi untuk perubahan mandiri, atau admin atau superadmin berizin, sistem, dan pengguna target untuk perubahan berbantuan langsung.
+- **Jalur A, perubahan berbantuan langsung oleh admin atau superadmin:** hanya untuk pengguna yang benar-benar lupa kata sandi dan tidak dapat login. Admin atau superadmin memiliki `user.reset-password` dan `session.revoke`; target adalah pengguna lain dalam scope yang diizinkan; alur PasswordAssistance memvalidasi target, metode verifikasi `tatap_muka` atau `callback_nomor_terdaftar`, serta alasan 10–1000 karakter. Aktor berizin memilih target yang bukan dirinya sendiri, memasukkan kata sandi baru dan konfirmasi; server memvalidasi konfirmasi, panjang minimum, dan kebijakan password umum. Dalam satu transaksi atomik, sistem menyimpan hash kata sandi, mencabut seluruh sesi aktif target, dan mencatat aktor, metode verifikasi, alasan, serta hasil tanpa mencatat kata sandi.
 - **Jalur B, perubahan mandiri dari profil:** hanya pengguna yang telah terautentikasi pada profilnya sendiri. Pengguna memasukkan kata sandi saat ini, kata sandi baru, dan konfirmasi; server memverifikasi kata sandi saat ini serta memvalidasi konfirmasi, panjang minimum, dan kebijakan password umum. Setelah sukses, sistem menyimpan hash kata sandi dan mencabut sesi aktif lain milik pengguna sambil mempertahankan sesi saat ini bila secara teknis memungkinkan; bila tidak memungkinkan, sistem mencabut seluruh sesi dan meminta autentikasi ulang. Audit mencatat aktor, metode `mandiri_profil`, dan hasil tanpa kata sandi atau secret.
 - **Hasil:** kata sandi baru aktif; Jalur A mencabut seluruh sesi target, sedangkan Jalur B mencabut sesi lain atau meminta autentikasi ulang bila sesi saat ini tidak dapat dipertahankan.
 - **Kegagalan:** self-target, kondisi lupa/tidak dapat login, permission/scope, metode verifikasi, alasan, kata sandi saat ini, konfirmasi, atau kebijakan kata sandi yang tidak valid berhenti tanpa perubahan kata sandi, sesi, atau audit sukses.
@@ -142,7 +142,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 #### DEP-003 — Idempotensi dan penanganan kegagalan
 - **Aktor:** petugas, sistem, admin.
 - **Prasyarat:** permintaan finalisasi memiliki idempotency key.
-- **Alur:** sistem mencari hasil lama; permintaan baru diproses dalam database transaction dengan lock dan constraint; hasil lama dikembalikan untuk pengulangan; kegagalan parsial di-rollback dan direkonsiliasi.
+- **Alur:** sistem mencari hasil lama; permintaan baru diproses dalam database transaction dengan lock dan constraint; hasil lama dikembalikan untuk pengulangan; kegagalan parsial di-rollback dan dicatat untuk ditelusuri.
 - **Hasil:** satu kejadian bisnis menghasilkan paling banyak satu transaksi final dan mutasi sumber.
 - **Kegagalan:** commit gagal menghasilkan status gagal tanpa saldo berubah.
 - **Kriteria penerimaan:** klik ganda tidak menggandakan saldo; retry aman; insiden dapat dilacak.
@@ -300,36 +300,25 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 
 ### RPT — laporan dan ekspor
 
-#### RPT-001 — Laporan web, CSV, Excel, dan PDF
-- **Aktor:** admin dan pihak internal berizin.
+#### RPT-001 — Laporan web dan Excel
+- **Aktor:** admin, superadmin, dan pihak internal berizin.
 - **Prasyarat:** permission laporan/ekspor dan filter valid.
-- **Alur:** pengguna memilih jenis, periode, wilayah, dan filter; sistem mengotorisasi scope, membangun laporan langsung atau antrean berkala berbatas waktu, mencatat ekspor, lalu menyediakan hasil.
-- **Hasil:** laporan operasional, transaksi, saldo, penjemputan, pencairan, sembako, koreksi, partisipasi, dan rekonsiliasi tersedia dalam format diminta.
+- **Alur:** pengguna memilih jenis, periode, wilayah, dan filter; sistem mengotorisasi scope, membangun laporan, mencatat ekspor, lalu menyediakan file Excel.
+- **Hasil:** laporan operasional, transaksi, saldo, penjemputan, pencairan, sembako, koreksi, dan partisipasi tersedia di web dan Excel.
 - **Kegagalan:** akses/filter invalid ditolak; pekerjaan besar gagal tanpa membuka file parsial.
-- **Kriteria penerimaan:** angka lintas format konsisten; ekspor dilindungi dan kedaluwarsa; aktivitas tercatat; CSV aman dari formula injection.
+- **Kriteria penerimaan:** angka web dan Excel konsisten; ekspor dilindungi dan kedaluwarsa; aktivitas tercatat; nilai Excel aman dari formula injection.
 - **Jejak:** FL-26; BR-RPT-001–006; TC-RPT-001.
 
 ### AUD — audit log
 
 #### AUD-001 — Audit aktivitas penting dan retensi
-- **Aktor:** sistem, admin pembaca, superadmin teknis untuk retensi resmi.
+- **Aktor:** sistem, admin/superadmin pembaca, dan superadmin untuk retensi resmi.
 - **Prasyarat:** kejadian audit terjadi atau pembaca berizin.
 - **Alur:** sistem mencatat pelaku, waktu, IP/perangkat relevan, aksi, objek, nilai lama/baru yang aman, dan korelasi; admin menelusuri; retensi hanya dijalankan melalui kebijakan teknis.
-- **Hasil:** perubahan akun, akses, harga, transaksi, saldo, status, persetujuan, pembayaran, penyerahan, ekspor, dan konfigurasi dapat ditelusuri.
+- **Hasil:** perubahan akun, akses, harga, transaksi, saldo, status, persetujuan, pembayaran, penyerahan, ekspor, dan konfigurasi teknis non-secret melalui UI berizin dapat ditelusuri.
 - **Kegagalan:** pengguna operasional tidak dapat mengubah/menghapus log; secret tidak dicatat.
 - **Kriteria penerimaan:** log append-oriented; pencarian berizin; kegagalan audit pada aksi keuangan memblokir commit atau dicakup transaksi yang sama.
 - **Jejak:** FL-27; BR-AUD-001–006; TC-AUD-001.
-
-### REC — rekonsiliasi
-
-#### REC-001 — Rekonsiliasi harian dan penanganan selisih
-- **Aktor:** admin, bendahara, petugas.
-- **Prasyarat:** pelayanan harian ditutup dan seluruh bukti tersedia.
-- **Alur:** sistem mengambil saldo awal, transaksi, setoran, pencairan, penukaran, hold, koreksi, dan kas; petugas mencocokkan bukti; selisih ditelusuri dan dikoreksi resmi bila terbukti; rekap disahkan.
-- **Hasil:** laporan rekonsiliasi menyimpan hasil, selisih, penjelasan, pelaksana, dan pengesahan.
-- **Kegagalan:** selisih terbuka mencegah status “sesuai”; koreksi informal tidak diizinkan.
-- **Kriteria penerimaan:** total ledger dapat direproduksi; kas dibandingkan dengan pembayaran; selisih memiliki status dan tindak lanjut.
-- **Jejak:** FL-29, FL-30; BR-REC-001–006; TC-REC-001.
 
 ### PWA — aplikasi web progresif terbatas
 
@@ -353,7 +342,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 | NFR-PERF-001 | Query terindeks, pagination, gambar terkompresi, dan pekerjaan ekspor besar dibatasi sesuai shared hosting. | Halaman utama responsif pada volume uji yang disepakati tanpa timeout normal. |
 | NFR-COMP-001 | Mendukung Chrome Android/desktop, Edge, Safari mobile, dan Firefox versi yang masih didukung vendor. | Skenario kritis lulus pada matriks browser. |
 | NFR-TIME-001 | Zona waktu aplikasi `Asia/Jakarta`; waktu database disimpan konsisten dan ditampilkan dalam zona aplikasi. | Pengujian batas hari dan cron menghasilkan tanggal bisnis yang benar. |
-| NFR-OPS-001 | Backup database harian dan media berkala, salinan terpisah, verifikasi, serta uji restore. | Sasaran awal RPO ≤24 jam dan RTO ≤8 jam terbukti dalam latihan. |
+| NFR-OPS-001 | Backup database harian dan media berkala, salinan terpisah, verifikasi, serta uji restore melalui deployment/SOP. | Sasaran awal RPO ≤24 jam dan RTO ≤8 jam terbukti dalam latihan; aplikasi tidak mengklaim menjalankan dump atau restore artefak aktual melalui UI. |
 | NFR-HOST-001 | Deployment sesuai batas Hostinger shared hosting pada [DEPLOYMENT.md](DEPLOYMENT.md). | Tidak memerlukan root, Redis, Horizon, Supervisor, WebSocket, atau worker permanen. |
 | NFR-SCOPE-001 | Data plastik hanya mendukung tujuan pemanfaatan lanjutan paving block; produksi tidak dikelola. | Tidak ada modul formula, batch, suhu, uji tekan, stok produk jadi, distribusi, atau biaya produksi. |
 
@@ -391,8 +380,7 @@ Nomor mengacu pada urutan diagram di `Kumpulan_Flowchart_Bank_Sampah_Digital_Sin
 | FL-26 | Pembuatan Laporan dan Statistik | RPT-001, PUB-001, PUB-002 |
 | FL-27 | Audit Log | AUD-001 |
 | FL-28 | Backup dan Pemulihan Data | NFR-OPS-001, AUD-001 |
-| FL-29 | Penanganan Kesalahan Transaksi | DEP-003, BAL-002, REC-001 |
-| FL-30 | Rekonsiliasi Harian | REC-001, PUB-001 |
+| FL-29 | Penanganan Kesalahan Transaksi | DEP-003, BAL-002 |
 | FL-31 | Target Pengumpulan Sampah Desa | TGT-001 |
 | FL-32 | Bank Sampah Keliling per RT/RW | MOB-001, DEP-001 |
 | FL-33 | Estimasi Nilai Sebelum Setor | EST-001, WST-001 |
@@ -416,7 +404,7 @@ ID `FL-01`–`FL-36` mengikuti urutan generator dan diagram final sebagaimana di
 | Notifikasi, WhatsApp manual, pengumuman | NOT-001, WA-001, ANN-001 |
 | Target, keliling, estimasi, QR bukti | TGT-001, MOB-001, EST-001, QRV-001 |
 | Partisipasi, publik, laporan | PUB-001–002, RPT-001 |
-| Audit, rekonsiliasi, PWA | AUD-001, REC-001, PWA-001 |
+| Audit dan PWA | AUD-001, PWA-001 |
 
 ## 6. Perubahan requirement
 

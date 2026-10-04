@@ -48,7 +48,7 @@
 
 <x-slot:quickActions>
     <div>
-        <h2 class="text-label font-bold text-text-secondary mb-3">Aksi Cepat</h2>
+        <h2 class="text-label font-bold text-text-secondary mb-3">Tindakan cepat</h2>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <a href="{{ route('citizen.pickup.create') }}"
                 class="group flex flex-col items-center gap-2.5 rounded-xl border border-border bg-surface p-4 text-center shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-forest-600 hover:shadow-sm">
@@ -74,19 +74,19 @@
                 <span class="text-caption font-semibold text-deep-green">Estimasi</span>
             </a>
 
-            <a href="{{ $customerCardHref }}"
-                class="group flex flex-col items-center gap-2.5 rounded-xl border border-border bg-surface p-4 text-center shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-forest-600 hover:shadow-sm">
-                <div class="flex size-11 items-center justify-center rounded-xl bg-success-bg text-forest-600 transition-colors group-hover:bg-forest-600 group-hover:text-white">
-                <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            <a href="{{ route('citizen.withdrawal.create') }}"
+                class="group flex flex-col items-center gap-2.5 rounded-xl border border-border bg-surface p-4 text-center shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-harvest-gold hover:shadow-sm">
+                <div class="flex size-11 items-center justify-center rounded-xl bg-warning-bg text-harvest-gold transition-colors group-hover:bg-harvest-gold group-hover:text-deep-green">
+                <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h.01M17 12h.01"/><path d="M12 9v6M10 10.5c.4-.35 1.05-.55 1.8-.55 1.1 0 1.9.45 1.9 1.2 0 1.85-3.65.65-3.65 2.4 0 .75.8 1.2 1.9 1.2.75 0 1.4-.2 1.8-.55"/></svg>
             </div>
-                <span class="text-caption font-semibold text-deep-green">Kartu Nasabah</span>
+                <span class="text-caption font-semibold text-deep-green">Cairkan Saldo</span>
             </a>
         </div>
     </div>
 </x-slot:quickActions>
 
 {{-- Active Requests --}}
-@if ($activePickups->isNotEmpty() || $activeWithdrawals->isNotEmpty())
+@if ($activePickups->isNotEmpty() || $activeWithdrawals->isNotEmpty() || $activeGroceries->isNotEmpty())
 <x-slot:activeRequests>
     <div>
         <h2 class="text-label font-bold text-text-secondary mb-3">Pengajuan Aktif</h2>
@@ -119,6 +119,20 @@
                     <x-ui.status-badge :status="$withdrawal->status?->value ?? 'diajukan'" />
                 </a>
             @endforeach
+            @foreach ($activeGroceries as $redemption)
+                <a href="{{ route('citizen.grocery.show', $redemption) }}" class="flex items-center justify-between rounded-xl border border-border bg-surface p-4 shadow-xs transition hover:border-harvest-gold hover:shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning-bg text-harvest-gold">
+                            <x-public.icon name="package" class="size-4" />
+                        </div>
+                        <div>
+                            <p class="text-label font-semibold text-deep-green">Tukar Sembako</p>
+                            <p class="text-caption text-text-secondary">{{ $redemption->request_number }}</p>
+                        </div>
+                    </div>
+                    <x-ui.status-badge :status="$redemption->status->value" />
+                </a>
+            @endforeach
         </div>
     </div>
 </x-slot:activeRequests>
@@ -145,7 +159,7 @@
                             <p class="text-label font-semibold text-deep-green">{{ $deposit->deposit_number }}</p>
                             <p class="mt-0.5 text-caption text-text-secondary">{{ $deposit->occurred_at?->translatedFormat('d M Y') }}</p>
                         </div>
-                        <p class="amount-tabular text-label font-bold text-deep-green">Rp{{ number_format((int)($deposit->total_value ?? 0), 0, ',', '.') }}</p>
+                        <p class="amount-tabular text-label font-bold text-deep-green">Rp{{ number_format($deposit->effectiveTotalValue(), 0, ',', '.') }}</p>
                     </a>
                 @endforeach
             </div>
@@ -159,31 +173,17 @@
     <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div class="space-y-2">
             <div class="flex items-center gap-2 text-label text-forest-600">
-                <x-public.icon name="leaf" class="size-4" />
+                <img src="{{ asset('images/landing/mascot-3.png') }}" alt="" class="size-7 object-contain" aria-hidden="true" />
                 <span>Beranda Warga</span>
             </div>
             <h1 id="citizen-dashboard-title" class="text-h2 font-bold text-deep-green">
                 Halo, {{ $actorName }}!
             </h1>
-            <p class="text-body-sm text-text-secondary">
-                Kelola pemilahan sampah, ajukan layanan, dan pantau kartu identitas nasabah Anda.
-            </p>
-            <div class="flex flex-wrap gap-2 pt-1">
-                <a href="{{ $customerCardHref }}"
-                    class="inline-flex min-h-touch items-center gap-2 rounded-xl border border-forest-600 px-4 text-label font-semibold text-forest-700 shadow-xs transition hover:bg-success-bg">
-                    <x-public.icon name="book-open" class="size-4" />
-                    Kartu Nasabah
-                </a>
-                <a href="{{ route('citizen.withdrawal.create') }}"
-                    class="inline-flex min-h-touch items-center gap-2 rounded-xl border border-border px-4 text-label font-semibold text-text-primary shadow-xs transition hover:border-harvest-gold">
-                    <x-public.icon name="banknote" class="size-4" />
-                    Cairkan Saldo
-                </a>
-            </div>
+            <p class="text-body-sm text-text-secondary">Kelola pemilahan sampah dan ajukan layanan dengan mudah dari beranda ini.</p>
         </div>
         <div class="flex shrink-0 items-center justify-center">
             <x-ui.mascot variant="2" bubble="Yuk pilah sampahmu hari ini!" bubblePosition="top"
-                class="h-28 w-auto sm:h-32" animate />
+                class="h-24 w-auto shrink-0 sm:h-28" animate />
         </div>
     </div>
 </section>

@@ -78,9 +78,12 @@ final readonly class ManageRoles
         }
 
         $roleIds = array_values(array_unique(array_map('intval', $roleIds)));
+        if (count($roleIds) !== 1) {
+            throw ValidationException::withMessages(['roles' => 'Setiap pengguna harus memiliki tepat satu role.']);
+        }
         $roles = Role::query()->whereKey($roleIds)->get();
-        if (count($roleIds) !== $roles->count()) {
-            throw ValidationException::withMessages(['roles' => 'Satu atau lebih role tidak valid.']);
+        if ($roles->count() !== 1) {
+            throw ValidationException::withMessages(['roles' => 'Role yang dipilih tidak valid.']);
         }
 
         return DB::transaction(function () use ($actor, $subject, $roles, $roleIds, $reason): User {

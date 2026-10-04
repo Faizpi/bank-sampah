@@ -1,0 +1,31 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\Pages;
+
+use BackedEnum;
+use Filament\Support\Icons\Heroicon;
+use UnitEnum;
+
+final class TechnicalHealthPage extends OperationsDashboard
+{
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Administrasi sistem';
+
+    protected static ?string $navigationParentItem = 'Kontrol teknis';
+
+    protected static ?int $navigationSort = 10;
+
+    protected static ?string $navigationLabel = 'Health';
+
+    protected static ?string $title = 'Health sistem';
+
+    protected string $view = 'filament.backoffice.technical-health';
+
+    public static function canAccess(): bool
+    {
+        return self::hasTechnicalPermission('system.maintenance');
+    }
+}

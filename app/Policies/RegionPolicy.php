@@ -36,6 +36,11 @@ abstract readonly class RegionPolicy
         return $this->viewAny($actor);
     }
 
+    public function activate(User $actor, object $record): bool
+    {
+        return $this->viewAny($actor);
+    }
+
     public function delete(User $actor, object $record): bool
     {
         return false;

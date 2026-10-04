@@ -11,29 +11,43 @@ use Illuminate\Database\Eloquent\Builder;
 
 final readonly class TargetProgressService
 {
-    /** @return array{weight_kg: string, subject_count: int, deposit_count: int, plastic_weight_kg: string} */
-    public function aggregate(CollectionTarget $target): array
+    /**
+     * @param  list<int>|null  $allowedRtIds
+     * @return array{weight_kg: string, subject_count: int, deposit_count: int, plastic_weight_kg: string}
+     */
+    public function aggregate(CollectionTarget $target, ?array $allowedRtIds = null): array
     {
-        $cached = $this->cachedAggregates();
-        if (isset($cached[$target->getKey()])) {
-            return $cached[$target->getKey()];
+        if ($allowedRtIds === null) {
+            $cached = $this->cachedAggregates();
+            if (isset($cached[$target->getKey()])) {
+                return $cached[$target->getKey()];
+            }
         }
 
         $targets = CollectionTarget::query()->with('scopes')->get();
 
-        $aggregates = $this->aggregateMany($targets);
-        $this->cacheAggregates($aggregates);
+        $aggregates = $this->aggregateMany($targets, $allowedRtIds);
+        if ($allowedRtIds === null) {
+            $this->cacheAggregates($aggregates);
+        }
 
-        return $aggregates[$target->getKey()] ?? $this->aggregateMany([$target])[$target->getKey()];
+        return $aggregates[$target->getKey()] ?? $this->aggregateMany([$target], $allowedRtIds)[$target->getKey()];
+    }
+
+    /** @param list<int> $allowedRtIds */
+    public function progressForRtIds(CollectionTarget $target, array $allowedRtIds): string
+    {
+        return $this->aggregate($target, $allowedRtIds)['weight_kg'];
     }
 
     /**
      * Aggregate a bounded target set from one deposit/item load rather than one full scan per target.
      *
      * @param  iterable<CollectionTarget>  $targets
+     * @param  list<int>  $allowedRtIds  Null means global; an empty list means no accessible RT.
      * @return array<int, array{weight_kg: string, subject_count: int, deposit_count: int, plastic_weight_kg: string}>
      */
-    public function aggregateMany(iterable $targets): array
+    public function aggregateMany(iterable $targets, ?array $allowedRtIds = null): array
     {
         $targets = collect($targets)->values();
         if ($targets->isEmpty()) {
@@ -50,7 +64,7 @@ final readonly class TargetProgressService
         $first = $targets->sortBy('period_start')->firstOrFail();
         $last = $targets->sortByDesc('period_end')->firstOrFail();
 
-        $deposits = Deposit::query()
+        $depositQuery = Deposit::query()
             ->with(['items.wasteType', 'customer.customerProfile'])
             ->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED])
             ->whereDate('occurred_at', '>=', $first->period_start)
@@ -85,12 +99,21 @@ final readonly class TargetProgressService
                         });
                     });
                 }
-            })
-            ->get();
+            });
+        if ($allowedRtIds !== null) {
+            $depositQuery->when($allowedRtIds === [], static fn (Builder $query): Builder => $query->whereKey([]));
+            if ($allowedRtIds !== []) {
+                $depositQuery->whereHas('customer.customerProfile', static fn (Builder $profile): Builder => $profile->whereIn('rt_id', $allowedRtIds));
+            }
+        }
+        $deposits = $depositQuery->get();
 
         foreach ($deposits as $deposit) {
             foreach ($targets as $target) {
                 if ($deposit->occurred_at->lt($target->period_start->startOfDay()) || $deposit->occurred_at->gt($target->period_end->endOfDay())) {
+                    continue;
+                }
+                if ($allowedRtIds !== null && ! in_array((int) $deposit->customer?->customerProfile?->rt_id, $allowedRtIds, true)) {
                     continue;
                 }
 

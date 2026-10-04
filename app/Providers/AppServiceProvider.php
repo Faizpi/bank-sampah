@@ -4,16 +4,22 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Communication\Models\Announcement;
 use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
+use App\Domain\Identity\Models\Permission;
+use App\Domain\Identity\Models\Role;
+use App\Domain\MobileServices\Models\MobileService as MobileServiceModel;
 use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Notifications\Listeners\PersistNotification;
 use App\Domain\Pickups\Models\PickupCapacity;
 use App\Domain\Pickups\Models\PickupRequest;
+use App\Domain\Programs\Models\CollectionTarget;
+use App\Domain\Statistics\Models\StatisticPublication;
 use App\Domain\WasteMaster\Models\WasteCategory;
 use App\Domain\WasteMaster\Models\WasteCondition;
 use App\Domain\WasteMaster\Models\WastePrice;
@@ -21,14 +27,21 @@ use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
+use App\Policies\AnnouncementPolicy;
+use App\Policies\CollectionTargetPolicy;
 use App\Policies\DusunPolicy;
 use App\Policies\GroceryPackagePolicy;
 use App\Policies\GroceryRedemptionPolicy;
+use App\Policies\MobileServicePolicy;
+use App\Policies\PermissionPolicy;
 use App\Policies\PickupCapacityPolicy;
 use App\Policies\PickupRequestPolicy;
+use App\Policies\RolePolicy;
 use App\Policies\RtPolicy;
 use App\Policies\RwPolicy;
 use App\Policies\ServiceAreaPolicy;
+use App\Policies\StatisticPublicationPolicy;
+use App\Policies\UserPolicy;
 use App\Policies\WasteCategoryPolicy;
 use App\Policies\WasteConditionPolicy;
 use App\Policies\WastePricePolicy;
@@ -61,6 +74,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(Announcement::class, AnnouncementPolicy::class);
+        Gate::policy(CollectionTarget::class, CollectionTargetPolicy::class);
+        Gate::policy(MobileServiceModel::class, MobileServicePolicy::class);
+        Gate::policy(StatisticPublication::class, StatisticPublicationPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(Role::class, RolePolicy::class);
+        Gate::policy(Permission::class, PermissionPolicy::class);
         Gate::policy(Dusun::class, DusunPolicy::class);
         Gate::policy(Rw::class, RwPolicy::class);
         Gate::policy(Rt::class, RtPolicy::class);

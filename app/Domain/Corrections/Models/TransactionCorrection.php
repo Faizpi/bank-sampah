@@ -47,6 +47,18 @@ final class TransactionCorrection extends Model
         return $this->morphMany(Media::class, 'attachable');
     }
 
+    public function effectiveTotalValue(): int
+    {
+        $values = $this->getAttribute('after_values');
+        if (! is_array($values)) {
+            return (int) $this->deposit?->total_value;
+        }
+
+        $value = $values['total_value'] ?? null;
+
+        return is_int($value) || is_numeric($value) ? (int) $value : (int) $this->deposit?->total_value;
+    }
+
     protected static function booted(): void
     {
         self::updating(static function (): void {

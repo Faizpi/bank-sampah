@@ -29,7 +29,7 @@ final readonly class EstimateService
             throw ValidationException::withMessages(['weight_kg' => 'Berat harus positif dengan maksimal tiga desimal.']);
         }
         $price = $this->priceResolver->resolve($type, $condition->id, CarbonImmutable::now('Asia/Jakarta'));
-        $value = $weight->subtotal($price->money())->amount();
+        $value = $price->snapshot()->withWeight($weight->decimal())->subtotal;
 
         return ['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => $weight->decimal(), 'price_per_kg' => $price->price, 'estimated_value' => $value, 'disclaimer' => 'Estimasi informatif. Nilai akhir mengikuti berat aktual dan harga saat transaksi. Estimasi tidak membuat transaksi, saldo, hold, atau jaminan nilai akhir.'];
     }

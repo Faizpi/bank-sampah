@@ -14,8 +14,9 @@ class DatabaseSeeder extends Seeder
         $this->call(RolesAndPermissionsSeeder::class);
         $this->call(InitialAdminSeeder::class);
 
-        if (! app()->environment('production')) {
+        if (DeveloperUsersSeeder::canSeedDemoData()) {
             $this->call(DeveloperUsersSeeder::class);
+            $this->call(LocalDataSeeder::class);
         }
     }
 }

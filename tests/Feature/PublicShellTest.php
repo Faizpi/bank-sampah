@@ -26,6 +26,8 @@ final class PublicShellTest extends TestCase
         self::assertSame(1, substr_count($html, '<main'));
         self::assertSame(1, substr_count($html, '<footer'));
         self::assertSame(1, substr_count($html, '<h1'));
+        self::assertStringContainsString('sticky top-0 z-sticky -mb-[4.75rem] px-3 pt-3', $html);
+        self::assertStringNotContainsString('Transparansi untuk setiap setoran', $html);
     }
 
     public function test_public_desktop_navigation_exposes_grouped_destinations_and_direct_ctas(): void

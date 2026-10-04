@@ -13,7 +13,9 @@
                 </div>
             @endif
         </div>
-        @isset($connectivity)<div class="shrink-0">{{ $connectivity }}</div>@endisset
+        @isset($connectivity)
+            <div class="shrink-0">{{ $connectivity }}</div>
+        @endisset
         @isset($profile)<div class="flex min-h-touch shrink-0 items-center">{{ $profile }}</div>@endisset
     </div>
 </header>

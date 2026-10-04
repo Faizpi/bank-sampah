@@ -14,21 +14,37 @@
 
     {{-- Deposits --}}
     <x-ui.panel title="Setoran" description="Bukti final dan status transaksi.">
-        <div class="divide-y divide-border">
+        <form class="grid gap-4 border-b border-border pb-4 sm:grid-cols-2 lg:grid-cols-4">
+            <x-ui.input name="transactionNumber" label="Nomor transaksi" placeholder="Cari nomor setoran" wire:model.live.debounce.300ms="transactionNumber" />
+            <x-ui.select name="status" label="Status" placeholder="Semua status" wire:model.live="status">
+                @foreach ($statuses as $filterStatus)
+                    <option value="{{ $filterStatus }}">{{ \App\Support\StatusLabel::for($filterStatus) }}</option>
+                @endforeach
+            </x-ui.select>
+            <x-ui.input name="dateFrom" label="Dari tanggal" type="date" :error="$errors->first('dateFrom')" wire:model.live="dateFrom" />
+            <x-ui.input name="dateUntil" label="Sampai tanggal" type="date" :error="$errors->first('dateUntil')" wire:model.live="dateUntil" />
+        </form>
+
+        <div class="divide-y divide-border pt-4">
             @forelse ($deposits as $deposit)
                 <a href="{{ route('citizen.deposit-receipt', $deposit) }}"
                     class="flex items-center justify-between py-4 transition hover:opacity-80 first:pt-0 last:pb-0"
                     wire:key="deposit-{{ $deposit->id }}">
                     <div>
-                        <p class="text-label font-semibold text-deep-green">{{ $deposit->deposit_number }}</p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <p class="text-label font-semibold text-deep-green">{{ $deposit->deposit_number }}</p>
+                            <x-ui.status-badge :status="match ($deposit->status) { \App\Domain\Deposits\Models\Deposit::STATUS_FINAL, \App\Domain\Deposits\Models\Deposit::STATUS_CORRECTED => 'success', \App\Domain\Deposits\Models\Deposit::STATUS_REJECTED, \App\Domain\Deposits\Models\Deposit::STATUS_REVERSED => 'error', \App\Domain\Deposits\Models\Deposit::STATUS_DRAFT => 'cancelled', default => 'pending' }">
+                                {{ \App\Support\StatusLabel::for($deposit->status) }}
+                            </x-ui.status-badge>
+                        </div>
                         <p class="mt-0.5 text-caption text-text-secondary">
                             {{ $deposit->occurred_at->translatedFormat('d F Y, H:i') }}
-                            @if ($deposit->total_weight_kg) · {{ $deposit->total_weight_kg }} kg @endif
+                            @if ($deposit->total_weight_kg) · {{ \App\Support\WeightFormatter::format($deposit->total_weight_kg) }} kg @endif
                         </p>
                     </div>
                     <div class="flex items-center gap-2">
                         <p class="amount-tabular text-title font-bold text-deep-green">
-                            Rp {{ number_format((int) ($deposit->total_value ?? 0), 0, ',', '.') }}
+                            Rp {{ number_format($deposit->effectiveTotalValue(), 0, ',', '.') }}
                         </p>
                         <svg viewBox="0 0 24 24" class="size-4 text-text-secondary" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                     </div>
@@ -37,7 +53,13 @@
                 <div class="py-8 text-center">
                     <x-ui.mascot variant="9" class="mx-auto h-20 w-auto" />
                     <p class="mt-3 text-label font-semibold text-deep-green">Belum ada riwayat</p>
-                    <p class="mt-1 text-caption text-text-secondary">Setoran final Anda akan muncul di sini.</p>
+                    <p class="mt-1 text-caption text-text-secondary">
+                        @if ($transactionNumber || $status || $dateFrom || $dateUntil)
+                            Tidak ada setoran yang sesuai dengan filter.
+                        @else
+                            Setoran final Anda akan muncul di sini.
+                        @endif
+                    </p>
                 </div>
             @endforelse
         </div>

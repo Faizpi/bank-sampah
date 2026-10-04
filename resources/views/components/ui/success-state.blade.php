@@ -1,4 +1,4 @@
-@props(['title', 'reference', 'value', 'time', 'status' => 'success', 'viewHref' => null, 'printHref' => null])
+@props(['title', 'reference' => null, 'value' => null, 'time' => null, 'status' => 'success', 'viewHref' => null, 'printHref' => null, 'description' => null])
 
 <x-ui.panel data-success-receipt state="success">
     <div class="flex gap-3">

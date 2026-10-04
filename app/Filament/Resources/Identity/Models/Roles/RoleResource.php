@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Identity\Models\Roles;
 
 use App\Domain\Identity\Actions\ManageRoles as ManageRolesAction;
+use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Support\SystemRoles;
 use App\Filament\Resources\Identity\Models\Roles\Pages\ManageRoles;
@@ -30,20 +31,22 @@ final class RoleResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Data Master';
+    protected static string|UnitEnum|null $navigationGroup = 'Keamanan & Akses';
 
-    protected static ?string $navigationLabel = 'Role';
+    protected static ?int $navigationSort = 60;
 
-    protected static ?string $modelLabel = 'role';
+    protected static ?string $navigationLabel = 'Peran';
 
-    protected static ?string $pluralModelLabel = 'role';
+    protected static ?string $modelLabel = 'peran';
+
+    protected static ?string $pluralModelLabel = 'peran';
 
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Identitas role')
+            Section::make('Identitas peran')
                 ->schema([
                     TextInput::make('name')
                         ->label('Nama')
@@ -52,16 +55,16 @@ final class RoleResource extends Resource
                         ->maxLength(50)
                         ->disabled(fn (?Role $record): bool => $record !== null && SystemRoles::contains($record->name))
                         ->helperText(fn (?Role $record): ?string => $record !== null && SystemRoles::contains($record->name)
-                            ? 'Nama role sistem tidak dapat diubah.'
+                            ? 'Nama peran sistem tidak dapat diubah.'
                             : null),
                     TextInput::make('description')->label('Deskripsi')->maxLength(255),
                 ])
                 ->columns(1),
-            Section::make('Permission')
+            Section::make('Izin')
                 ->schema([
                     CheckboxList::make('permissions')
-                        ->label('Permission')
-                        ->relationship('permissions', 'name')
+                        ->label('Izin')
+                        ->options(fn (): array => Permission::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->columns(3)
                         ->columnSpanFull(),
                 ]),
@@ -75,7 +78,7 @@ final class RoleResource extends Resource
             ->columns([
                 TextColumn::make('name')->label('Nama')->searchable()->sortable(),
                 TextColumn::make('description')->label('Deskripsi')->limit(60)->searchable(),
-                TextColumn::make('permissions_count')->label('Permission')->counts('permissions')->sortable(),
+                TextColumn::make('permissions_count')->label('Izin')->counts('permissions')->sortable(),
                 TextColumn::make('users_count')->label('Pengguna')->counts('users')->sortable(),
             ])
             ->recordActions([
@@ -85,8 +88,8 @@ final class RoleResource extends Resource
                 DeleteAction::make()
                     ->label('Hapus')
                     ->requiresConfirmation()
-                    ->modalHeading('Hapus role')
-                    ->modalDescription('Role yang dihapus tidak dapat dikembalikan.')
+                    ->modalHeading(fn (Role $record): string => "Hapus peran {$record->name}?")
+                    ->modalDescription('Peran ini dan pengaturannya tidak dapat dipulihkan setelah dihapus.')
                     ->visible(fn (Role $record): bool => ! SystemRoles::contains($record->name))
                     ->authorize(fn (Role $record): bool => self::canDelete($record))
                     ->action(function (Role $record): void {

@@ -18,7 +18,7 @@ final class ManageRoles extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->label('Role Baru')
+                ->label('Peran baru')
                 ->using(fn (array $data): Role => app(ManageRolesAction::class)->createRole(
                     auth()->user(),
                     $data['name'],

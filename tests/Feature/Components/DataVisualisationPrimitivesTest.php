@@ -49,6 +49,7 @@ final class DataVisualisationPrimitivesTest extends TestCase
         self::assertStringContainsString('aria-label="Filter aktif"', $html);
         self::assertStringContainsString('Status: Selesai', $html);
         self::assertStringContainsString('aria-label="Hapus filter Status: Selesai"', $html);
+        self::assertStringContainsString('min-h-touch min-w-touch', $html);
         self::assertStringContainsString('sticky', $html);
         self::assertStringContainsString('data-mobile-row-stack', $html);
         self::assertStringContainsString('md:table-row', $html);

@@ -31,7 +31,11 @@ final class W2IdentificationRouteTest extends TestCase
         $this->actingAs($officer)->get(route('officer.customer-identification'))->assertForbidden();
 
         $this->grant($officer, 'customer.view');
-        $this->actingAs($officer)->get(route('officer.customer-identification'))->assertOk()->assertSee('Identifikasi warga');
+        $this->actingAs($officer)
+            ->get(route('officer.customer-identification'))
+            ->assertOk()
+            ->assertSee('Identifikasi warga')
+            ->assertHeader('Permissions-Policy', 'accelerometer=(), autoplay=(), camera=(self), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()');
     }
 
     private function grant(User $user, string ...$permissions): void

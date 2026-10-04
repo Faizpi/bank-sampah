@@ -8,7 +8,7 @@
 4. Kegagalan mengembalikan pesan Bahasa Indonesia yang spesifik pada field atau tindakan, mempertahankan input aman, memindahkan fokus ke ringkasan kesalahan, dan tidak menjalankan efek sukses.
 5. Unique constraint, foreign key, check constraint yang didukung, dan database transaction melindungi invariant setelah validasi aplikasi.
 6. Zona waktu input/tampilan adalah `Asia/Jakarta`; waktu tersimpan memakai representasi konsisten yang ditetapkan arsitektur.
-7. SQLite `:memory:` memvalidasi perilaku aplikasi dan intent schema portabel pada gate harian. Perilaku production-engine MariaDB—termasuk locking, transaction, constraint, dan trigger bila relevan—memerlukan evidence release-validation MariaDB terpisah sebelum UAT/production; hasil SQLite tidak boleh diklaim sebagai buktinya.
+7. SQLite `:memory:` memvalidasi perilaku aplikasi dan intent schema portabel pada gate harian. Perilaku production-engine MySQL 8.0.30, termasuk locking, transaction, constraint, dan trigger bila relevan, memerlukan evidence release-validation MySQL terpisah sebelum UAT/production; hasil SQLite tidak boleh diklaim sebagai buktinya.
 
 ## 2. Normalisasi umum
 
@@ -193,16 +193,18 @@ Transisi yang tidak tercantum pada BR-PUP-009 ditolak. Pembatalan warga setelah 
 - Pengumuman: judul 3–160, isi 3–10.000, audiens enum, periode valid, konten disanitasi.
 - Filter laporan: periode wajib dalam batas; wilayah/status/jenis dari enum/FK; sort dan kolom ekspor allowlist.
 - Nama file ekspor dibuat server; tidak memakai input path pengguna.
-- Sel CSV yang dimulai `=`, `+`, `-`, atau `@` dinetralkan sesuai strategi ekspor.
+- Nilai sel Excel yang dimulai `=`, `+`, `-`, atau `@` dinetralkan sesuai strategi ekspor.
 
 ## 13. File dan media
 
 | Jenis | Format yang diterima | Batas awal | Penyimpanan |
 |---|---|---:|---|
-| Foto penjemputan/transaksi/sembako | JPEG, PNG, WebP berdasarkan pemeriksaan MIME dan signature | 5 MB/file; maksimal 5 sesuai alur | Privat |
+| Foto penjemputan | JPEG atau PNG pada input; dinormalisasi menjadi JPEG | 1 MB/file; maksimal 2 foto | Privat |
+| Foto transaksi/sembako | JPEG, PNG, WebP berdasarkan pemeriksaan MIME dan signature | 5 MB/file; maksimal 1 sesuai alur | Privat |
 | Foto master/pengumuman | JPEG, PNG, WebP | 5 MB/file | Publik terkontrol atau hasil turunan; asli privat |
-| Bukti pembayaran/penyerahan | JPEG, PNG, WebP, PDF | 5 MB/file | Privat |
-| Ekspor | CSV, XLSX, PDF yang dibuat sistem | Batas sesuai job/hosting | Privat dan kedaluwarsa |
+| Bukti pembayaran | JPEG atau PNG; dinormalisasi menjadi JPEG | Maksimal 1 MB setelah kompresi | Privat |
+| Bukti penyerahan | JPEG, PNG, WebP, PDF | 5 MB/file | Privat |
+| Ekspor | XLSX yang dibuat sistem | Batas sesuai job/hosting | Privat dan kedaluwarsa |
 
 Aturan tambahan:
 
@@ -249,3 +251,15 @@ Pesan tidak boleh menampilkan stack trace, SQL, path server, secret, token, atau
 | Sembako | GRC-001 | BR-GRC-*, BR-EXP-* | TC-GRC-* |
 | Publik/QR | QRV-001, PUB-001–002 | BR-QRV-*, BR-PUB-* | TC-QRV-*, TC-PUB-* |
 | File/laporan | RPT-001 | BR-FIL-*, BR-RPT-* | TC-RPT-*, TC-SEC-* |
+
+## 17. UI/UX regression checklist
+
+- Primary role flows are usable at 360px, 390px, 768px, and desktop widths without horizontal scrolling.
+- Every multi-step flow exposes the current step, preserves safe input, and presents a review before an irreversible submit.
+- Validation failures render a visible summary, move focus to it, and keep the user on the relevant step.
+- Destructive or irreversible actions require an explicit confirmation that states the affected record and consequence.
+- Statuses and operational metrics use human-readable labels; raw enum values and internal IDs are not presented as the primary UI.
+- Upload controls state accepted formats, file-size limits, and count limits before submission.
+- Offline/online status is visible where field work depends on connectivity and uses an accessible live region.
+- Tables provide a mobile-readable alternative, human labels for filters, and a clear empty state.
+- Browser UAT must still be run against disposable MySQL before release; SQLite/PHPUnit results do not replace production-engine evidence.

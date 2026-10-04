@@ -11,9 +11,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 final readonly class EnsureSessionIsFresh
 {
-    public const string LAST_ACTIVITY_KEY = 'auth.last_activity_at';
+    public const LAST_ACTIVITY_KEY = 'auth.last_activity_at';
 
-    private const int DEFAULT_IDLE_MINUTES = 30;
+    private const DEFAULT_IDLE_MINUTES = 30;
 
     public function __construct(private LogoutUser $logoutUser) {}
 

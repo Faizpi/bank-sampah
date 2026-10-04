@@ -17,6 +17,7 @@ final readonly class OperationalHealthService
     public function __construct(
         private PrivateStorageBoundaryValidator $privateStorageBoundary,
         private BackupEligibilityValidator $backupEligibility,
+        private OperationalSettingsService $settings,
     ) {}
 
     public function check(): OperationalHealthResult
@@ -110,7 +111,7 @@ final readonly class OperationalHealthService
 
             $connection = config('queue.connections.database');
             $table = is_array($connection) ? $connection['table'] ?? null : null;
-            $threshold = (int) config('operations.health.queue_backlog_threshold', 100);
+            $threshold = $this->settings->values()['queue_backlog_threshold'];
             if (! is_string($table) || $table === '' || $threshold < 1 || ! Schema::hasTable($table)) {
                 return OperationalHealthCheck::degraded('queue_unavailable');
             }
@@ -128,7 +129,7 @@ final readonly class OperationalHealthService
     private function verifiedBackup(): OperationalHealthCheck
     {
         try {
-            $maxAgeHours = (int) config('operations.health.backup_max_age_hours', 24);
+            $maxAgeHours = $this->settings->values()['backup_max_age_hours'];
             if ($maxAgeHours < 1) {
                 return OperationalHealthCheck::degraded('backup_recency_configuration_invalid');
             }

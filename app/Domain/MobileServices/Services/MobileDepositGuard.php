@@ -19,13 +19,14 @@ final readonly class MobileDepositGuard
 {
     public function __construct(private PermissionChecker $permissions, private MobileServiceService $services, private AuditLogger $auditLogger) {}
 
-    public function attach(User $actor, Deposit $deposit, MobileService $service, WasteType $type): Deposit
+    /** @param list<WasteType> $types */
+    public function attach(User $actor, Deposit $deposit, MobileService $service, array $types): Deposit
     {
         if (! $this->permissions->allows($actor, 'deposit.create') || $deposit->staff_id !== $actor->id || $deposit->method !== 'keliling') {
             throw new AuthorizationException('Setoran keliling berada di luar scope petugas.');
         }
 
-        return DB::transaction(function () use ($actor, $deposit, $service, $type): Deposit {
+        return DB::transaction(function () use ($actor, $deposit, $service, $types): Deposit {
             $lockedDeposit = Deposit::query()->whereKey($deposit->id)->lockForUpdate()->firstOrFail();
             if ($lockedDeposit->mobile_service_id !== null && $lockedDeposit->mobile_service_id !== $service->id) {
                 throw ValidationException::withMessages(['mobile_service' => 'Setoran sudah terhubung ke layanan keliling lain.']);
@@ -34,8 +35,10 @@ final readonly class MobileDepositGuard
                 return $lockedDeposit->fresh('mobileService');
             }
             $locked = MobileService::query()->lockForUpdate()->findOrFail($service->id);
-            if (! $this->services->canAcceptDeposit($actor, $locked, $type->id)) {
-                throw ValidationException::withMessages(['mobile_service' => 'Layanan keliling belum dibuka, petugas tidak ditugaskan, jenis tidak diterima, atau kapasitas penuh.']);
+            foreach ($types as $type) {
+                if (! $this->services->canAcceptDeposit($actor, $locked, $type->id)) {
+                    throw ValidationException::withMessages(['mobile_service' => 'Layanan keliling belum dibuka, petugas tidak ditugaskan, jenis tidak diterima, atau kapasitas penuh.']);
+                }
             }
             if ($lockedDeposit->mobile_service_id === null) {
                 $lockedDeposit->forceFill(['mobile_service_id' => $locked->id])->save();

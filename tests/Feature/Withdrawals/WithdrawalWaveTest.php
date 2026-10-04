@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Withdrawals;
 
+use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\CustomersRegions\Actions\ManageRegions;
 use App\Domain\CustomersRegions\Models\ServiceArea;
@@ -19,13 +20,18 @@ use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Domain\Withdrawals\Services\WithdrawalService;
+use App\Livewire\Citizen\WithdrawalRequestForm;
+use App\Livewire\Citizen\WithdrawalShow;
+use App\Livewire\Treasurer\WithdrawalPayments;
 use App\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use LogicException;
 use Tests\TestCase;
 
@@ -78,6 +84,28 @@ final class WithdrawalWaveTest extends TestCase
         $service->request($customer, $payload + ['amount' => 10_000], 'w6-conflict-key-0001');
         $this->expectException(ValidationException::class);
         $service->request($customer, $payload + ['amount' => 11_000], 'w6-conflict-key-0001');
+    }
+
+    public function test_citizen_withdrawal_form_blocks_amount_above_available_balance_before_request(): void
+    {
+        [$customer] = $this->context();
+        $this->grant($customer, ['withdrawal.request']);
+        $this->credit($customer, 20_000);
+
+        Livewire::actingAs($customer)
+            ->test(WithdrawalRequestForm::class)
+            ->assertSee('Saldo tersedia')
+            ->assertSee('Rp20.000')
+            ->assertSeeHtml('wire:model.live.debounce.300ms="amount"')
+            ->set('amount', '30000')
+            ->assertHasErrors(['amount'])
+            ->assertSee('Nominal melebihi saldo tersedia.')
+            ->set('pickupLocation', 'Balai warga')
+            ->call('submit')
+            ->assertHasErrors(['amount']);
+
+        self::assertDatabaseCount('withdrawal_requests', 0);
+        self::assertDatabaseCount('balance_holds', 0);
     }
 
     public function test_lane_a_requested_amount_is_immutable_after_creation(): void
@@ -138,6 +166,85 @@ final class WithdrawalWaveTest extends TestCase
         $service->assignPayer($approver, $approved, $wrongPayer);
     }
 
+    public function test_lane_b_record_query_requires_direct_view_permission(): void
+    {
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request']);
+        $this->credit($customer, 50_000);
+        $withdrawal = app(WithdrawalService::class)->request($customer, $this->requestPayload($area) + ['amount' => 20_000], 'w6-record-auth-key-0001');
+
+        $this->expectException(AuthorizationException::class);
+        app(WithdrawalService::class)->visibleFor($customer)->whereKey($withdrawal->id)->get();
+    }
+
+    public function test_lane_b_payable_query_requires_direct_payment_permission(): void
+    {
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request', 'withdrawal.view']);
+        $this->credit($customer, 50_000);
+        $withdrawal = app(WithdrawalService::class)->request($customer, $this->requestPayload($area) + ['amount' => 20_000], 'w6-payable-auth-key-0001');
+
+        $this->expectException(AuthorizationException::class);
+        app(WithdrawalService::class)->payableFor($customer)->whereKey($withdrawal->id)->get();
+    }
+
+    public function test_payment_boundary_allows_bendahara_and_assigned_petugas_but_denies_unassigned_payment(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request', 'withdrawal.view']);
+        $this->credit($customer, 100_000);
+        $approver = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($approver, ['withdrawal.approve', 'withdrawal.view', 'user.view.all']);
+        $bendahara = User::factory()->create(['status' => UserStatus::Active]);
+        $bendahara->roles()->attach(Role::query()->where('name', 'bendahara')->sole());
+        $bendahara->staffProfile()->create(['staff_number' => 'W6-BEN-'.$bendahara->id, 'service_area_id' => $area->id, 'active_from' => today(), 'active_to' => null]);
+        $petugas = User::factory()->create(['status' => UserStatus::Active]);
+        $petugas->roles()->attach(Role::query()->where('name', 'petugas')->sole());
+        $petugas->staffProfile()->create(['staff_number' => 'W6-PET-'.$petugas->id, 'service_area_id' => $area->id, 'active_from' => today(), 'active_to' => null]);
+        $service = app(WithdrawalService::class);
+        $withdrawal = $service->approve($approver, $service->request($customer, $this->requestPayload($area) + ['amount' => 20_000], 'w6-role-boundary-request-0001'), true);
+        $withdrawal = $service->assignPayer($approver, $withdrawal, $bendahara);
+
+        self::assertTrue(app(PermissionChecker::class)->allows($bendahara, 'withdrawal.pay'));
+        self::assertTrue(app(PermissionChecker::class)->allows($petugas, 'withdrawal.pay'));
+        self::assertTrue(app(WithdrawalService::class)->payableFor($bendahara)->whereKey($withdrawal->id)->exists());
+        self::assertFalse(app(WithdrawalService::class)->payableFor($petugas)->whereKey($withdrawal->id)->exists());
+
+        Livewire::actingAs($petugas)
+            ->test(WithdrawalPayments::class)
+            ->assertSee('Pembayaran hanya untuk Bendahara atau petugas yang ditugaskan.');
+
+        $this->expectException(AuthorizationException::class);
+        $service->pay($petugas, $withdrawal, 'kartu_nasabah', (string) $customer->customerProfile?->customer_number, UploadedFile::fake()->image('unassigned.png'), 'w6-role-boundary-payment-0001');
+    }
+
+    public function test_bendahara_payment_form_explains_identity_methods_and_accepts_one_compressed_photo(): void
+    {
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request', 'withdrawal.view']);
+        $this->credit($customer, 50_000);
+        $approver = User::factory()->create();
+        $this->grant($approver, ['withdrawal.approve', 'withdrawal.view', 'user.view.all']);
+        $payer = $this->payerFor($area);
+        $service = app(WithdrawalService::class);
+        $withdrawal = $service->assignPayer($approver, $service->approve($approver, $service->request($customer, $this->requestPayload($area) + ['amount' => 20_000], 'w6-form-request-0001'), true), $payer);
+
+        Livewire::actingAs($payer)
+            ->test(WithdrawalPayments::class)
+            ->call('select', $withdrawal->id)
+            ->assertSee('Kartu dan nomor nasabah berbeda')
+            ->assertSee('Kartu nasabah adalah media identitas fisik atau digital.')
+            ->assertSee('Pindai QR kartu nasabah')
+            ->assertSee('Ambil dari kamera')
+            ->assertSee('Pilih dari galeri')
+            ->assertSeeHtml('data-photo-picker-max="1"')
+            ->assertSeeHtml('accept="image/*"')
+            ->assertDontSeeHtml('application/pdf')
+            ->set('recipientVerification', 'nomor_nasabah')
+            ->assertSee('Nomor nasabah adalah kode unik warga.');
+    }
+
     public function test_lane_c_payment_verifies_recipient_keeps_proof_private_and_posts_one_outgoing_entry(): void
     {
         Storage::fake('media_private');
@@ -166,6 +273,26 @@ final class WithdrawalWaveTest extends TestCase
         self::assertSame('private', $paid->proofMedia()->firstOrFail()->getRawOriginal('visibility'));
         Storage::disk('media_private')->assertExists($paid->proofMedia->path);
         Event::assertDispatchedTimes(NotificationRequested::class, 1);
+    }
+
+    public function test_lane_c_payment_normalizes_one_photo_proof_to_jpeg_under_one_megabyte(): void
+    {
+        Storage::fake('media_private');
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request', 'withdrawal.view']);
+        $this->credit($customer, 60_000);
+        $approver = User::factory()->create();
+        $this->grant($approver, ['withdrawal.approve', 'withdrawal.view', 'user.view.all']);
+        $payer = $this->payerFor($area);
+        $service = app(WithdrawalService::class);
+        $withdrawal = $service->assignPayer($approver, $service->approve($approver, $service->request($customer, $this->requestPayload($area) + ['amount' => 20_000], 'w6-photo-request-0001'), true), $payer);
+
+        $paid = $service->pay($payer, $withdrawal, 'kartu_nasabah', (string) $customer->customerProfile?->customer_number, UploadedFile::fake()->image('payment.png', 2400, 1800), 'w6-photo-payment-0001');
+        $media = $paid->proofMedia()->firstOrFail();
+
+        self::assertSame('image/jpeg', $media->mime_type);
+        self::assertLessThanOrEqual(1 * 1024 * 1024, $media->size);
+        self::assertSame('jpg', pathinfo($media->path, PATHINFO_EXTENSION));
     }
 
     public function test_lane_c_payment_is_denied_before_assignment_invalid_recipient_and_out_of_scope_proof(): void
@@ -233,6 +360,28 @@ final class WithdrawalWaveTest extends TestCase
         $service->cancel($customer, $approved, 'Warga mencoba membatalkan setelah persetujuan.');
     }
 
+    public function test_citizen_withdrawal_page_only_shows_the_cancel_button_while_pending_verification(): void
+    {
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request', 'withdrawal.view', 'withdrawal.cancel']);
+        $this->credit($customer, 80_000);
+        $approver = User::factory()->create();
+        $this->grant($approver, ['withdrawal.approve', 'withdrawal.view', 'user.view.all']);
+        $service = app(WithdrawalService::class);
+        $pending = $service->request($customer, $this->requestPayload($area) + ['amount' => 20_000], 'w6-cancel-button-pending-0001');
+        $approved = $service->approve($approver, $pending, true);
+
+        Livewire::actingAs($customer)
+            ->test(WithdrawalShow::class, ['withdrawal' => $approved])
+            ->assertDontSee('Batalkan pengajuan');
+
+        $secondPending = $service->request($customer, $this->requestPayload($area) + ['amount' => 20_000], 'w6-cancel-button-second-0001');
+
+        Livewire::actingAs($customer)
+            ->test(WithdrawalShow::class, ['withdrawal' => $secondPending])
+            ->assertSee('Batalkan pengajuan');
+    }
+
     public function test_lane_d_cancel_and_expiry_release_hold_once_and_never_create_balance_out(): void
     {
         [$customer, $area] = $this->context();
@@ -277,6 +426,21 @@ final class WithdrawalWaveTest extends TestCase
         $this->actingAs($customer)->get(route('withdrawal.proof', $paid->proofMedia))->assertOk();
     }
 
+    public function test_paid_withdrawal_detail_exposes_the_receipt_action(): void
+    {
+        [$customer] = $this->context();
+        $this->grant($customer, ['withdrawal.view']);
+        $paid = WithdrawalRequest::factory()->for($customer, 'customer')->create([
+            'requested_by_id' => $customer->id,
+            'status' => WithdrawalStatus::Paid,
+        ]);
+
+        Livewire::actingAs($customer)
+            ->test(WithdrawalShow::class, ['withdrawal' => $paid])
+            ->assertSee('Buka Bukti Pencairan')
+            ->assertSeeHtml('href="'.route('citizen.withdrawal.receipt', $paid).'"');
+    }
+
     /** @return array{User, ServiceArea} */
     private function context(): array
     {
@@ -308,7 +472,12 @@ final class WithdrawalWaveTest extends TestCase
     private function payerFor(ServiceArea $area): User
     {
         $payer = User::factory()->create(['status' => UserStatus::Active]);
-        $this->grant($payer, ['withdrawal.pay', 'withdrawal.view']);
+        $role = Role::query()->firstOrCreate(['name' => 'bendahara'], ['description' => 'Bendahara']);
+        foreach (['withdrawal.pay', 'withdrawal.view'] as $permissionName) {
+            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
+            $role->permissions()->syncWithoutDetaching([$permission->id]);
+        }
+        $payer->roles()->attach($role);
         StaffProfile::query()->create(['user_id' => $payer->id, 'staff_number' => 'W6-PAYER-'.$payer->id, 'service_area_id' => $area->id, 'active_from' => today(), 'active_to' => null]);
 
         return $payer;

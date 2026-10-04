@@ -25,7 +25,7 @@ final class CitizenVerificationResourceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_only_data_master_users_with_user_view_permission_see_the_pending_citizen_queue(): void
+    public function test_only_identity_users_with_user_view_permission_see_the_pending_citizen_queue(): void
     {
         $authorized = User::factory()->create();
         $unprivileged = User::factory()->create();
@@ -35,7 +35,7 @@ final class CitizenVerificationResourceTest extends TestCase
 
         $this->actingAs($authorized);
         self::assertTrue(CitizenVerificationResource::canViewAny());
-        self::assertSame(['Verifikasi Warga'], $this->dataMasterNavigationLabels($panel));
+        self::assertSame(['Direktori', 'Verifikasi Warga'], $this->dataMasterNavigationLabels($panel));
 
         $this->actingAs($unprivileged);
         self::assertFalse(CitizenVerificationResource::canViewAny());
@@ -151,6 +151,10 @@ final class CitizenVerificationResourceTest extends TestCase
 
             foreach ($group->getItems() as $item) {
                 $labels[] = $item->getLabel();
+
+                foreach ($item->getChildItems() as $childItem) {
+                    $labels[] = $childItem->getLabel();
+                }
             }
 
             sort($labels);

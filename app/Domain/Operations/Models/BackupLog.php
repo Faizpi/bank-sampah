@@ -52,4 +52,22 @@ final class BackupLog extends Model
     {
         return $this->belongsTo(User::class, 'initiated_by');
     }
+
+    public function humanSize(int $bytes): string
+    {
+        if ($bytes < 1_024) {
+            return $bytes.' B';
+        }
+
+        $units = ['KB', 'MB', 'GB', 'TB'];
+        $size = (float) $bytes;
+        foreach ($units as $unit) {
+            $size /= 1_024;
+            if ($size < 1_024 || $unit === 'TB') {
+                return number_format($size, $size >= 100 ? 0 : 1, ',', '.').' '.$unit;
+            }
+        }
+
+        return number_format($size, 1, ',', '.').' TB';
+    }
 }

@@ -27,7 +27,7 @@ use Illuminate\Validation\ValidationException;
 
 final readonly class WithdrawalPaymentService
 {
-    private const string SCOPE = 'withdrawal.pay';
+    private const SCOPE = 'withdrawal.pay';
 
     public function __construct(
         private PermissionChecker $permissions,
@@ -56,7 +56,7 @@ final readonly class WithdrawalPaymentService
         $media = null;
 
         try {
-            $media = $this->mediaStore->handle($proof, $actor);
+            $media = $this->mediaStore->handlePhoto($proof, $actor);
 
             return DB::transaction(function () use ($actor, $withdrawal, $verification, $reference, $media, $idempotencyKey, $payloadHash): WithdrawalRequest {
                 $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
@@ -154,6 +154,10 @@ final readonly class WithdrawalPaymentService
             throw ValidationException::withMessages([$field => 'Nilai tidak memenuhi panjang yang diizinkan.']);
         }
 
+        if ($field === 'recipient_reference' && preg_match('/^CST-[0-9]{8}$/', $text) !== 1) {
+            throw ValidationException::withMessages([$field => 'Nomor nasabah harus berformat CST-########.']);
+        }
+
         return $text;
     }
 
@@ -166,7 +170,7 @@ final readonly class WithdrawalPaymentService
 
     private function existingIdempotency(User $actor, string $key, string $payloadHash): ?IdempotencyKey
     {
-        $existing = IdempotencyKey::query()->where('actor_id', $actor->id)->where('scope', self::SCOPE)->where('key', $key)->lockForUpdate()->first();
+        $existing = IdempotencyKey::activeForUpdate($actor->id, self::SCOPE, $key);
         if ($existing === null) {
             return null;
         }
@@ -192,7 +196,7 @@ final readonly class WithdrawalPaymentService
             type: 'withdrawal.paid',
             title: 'Pencairan selesai',
             body: 'Pencairan '.$withdrawal->request_number.' telah dibayar.',
-            reference: '/notifikasi',
+            reference: '/warga/pencairan/'.$withdrawal->id.'/bukti',
             dedupeKey: NotificationDedupeKey::for('withdrawal.paid:'.$withdrawal->request_number, $withdrawal->customer_id, 'withdrawal-v1'),
         ));
     }

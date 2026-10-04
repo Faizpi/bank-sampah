@@ -19,7 +19,11 @@ return [
         'heartbeat_freshness_seconds' => (int) env('OPERATIONS_SCHEDULER_HEARTBEAT_FRESHNESS_SECONDS', 172800),
     ],
     'retention' => [
+        'idempotency_key_hours' => (int) env('OPERATIONS_IDEMPOTENCY_KEY_RETENTION_HOURS', 24),
         'notification_failure_hours' => (int) env('OPERATIONS_NOTIFICATION_FAILURE_RETENTION_HOURS', 168),
+        'pickup_photo_minimum_age_days' => (int) env('OPERATIONS_PICKUP_PHOTO_MINIMUM_AGE_DAYS', 30),
+        'pickup_photo_default_age_days' => (int) env('OPERATIONS_PICKUP_PHOTO_DEFAULT_AGE_DAYS', 180),
+        'pickup_photo_batch_size' => (int) env('OPERATIONS_PICKUP_PHOTO_BATCH_SIZE', 100),
     ],
     'database_queue' => [
         'max_jobs' => (int) env('DB_QUEUE_MAX_JOBS', 25),

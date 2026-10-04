@@ -25,7 +25,7 @@ final class WasteMasterSchemaTest extends TestCase
     public function test_schema_contains_master_tables_and_price_period_contract(): void
     {
         self::assertTrue(Schema::hasColumns('waste_categories', ['id', 'code', 'name', 'sort_order', 'is_active']));
-        self::assertTrue(Schema::hasColumns('waste_units', ['id', 'code', 'name', 'symbol', 'classification', 'conversion_factor_to_kg']));
+        self::assertTrue(Schema::hasColumns('waste_units', ['id', 'code', 'name', 'symbol', 'classification', 'conversion_factor_to_kg', 'is_active']));
         self::assertTrue(Schema::hasColumns('waste_conditions', ['id', 'code', 'name', 'description', 'sort_order', 'is_active']));
         self::assertTrue(Schema::hasColumns('waste_types', ['id', 'waste_category_id', 'waste_unit_id', 'code', 'name', 'education_description', 'sort_order', 'is_plastic', 'media_id', 'is_active']));
         self::assertTrue(Schema::hasColumns('waste_type_conditions', ['waste_type_id', 'waste_condition_id']));

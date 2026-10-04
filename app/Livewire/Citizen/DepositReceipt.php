@@ -29,7 +29,7 @@ final class DepositReceipt extends Component
         abort_unless($actor instanceof User && $permissions->allows($actor, 'deposit.view'), 403);
         abort_unless($deposit->customer_id === $actor->id, 404);
         $presenter->present($deposit);
-        $this->deposit = $deposit->load('items');
+        $this->deposit = $deposit->load(['items', 'correction']);
         $token = $deposit->verificationToken();
         if ($token === null) {
             throw new LogicException('Final deposit must have a verification token.');

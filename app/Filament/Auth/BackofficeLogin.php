@@ -29,7 +29,7 @@ final class BackofficeLogin extends Login
      */
     public function fillDemo(string $role): void
     {
-        if (app()->environment('production')) {
+        if (! config('app.demo_mode')) {
             return;
         }
 
@@ -39,7 +39,7 @@ final class BackofficeLogin extends Login
 
         $this->form->fill([
             'email' => DeveloperUsersSeeder::email($role),
-            'password' => DeveloperUsersSeeder::DEV_PASSWORD,
+            'password' => DeveloperUsersSeeder::password(),
         ]);
     }
 

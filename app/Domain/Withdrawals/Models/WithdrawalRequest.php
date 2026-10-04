@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Withdrawals\Models;
 
+use App\Domain\CustomersRegions\Models\AssistedCustomerService;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerEntry;
@@ -16,6 +17,7 @@ use Database\Factories\WithdrawalRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use LogicException;
 
@@ -104,6 +106,12 @@ final class WithdrawalRequest extends Model
     public function receiptLedgerEntry(): BelongsTo
     {
         return $this->belongsTo(LedgerEntry::class, 'receipt_ledger_entry_id');
+    }
+
+    /** @return HasOne<AssistedCustomerService, $this> */
+    public function assistedService(): HasOne
+    {
+        return $this->hasOne(AssistedCustomerService::class, 'withdrawal_id');
     }
 
     /** @return MorphMany<StatusHistory, $this> */

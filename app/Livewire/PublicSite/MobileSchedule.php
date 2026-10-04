@@ -14,6 +14,6 @@ final class MobileSchedule extends Component
 {
     public function render(MobileServiceService $services): View
     {
-        return view('livewire.public-site.mobile-schedule', ['services' => $services->publicQuery()->with('rt')->get()]);
+        return view('livewire.public-site.mobile-schedule', ['services' => $services->publicQuery()->get()]);
     }
 }

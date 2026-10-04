@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignCorrelationId::class);
         $middleware->append(ApplyResponseSecurityHeaders::class);
+        $middleware->preventRequestsDuringMaintenance(['/health', '/operations/health']);
         $middleware->redirectUsersTo(fn (Request $request): string => app(AuthenticatedUserRedirector::class)->dashboardUrl());
         $middleware->alias([
             'permission' => RequirePermission::class,

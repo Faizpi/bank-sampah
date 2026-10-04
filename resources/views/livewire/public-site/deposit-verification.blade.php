@@ -33,7 +33,7 @@
                     <dl class="grid gap-4 sm:grid-cols-2">
                         <div><dt class="text-body-sm text-text-secondary">Nomor bukti</dt><dd class="mt-1 text-title text-deep-green">{{ $receipt['number'] }}</dd></div>
                         <div><dt class="text-body-sm text-text-secondary">Tanggal</dt><dd class="mt-1 text-title text-deep-green">{{ \Illuminate\Support\Carbon::parse($receipt['date'])->translatedFormat('d F Y, H:i') }}</dd></div>
-                        <div><dt class="text-body-sm text-text-secondary">Berat</dt><dd class="mt-1 amount-tabular text-title text-deep-green">{{ $receipt['weight_kg'] }} kg</dd></div>
+                        <div><dt class="text-body-sm text-text-secondary">Berat</dt><dd class="mt-1 amount-tabular text-title text-deep-green">{{ \App\Support\WeightFormatter::format($receipt['weight_kg']) }} kg</dd></div>
                         <div><dt class="text-body-sm text-text-secondary">Nilai</dt><dd class="mt-1 amount-tabular text-title text-deep-green">Rp {{ number_format($receipt['value'], 0, ',', '.') }}</dd></div>
                     </dl>
                 </x-ui.panel>

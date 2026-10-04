@@ -35,7 +35,7 @@ final class CitizenShellTest extends TestCase
         self::assertStringContainsString('id="konten-utama"', $html);
         self::assertStringContainsString('tabindex="-1"', $html);
         self::assertStringContainsString('max-w-citizen', $html);
-        self::assertStringContainsString('pb-[calc(4.5rem+env(safe-area-inset-bottom))]', $html);
+        self::assertStringContainsString('pb-[calc(5.75rem+env(safe-area-inset-bottom))]', $html);
         self::assertStringContainsString('Ringkasan akun', $html);
         self::assertSame(1, substr_count($html, '<header'));
         self::assertSame(1, substr_count($html, '<h1'));
@@ -97,12 +97,14 @@ final class CitizenShellTest extends TestCase
         self::assertStringContainsString('aria-label="Navigasi warga"', $html);
         self::assertSame(5, substr_count($html, 'data-nav-item'));
         self::assertSame(1, substr_count($html, 'aria-current="page"'));
-        self::assertStringContainsString('pb-[env(safe-area-inset-bottom)]', $html);
+        self::assertStringContainsString('bottom-[calc(0.75rem+env(safe-area-inset-bottom))]', $html);
+        self::assertStringContainsString('rounded-full', $html);
         self::assertSame(5, substr_count($html, 'min-h-touch'));
 
         $lastPosition = -1;
         foreach (self::DESTINATIONS as $label => $href) {
-            $position = strpos($html, '>'.$label.'</span>');
+            $displayLabel = $label === 'Kartu Nasabah' ? 'Kartu' : $label;
+            $position = strpos($html, '>'.$displayLabel.'</span>');
             self::assertNotFalse($position);
             self::assertGreaterThan($lastPosition, $position);
             self::assertStringContainsString('href="'.$href.'"', $html);

@@ -72,7 +72,7 @@
                 </div>
             @endif
 
-            <p class="mt-6 max-w-3xl text-body-sm leading-6 text-text-secondary">Harga publik adalah informasi aktif. Harga yang tercatat pada transaksi final disimpan sebagai snapshot dan tidak berubah ketika periode baru dibuat.</p>
+            <p class="mt-6 max-w-3xl text-body-sm leading-6 text-text-secondary">Harga publik adalah informasi aktif. Harga yang tercatat pada transaksi final disimpan sebagai rekaman saat transaksi dan tidak berubah ketika periode baru dibuat.</p>
         </div>
     </section>
 </div>

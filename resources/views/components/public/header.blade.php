@@ -15,8 +15,11 @@
     $inactiveNavClasses = 'font-semibold text-text-secondary hover:bg-success-bg hover:text-deep-green';
 @endphp
 
-<header class="sticky top-0 z-sticky border-b border-border/80 bg-surface">
-    <div class="public-container flex min-h-20 items-center justify-between gap-3">
+<header @class([
+    'sticky top-0 z-sticky -mb-[4.75rem] px-3 pt-3 sm:px-5' => $isHome,
+    'sticky top-0 z-sticky px-3 pt-3 sm:px-5' => ! $isHome,
+])>
+    <div class="public-container flex min-h-16 items-center justify-between gap-3 rounded-full border border-border/90 bg-surface/95 px-3 shadow-sm backdrop-blur sm:px-4">
         <a href="{{ route('home') }}" class="flex min-h-touch shrink-0 items-center gap-2 rounded-md focus-visible:outline-offset-4" aria-label="Bank Sampah Digital Sindangheula, beranda">
             <img src="{{ asset('images/landing/mascot-3.png') }}" alt="" class="size-11 shrink-0 object-contain" aria-hidden="true">
             <span class="hidden min-w-0 sm:block">
@@ -28,7 +31,7 @@
         <nav class="flex min-w-0 items-center gap-1" aria-label="Navigasi utama">
             <div class="hidden min-w-0 items-center gap-1 xl:flex">
                 <div class="relative" data-public-nav-group>
-                    <button type="button" class="inline-flex min-h-touch items-center gap-2 whitespace-nowrap rounded-md px-3 text-body-sm transition-colors duration-180 hover:bg-success-bg hover:text-deep-green {{ $isExploreActive ? $activeNavClasses : $inactiveNavClasses }}" aria-controls="public-nav-jelajahi-menu" aria-expanded="false" data-public-nav-trigger>
+                    <button type="button" class="inline-flex min-h-touch items-center gap-2 whitespace-nowrap rounded-full px-3 text-body-sm transition-colors duration-180 hover:bg-success-bg hover:text-deep-green {{ $isExploreActive ? $activeNavClasses : $inactiveNavClasses }}" aria-controls="public-nav-jelajahi-menu" aria-expanded="false" data-public-nav-trigger>
                         Jelajahi
                         <x-public.icon name="chevron-right" size="size-4" data-public-nav-chevron />
                     </button>
@@ -42,7 +45,7 @@
                 </div>
 
                 <div class="relative" data-public-nav-group>
-                    <button type="button" class="inline-flex min-h-touch items-center gap-2 whitespace-nowrap rounded-md px-3 text-body-sm transition-colors duration-180 hover:bg-success-bg hover:text-deep-green {{ $isPublicInformationActive ? $activeNavClasses : $inactiveNavClasses }}" aria-controls="public-nav-informasi-menu" aria-expanded="false" data-public-nav-trigger>
+                    <button type="button" class="inline-flex min-h-touch items-center gap-2 whitespace-nowrap rounded-full px-3 text-body-sm transition-colors duration-180 hover:bg-success-bg hover:text-deep-green {{ $isPublicInformationActive ? $activeNavClasses : $inactiveNavClasses }}" aria-controls="public-nav-informasi-menu" aria-expanded="false" data-public-nav-trigger>
                         Informasi publik
                         <x-public.icon name="chevron-right" size="size-4" data-public-nav-chevron />
                     </button>
@@ -60,18 +63,18 @@
                     @php
                         $authedDashboard = app(\App\Support\Auth\AuthenticatedUserRedirector::class)->dashboardUrl();
                     @endphp
-                    <a href="{{ $authedDashboard }}" class="inline-flex min-h-touch items-center justify-center gap-2 whitespace-nowrap rounded-md bg-forest-600 px-4 text-body-sm font-bold text-surface shadow-xs transition duration-180 ease-standard hover:bg-forest-700 active:translate-y-px">
+                    <a href="{{ $authedDashboard }}" class="inline-flex min-h-touch items-center justify-center gap-2 whitespace-nowrap rounded-full bg-forest-600 px-4 text-body-sm font-bold text-surface shadow-xs transition duration-180 ease-standard hover:bg-forest-700 active:translate-y-px">
                         <x-public.icon name="layout-dashboard" size="size-5" />
                         Buka Dashboard
                     </a>
                 @else
-                    <a href="{{ route('login') }}" class="inline-flex min-h-touch items-center justify-center gap-2 whitespace-nowrap rounded-md bg-forest-600 px-4 text-body-sm font-bold text-surface shadow-xs transition duration-180 ease-standard hover:bg-forest-700 active:translate-y-px {{ $isLogin ? $activeAccountClasses : '' }}" @if ($isLogin) aria-current="page" @endif><x-public.icon name="log-in" size="size-5" />Masuk</a>
-                    <a href="{{ route('register') }}" class="inline-flex min-h-touch items-center justify-center gap-2 whitespace-nowrap rounded-md border border-forest-600 bg-surface px-4 text-body-sm font-bold text-forest-700 transition duration-180 ease-standard hover:bg-success-bg active:translate-y-px {{ $isRegister ? $activeAccountClasses : '' }}" @if ($isRegister) aria-current="page" @endif>Daftar<x-public.icon name="arrow-right" size="size-5" /></a>
+                    <a href="{{ route('login') }}" class="inline-flex min-h-touch items-center justify-center gap-2 whitespace-nowrap rounded-full bg-forest-600 px-4 text-body-sm font-bold text-surface shadow-xs transition duration-180 ease-standard hover:bg-forest-700 active:translate-y-px {{ $isLogin ? $activeAccountClasses : '' }}" @if ($isLogin) aria-current="page" @endif><x-public.icon name="log-in" size="size-5" />Masuk</a>
+                    <a href="{{ route('register') }}" class="inline-flex min-h-touch items-center justify-center gap-2 whitespace-nowrap rounded-full border border-forest-600 bg-surface px-4 text-body-sm font-bold text-forest-700 transition duration-180 ease-standard hover:bg-success-bg active:translate-y-px {{ $isRegister ? $activeAccountClasses : '' }}" @if ($isRegister) aria-current="page" @endif>Daftar<x-public.icon name="arrow-right" size="size-5" /></a>
                 @endauth
             </div>
 
 
-            <button type="button" class="inline-flex min-h-touch min-w-touch shrink-0 items-center justify-center rounded-md text-deep-green transition-colors duration-180 hover:bg-success-bg active:bg-warning-bg xl:hidden" aria-label="Buka navigasi" aria-haspopup="dialog" aria-controls="public-mobile-navigation" data-public-navigation-trigger>
+            <button type="button" class="inline-flex min-h-touch min-w-touch shrink-0 items-center justify-center rounded-full text-deep-green transition-colors duration-180 hover:bg-success-bg active:bg-warning-bg xl:hidden" aria-label="Buka navigasi" aria-haspopup="dialog" aria-controls="public-mobile-navigation" data-public-navigation-trigger>
                 <x-public.icon name="menu" size="size-6" />
             </button>
         </nav>

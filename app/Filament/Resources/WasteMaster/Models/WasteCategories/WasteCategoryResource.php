@@ -29,6 +29,8 @@ final class WasteCategoryResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?int $navigationSort = 100;
+
     protected static ?string $navigationLabel = 'Kategori Sampah';
 
     protected static ?string $modelLabel = 'kategori sampah';
@@ -36,6 +38,11 @@ final class WasteCategoryResource extends Resource
     protected static ?string $pluralModelLabel = 'kategori sampah';
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -57,7 +64,8 @@ final class WasteCategoryResource extends Resource
             IconColumn::make('is_active')->label('Aktif')->boolean(),
         ])->recordActions([
             EditAction::make()->using(fn (WasteCategory $record, array $data): WasteCategory => tap($record, fn () => app(ManageWasteMaster::class)->updateCategory(auth()->user(), $record, $data['code'], $data['name'], (int) $data['sort_order']))),
-            Action::make('deactivate')->label('Nonaktifkan')->authorize('deactivate')->requiresConfirmation()->visible(fn (WasteCategory $record): bool => $record->is_active)->action(fn (WasteCategory $record) => app(ManageWasteMaster::class)->deactivate(auth()->user(), $record)),
+            Action::make('activate')->label('Aktifkan kembali')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->requiresConfirmation()->modalHeading(fn (WasteCategory $record): string => "Aktifkan kategori {$record->name}?")->modalDescription('Kategori ini kembali tersedia untuk jenis sampah baru. Data historis tetap tersimpan.')->modalSubmitActionLabel('Aktifkan kategori')->visible(fn (WasteCategory $record): bool => ! $record->is_active)->action(fn (WasteCategory $record) => app(ManageWasteMaster::class)->activate(auth()->user(), $record)),
+            Action::make('deactivate')->label('Nonaktifkan')->authorize('deactivate')->requiresConfirmation()->modalHeading(fn (WasteCategory $record): string => "Nonaktifkan kategori {$record->name}?")->modalDescription('Kategori ini tidak tersedia untuk transaksi baru. Data historis tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan kategori')->visible(fn (WasteCategory $record): bool => $record->is_active)->action(fn (WasteCategory $record) => app(ManageWasteMaster::class)->deactivate(auth()->user(), $record)),
         ]);
     }
 

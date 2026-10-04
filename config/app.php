@@ -61,6 +61,12 @@ return [
     'initial_admin_email' => env('APP_INITIAL_ADMIN_EMAIL'),
     'initial_admin_password' => env('APP_INITIAL_ADMIN_PASSWORD'),
 
+    // Temporary demo data switch. It defaults to enabled outside production so
+    // local development remains convenient, while production must opt in
+    // explicitly with both APP_DEMO_MODE=true and APP_DEMO_PASSWORD.
+    'demo_mode' => env('APP_DEMO_MODE', env('APP_ENV', 'production') !== 'production'),
+    'demo_password' => env('APP_DEMO_PASSWORD'),
+
     'registration_max_attempts_per_minute' => (int) env('REGISTRATION_MAX_ATTEMPTS_PER_MINUTE', 5),
 
     'public_qr_max_attempts_per_minute' => (int) env('PUBLIC_QR_MAX_ATTEMPTS_PER_MINUTE', 30),
@@ -78,6 +84,13 @@ return [
     'withdrawal_expiry_days' => (int) env('WITHDRAWAL_EXPIRY_DAYS', 7),
 
     'withdrawal_minimum_amount' => (int) env('WITHDRAWAL_MINIMUM_AMOUNT', 10_000),
+
+    // Financial guardrails. Values are evaluated server-side, never only in the form.
+    'deposit_max_item_weight_kg' => (string) env('DEPOSIT_MAX_ITEM_WEIGHT_KG', '50'),
+
+    'deposit_max_total_weight_kg' => (string) env('DEPOSIT_MAX_TOTAL_WEIGHT_KG', '100'),
+
+    'deposit_review_threshold' => (int) env('DEPOSIT_REVIEW_THRESHOLD', 250_000),
 
     'grocery_expiry_days' => (int) env('GROCERY_EXPIRY_DAYS', 7),
 
@@ -107,9 +120,9 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'id'),
 
-    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'id'),
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 

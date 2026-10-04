@@ -258,7 +258,7 @@ final readonly class LedgerService
         $payloadHash = hash('sha256', json_encode(['owner_id' => $owner->id, 'delta' => $delta, 'reason' => trim($reason)], JSON_THROW_ON_ERROR));
 
         return DB::transaction(function () use ($actor, $owner, $delta, $idempotencyKey, $payloadHash): LedgerEntry {
-            $key = IdempotencyKey::query()->where('actor_id', $actor->id)->where('scope', 'ledger.adjust')->where('key', $idempotencyKey)->lockForUpdate()->first();
+            $key = IdempotencyKey::activeForUpdate($actor->id, 'ledger.adjust', $idempotencyKey);
             if ($key !== null) {
                 if ($key->payload_hash !== $payloadHash || $key->result_id === null) {
                     throw ValidationException::withMessages(['idempotency_key' => 'Permintaan penyesuaian sudah digunakan untuk payload berbeda.']);

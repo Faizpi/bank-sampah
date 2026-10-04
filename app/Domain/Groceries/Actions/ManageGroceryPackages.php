@@ -73,6 +73,22 @@ final readonly class ManageGroceryPackages
         });
     }
 
+    public function activate(User $actor, GroceryPackage $package): GroceryPackage
+    {
+        $this->authorize($actor);
+
+        return DB::transaction(function () use ($actor, $package): GroceryPackage {
+            $locked = GroceryPackage::query()->whereKey($package->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status === 'aktif') {
+                return $locked;
+            }
+            $locked->forceFill(['status' => 'aktif'])->save();
+            $this->auditLogger->record($actor, 'grocery.package.activated', $locked, ['status' => 'nonaktif'], ['status' => 'aktif'], $this->correlationId());
+
+            return $locked->fresh();
+        });
+    }
+
     /** @return array{code: string, name: string, contents: string, value: int, active_from: string|null, active_until: string|null} */
     private function attributes(string $code, string $name, string $contents, int $value, ?string $activeFrom, ?string $activeUntil): array
     {

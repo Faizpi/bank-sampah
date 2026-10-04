@@ -41,7 +41,7 @@ Sistem menggunakan data yang diperlukan untuk:
 - verifikasi akun dan pencegahan duplikasi;
 - penyediaan layanan bank sampah, termasuk pencatatan transaksi dan saldo;
 - pemberitahuan dalam aplikasi serta pembukaan tautan WhatsApp manual atas tindakan pengguna;
-- keamanan, pencegahan penyalahgunaan, audit, rekonsiliasi, backup, dan operasi layanan.
+- keamanan, pencegahan penyalahgunaan, audit, backup, dan operasi layanan.
 
 ### 2. Akses dan keterbukaan terbatas
 

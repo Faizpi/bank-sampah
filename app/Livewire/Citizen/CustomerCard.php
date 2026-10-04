@@ -15,7 +15,13 @@ use Livewire\Component;
 #[Layout('layouts.citizen')]
 final class CustomerCard extends Component
 {
+    public string $customerName = '';
+
+    public string $customerNumber = '';
+
     public string $maskedNumber = '';
+
+    public string $serviceArea = '';
 
     public ?string $qrImageSrc = null;
 
@@ -32,7 +38,12 @@ final class CustomerCard extends Component
             return;
         }
 
-        $this->maskedNumber = substr($profile->customer_number, 0, 4).'****'.substr($profile->customer_number, -2);
+        $profile->loadMissing('rt.rw.dusun');
+
+        $this->customerName = $actor->name;
+        $this->customerNumber = $profile->customer_number;
+        $this->maskedNumber = substr($this->customerNumber, 0, 4).'****'.substr($this->customerNumber, -2);
+        $this->serviceArea = $profile->rt->name ?? 'Desa Sindangheula';
         $encryptedToken = $profile->qr_token_encrypted;
         if (is_string($encryptedToken) && $encryptedToken !== '') {
             $this->qrImageSrc = $qrPresenter->dataUri(QrToken::fromValue($encryptedToken));

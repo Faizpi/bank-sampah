@@ -85,6 +85,21 @@ final readonly class ManageRegions
         $this->persist($region, ['is_active' => false]);
     }
 
+    public function activate(User $actor, RegionModel $region): void
+    {
+        $this->authorize($actor, 'activate', $region);
+
+        if ($region instanceof Rw) {
+            $this->ensureActive($region->dusun, 'dusun_id');
+        } elseif ($region instanceof Rt) {
+            $this->ensureActiveRwHierarchy($region->rw);
+        } elseif ($region instanceof ServiceArea) {
+            $this->ensureServiceAreaRtsAreActive($region->rts()->get()->all());
+        }
+
+        $this->persist($region, ['is_active' => true]);
+    }
+
     /** @param array<string, mixed> $attributes */
     private function persist(RegionModel $region, array $attributes): void
     {

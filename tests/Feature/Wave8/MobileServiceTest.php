@@ -11,12 +11,14 @@ use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
+use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\MobileServices\Services\MobileDepositGuard;
 use App\Domain\MobileServices\Services\MobileServiceService;
 use App\Domain\WasteMaster\Actions\ManageWasteMaster;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -47,33 +49,169 @@ final class MobileServiceTest extends TestCase
     public function test_mobile_deposit_link_is_locked_idempotently_and_close_recap_is_reproducible(): void
     {
         [$admin, $staff, $rt, $type] = $this->context();
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta'));
+
+        try {
+            $this->grant($staff, ['deposit.create']);
+            $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai RT 03', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 20, '', [$staff->id], [$type->id]);
+            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
+            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+            $customer = User::factory()->create();
+            $deposit = Deposit::query()->create([
+                'deposit_number' => 'DEP-MOBILE-LINK-001',
+                'customer_id' => $customer->id,
+                'staff_id' => $staff->id,
+                'method' => 'keliling',
+                'occurred_at' => now(),
+                'status' => Deposit::STATUS_DRAFT,
+            ]);
+
+            $guard = app(MobileDepositGuard::class);
+            $guard->attach($staff, $deposit, $service, [$type]);
+            $guard->attach($staff, $deposit, $service, [$type]);
+            $deposit->forceFill(['status' => Deposit::STATUS_FINAL, 'total_weight_kg' => '1.250', 'total_value' => 7_500])->save();
+
+            self::assertSame($service->id, $deposit->fresh()->mobile_service_id);
+            self::assertSame(1, $service->fresh()->served_count);
+            self::assertSame(1, app(MobileServiceService::class)->recap($staff, $service)['transaction_count']);
+            self::assertSame('1.250', app(MobileServiceService::class)->recap($staff, $service)['total_weight_kg']);
+            self::assertSame(7_500, app(MobileServiceService::class)->recap($staff, $service)['total_value']);
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    public function test_public_query_excludes_expired_or_terminal_services_at_the_time_boundary(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        $now = CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta');
+        CarbonImmutable::setTestNow($now);
+
+        try {
+            $expired = $this->mobileServiceAt($staff, $type, '2026-08-10 08:00:00', '2026-08-10 09:59:59', MobileServiceStatus::Published);
+            $equalNow = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 10:00:00', MobileServiceStatus::Published);
+            $current = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 11:00:00', MobileServiceStatus::Open);
+            $future = $this->mobileServiceAt($staff, $type, '2026-08-10 11:00:00', '2026-08-10 12:00:00', MobileServiceStatus::Published);
+            $closed = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 12:00:00', MobileServiceStatus::Closed);
+            $cancelled = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 12:00:00', MobileServiceStatus::Cancelled);
+
+            self::assertEqualsCanonicalizing(
+                [$equalNow->id, $current->id, $future->id],
+                app(MobileServiceService::class)->publicQuery()->pluck('id')->all(),
+            );
+            self::assertNotContains($expired->id, app(MobileServiceService::class)->publicQuery()->pluck('id')->all());
+            self::assertNotContains($closed->id, app(MobileServiceService::class)->publicQuery()->pluck('id')->all());
+            self::assertNotContains($cancelled->id, app(MobileServiceService::class)->publicQuery()->pluck('id')->all());
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    public function test_mobile_service_acceptance_respects_end_boundary_status_and_capacity(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        $now = CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta');
+        CarbonImmutable::setTestNow($now);
+
+        try {
+            $equalNow = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 10:00:00', MobileServiceStatus::Open);
+            $current = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 11:00:00', MobileServiceStatus::Open);
+            $expired = $this->mobileServiceAt($staff, $type, '2026-08-10 08:00:00', '2026-08-10 09:59:59', MobileServiceStatus::Open);
+            $full = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 11:00:00', MobileServiceStatus::Open, 1, 1);
+            $closed = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 11:00:00', MobileServiceStatus::Closed);
+            $cancelled = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 11:00:00', MobileServiceStatus::Cancelled);
+            $service = app(MobileServiceService::class);
+
+            self::assertTrue($equalNow->isOpen());
+            self::assertTrue($service->canAcceptDeposit($staff, $equalNow, $type->id));
+            self::assertTrue($service->canAcceptDeposit($staff, $current, $type->id));
+            self::assertFalse($service->canAcceptDeposit($staff, $expired, $type->id));
+            self::assertFalse($service->canAcceptDeposit($staff, $full, $type->id));
+            self::assertFalse($service->canAcceptDeposit($staff, $closed, $type->id));
+            self::assertFalse($service->canAcceptDeposit($staff, $cancelled, $type->id));
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    public function test_mobile_deposit_guard_rejects_any_unaccepted_waste_type_without_linking(): void
+    {
+        [$admin, $staff, $rt, $accepted] = $this->context();
         $this->grant($staff, ['deposit.create']);
-        $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai RT 03', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 20, '', [$staff->id], [$type->id]);
+        $rejected = WasteType::factory()->create();
+        $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai RT 04', now()->subHour()->toDateTimeString(), now()->addHour()->toDateTimeString(), 20, '', [$staff->id], [$accepted->id]);
         app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
         app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
-        $customer = User::factory()->create();
         $deposit = Deposit::query()->create([
-            'deposit_number' => 'DEP-MOBILE-LINK-001',
-            'customer_id' => $customer->id,
+            'deposit_number' => 'DEP-MOBILE-MULTI-REJECT-001',
+            'customer_id' => User::factory()->create()->id,
             'staff_id' => $staff->id,
             'method' => 'keliling',
             'occurred_at' => now(),
             'status' => Deposit::STATUS_DRAFT,
         ]);
 
-        $guard = app(MobileDepositGuard::class);
-        $guard->attach($staff, $deposit, $service, $type);
-        $guard->attach($staff, $deposit, $service, $type);
-        $deposit->forceFill(['status' => Deposit::STATUS_FINAL, 'total_weight_kg' => '1.250', 'total_value' => 7_500])->save();
-
-        self::assertSame($service->id, $deposit->fresh()->mobile_service_id);
-        self::assertSame(1, $service->fresh()->served_count);
-        self::assertSame(1, app(MobileServiceService::class)->recap($staff, $service)['transaction_count']);
-        self::assertSame('1.250', app(MobileServiceService::class)->recap($staff, $service)['total_weight_kg']);
-        self::assertSame(7_500, app(MobileServiceService::class)->recap($staff, $service)['total_value']);
+        $this->expectException(ValidationException::class);
+        try {
+            app(MobileDepositGuard::class)->attach($staff, $deposit, $service, [$accepted, $rejected]);
+        } finally {
+            self::assertNull($deposit->fresh()->mobile_service_id);
+            self::assertSame(0, $service->fresh()->served_count);
+        }
     }
 
-    /** @return array{0: User, 1: User, 2: Rt, 3: WasteType} */
+    public function test_mobile_deposit_guard_rejects_expired_and_full_services(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        $this->grant($staff, ['deposit.create']);
+        $now = CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta');
+        CarbonImmutable::setTestNow($now);
+
+        try {
+            $expired = $this->mobileServiceAt($staff, $type, '2026-08-10 08:00:00', '2026-08-10 09:59:59', MobileServiceStatus::Open);
+            $full = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 11:00:00', MobileServiceStatus::Open, 1, 1);
+            $guard = app(MobileDepositGuard::class);
+
+            foreach ([$expired, $full] as $service) {
+                $deposit = Deposit::query()->create([
+                    'deposit_number' => 'DEP-MOBILE-REJECT-'.str()->upper(str()->random(8)),
+                    'customer_id' => User::factory()->create()->id,
+                    'staff_id' => $staff->id,
+                    'method' => 'keliling',
+                    'occurred_at' => now(),
+                    'status' => Deposit::STATUS_DRAFT,
+                ]);
+
+                try {
+                    $guard->attach($staff, $deposit, $service, [$type]);
+                    self::fail('Expected the mobile deposit guard to reject the service.');
+                } catch (ValidationException) {
+                    self::assertNull($deposit->fresh()->mobile_service_id);
+                }
+            }
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    private function mobileServiceAt(User $staff, WasteType $type, string $startsAt, string $endsAt, MobileServiceStatus $status, int $capacity = 20, int $servedCount = 0): MobileService
+    {
+        $service = MobileService::query()->create([
+            'service_number' => 'MOB-TIME-'.str()->upper(str()->random(10)),
+            'point' => 'Titik layanan waktu',
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
+            'status' => $status,
+            'capacity' => $capacity,
+            'served_count' => $servedCount,
+            'created_by' => $staff->id,
+        ]);
+        $service->staff()->attach($staff->id);
+        $service->wasteTypes()->attach($type->id);
+
+        return $service->fresh();
+    }
+
     private function context(): array
     {
         $admin = $this->userWith('mobile-service.manage', 'mobile-service.operate', 'waste.manage');

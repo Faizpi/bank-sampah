@@ -7,6 +7,8 @@
     'fallbackNumber',
     'downloadHref' => null,
     'printHref' => null,
+    'compact' => false,
+    'emptyMessage' => 'QR belum tersedia',
 ])
 
 @php
@@ -22,13 +24,17 @@
         }
         return $url;
     };
-    $safeImage = $safeUrl($imageSrc);
+    // QR presenters generate a local base64 image. Keep the general URL guard
+    // for remote sources, while allowing only strict, non-scriptable image data.
+    $safeImage = is_string($imageSrc) && preg_match('/^data:image\/(?:png|jpe?g|webp|gif|svg\+xml);base64,[A-Za-z0-9+\/]+={0,2}$/', $imageSrc) === 1
+        ? $imageSrc
+        : $safeUrl($imageSrc);
     $download = $safeUrl($downloadHref);
     $print = $safeUrl($printHref);
     $reference = is_string($maskedReference) && str_contains($maskedReference, '*') ? $maskedReference : null;
 @endphp
 
-<section {{ $attributes->except(['image-markup'])->class('min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-6') }}>
+<section {{ $attributes->except(['image-markup'])->class($compact ? 'min-w-0 rounded-lg border-0 bg-transparent p-0' : 'min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-6') }}>
     <div class="text-center">
         <div class="mx-auto mb-3 flex size-10 items-center justify-center rounded-xl bg-success-bg">
             <svg viewBox="0 0 24 24" class="size-5 text-forest-600" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -40,20 +46,20 @@
         <p class="mx-auto mt-2 max-w-lg text-body-sm text-text-secondary">{{ $context }}</p>
     </div>
 
-    <div class="mx-auto mt-5 flex w-fit max-w-full items-center justify-center overflow-hidden rounded-md bg-surface p-4">
+    <div class="mx-auto mt-4 flex w-fit max-w-full items-center justify-center overflow-hidden rounded-md bg-warm-canvas p-3">
         @if ($safeImage)
             <img src="{{ $safeImage }}" alt="{{ $imageAlt ?: $title }}" width="200" height="200" class="size-[200px] max-w-full object-contain">
         @else
-            <div role="status" class="flex size-[200px] max-w-full items-center justify-center border border-border bg-disabled-bg p-4 text-center text-body-sm text-text-secondary">QR belum tersedia</div>
+            <div role="status" class="flex size-[200px] max-w-full items-center justify-center border border-border bg-disabled-bg p-4 text-center text-body-sm text-text-secondary">{{ $emptyMessage }}</div>
         @endif
     </div>
 
-    <dl class="mx-auto mt-5 max-w-lg border-y border-border py-3 text-body-sm">
+    <dl class="mx-auto mt-4 max-w-lg border-y border-border py-3 text-body-sm">
         @if (is_string($maskedReference) && str_contains($maskedReference, '*'))<div class="flex flex-wrap justify-between gap-2"><dt class="text-text-secondary">Referensi tersamarkan</dt><dd class="amount-tabular text-deep-green">{{ $maskedReference }}</dd></div>@endif
         <div class="mt-2 flex flex-wrap justify-between gap-2"><dt class="text-text-secondary">Nomor alternatif</dt><dd class="amount-tabular text-deep-green">{{ $fallbackNumber }}</dd></div>
     </dl>
 
-    <p class="mx-auto mt-4 max-w-lg text-body-sm text-text-secondary">Jika pemindaian gagal, sebutkan nomor alternatif kepada petugas. Pastikan seluruh kotak putih terlihat saat dipindai.</p>
+    <p class="mx-auto mt-3 max-w-lg text-body-sm text-text-secondary">Jika pemindaian gagal, sebutkan nomor alternatif kepada petugas. Pastikan seluruh kotak putih terlihat saat dipindai.</p>
 
     @if ($download || $print)
         <div class="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">

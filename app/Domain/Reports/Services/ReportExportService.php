@@ -6,6 +6,7 @@ namespace App\Domain\Reports\Services;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
+use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Platform\Enums\MediaVisibility;
 use App\Domain\Platform\Models\Media;
 use App\Domain\Reports\Enums\ReportExportStatus;
@@ -33,7 +34,9 @@ final readonly class ReportExportService
 {
     private const DISK = 'media_private';
 
-    private const int EXPORT_ROW_LIMIT = 10_000;
+    private const EXPORT_ROW_LIMIT = 10_000;
+
+    private const PDF_DATA_ROWS_PER_PAGE = 44;
 
     public function __construct(private PermissionChecker $permissions, private ReportQueryService $reports, private AuditLogger $auditLogger) {}
 
@@ -244,40 +247,73 @@ final readonly class ReportExportService
         foreach ($records as $record) {
             $lines[] = implode(' | ', array_map(fn (mixed $value): string => $this->safeCell($value), $record));
         }
-        $commands = ['BT', '/F1 8 Tf', '50 780 Td'];
-        foreach (array_slice($lines, 0, 45) as $index => $line) {
-            if ($index > 0) {
-                $commands[] = '0 -16 Td';
-            }
-            $commands[] = '('.$this->pdfEscape(Str::limit($line, 180, '...')).') Tj';
+        $header = $lines[0] ?? '';
+        $rows = array_slice($lines, 1);
+        $pages = [];
+        foreach (array_chunk($rows, self::PDF_DATA_ROWS_PER_PAGE) as $pageRows) {
+            $pages[] = array_merge([$header], $pageRows);
         }
-        $commands[] = 'ET';
-        $stream = implode("\n", $commands);
+        if ($pages === []) {
+            $pages[] = [$header];
+        }
+
+        $pageCount = count($pages);
+        $fontObject = 3 + (2 * $pageCount);
+        $pageReferences = [];
+        for ($pageIndex = 0; $pageIndex < $pageCount; $pageIndex++) {
+            $pageReferences[] = (3 + (2 * $pageIndex)).' 0 R';
+        }
         $objects = [
-            '<< /Type /Catalog /Pages 2 0 R >>',
-            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-            '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-            '<< /Length '.strlen($stream).' >>\nstream\n'.$stream.'\nendstream',
+            1 => '<< /Type /Catalog /Pages 2 0 R >>',
+            2 => '<< /Type /Pages /Kids ['.implode(' ', $pageReferences).'] /Count '.$pageCount.' >>',
         ];
+        foreach ($pages as $pageIndex => $pageLines) {
+            $pageObject = 3 + (2 * $pageIndex);
+            $contentObject = $pageObject + 1;
+            $commands = ['BT', '/F1 8 Tf', '50 780 Td'];
+            foreach ($pageLines as $lineIndex => $line) {
+                if ($lineIndex > 0) {
+                    $commands[] = '0 -16 Td';
+                }
+                $commands[] = '('.$this->pdfEscape($line).') Tj';
+            }
+            $commands[] = 'ET';
+            $stream = implode("\n", $commands);
+            $objects[$pageObject] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 '.$fontObject.' 0 R >> >> /Contents '.$contentObject.' 0 R >>';
+            $objects[$contentObject] = '<< /Length '.strlen($stream)." >>\nstream\n".$stream."\nendstream";
+        }
+        $objects[$fontObject] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+
+        return $this->serializePdf($objects);
+    }
+
+    /** @param array<int, string> $objects */
+    private function serializePdf(array $objects): string
+    {
         $pdf = "%PDF-1.4\n";
         $offsets = [0];
         foreach ($objects as $number => $object) {
-            $offsets[$number + 1] = strlen($pdf);
-            $pdf .= ($number + 1).' 0 obj\n'.$object.'\nendobj\n';
+            $offsets[$number] = strlen($pdf);
+            $pdf .= $number." 0 obj\n".$object."\nendobj\n";
         }
+        $size = count($objects) + 1;
         $xref = strlen($pdf);
-        $pdf .= 'xref\n0 '.(count($objects) + 1).'\n0000000000 65535 f \n';
-        for ($index = 1; $index <= count($objects); $index++) {
-            $pdf .= sprintf('%010d 00000 n \n', $offsets[$index]);
+        $pdf .= "xref\n0 ".$size."\n";
+        $pdf .= "0000000000 65535 f \n";
+        for ($number = 1; $number < $size; $number++) {
+            $pdf .= sprintf("%010d 00000 n \n", $offsets[$number]);
         }
-        $pdf .= 'trailer\n<< /Size '.(count($objects) + 1).' /Root 1 0 R >>\nstartxref\n'.$xref."\n%%EOF";
+        $pdf .= "trailer\n<< /Size ".$size." /Root 1 0 R >>\nstartxref\n".$xref."\n%%EOF";
 
         return $pdf;
     }
 
     private function valueFor(Model $record, string $column): mixed
     {
+        if ($record instanceof Deposit && $column === 'total_value') {
+            return $record->effectiveTotalValue();
+        }
+
         $value = $record->getAttribute($column);
         if ($value instanceof BackedEnum) {
             return $value->value;

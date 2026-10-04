@@ -54,7 +54,7 @@ Fokusnya adalah menghubungkan informasi publik, pelayanan warga, pekerjaan lapan
 | Back-office | Filament 5 dengan tema khusus |
 | Styling | Tailwind CSS 4.1+ |
 | Build aset | Vite dan npm, dijalankan di lokal atau CI |
-| Database | MariaDB terkelola yang kompatibel dengan MySQL |
+| Database | MySQL 8.0.30 melalui Laragon |
 | Media | Storage privat untuk bukti, foto, dan file sensitif |
 | Pengujian | Pest 4 |
 | Target hosting | Hostinger Web Hosting Premium atau Business, dengan capability check deployment |
@@ -72,7 +72,7 @@ UI publik, warga, petugas, dan Filament back-office
     -> application action atau use case
     -> domain service, value object, dan state machine
     -> model Eloquent dan query object
-    -> MariaDB
+    -> MySQL 8.0.30
 
 Application action
     -> transaction, lock, idempotency, dan audit
@@ -104,7 +104,8 @@ Prasyarat:
 - PHP 8.3+ dengan PHP 8.5 sebagai target lokal dan CI.
 - Composer 2.
 - Node.js dan npm untuk memasang dependency frontend serta membangun aset lokal.
-- MariaDB atau database yang kompatibel dengan MySQL untuk alur yang mengikuti target deployment.
+- Laragon dengan MySQL 8.0.30 untuk pengembangan lokal.
+- MySQL 8.0.30-compatible untuk target deployment production.
 
 Siapkan `.env` lokal dari `.env.example` dan isi koneksi database sesuai lingkungan pengembangan. Jangan menaruh secret, password, atau token pada repository, README, issue, atau command history.
 
@@ -156,7 +157,7 @@ composer check
 npm run build
 ```
 
-Validasi MariaDB disposable, pemeriksaan browser atau E2E, UAT, deployment rehearsal, dan bukti operasional mengikuti [TEST_PLAN.md](docs/TEST_PLAN.md) serta [DEPLOYMENT.md](docs/DEPLOYMENT.md). Hasil SQLite lokal tidak dengan sendirinya membuktikan kompatibilitas MariaDB.
+Smoke runtime lokal memakai MySQL 8.0.30 dari Laragon. Suite harian memakai SQLite `:memory:`. Validasi engine MySQL 8.0.30 disposable, pemeriksaan browser atau E2E, UAT, deployment rehearsal, dan bukti operasional mengikuti [rencana pengujian](docs/TEST_PLAN.md) serta [panduan deployment](docs/DEPLOYMENT.md). Hasil SQLite tidak dengan sendirinya membuktikan kompatibilitas MySQL production. Riwayat perubahan dan snapshot verifikasi lokal dicatat di [changelog proyek](docs/CHANGELOG.md); keduanya bukan klaim kesiapan produksi.
 
 ## Dokumentasi
 
@@ -177,7 +178,7 @@ Validasi MariaDB disposable, pemeriksaan browser atau E2E, UAT, deployment rehea
 - Fitur sembako menggunakan paket deskriptif dan penukaran sederhana, bukan pengelolaan stok terperinci.
 - Sistem menyediakan data agregat untuk mendukung evaluasi program desa, tetapi tidak mengelola produksi, formula, kualitas, stok, distribusi, atau biaya paving block.
 - Sistem bukan akuntansi desa menyeluruh.
-- Ketersediaan deployment bergantung pada kemampuan provider untuk menyediakan PHP yang kompatibel, database MariaDB atau MySQL-compatible, document root yang hanya menyajikan `public/`, storage privat, permission runtime, HTTPS, dan cron bila dibutuhkan.
+- Ketersediaan deployment bergantung pada kemampuan provider untuk menyediakan PHP yang kompatibel, MySQL 8.0.30-compatible, document root yang hanya menyajikan `public/`, storage privat, permission runtime, HTTPS, dan cron bila dibutuhkan.
 
 ## Catatan keamanan
 

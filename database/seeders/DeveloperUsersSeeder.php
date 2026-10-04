@@ -13,11 +13,12 @@ use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
 use App\Models\User;
+use Dotenv\Dotenv;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Development-only credential seeder.
+ * Local/staging credential seeder.
  *
  * Creates one back-office/phone-capable account per baseline role so a local
  * or staging instance can be exercised end-to-end. NEVER wired into production:
@@ -42,7 +43,7 @@ use Illuminate\Support\Facades\Hash;
  */
 final class DeveloperUsersSeeder extends Seeder
 {
-    public const string DEV_PASSWORD = 'Dev#Sindangheula2026';
+    public const DEV_PASSWORD = 'Dev#Sindangheula2026';
 
     /** @var array<string, array{phone: string, email: string, staff: bool, customer: bool}> */
     private const ACCOUNTS = [
@@ -51,6 +52,15 @@ final class DeveloperUsersSeeder extends Seeder
         'bendahara' => ['phone' => '6281234567803', 'email' => 'bendahara@sindangheula.dev', 'staff' => true, 'customer' => false],
         'admin' => ['phone' => '6281234567804', 'email' => 'admin@sindangheula.dev', 'staff' => false, 'customer' => false],
         'superadmin' => ['phone' => '6281234567805', 'email' => 'superadmin@sindangheula.dev', 'staff' => false, 'customer' => false],
+    ];
+
+    /** @var array<string, string> */
+    private const DISPLAY_NAMES = [
+        'warga' => 'Siti Aminah',
+        'petugas' => 'Dadan Hidayat',
+        'bendahara' => 'Dewi Lestari',
+        'admin' => 'Rina Marlina',
+        'superadmin' => 'Agus Setiawan',
     ];
 
     /** @return array<string, string> role name => phone */
@@ -69,24 +79,102 @@ final class DeveloperUsersSeeder extends Seeder
         return self::ACCOUNTS[$role]['email'];
     }
 
-    public function run(): void
+    public static function password(): string
     {
-        if (app()->environment('production')) {
-            $this->command?->warn('DeveloperUsersSeeder skipped: production environment. This seeder is for local/staging credential testing only.');
+        $configuredPassword = self::demoSetting('app.demo_password', 'APP_DEMO_PASSWORD');
 
+        if (is_string($configuredPassword) && $configuredPassword !== '') {
+            return $configuredPassword;
+        }
+
+        return self::DEV_PASSWORD;
+    }
+
+    public static function canSeedDemoData(): bool
+    {
+        if (config('app.env') !== 'production') {
+            return true;
+        }
+
+        $demoPassword = self::demoSetting('app.demo_password', 'APP_DEMO_PASSWORD');
+
+        return filter_var(self::demoSetting('app.demo_mode', 'APP_DEMO_MODE'), FILTER_VALIDATE_BOOL)
+            && is_string($demoPassword)
+            && mb_strlen($demoPassword) >= 16;
+    }
+
+    public static function requireDemoDataConfiguration(): void
+    {
+        if (self::canSeedDemoData()) {
             return;
         }
 
+        throw new \LogicException('Data uji production dinonaktifkan. Isi APP_DEMO_MODE=true dan APP_DEMO_PASSWORD minimal 16 karakter secara sementara, lalu bangun ulang cache.');
+    }
+
+    private static function demoSetting(string $configKey, string $environmentKey): mixed
+    {
+        $dotenvValue = self::projectEnvironmentValue($environmentKey);
+
+        if ($dotenvValue !== null && $dotenvValue !== '') {
+            return $dotenvValue;
+        }
+
+        $environmentValue = $_ENV[$environmentKey]
+            ?? $_SERVER[$environmentKey]
+            ?? getenv($environmentKey);
+
+        if ($environmentValue !== false && $environmentValue !== null && $environmentValue !== '') {
+            return $environmentValue;
+        }
+
+        // deploy.php loads .env before it boots Laravel so that a recently
+        // changed demo flag is usable even while an older config cache exists.
+        return config($configKey);
+    }
+
+    private static function projectEnvironmentValue(string $environmentKey): ?string
+    {
+        $environmentFile = base_path('.env');
+
+        if (! is_readable($environmentFile)) {
+            return null;
+        }
+
+        try {
+            $contents = file_get_contents($environmentFile);
+
+            if (! is_string($contents)) {
+                return null;
+            }
+
+            $values = Dotenv::parse($contents);
+            $value = $values[$environmentKey] ?? null;
+
+            return is_string($value) ? $value : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function run(): void
+    {
+        self::requireDemoDataConfiguration();
+
         $this->call(RolesAndPermissionsSeeder::class);
+        // All generated accounts intentionally share the configured demo
+        // password. Hash it once so a web-based deployment on shared hosting
+        // does not spend its whole request budget repeating bcrypt work.
+        $passwordHash = Hash::make(self::password());
 
         foreach (self::ACCOUNTS as $roleName => $account) {
             $user = User::query()->updateOrCreate(
                 ['phone' => $account['phone']],
                 [
-                    'name' => ucfirst($roleName).' Development',
+                    'name' => self::DISPLAY_NAMES[$roleName],
                     'email' => $account['email'],
                     'email_verified_at' => now(),
-                    'password' => Hash::make(self::DEV_PASSWORD),
+                    'password' => $passwordHash,
                     'status' => UserStatus::Active,
                     'verified_at' => now(),
                     'terms_version' => (string) config('app.terms_version'),
@@ -97,21 +185,21 @@ final class DeveloperUsersSeeder extends Seeder
             $role = Role::query()->where('name', $roleName)->firstOrFail();
             $user->roles()->syncWithoutDetaching([$role->id => ['assigned_by' => $user->id, 'reason' => 'Dev credential bootstrap']]);
 
-            $this->ensureProfiles($user, $account['customer'], $account['staff']);
+            $this->ensureProfiles($user, $roleName, $account['customer'], $account['staff']);
 
             $this->command?->info("Created dev account for role [{$roleName}]: {$account['email']} / phone {$account['phone']}");
         }
     }
 
-    private function ensureProfiles(User $user, bool $customer, bool $staff): void
+    private function ensureProfiles(User $user, string $roleName, bool $customer, bool $staff): void
     {
         if ($customer) {
             CustomerProfile::query()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'customer_number' => 'CST-DEV-'.$user->id,
-                    'rt_id' => $this->devRt()->id,
-                    'address' => 'Alamat pengembangan Sindangheula',
+                    'customer_number' => 'CST-00000001',
+                    'rt_id' => $this->localRt()->id,
+                    'address' => 'Kampung Sukamaju RT 01/RW 02, Sindangheula',
                     'joined_at' => now()->toDateString(),
                 ],
             );
@@ -121,8 +209,8 @@ final class DeveloperUsersSeeder extends Seeder
             StaffProfile::query()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'staff_number' => 'STF-DEV-'.$user->id,
-                    'service_area_id' => $this->devServiceArea()->id,
+                    'staff_number' => $roleName === 'bendahara' ? 'STF-SH-002' : 'STF-SH-001',
+                    'service_area_id' => $this->localServiceArea()->id,
                     'active_from' => now()->subYear()->toDateString(),
                     'active_to' => null,
                 ],
@@ -130,28 +218,28 @@ final class DeveloperUsersSeeder extends Seeder
         }
     }
 
-    private function devServiceArea(): ServiceArea
+    private function localServiceArea(): ServiceArea
     {
         return ServiceArea::query()->firstOrCreate(
-            ['name' => 'Wilayah Pengembangan Dev'],
+            ['name' => 'Layanan Sindangheula Tengah'],
             ['is_active' => true],
         );
     }
 
-    private function devRt(): Rt
+    private function localRt(): Rt
     {
         $dusun = Dusun::query()->firstOrCreate(
-            ['code' => 'DEV-DS'],
-            ['name' => 'Pengembangan', 'is_active' => true],
+            ['code' => 'DSN-SH-TENGAH'],
+            ['name' => 'Dusun Sindangheula Tengah', 'is_active' => true],
         );
         $rw = Rw::query()->firstOrCreate(
-            ['dusun_id' => $dusun->id, 'code' => 'DEV-RW'],
-            ['name' => 'Pengembangan', 'is_active' => true],
+            ['dusun_id' => $dusun->id, 'code' => 'DSN-SH-TENGAH-RW-02'],
+            ['name' => 'RW 02 Sindangheula Tengah', 'is_active' => true],
         );
 
         return Rt::query()->firstOrCreate(
-            ['rw_id' => $rw->id, 'code' => 'DEV-RT'],
-            ['name' => 'Pengembangan', 'is_active' => true],
+            ['rw_id' => $rw->id, 'code' => 'DSN-SH-TENGAH-RW-02-RT-01'],
+            ['name' => 'RT 01 RW 02', 'is_active' => true],
         );
     }
 }

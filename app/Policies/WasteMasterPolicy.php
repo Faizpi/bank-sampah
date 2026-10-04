@@ -37,6 +37,11 @@ abstract readonly class WasteMasterPolicy
         return $this->permissions->allows($actor, 'waste.manage');
     }
 
+    public function activate(User $actor, object $record): bool
+    {
+        return $this->permissions->allows($actor, 'waste.manage');
+    }
+
     public function delete(User $actor, object $record): bool
     {
         return false;

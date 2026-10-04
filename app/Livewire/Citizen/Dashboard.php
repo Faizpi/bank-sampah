@@ -6,10 +6,13 @@ namespace App\Livewire\Citizen;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Groceries\Enums\GroceryStatus;
+use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Pickups\Models\PickupRequest;
+use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -51,6 +54,7 @@ final class Dashboard extends Component
 
         // Recent deposits (last 5)
         $recentDeposits = Deposit::query()
+            ->with('correction')
             ->where('customer_id', $actor->id)
             ->latest('occurred_at')
             ->take(5)
@@ -67,7 +71,24 @@ final class Dashboard extends Component
         // Active withdrawal requests
         $activeWithdrawals = WithdrawalRequest::query()
             ->where('customer_id', $actor->id)
-            ->whereNotIn('status', ['dibayar', 'ditolak', 'dibatalkan'])
+            ->whereNotIn('status', [
+                WithdrawalStatus::Paid->value,
+                WithdrawalStatus::Rejected->value,
+                WithdrawalStatus::Cancelled->value,
+                WithdrawalStatus::Expired->value,
+            ])
+            ->latest()
+            ->take(3)
+            ->get();
+
+        $activeGroceries = GroceryRedemption::query()
+            ->where('customer_id', $actor->id)
+            ->whereNotIn('status', [
+                GroceryStatus::Completed->value,
+                GroceryStatus::Rejected->value,
+                GroceryStatus::Cancelled->value,
+                GroceryStatus::Expired->value,
+            ])
             ->latest()
             ->take(3)
             ->get();
@@ -82,7 +103,7 @@ final class Dashboard extends Component
             'recentDeposits' => $recentDeposits,
             'activePickups' => $activePickups,
             'activeWithdrawals' => $activeWithdrawals,
-            'customerCardHref' => route('citizen.customer-card'),
+            'activeGroceries' => $activeGroceries,
             'groceryHref' => route('citizen.grocery.create'),
         ]);
     }

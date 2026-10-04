@@ -3,6 +3,7 @@
     'label',
     'hint' => null,
     'error' => null,
+    'placeholder' => null,
     'options' => [],
 ])
 
@@ -27,6 +28,9 @@
         ]) }}
     >
         {{ $slot }}
+        @if ($placeholder !== null)
+            <option value="">{{ $placeholder }}</option>
+        @endif
         @foreach ($options as $optionValue => $optionLabel)
             <option value="{{ $optionValue }}">{{ $optionLabel }}</option>
         @endforeach
