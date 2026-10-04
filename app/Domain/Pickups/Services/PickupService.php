@@ -155,7 +155,7 @@ final readonly class PickupService
         }
     }
 
-    public function setCapacity(User $actor, ServiceArea $area, string $date, ?int $maxAddresses, ?string $maxWeightKg, ?string $vehicleLabel = null): PickupCapacity
+    public function setCapacity(User $actor, ServiceArea $area, string $date, ?int $maxAddresses, ?string $maxWeightKg, ?string $vehicleLabel = null, ?PickupCapacity $current = null): PickupCapacity
     {
         $this->authorize($actor, 'pickup.capacity.manage');
         if (! $area->is_active) {
@@ -169,7 +169,10 @@ final readonly class PickupService
             throw ValidationException::withMessages(['capacity' => 'Minimal satu batas kapasitas harus diisi.']);
         }
 
-        return DB::transaction(function () use ($actor, $area, $serviceDate, $maxAddresses, $maxWeightKg, $vehicleLabel): PickupCapacity {
+        return DB::transaction(function () use ($actor, $area, $serviceDate, $maxAddresses, $maxWeightKg, $vehicleLabel, $current): PickupCapacity {
+            $lockedCurrent = $current === null
+                ? null
+                : PickupCapacity::query()->whereKey($current->id)->lockForUpdate()->firstOrFail();
             $capacity = PickupCapacity::query()->lockForUpdate()->updateOrCreate(
                 ['service_area_id' => $area->id, 'service_date' => $serviceDate->toDateString()],
                 [
@@ -179,6 +182,17 @@ final readonly class PickupService
                     'is_active' => true,
                 ],
             );
+            if ($lockedCurrent !== null && $lockedCurrent->id !== $capacity->id) {
+                $lockedCurrent->forceFill(['is_active' => false])->save();
+                $this->auditLogger->record($actor, 'pickup.capacity.replaced', $lockedCurrent, [
+                    'service_area_id' => $lockedCurrent->service_area_id,
+                    'service_date' => $lockedCurrent->service_date->toDateString(),
+                    'is_active' => true,
+                ], [
+                    'is_active' => false,
+                    'replacement_id' => $capacity->id,
+                ], $this->correlationId());
+            }
             $this->auditLogger->record($actor, 'pickup.capacity.updated', $capacity, [], [
                 'service_area_id' => $area->id,
                 'service_date' => $serviceDate->toDateString(),

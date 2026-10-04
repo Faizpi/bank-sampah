@@ -77,8 +77,26 @@
                     <span wire:loading.remove wire:target="finalize">Finalisasi Setoran</span>
                     <span wire:loading wire:target="finalize">Memproses...</span>
                 </x-ui.button>
-            </div>
-        </div>
-    </x-ui.panel>
+             </div>
+         </div>
+     </x-ui.panel>
+
+     @if ($mobileServiceId)
+         <x-ui.panel title="Layanan keliling" description="Setoran ini ditautkan ke jadwal layanan yang sedang dibuka dan akan masuk rekap titik.">
+             <p class="text-body text-text-secondary">Jadwal layanan keliling dipilih dari titik yang ditugaskan kepada Anda.</p>
+         </x-ui.panel>
+     @endif
+
+     <x-ui.panel title="Bukti setoran" description="Unggah bukti JPEG, PNG, WebP, atau PDF. File disimpan privat dan wajib saat finalisasi.">
+         <div class="space-y-1.5">
+             <label for="deposit-evidence" class="block text-label font-semibold text-deep-green">Bukti transaksi</label>
+             <input id="deposit-evidence" wire:model="evidence" type="file"
+                 accept="image/jpeg,image/png,image/webp,application/pdf"
+                 class="block min-h-touch w-full rounded-xl border-2 border-dashed border-border bg-warm-canvas p-4 text-body text-text-secondary transition hover:border-forest-600 focus:outline-none focus:ring-2 focus:ring-focus">
+             @error('evidence')
+                 <p class="text-body-sm text-terracotta">{{ $message }}</p>
+             @enderror
+         </div>
+     </x-ui.panel>
 </section>
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Deposits;
 
 use App\Domain\AuditReconciliation\Models\AuditLog;
+use App\Domain\Corrections\Models\TransactionCorrection;
 use App\Domain\Corrections\Models\TransactionReversal;
 use App\Domain\Corrections\Services\TransactionCorrectionService;
 use App\Domain\CustomersRegions\Models\Dusun;
@@ -30,7 +31,11 @@ use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\WasteMaster\Support\WasteMasterMutationGuard;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 use LogicException;
@@ -52,7 +57,7 @@ final class DepositWaveTest extends TestCase
         $service->replaceDraftItems($staff, $draft, [new DepositItemInput($type->id, $condition->id, '1.250')]);
 
         Event::fake([NotificationRequested::class]);
-        $final = $service->finalize($staff, $draft, 'w4-finalize-key-0001');
+        $final = $service->finalize($staff, $draft, 'w4-finalize-key-0001', null, $this->depositProof());
 
         self::assertSame(Deposit::STATUS_FINAL, $final->status);
         self::assertSame(4_166, $final->total_value);
@@ -82,7 +87,7 @@ final class DepositWaveTest extends TestCase
         $service = app(DepositService::class);
         $draft = $service->createDraft($staff, $customer);
         $this->expectException(ValidationException::class);
-        $service->finalize($staff, $draft, 'w4-rollback-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']]);
+        $service->finalize($staff, $draft, 'w4-rollback-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         self::assertSame(Deposit::STATUS_DRAFT, $draft->fresh()->status);
         self::assertSame(0, $draft->fresh()->items()->count());
         self::assertDatabaseCount('idempotency_keys', 0);
@@ -95,10 +100,10 @@ final class DepositWaveTest extends TestCase
         $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
         $service = app(DepositService::class);
         $draft = $service->createDraft($staff, $customer);
-        $result = $service->finalize($staff, $draft, 'w4-retry-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']]);
-        self::assertSame($result->id, $service->finalize($staff, $draft, 'w4-retry-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']])->id);
+        $result = $service->finalize($staff, $draft, 'w4-retry-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
+        self::assertSame($result->id, $service->finalize($staff, $draft, 'w4-retry-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof())->id);
         $this->expectException(ValidationException::class);
-        $service->finalize($staff, $draft, 'w4-retry-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '2.000']]);
+        $service->finalize($staff, $draft, 'w4-retry-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '2.000']], $this->depositProof());
     }
 
     public function test_lane_b_balance_uses_ledger_minus_active_hold_and_rejects_negative_hold(): void
@@ -132,12 +137,157 @@ final class DepositWaveTest extends TestCase
         $entry->update(['amount' => 1]);
     }
 
+    public function test_lane_b_ledger_source_identity_and_hold_core_fields_cannot_be_reused_or_edited(): void
+    {
+        $owner = User::factory()->create();
+        $account = LedgerAccount::query()->create(['user_id' => $owner->id, 'status' => 'aktif', 'currency' => 'IDR']);
+        $source = User::factory()->create();
+        $deposit = Deposit::query()->create([
+            'deposit_number' => 'DEP-LEDGER-IDENTITY-'.$owner->id,
+            'customer_id' => $owner->id,
+            'staff_id' => $owner->id,
+            'method' => 'langsung',
+            'occurred_at' => now(),
+            'status' => Deposit::STATUS_FINAL,
+            'total_value' => 10_000,
+            'finalized_at' => now(),
+        ]);
+        $service = app(LedgerService::class);
+        $service->postDeposit($deposit, 10_000, 'deposit-source-identity-a');
+
+        try {
+            $service->postDeposit($deposit, 10_000, 'deposit-source-identity-b');
+            self::fail('A deposit source must not be posted twice with a different source key.');
+        } catch (ValidationException) {
+            self::assertSame(1, LedgerEntry::query()->where('source_type', Deposit::class)->where('source_id', $deposit->id)->count());
+        }
+
+        $hold = $service->createHold($owner, $source, 5_000, 'hold-source-identity-a');
+        try {
+            $service->createHold($owner, $source, 5_000, 'hold-source-identity-b');
+            self::fail('A hold source must not be reused with a different source key.');
+        } catch (ValidationException) {
+            self::assertSame(1, BalanceHold::query()->where('source_type', User::class)->where('source_id', $source->id)->count());
+        }
+
+        $otherSource = User::factory()->create();
+        $otherHold = $service->createHold($owner, $otherSource, 5_000, 'hold-source-identity-c');
+        $service->convertHold($hold, 'hold-conversion-identity-a');
+        try {
+            $service->convertHold($otherHold, 'hold-conversion-identity-a');
+            self::fail('A conversion source key must not be reused by another hold.');
+        } catch (ValidationException) {
+            self::assertSame(BalanceHold::STATUS_ACTIVE, $otherHold->fresh()->status);
+            self::assertSame(1, LedgerEntry::query()->where('source_key', 'hold-conversion-identity-a')->count());
+        }
+
+        $this->expectException(LogicException::class);
+        $hold->forceFill(['amount' => 1])->save();
+    }
+
+    public function test_lane_b_rejects_non_positive_ledger_and_hold_amounts(): void
+    {
+        $owner = User::factory()->create();
+        $account = LedgerAccount::query()->create(['user_id' => $owner->id, 'status' => 'aktif', 'currency' => 'IDR']);
+        $source = User::factory()->create();
+
+        $this->expectException(InvalidValue::class);
+        LedgerEntry::query()->create([
+            'entry_number' => 'LED-NEGATIVE-1',
+            'ledger_account_id' => $account->id,
+            'direction' => LedgerEntry::DIRECTION_IN,
+            'kind' => LedgerEntry::KIND_DEPOSIT,
+            'amount' => 0,
+            'source_type' => User::class,
+            'source_id' => $source->id,
+            'source_key' => 'negative-entry-source-1',
+            'effective_at' => now(),
+            'balance_after' => 0,
+        ]);
+    }
+
+    public function test_lane_b_ledger_and_hold_mass_updates_are_rejected(): void
+    {
+        $owner = User::factory()->create();
+        $account = LedgerAccount::query()->create(['user_id' => $owner->id, 'status' => 'aktif', 'currency' => 'IDR']);
+        $source = User::factory()->create();
+        $entry = LedgerEntry::query()->create([
+            'entry_number' => 'LED-MASS-1',
+            'ledger_account_id' => $account->id,
+            'direction' => LedgerEntry::DIRECTION_IN,
+            'kind' => LedgerEntry::KIND_DEPOSIT,
+            'amount' => 100_000,
+            'source_type' => User::class,
+            'source_id' => $source->id,
+            'source_key' => 'mass-entry-source-1',
+            'effective_at' => now(),
+            'balance_after' => 100_000,
+        ]);
+        $hold = app(LedgerService::class)->createHold($owner, User::factory()->create(), 10_000, 'mass-hold-source-1');
+
+        try {
+            LedgerEntry::query()->whereKey($entry->id)->update(['amount' => 1]);
+            self::fail('Ledger mass updates must be rejected.');
+        } catch (QueryException) {
+            self::assertDatabaseHas('ledger_entries', ['id' => $entry->id, 'amount' => 100_000]);
+        }
+
+        $this->expectException(QueryException::class);
+        try {
+            BalanceHold::query()->whereKey($hold->id)->update(['amount' => 1]);
+        } finally {
+            self::assertDatabaseHas('balance_holds', ['id' => $hold->id, 'amount' => 10_000]);
+        }
+    }
+
+    public function test_lane_b_direct_deposit_service_calls_require_permission(): void
+    {
+        [$staff, $customer] = $this->context();
+
+        $this->expectException(AuthorizationException::class);
+        app(DepositService::class)->createDraft($staff, $customer);
+    }
+
+    public function test_lane_b_authorized_ledger_adjustment_is_append_only_audited_and_idempotent(): void
+    {
+        $owner = User::factory()->create();
+        $actor = User::factory()->create();
+        $account = LedgerAccount::query()->create(['user_id' => $owner->id, 'status' => 'aktif', 'currency' => 'IDR']);
+        LedgerEntry::query()->create([
+            'entry_number' => 'LED-ADJUSTMENT-SEED',
+            'ledger_account_id' => $account->id,
+            'direction' => LedgerEntry::DIRECTION_IN,
+            'kind' => LedgerEntry::KIND_DEPOSIT,
+            'amount' => 20_000,
+            'source_type' => User::class,
+            'source_id' => $owner->id,
+            'source_key' => 'adjustment-seed',
+            'effective_at' => now(),
+            'balance_after' => 20_000,
+        ]);
+        $this->grant($actor, ['ledger.adjust', 'user.view.all']);
+
+        $service = app(LedgerService::class);
+        $entry = $service->adjust($actor, $owner, -3_000, 'Penyesuaian resmi berdasarkan bukti kas.', 'adjustment-key-0001');
+        $replayed = $service->adjust($actor, $owner, -3_000, 'Penyesuaian resmi berdasarkan bukti kas.', 'adjustment-key-0001');
+
+        self::assertSame($entry->id, $replayed->id);
+        self::assertSame(LedgerEntry::KIND_ADJUSTMENT, $entry->kind);
+        self::assertSame(LedgerEntry::DIRECTION_OUT, $entry->direction);
+        self::assertSame(17_000, $account->fresh()->availableBalance());
+        self::assertSame(1, LedgerEntry::query()->where('kind', LedgerEntry::KIND_ADJUSTMENT)->count());
+        self::assertSame(1, AuditLog::query()->where('action', 'ledger.adjusted')->count());
+
+        $this->expectException(ValidationException::class);
+        $service->adjust($actor, $owner, -2_000, 'Payload berbeda harus ditolak.', 'adjustment-key-0001');
+    }
+
     public function test_lane_c_public_presenter_hides_private_data_and_rejects_reversed_receipt(): void
     {
         [$staff, $customer, $type, $condition] = $this->pricedContext();
         $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
         $service = app(DepositService::class);
-        $final = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-public-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']]);
+        $final = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-public-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         $presented = app(DepositPublicPresenter::class)->present($final);
         self::assertSame(['number', 'date', 'weight_kg', 'value', 'status'], array_keys($presented));
         self::assertArrayNotHasKey('customer_id', $presented);
@@ -152,7 +302,7 @@ final class DepositWaveTest extends TestCase
         $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
         $this->grant($customer, ['deposit.view']);
         $service = app(DepositService::class);
-        $deposit = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-route-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']]);
+        $deposit = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-route-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         $token = $deposit->verificationToken();
         self::assertIsString($token);
 
@@ -167,33 +317,90 @@ final class DepositWaveTest extends TestCase
         $this->get(route('public.deposit-verification', ['token' => str_repeat('a', 43)]))->assertNotFound();
     }
 
+    public function test_seeded_superadmin_direct_services_fail_closed_at_sensitive_boundaries(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $superadmin = User::factory()->create();
+        $superadmin->roles()->attach(Role::query()->where('name', 'superadmin')->sole());
+        $deposit = new Deposit;
+
+        foreach ([
+            fn () => app(TransactionCorrectionService::class)->correct($superadmin->fresh(), $deposit, 1_000, 'Koreksi tidak boleh melalui boundary ini.'),
+            fn () => app(TransactionCorrectionService::class)->reverse($superadmin->fresh(), $deposit, 'Reversal tidak boleh melalui boundary ini.'),
+            fn () => app(LedgerService::class)->assertCanAdjust($superadmin->fresh()),
+        ] as $operation) {
+            try {
+                $operation();
+                self::fail('Superadmin technical permissions must not cross the sensitive service boundary.');
+            } catch (AuthorizationException) {
+                self::addToAssertionCount(1);
+            }
+        }
+    }
+
     public function test_lane_d_correction_requires_permission_reason_and_blocks_negative_available_balance(): void
     {
         [$staff, $customer, $type, $condition] = $this->pricedContext();
         $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
         $service = app(DepositService::class);
-        $deposit = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-correction-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']]);
+        $deposit = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-correction-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         $admin = User::factory()->create();
-        $this->grant($admin, ['transaction.correct', 'transaction.reverse']);
-        $correction = app(TransactionCorrectionService::class)->correct($admin, $deposit, 2_000, 'Berat salah saat penimbangan dikonfirmasi');
+        $this->grant($admin, ['user.view', 'user.view.all', 'transaction.correct', 'transaction.reverse']);
+        $correction = app(TransactionCorrectionService::class)->correct($admin, $deposit, 2_000, 'Berat salah saat penimbangan dikonfirmasi', null, $this->depositProof());
         self::assertSame(-1_000, $correction->delta_value);
         self::assertSame(Deposit::STATUS_CORRECTED, $deposit->fresh()->status);
         self::assertSame(1, LedgerEntry::query()->where('kind', 'correction')->count());
+        try {
+            TransactionCorrection::query()->whereKey($correction->id)->update(['reason' => 'diubah']);
+            self::fail('Transaction corrections must be append-only.');
+        } catch (QueryException) {
+            self::assertDatabaseHas('transaction_corrections', ['id' => $correction->id, 'reason' => 'Berat salah saat penimbangan dikonfirmasi']);
+        }
         $this->expectException(ValidationException::class);
         app(TransactionCorrectionService::class)->correct($admin, $deposit, 0, '');
+    }
+
+    public function test_correction_and_reversal_require_explicit_customer_scope(): void
+    {
+        [$staff, $customer, $type, $condition] = $this->pricedContext();
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $deposit = app(DepositService::class)->finalize($staff, app(DepositService::class)->createDraft($staff, $customer), 'w4-scope-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
+        $admin = User::factory()->create();
+        $this->grant($admin, ['user.view', 'transaction.correct', 'transaction.reverse']);
+        $service = app(TransactionCorrectionService::class);
+
+        try {
+            $service->correct($admin, $deposit, 2_000, 'Scope nasabah harus diwajibkan sebelum koreksi.', null, $this->depositProof());
+            self::fail('Correction must require an explicit customer scope.');
+        } catch (AuthorizationException) {
+            self::assertDatabaseCount('transaction_corrections', 0);
+        }
+
+        try {
+            $service->reverse($admin, $deposit, 'Scope nasabah harus diwajibkan sebelum reversal.', null, $this->depositProof());
+            self::fail('Reversal must require an explicit customer scope.');
+        } catch (AuthorizationException) {
+            self::assertDatabaseCount('transaction_reversals', 0);
+        }
     }
 
     public function test_lane_d_reversal_is_a_law_entry_and_is_idempotently_rejected_twice(): void
     {
         [$staff, $customer, $type, $condition] = $this->pricedContext();
         $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
-        $deposit = app(DepositService::class)->finalize($staff, app(DepositService::class)->createDraft($staff, $customer), 'w4-reversal-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']]);
+        $deposit = app(DepositService::class)->finalize($staff, app(DepositService::class)->createDraft($staff, $customer), 'w4-reversal-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         $admin = User::factory()->create();
-        $this->grant($admin, ['transaction.reverse']);
+        $this->grant($admin, ['user.view', 'user.view.all', 'transaction.reverse']);
         $service = app(TransactionCorrectionService::class);
-        $reversal = $service->reverse($admin, $deposit, 'Transaksi dibalik setelah pemeriksaan resmi');
+        $reversal = $service->reverse($admin, $deposit, 'Transaksi dibalik setelah pemeriksaan resmi', null, $this->depositProof());
         self::assertInstanceOf(TransactionReversal::class, $reversal);
         self::assertSame(1, LedgerEntry::query()->where('kind', 'reversal')->count());
+        try {
+            TransactionReversal::query()->whereKey($reversal->id)->update(['reason' => 'diubah']);
+            self::fail('Transaction reversals must be append-only.');
+        } catch (QueryException) {
+            self::assertDatabaseHas('transaction_reversals', ['id' => $reversal->id, 'reason' => 'Transaksi dibalik setelah pemeriksaan resmi']);
+        }
         $this->expectException(ValidationException::class);
         $service->reverse($admin, $deposit, 'Reversal kedua tidak boleh dibuat');
     }
@@ -225,6 +432,15 @@ final class DepositWaveTest extends TestCase
         $customer->customerProfile()->create(['rt_id' => $rt->id, 'address' => 'Alamat pengujian']);
 
         return [$staff, $customer, $type, $condition];
+    }
+
+    private function depositProof(): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'deposit-proof-');
+        self::assertIsString($path);
+        file_put_contents($path, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL7wQAAAABJRU5ErkJggg==', true));
+
+        return new UploadedFile($path, 'deposit-proof.png', 'image/png', null, true);
     }
 
     /** @param list<string> $names */

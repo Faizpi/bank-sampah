@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Authorization\PermissionChecker;
+use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Models\User;
 
@@ -39,10 +40,37 @@ final readonly class UserPolicy
             : $this->visibleUsers->canView($actor, $subject) && $this->permissions->allows($actor, 'user.update');
     }
 
-    public function activate(User $actor, User $subject): bool
+    public function manageView(User $actor, User $subject): bool
+    {
+        return $this->permissions->allows($actor, 'user.view')
+            && $this->visibleUsers->canView($actor, $subject, ...UserStatus::cases());
+    }
+
+    public function manageUpdate(User $actor, User $subject): bool
+    {
+        return ! $actor->is($subject)
+            && $this->manageView($actor, $subject)
+            && $this->permissions->allows($actor, 'user.update');
+    }
+
+    public function updateCustomer(User $actor, User $subject): bool
+    {
+        return ! $actor->is($subject)
+            && $this->manageView($actor, $subject)
+            && $this->permissions->allows($actor, 'customer.update');
+    }
+
+    public function deactivate(User $actor, User $subject): bool
     {
         return ! $actor->is($subject)
             && $this->visibleUsers->canView($actor, $subject)
+            && $this->permissions->allows($actor, 'user.update');
+    }
+
+    public function activate(User $actor, User $subject): bool
+    {
+        return ! $actor->is($subject)
+            && $this->visibleUsers->canView($actor, $subject, UserStatus::Inactive)
             && $this->permissions->allows($actor, 'user.activate');
     }
 

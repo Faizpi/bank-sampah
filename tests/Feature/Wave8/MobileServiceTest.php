@@ -7,9 +7,11 @@ namespace Tests\Feature\Wave8;
 use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
+use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
+use App\Domain\MobileServices\Services\MobileDepositGuard;
 use App\Domain\MobileServices\Services\MobileServiceService;
 use App\Domain\WasteMaster\Actions\ManageWasteMaster;
 use App\Domain\WasteMaster\Models\WasteType;
@@ -42,6 +44,35 @@ final class MobileServiceTest extends TestCase
         self::assertFalse(app(MobileServiceService::class)->canOperate(User::factory()->create(), $service->fresh()));
     }
 
+    public function test_mobile_deposit_link_is_locked_idempotently_and_close_recap_is_reproducible(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        $this->grant($staff, ['deposit.create']);
+        $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai RT 03', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 20, '', [$staff->id], [$type->id]);
+        app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
+        app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+        $customer = User::factory()->create();
+        $deposit = Deposit::query()->create([
+            'deposit_number' => 'DEP-MOBILE-LINK-001',
+            'customer_id' => $customer->id,
+            'staff_id' => $staff->id,
+            'method' => 'keliling',
+            'occurred_at' => now(),
+            'status' => Deposit::STATUS_DRAFT,
+        ]);
+
+        $guard = app(MobileDepositGuard::class);
+        $guard->attach($staff, $deposit, $service, $type);
+        $guard->attach($staff, $deposit, $service, $type);
+        $deposit->forceFill(['status' => Deposit::STATUS_FINAL, 'total_weight_kg' => '1.250', 'total_value' => 7_500])->save();
+
+        self::assertSame($service->id, $deposit->fresh()->mobile_service_id);
+        self::assertSame(1, $service->fresh()->served_count);
+        self::assertSame(1, app(MobileServiceService::class)->recap($staff, $service)['transaction_count']);
+        self::assertSame('1.250', app(MobileServiceService::class)->recap($staff, $service)['total_weight_kg']);
+        self::assertSame(7_500, app(MobileServiceService::class)->recap($staff, $service)['total_value']);
+    }
+
     /** @return array{0: User, 1: User, 2: Rt, 3: WasteType} */
     private function context(): array
     {
@@ -62,13 +93,19 @@ final class MobileServiceTest extends TestCase
     private function userWith(string ...$permissions): User
     {
         $user = User::factory()->create();
+        $this->grant($user, $permissions);
+
+        return $user;
+    }
+
+    /** @param list<string> $permissions */
+    private function grant(User $user, array $permissions): void
+    {
         $role = Role::query()->create(['name' => 'w8-mobile-'.uniqid(), 'description' => 'W8 mobile test']);
         foreach ($permissions as $permissionName) {
             $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
             $role->permissions()->attach($permission);
         }
         $user->roles()->attach($role);
-
-        return $user;
     }
 }

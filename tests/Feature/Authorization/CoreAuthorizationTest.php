@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Authorization;
 
 use App\Authorization\PermissionChecker;
+use App\Domain\CustomersRegions\Actions\ManageRegions;
 use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
@@ -17,6 +18,7 @@ use App\Domain\Identity\Queries\VisibleUsers;
 use App\Http\Middleware\RequirePermission;
 use App\Models\User;
 use App\Policies\UserPolicy;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -50,6 +52,24 @@ final class CoreAuthorizationTest extends TestCase
         foreach (['ledger.adjust', 'transaction.correct', 'withdrawal.approve', 'withdrawal.pay', 'grocery.approve', 'grocery.handover'] as $permission) {
             self::assertFalse($checker->allows($superadmin, $permission));
         }
+    }
+
+    public function test_superadmin_uses_seeded_admin_union_technical_permissions_and_direct_service_boundaries(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $superadmin = User::factory()->create();
+        $superadmin->roles()->attach(Role::query()->where('name', 'superadmin')->sole());
+        $checker = new PermissionChecker;
+
+        foreach (['backoffice.access', 'deposit.finalize', 'role.manage', 'backup.restore'] as $permission) {
+            self::assertTrue($checker->allows($superadmin->fresh(), $permission));
+        }
+        foreach (['transaction.correct', 'transaction.reverse', 'ledger.adjust'] as $permission) {
+            self::assertFalse($checker->allows($superadmin->fresh(), $permission));
+        }
+
+        self::assertTrue(Gate::forUser($superadmin->fresh())->allows('create', Dusun::class));
+        self::assertInstanceOf(Dusun::class, app(ManageRegions::class)->createDusun($superadmin->fresh(), 'DS-SUPERADMIN', 'Dusun Superadmin'));
     }
 
     public function test_inactive_and_soft_deleted_users_are_denied_even_when_their_role_has_permission(): void

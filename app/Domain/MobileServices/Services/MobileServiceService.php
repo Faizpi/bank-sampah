@@ -8,6 +8,7 @@ use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
+use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
@@ -41,6 +42,33 @@ final readonly class MobileServiceService
             $this->auditLogger->record($actor, 'mobile-service.created', $service, [], $this->auditValues($service), $this->correlationId());
 
             return $service->fresh(['staff', 'wasteTypes']);
+        });
+    }
+
+    /**
+     * @param  list<int>  $staffIds
+     * @param  list<int>  $wasteTypeIds
+     */
+    public function update(User $actor, MobileService $service, ?int $rwId, ?int $rtId, string $point, string $startsAt, string $endsAt, int $capacity, string $notes, array $staffIds, array $wasteTypeIds): MobileService
+    {
+        $this->authorize($actor, 'mobile-service.manage');
+        $data = $this->validated($rwId, $rtId, $point, $startsAt, $endsAt, $capacity, $notes, $staffIds, $wasteTypeIds);
+
+        return DB::transaction(function () use ($actor, $service, $data, $staffIds, $wasteTypeIds): MobileService {
+            $locked = MobileService::query()->with(['staff', 'wasteTypes'])->whereKey($service->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== MobileServiceStatus::Draft) {
+                throw ValidationException::withMessages(['service' => 'Layanan yang sudah dipublikasikan tidak dapat diubah.']);
+            }
+            $old = $this->auditValues($locked);
+            $locked->forceFill($data)->save();
+            $locked->staff()->sync($staffIds);
+            $locked->wasteTypes()->sync($wasteTypeIds);
+            if ($this->hasCollision($locked->fresh(['staff']))) {
+                throw ValidationException::withMessages(['schedule' => 'Jadwal layanan berbenturan pada petugas atau titik.']);
+            }
+            $this->auditLogger->record($actor, 'mobile-service.updated', $locked, $old, $this->auditValues($locked), $this->correlationId());
+
+            return $locked->fresh(['staff', 'wasteTypes']);
         });
     }
 
@@ -97,6 +125,21 @@ final readonly class MobileServiceService
     public function canAcceptDeposit(User $actor, MobileService $service, int $wasteTypeId): bool
     {
         return $service->isOpen() && $this->canOperate($actor, $service) && $service->wasteTypes()->whereKey($wasteTypeId)->exists() && $service->served_count < $service->capacity;
+    }
+
+    /** @return array{transaction_count: int, total_weight_kg: string, total_value: int} */
+    public function recap(User $actor, MobileService $service): array
+    {
+        if (! $this->permissions->allows($actor, 'mobile-service.operate') || ! $this->canOperate($actor, $service)) {
+            throw new AuthorizationException('Rekap layanan keliling berada di luar scope petugas.');
+        }
+        $query = Deposit::query()->where('mobile_service_id', $service->id)->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED]);
+
+        return [
+            'transaction_count' => (clone $query)->count(),
+            'total_weight_kg' => number_format((float) (clone $query)->sum('total_weight_kg'), 3, '.', ''),
+            'total_value' => (int) (clone $query)->sum('total_value'),
+        ];
     }
 
     /** @return Builder<MobileService> */

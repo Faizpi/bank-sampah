@@ -30,7 +30,9 @@ final class PickupCapacityResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Operasional';
+    protected static string|UnitEnum|null $navigationGroup = 'Operasional Lapangan';
+
+    protected static ?int $navigationSort = 20;
 
     protected static ?string $navigationLabel = 'Kapasitas Penjemputan';
 
@@ -66,12 +68,8 @@ final class PickupCapacityResource extends Resource
                     /** @var User $actor */
                     $actor = auth()->user();
                     $area = ServiceArea::query()->findOrFail((int) $data['service_area_id']);
-                    $updated = app(PickupService::class)->setCapacity($actor, $area, (string) $data['service_date'], isset($data['max_addresses']) ? (int) $data['max_addresses'] : null, isset($data['max_weight_kg']) ? (string) $data['max_weight_kg'] : null, isset($data['vehicle_label']) ? (string) $data['vehicle_label'] : null);
-                    if ($updated->id !== $record->id) {
-                        $record->delete();
-                    }
 
-                    return $updated;
+                    return app(PickupService::class)->setCapacity($actor, $area, (string) $data['service_date'], isset($data['max_addresses']) ? (int) $data['max_addresses'] : null, isset($data['max_weight_kg']) ? (string) $data['max_weight_kg'] : null, isset($data['vehicle_label']) ? (string) $data['vehicle_label'] : null, $record);
                 }),
             ]);
     }

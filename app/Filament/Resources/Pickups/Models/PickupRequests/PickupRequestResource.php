@@ -28,7 +28,9 @@ final class PickupRequestResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Operasional';
+    protected static string|UnitEnum|null $navigationGroup = 'Operasional Lapangan';
+
+    protected static ?int $navigationSort = 10;
 
     protected static ?string $navigationLabel = 'Penjemputan';
 

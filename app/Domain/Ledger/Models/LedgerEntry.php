@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Ledger\Models;
 
+use App\Domain\Shared\InvalidValue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
@@ -19,6 +20,8 @@ final class LedgerEntry extends Model
     public const KIND_CORRECTION = 'correction';
 
     public const KIND_REVERSAL = 'reversal';
+
+    public const KIND_ADJUSTMENT = 'adjustment';
 
     protected $fillable = [
         'entry_number', 'ledger_account_id', 'direction', 'kind', 'amount',
@@ -49,6 +52,12 @@ final class LedgerEntry extends Model
 
     protected static function booted(): void
     {
+        self::creating(static function (self $entry): void {
+            if ((int) $entry->amount <= 0) {
+                throw new InvalidValue('Mutasi saldo harus lebih dari nol.');
+            }
+        });
+
         self::updating(static function (self $entry): void {
             if ($entry->getDirty() !== [] && array_diff(array_keys($entry->getDirty()), ['related_entry_id']) !== []) {
                 throw new LogicException('Ledger entries are append-only.');

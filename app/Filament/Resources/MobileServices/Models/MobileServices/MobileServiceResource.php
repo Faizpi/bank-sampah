@@ -1,0 +1,119 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\Resources\MobileServices\Models\MobileServices;
+
+use App\Domain\CustomersRegions\Models\Rt;
+use App\Domain\CustomersRegions\Models\Rw;
+use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\MobileServices\Enums\MobileServiceStatus;
+use App\Domain\MobileServices\Models\MobileService;
+use App\Domain\MobileServices\Services\MobileServiceService;
+use App\Domain\WasteMaster\Models\WasteType;
+use App\Filament\Resources\MobileServices\Models\MobileServices\Pages\ManageMobileServices;
+use App\Models\User;
+use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Resources\Pages\PageRegistration;
+use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
+
+final class MobileServiceResource extends Resource
+{
+    protected static ?string $model = MobileService::class;
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Program & Publikasi';
+
+    protected static ?int $navigationSort = 30;
+
+    protected static ?string $navigationLabel = 'Layanan Keliling';
+
+    protected static ?string $modelLabel = 'layanan keliling';
+
+    protected static ?string $pluralModelLabel = 'layanan keliling';
+
+    protected static ?string $recordTitleAttribute = 'service_number';
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->components([
+            Section::make('Jadwal')->schema([
+                Select::make('rw_id')->label('RW')->options(fn (): array => Rw::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable(),
+                Select::make('rt_id')->label('RT')->options(fn (): array => Rt::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable(),
+                TextInput::make('point')->label('Titik layanan')->required()->minLength(3)->maxLength(255),
+                DateTimePicker::make('starts_at')->label('Mulai')->seconds(false)->native(false)->required(),
+                DateTimePicker::make('ends_at')->label('Selesai')->seconds(false)->native(false)->after('starts_at')->required(),
+                TextInput::make('capacity')->label('Kapasitas warga')->numeric()->integer()->minValue(0)->maxValue(1000000)->required(),
+                Select::make('staff_ids')->label('Petugas')->multiple()->required()->minItems(1)->searchable()->preload()->options(fn (): array => User::query()->where('status', UserStatus::Active)->whereHas('staffProfile', fn (Builder $query): Builder => $query)->whereHas('roles.permissions', fn (Builder $query): Builder => $query->where('permissions.name', 'mobile-service.operate'))->orderBy('name')->pluck('name', 'id')->all()),
+                Select::make('waste_type_ids')->label('Jenis diterima')->multiple()->required()->minItems(1)->searchable()->preload()->options(fn (): array => WasteType::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
+                Textarea::make('notes')->label('Catatan')->maxLength(2000)->rows(4)->columnSpanFull(),
+            ])->columns(2),
+        ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table->recordTitleAttribute('service_number')->columns([
+            TextColumn::make('service_number')->label('Nomor')->searchable()->sortable(),
+            TextColumn::make('point')->label('Titik')->searchable(),
+            TextColumn::make('rt.name')->label('RT')->placeholder('RW'),
+            TextColumn::make('starts_at')->label('Mulai')->dateTime('d M Y H:i')->sortable(),
+            TextColumn::make('ends_at')->label('Selesai')->dateTime('d M Y H:i'),
+            TextColumn::make('capacity')->label('Kapasitas'),
+            TextColumn::make('served_count')->label('Terlayani'),
+            TextColumn::make('status')->label('Status')->badge(),
+        ])->recordActions([
+            EditAction::make()->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->using(fn (MobileService $record, array $data): MobileService => self::service()->update(self::actor(), $record, isset($data['rw_id']) ? (int) $data['rw_id'] : null, isset($data['rt_id']) ? (int) $data['rt_id'] : null, (string) $data['point'], (string) $data['starts_at'], (string) $data['ends_at'], (int) $data['capacity'], (string) ($data['notes'] ?? ''), array_map('intval', $data['staff_ids'] ?? []), array_map('intval', $data['waste_type_ids'] ?? []))),
+            Action::make('publish')->label('Publikasikan')->icon(Heroicon::OutlinedMegaphone)->color('success')->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->authorize('publish')->requiresConfirmation()->action(fn (MobileService $record): MobileService => self::service()->transition(self::actor(), $record, MobileServiceStatus::Published)),
+            Action::make('open')->label('Buka titik')->icon(Heroicon::OutlinedPlay)->color('success')->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Published)->authorize('operate')->requiresConfirmation()->action(fn (MobileService $record): MobileService => self::service()->transition(self::actor(), $record, MobileServiceStatus::Open)),
+            Action::make('close')->label('Tutup titik')->icon(Heroicon::OutlinedStop)->color('warning')->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Open)->authorize('operate')->requiresConfirmation()->action(fn (MobileService $record): MobileService => self::service()->transition(self::actor(), $record, MobileServiceStatus::Closed)),
+            Action::make('cancel')->label('Batalkan')->icon(Heroicon::OutlinedXCircle)->color('danger')->visible(fn (MobileService $record): bool => in_array($record->status, [MobileServiceStatus::Draft, MobileServiceStatus::Published], true))->authorize('cancel')->requiresConfirmation()->action(fn (MobileService $record): MobileService => self::service()->transition(self::actor(), $record, MobileServiceStatus::Cancelled)),
+        ]);
+    }
+
+    public static function canViewAny(): bool
+    {
+        $actor = auth()->user();
+
+        return $actor instanceof User && $actor->can('viewAny', MobileService::class);
+    }
+
+    /** @return Builder<MobileService> */
+    public static function getEloquentQuery(): Builder
+    {
+        return MobileService::query()->with(['rt', 'rw', 'staff', 'wasteTypes']);
+    }
+
+    /** @return array<string, PageRegistration> */
+    public static function getPages(): array
+    {
+        return ['index' => ManageMobileServices::route('/')];
+    }
+
+    private static function service(): MobileServiceService
+    {
+        return app(MobileServiceService::class);
+    }
+
+    private static function actor(): User
+    {
+        /** @var User $actor */
+        $actor = auth()->user();
+
+        return $actor;
+    }
+}

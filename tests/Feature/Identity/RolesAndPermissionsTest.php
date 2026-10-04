@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Identity;
 
+use App\Domain\Identity\Actions\ManageRoles;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class RolesAndPermissionsTest extends TestCase
@@ -180,6 +182,61 @@ final class RolesAndPermissionsTest extends TestCase
         }
 
         self::assertSame(array_sum(array_map('count', self::ROLE_PERMISSIONS)), DB::table('permission_role')->count());
+    }
+
+    public function test_superadmin_permissions_are_exactly_the_admin_union_with_technical_permissions_only(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $adminPermissions = Role::query()->where('name', 'admin')->sole()->permissions()->pluck('name')->sort()->values()->all();
+        $technicalPermissions = [
+            'role.manage',
+            'system.settings.manage',
+            'system.maintenance',
+            'backup.run',
+            'backup.view',
+            'backup.restore',
+            'audit.retention.execute',
+        ];
+        $expected = collect([...$adminPermissions, ...$technicalPermissions])->unique()->sort()->values()->all();
+        $actual = Role::query()->where('name', 'superadmin')->sole()->permissions()->pluck('name')->sort()->values()->all();
+
+        self::assertSame($expected, $actual);
+        self::assertFalse(Role::query()->where('name', 'superadmin')->sole()->permissions()->whereIn('name', [
+            'transaction.correct',
+            'transaction.reverse',
+            'ledger.adjust',
+        ])->exists());
+    }
+
+    public function test_role_create_and_update_roll_back_role_and_permission_changes_atomically(): void
+    {
+        $actor = User::factory()->create();
+        $roleManage = Permission::factory()->create(['name' => 'role.manage']);
+        $existingPermission = Permission::factory()->create(['name' => 'existing.permission']);
+        $actorRole = Role::factory()->create(['name' => 'role-manager']);
+        $actorRole->permissions()->attach($roleManage);
+        $actor->roles()->attach($actorRole);
+
+        try {
+            app(ManageRoles::class)->createRole($actor->fresh(), 'atomic-create', 'Tidak boleh tersisa.', [$existingPermission->id, 999999]);
+            self::fail('Invalid permission IDs must abort role creation.');
+        } catch (ValidationException) {
+            self::assertDatabaseMissing('roles', ['name' => 'atomic-create']);
+            self::assertDatabaseMissing('permission_role', ['role_id' => Role::query()->where('name', 'atomic-create')->value('id')]);
+        }
+
+        $role = Role::factory()->create(['name' => 'atomic-update', 'description' => 'Deskripsi lama.']);
+        $role->permissions()->attach($existingPermission);
+
+        try {
+            app(ManageRoles::class)->updateRole($actor->fresh(), $role->fresh(), 'Deskripsi baru.', [$roleManage->id, 999998]);
+            self::fail('Invalid permission IDs must abort role updates.');
+        } catch (ValidationException) {
+            $role->refresh();
+            self::assertSame('Deskripsi lama.', $role->description);
+            self::assertSame([$existingPermission->id], $role->permissions()->pluck('permissions.id')->all());
+        }
     }
 
     public function test_migrations_reverse_and_restore_the_schema_safely_on_sqlite(): void
