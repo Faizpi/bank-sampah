@@ -89,6 +89,7 @@ final readonly class GroceryRequestService
     /** @return Builder<GroceryRedemption> */
     public function visibleFor(User $actor): Builder
     {
+        $this->authorize($actor, 'grocery.view');
         $query = GroceryRedemption::query()->with(['customer', 'package', 'balanceHold', 'approver', 'preparedBy', 'handoverActor']);
         if ($this->permissions->allows($actor, 'grocery.view') && $this->permissions->allows($actor, 'user.view.all')) {
             return $query;

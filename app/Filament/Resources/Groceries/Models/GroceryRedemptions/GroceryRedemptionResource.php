@@ -25,7 +25,9 @@ final class GroceryRedemptionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingBag;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Operasional';
+    protected static string|UnitEnum|null $navigationGroup = 'Transaksi & Saldo';
+
+    protected static ?int $navigationSort = 50;
 
     protected static ?string $navigationLabel = 'Penukaran Sembako';
 
