@@ -1,0 +1,62 @@
+@import 'tailwindcss';
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*.php';
+@source '../../../../resources/views/filament/**/*.blade.php';
+
+@theme {
+    --font-sans: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --color-primary-50: #edf8f3;
+    --color-primary-100: #d7f0e4;
+    --color-primary-200: #b3dfcb;
+    --color-primary-300: #83c8ac;
+    --color-primary-400: #4fa986;
+    --color-primary-500: #2d886a;
+    --color-primary-600: #1e6a56;
+    --color-primary-700: #185746;
+    --color-primary-800: #123d32;
+    --color-primary-900: #0f3028;
+    --color-primary-950: #071b16;
+
+    --color-forest-600: #1e6a56;
+    --color-forest-700: #185746;
+    --color-deep-green: #123d32;
+    --color-warm-canvas: #f6f5ef;
+    --color-surface: #ffffff;
+    --color-harvest-gold: #d6a84b;
+    --color-terracotta: #c76b4f;
+    --color-sky-blue: #3e7d92;
+    --color-text-primary: #17241f;
+    --color-text-secondary: #55635d;
+    --color-border: #d9e1dc;
+    --color-success-bg: #e7f3ed;
+    --color-warning-bg: #fbf2dc;
+    --color-danger-bg: #f8e9e4;
+    --color-info-bg: #e8f1f4;
+    --color-disabled-bg: #eef1ef;
+    --color-focus: #3e7d92;
+    --color-overlay: rgb(18 61 50 / 55%);
+
+    --text-label: 0.875rem;
+    --text-label--line-height: 1.35;
+    --text-label--font-weight: 600;
+    --text-h1: 1.75rem;
+    --text-h1--line-height: 1.2;
+    --text-h1--font-weight: 700;
+    --text-h2: 1.5rem;
+    --text-h2--line-height: 1.25;
+    --text-h2--font-weight: 700;
+    --text-body: 1rem;
+    --text-body--line-height: 1.55;
+    --text-body-sm: 0.875rem;
+    --text-body-sm--line-height: 1.5;
+    --text-caption: 0.75rem;
+    --text-caption--line-height: 1.4;
+    --text-caption--font-weight: 500;
+}
+
+/* Override Filament simple-page container to allow wide login layout */
+.fi-simple-page {
+    max-width: 58rem !important;
+    width: 100%;
+}

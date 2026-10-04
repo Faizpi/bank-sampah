@@ -1,0 +1,25 @@
+{
+    "name": "Bank Sampah Digital Sindangheula",
+    "short_name": "Bank Sampah",
+    "description": "Informasi umum Bank Sampah Digital Desa Sindangheula.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#F6F5EF",
+    "theme_color": "#123D32",
+    "icons": [
+        {
+            "src": "/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "lang": "id"
+}

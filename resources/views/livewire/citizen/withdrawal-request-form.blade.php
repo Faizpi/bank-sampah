@@ -1,0 +1,57 @@
+<x-slot:title>Ajukan pencairan</x-slot:title>
+<x-slot:context>Layanan warga</x-slot:context>
+
+<section aria-labelledby="withdrawal-request-title" class="grid gap-6">
+    {{-- Page header --}}
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <p class="text-label font-semibold text-forest-600">Pencairan Saldo</p>
+            <h1 id="withdrawal-request-title" class="mt-2 text-h1 font-bold text-deep-green">Ajukan Pencairan</h1>
+            <p class="mt-3 text-body text-text-secondary">
+                Saldo akan ditahan sementara. Nominal tidak dapat diubah setelah pengajuan dan baru menjadi saldo keluar setelah pembayaran sah.
+            </p>
+        </div>
+        <x-ui.mascot variant="5" bubble="Cairkan saldo dengan aman!" bubblePosition="top" class="h-28 w-auto shrink-0" />
+    </div>
+
+    @if (session('success'))
+        <x-ui.success-state title="Berhasil" :description="session('success')" />
+    @endif
+
+    {{-- Balance Info --}}
+    @isset($availableBalance)
+        <div class="flex items-center gap-3 rounded-xl border border-forest-600 bg-success-bg px-4 py-3.5">
+            <svg viewBox="0 0 24 24" class="size-5 shrink-0 text-forest-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>
+            </svg>
+            <div>
+                <p class="text-caption text-forest-700">Saldo tersedia</p>
+                <p class="amount-tabular text-label font-bold text-forest-700">
+                    Rp{{ number_format($availableBalance, 0, ',', '.') }}
+                </p>
+            </div>
+        </div>
+    @endisset
+
+    {{-- Withdrawal Form --}}
+    <x-ui.panel title="Detail pengambilan" description="Pastikan lokasi dan tanggal mudah diverifikasi petugas.">
+        <div class="grid gap-4 md:grid-cols-2">
+            <x-ui.input wire:model="amount" label="Nominal (rupiah)" name="amount"
+                inputmode="numeric" placeholder="Minimal Rp10.000"
+                hint="Nominal final tidak dapat diubah setelah diajukan."
+                :error="$errors->first('amount')" />
+            <x-ui.input wire:model="pickupDate" label="Tanggal pengambilan" name="pickupDate"
+                type="date"
+                :error="$errors->first('pickupDate')" />
+            <x-ui.textarea wire:model="pickupLocation" label="Lokasi pengambilan" name="pickupLocation"
+                rows="3" class="md:col-span-2"
+                hint="Contoh: Rumah Ibu Siti, RT 03 RW 01"
+                :error="$errors->first('pickupLocation')" />
+        </div>
+    </x-ui.panel>
+
+    <x-ui.button type="button" wire:click="submit" wire:loading.attr="disabled">
+        <span wire:loading.remove>Ajukan Pencairan</span>
+        <span wire:loading>Memproses...</span>
+    </x-ui.button>
+</section>
