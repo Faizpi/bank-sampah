@@ -8,6 +8,14 @@
         <p class="mt-3 text-body text-text-secondary">Bukti privat ini hanya dapat dilihat pemilik penukaran dan pihak berwenang dalam cakupan data.</p>
     </div>
 
+    <x-ui.success-state
+        title="Penyerahan berhasil"
+        :reference="$redemption->request_number"
+        :value="'Rp '.number_format($redemption->value_snapshot, 0, ',', '.')"
+        :time="$redemption->handed_over_at?->translatedFormat('d F Y, H:i')"
+        :status="$redemption->status->value"
+    />
+
     <x-ui.panel title="Ringkasan penyerahan" description="Saldo keluar dicatat setelah serah-terima yang sah.">
         <dl class="grid gap-4 text-body md:grid-cols-2">
             <div><dt class="text-body-sm text-text-secondary">Nomor</dt><dd class="mt-1 font-semibold">{{ $redemption->request_number }}</dd></div>

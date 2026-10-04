@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Identity\Models\Users;
 
 use App\Authorization\PermissionChecker;
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Identity\Actions\ManageRoles;
+use App\Domain\Identity\Actions\ManageStaffProfile;
 use App\Domain\Identity\Actions\ManageUsers;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Role;
@@ -16,6 +18,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -27,7 +30,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Str;
 use UnitEnum;
 
 final class UserResource extends Resource
@@ -92,7 +94,12 @@ final class UserResource extends Resource
                 ViewAction::make()->label('Lihat')->authorize('manageView')->schema([
                     TextInput::make('name')->label('Nama'),
                     TextInput::make('status')->label('Status'),
-                    TextInput::make('phone')->label('Nomor telepon')->formatStateUsing(static fn (?string $state): string => $state === null ? 'Tidak tersedia' : Str::mask($state, '*', 4)),
+                    TextInput::make('phone')->label('Nomor telepon'),
+                    TextInput::make('email')->label('Email')->placeholder('Tidak tersedia'),
+                    TextInput::make('roles.name')->label('Peran')->placeholder('Belum diatur'),
+                    TextInput::make('customerProfile.customer_number')->label('Nomor nasabah')->placeholder('Belum terbit'),
+                    TextInput::make('staffProfile.staff_number')->label('Nomor petugas')->placeholder('Belum dibuat'),
+                    TextInput::make('staffProfile.serviceArea.name')->label('Area pelayanan')->placeholder('Belum diatur'),
                 ]),
                 EditAction::make()->label('Ubah')->authorize('manageUpdate')->using(fn (User $record, array $data): User => app(ManageUsers::class)->update(self::actor(), $record, $data)),
                 Action::make('assignRoles')
@@ -112,8 +119,25 @@ final class UserResource extends Resource
                     ->modalHeading(fn (User $record): string => "Atur peran {$record->name}?")
                     ->modalDescription('Peran menentukan izin yang tersedia bagi pengguna ini. Perubahan akan dicatat pada audit log.')
                     ->modalSubmitActionLabel('Simpan peran')
-                    ->action(fn (User $record, array $data): User => app(ManageRoles::class)->assignRoles(self::actor(), $record, array_map('intval', $data['role_ids']), (string) $data['reason']))
+                    ->action(fn (User $record, array $data): User => app(ManageRoles::class)->assignRoles(self::actor(), $record, [(int) $data['role_ids']], (string) $data['reason']))
                     ->successNotificationTitle('Peran pengguna diperbarui.'),
+                Action::make('manageStaffProfile')
+                    ->label('Atur profil petugas')
+                    ->icon(Heroicon::OutlinedMapPin)
+                    ->authorize('manageUpdate')
+                    ->visible(fn (User $record): bool => $record->roles->contains(static fn (Role $role): bool => in_array($role->name, ['petugas', 'bendahara'], true)))
+                    ->schema([
+                        Select::make('service_area_id')->label('Area pelayanan')->options(fn (): array => ServiceArea::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->preload()->required(),
+                        DatePicker::make('active_from')->label('Aktif mulai'),
+                        DatePicker::make('active_to')->label('Aktif sampai')->afterOrEqual('active_from'),
+                    ])
+                    ->fillForm(fn (User $record): array => [
+                        'service_area_id' => $record->staffProfile?->service_area_id,
+                        'active_from' => $record->staffProfile?->active_from?->toDateString(),
+                        'active_to' => $record->staffProfile?->active_to?->toDateString(),
+                    ])
+                    ->action(fn (User $record, array $data): User => app(ManageStaffProfile::class)->save(self::actor(), $record, $data))
+                    ->successNotificationTitle('Profil petugas diperbarui.'),
                 Action::make('activate')->label('Aktifkan pengguna')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->visible(fn (User $record): bool => $record->status === UserStatus::Inactive)->requiresConfirmation()->modalHeading(fn (User $record): string => "Aktifkan pengguna {$record->name}?")->modalDescription('Pengguna dapat masuk kembali dan menggunakan izin yang masih dimilikinya.')->modalSubmitActionLabel('Aktifkan pengguna')->action(fn (User $record): User => app(ManageUsers::class)->activate(self::actor(), $record))->successNotificationTitle('Pengguna diaktifkan.'),
                 Action::make('deactivate')->label('Nonaktifkan pengguna')->icon(Heroicon::OutlinedNoSymbol)->color('danger')->authorize('deactivate')->visible(fn (User $record): bool => $record->status === UserStatus::Active)->requiresConfirmation()->modalHeading(fn (User $record): string => "Nonaktifkan pengguna {$record->name}?")->modalDescription('Pengguna tidak dapat masuk atau menjalankan tugas baru. Riwayat dan data transaksi tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan pengguna')->schema([Textarea::make('reason')->label('Alasan')->required()->minLength(10)->maxLength(1000)->rows(3)])->action(fn (User $record, array $data): User => app(ManageUsers::class)->deactivate(self::actor(), $record, (string) $data['reason']))->successNotificationTitle('Pengguna dinonaktifkan.'),
             ]);
@@ -133,7 +157,7 @@ final class UserResource extends Resource
             return User::query()->whereKey([]);
         }
 
-        return app(VisibleUsers::class)->queryFor($actor, ...UserStatus::cases())->with(['customerProfile', 'roles']);
+        return app(VisibleUsers::class)->queryFor($actor, ...UserStatus::cases())->with(['customerProfile', 'roles', 'staffProfile.serviceArea']);
     }
 
     private static function actor(): User

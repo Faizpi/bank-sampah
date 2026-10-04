@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Notifications;
 
+use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Groceries\Models\GroceryRedemption;
+use App\Domain\Pickups\Models\PickupRequest;
+use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -71,13 +75,40 @@ final class NotificationCenter extends Component
             return null;
         }
 
+        if ($this->isConcreteReference($reference)) {
+            return $this->ownsConcreteReference($actor, $reference) ? $reference : null;
+        }
+
         return Gate::forUser($actor)->allows('view-notification-reference', [$reference]) ? $reference : null;
     }
 
     private function isSafeReference(string $reference): bool
     {
-        return preg_match('/^\/(?!\/)[A-Za-z][A-Za-z\/-]*$/', $reference) === 1
-            && preg_match('/(?:^|\/)\d+(?:\/|$)/', $reference) !== 1;
+        return preg_match('/^\/(?!\/)[A-Za-z][A-Za-z0-9_\/-]*$/', $reference) === 1;
+    }
+
+    private function isConcreteReference(string $reference): bool
+    {
+        return preg_match('#^/warga/(?:penjemputan|pencairan|sembako|setoran)/\d+(?:/bukti)?$#', $reference) === 1;
+    }
+
+    private function ownsConcreteReference(User $actor, string $reference): bool
+    {
+        $match = [];
+        if (preg_match('#^/warga/penjemputan/(\d+)$#', $reference, $match) === 1) {
+            return PickupRequest::query()->whereKey((int) $match[1])->where('customer_id', $actor->id)->exists();
+        }
+        if (preg_match('#^/warga/pencairan/(\d+)(?:/bukti)?$#', $reference, $match) === 1) {
+            return WithdrawalRequest::query()->whereKey((int) $match[1])->where('customer_id', $actor->id)->exists();
+        }
+        if (preg_match('#^/warga/sembako/(\d+)(?:/bukti)?$#', $reference, $match) === 1) {
+            return GroceryRedemption::query()->whereKey((int) $match[1])->where('customer_id', $actor->id)->exists();
+        }
+        if (preg_match('#^/warga/setoran/(\d+)$#', $reference, $match) === 1) {
+            return Deposit::query()->whereKey((int) $match[1])->where('customer_id', $actor->id)->exists();
+        }
+
+        return false;
     }
 
     private function authenticatedUser(): User

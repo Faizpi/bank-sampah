@@ -59,10 +59,43 @@ final class FieldOperationsTest extends TestCase
             ->call('markPickedUp')
             ->set('actualItems', [['waste_type_id' => (string) $type->id, 'condition_id' => (string) $condition->id, 'weight_kg' => '1.000']])
             ->call('complete')
+            ->assertHasErrors('actualItems')
+            ->assertSee('Tinjau lalu konfirmasi finalisasi sebelum menyelesaikan tugas.')
+            ->call('reviewCompletion')
             ->assertHasErrors('evidence');
 
         self::assertSame(PickupStatus::PickedUp, $pickup->fresh()->status);
         self::assertDatabaseCount('deposits', 0);
+    }
+
+    public function test_pickup_success_projection_treats_deposit_status_as_a_string(): void
+    {
+        $source = file_get_contents(app_path('Livewire/Officer/PickupTask.php'));
+
+        self::assertIsString($source);
+        self::assertStringContainsString("'status' => (string) \$deposit->status", $source);
+        self::assertStringNotContainsString('$deposit->status->value', $source);
+    }
+
+    public function test_officer_success_receipts_render_all_transaction_facts(): void
+    {
+        $officer = $this->userWith('pickup.view', 'pickup.execute', 'pickup.complete', 'grocery.handover');
+        $pickup = $this->scheduledPickup($officer);
+        $occurredAt = '15 Agustus 2026, 10:30';
+
+        Livewire::actingAs($officer)
+            ->test(PickupTask::class, ['pickup' => $pickup])
+            ->set('receipt', ['number' => 'STR-PICKUP-001', 'value' => 125_000, 'occurredAt' => $occurredAt, 'status' => 'final'])
+            ->assertSee('Berhasil')
+            ->assertDontSee('STR-PICKUP-001')
+            ->assertDontSee('Nomor bukti');
+
+        Livewire::actingAs($officer)
+            ->test(GroceryTasks::class)
+            ->set('receipt', ['number' => 'GRC-HANDOVER-001', 'value' => 50_000, 'occurredAt' => $occurredAt, 'status' => 'selesai'])
+            ->assertSee('Berhasil')
+            ->assertDontSee('GRC-HANDOVER-001')
+            ->assertDontSee('Nomor bukti');
     }
 
     public function test_pickup_task_exposes_placeholders_and_photo_capture_controls(): void
@@ -83,17 +116,18 @@ final class FieldOperationsTest extends TestCase
             ->assertDontSee('wire:model="evidence"', escape: false);
     }
 
-    public function test_officer_final_actions_require_native_confirmation_with_consequences(): void
+    public function test_officer_final_actions_require_a_review_dialog_with_consequences(): void
     {
         $pickupOfficer = $this->userWith('pickup.view', 'pickup.execute', 'pickup.complete');
-        $this->wasteContext();
+        [$type, $condition] = $this->wasteContext();
         $pickup = $this->scheduledPickup($pickupOfficer);
         $this->actingAs($pickupOfficer);
 
         Livewire::test(PickupTask::class, ['pickup' => $pickup])
             ->call('begin')
             ->call('markPickedUp')
-            ->assertSee('wire:confirm="Finalkan setoran aktual? Berat dan nilai setoran akan dicatat, saldo nasabah akan bertambah, dan tugas penjemputan akan selesai."', escape: false);
+            ->assertSee('Review Finalisasi')
+            ->assertSee('Harga aktif dan subtotal akan dihitung ulang server saat finalisasi.');
 
         $handoverOfficer = $this->userWith('grocery.handover');
         $package = GroceryPackage::query()->create([
@@ -116,7 +150,20 @@ final class FieldOperationsTest extends TestCase
 
         Livewire::test(GroceryTasks::class)
             ->call('select', $redemption->id)
-            ->assertSee('wire:confirm="Konfirmasi serah-terima paket? Paket akan diserahkan, saldo warga akan dikurangi, dan status penukaran akan selesai."', escape: false);
+            ->assertSee('Tinjau serah-terima');
+    }
+
+    public function test_grocery_handover_card_scan_uses_camera_with_manual_fallback_and_cleanup(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/officer/grocery-tasks.blade.php'));
+
+        self::assertIsString($view);
+        self::assertStringContainsString("'BarcodeDetector' in window", $view);
+        self::assertStringContainsString('navigator.mediaDevices?.getUserMedia', $view);
+        self::assertStringContainsString('$wire.scanCustomerCard(rawValue)', $view);
+        self::assertStringContainsString('stream?.getTracks().forEach((track) => track.stop())', $view);
+        self::assertStringContainsString('wire:model="scanToken"', $view);
+        self::assertStringContainsString('$wire.closeScanner()', $view);
     }
 
     public function test_pickup_task_rejects_invalid_actual_items_before_financial_service(): void
@@ -130,7 +177,7 @@ final class FieldOperationsTest extends TestCase
             ->call('begin')
             ->call('markPickedUp')
             ->set('actualItems', [['waste_type_id' => '', 'condition_id' => '', 'weight_kg' => 'not-a-weight']])
-            ->call('complete')
+            ->call('reviewCompletion')
             ->assertHasErrors(['actualItems.0.waste_type_id', 'actualItems.0.condition_id', 'actualItems.0.weight_kg'])
             ->assertSee('Jenis sampah wajib dipilih.')
             ->assertSee('Kondisi sampah wajib dipilih.');

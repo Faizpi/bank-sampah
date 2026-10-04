@@ -17,6 +17,7 @@ use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -30,6 +31,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 final class PickupRequestResource extends Resource
@@ -107,7 +109,7 @@ final class PickupRequestResource extends Resource
                         TextInput::make('status')->label('Status')->disabled(),
                         Textarea::make('items')->label('Jenis dan perkiraan')->disabled()->rows(5),
                         Textarea::make('notes')->label('Catatan akses')->disabled()->rows(3),
-                        Textarea::make('evidence')->label('Bukti foto')->disabled()->rows(3),
+                        Placeholder::make('evidence')->label('Bukti foto')->content(fn (PickupRequest $record) => self::proofPhotoLinks($record)),
                         Textarea::make('timeline')->label('Riwayat status')->disabled()->rows(6),
                     ])
                     ->fillForm(fn (PickupRequest $record): array => self::inspectionData($record)),
@@ -140,8 +142,8 @@ final class PickupRequestResource extends Resource
                     ->visible(fn (PickupRequest $record): bool => $record->status->value === 'diterima')
                     ->authorize('schedule')
                     ->schema([
-                        Select::make('assigned_staff_id')->label('Petugas')->options(fn (PickupRequest $record): array => User::query()->whereHas('staffProfile', fn (Builder $profile): Builder => $profile->where('service_area_id', $record->service_area_id))->where('status', 'aktif')->pluck('name', 'id')->all())->required(),
-                        DatePicker::make('scheduled_date')->label('Tanggal jadwal')->required(),
+                        Select::make('assigned_staff_id')->label('Petugas penjemputan')->helperText('Hanya petugas aktif pada area penjemputan ini yang dapat dipilih.')->options(fn (PickupRequest $record): array => User::query()->where('status', 'aktif')->whereHas('roles', fn (Builder $roles): Builder => $roles->where('name', 'petugas'))->whereHas('staffProfile', fn (Builder $profile): Builder => $profile->where('service_area_id', $record->service_area_id)->where(fn (Builder $dates): Builder => $dates->whereNull('active_from')->orWhere('active_from', '<=', today()))->where(fn (Builder $dates): Builder => $dates->whereNull('active_to')->orWhere('active_to', '>=', today()))->whereHas('serviceArea', fn (Builder $area): Builder => $area->where('is_active', true)))->orderBy('name')->pluck('name', 'id')->all())->required(),
+                        DatePicker::make('scheduled_date')->label('Tanggal jadwal')->helperText('Pilih hari ini atau tanggal mendatang dalam horizon penjemputan.')->minDate(today('Asia/Jakarta'))->required(),
                     ])
                     ->action(function (PickupRequest $record, array $data): ?PickupRequest {
                         try {
@@ -183,6 +185,36 @@ final class PickupRequestResource extends Resource
             'evidence' => $record->media->map(static fn ($media): string => $media->original_name.' · '.$media->mime_type.' · '.$media->size.' byte')->implode("\n"),
             'timeline' => $record->statusHistory->sortBy('occurred_at')->map(static fn ($history): string => CarbonImmutable::parse($history->occurred_at, 'Asia/Jakarta')->format('d M Y H:i').' · '.StatusLabel::for($history->new_status).' · '.($history->reason ?? ''))->implode("\n"),
         ];
+    }
+
+    private static function proofPhotoLinks(PickupRequest $record): HtmlString
+    {
+        $record->loadMissing('media');
+        if ($record->media->isEmpty()) {
+            return new HtmlString('Tidak ada bukti foto.');
+        }
+
+        $thumbnails = $record->media->map(static function ($media): string {
+            $mediaUrl = e(route('pickup.media', $media));
+            $originalName = e($media->original_name);
+
+            if (! str_starts_with($media->mime_type, 'image/')) {
+                return sprintf(
+                    '<a class="text-primary-600 underline" href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+                    $mediaUrl,
+                    $originalName,
+                );
+            }
+
+            return sprintf(
+                '<a class="block" href="%s" target="_blank" rel="noopener noreferrer"><img class="h-24 w-24 rounded-lg border border-gray-200 object-cover" src="%s" alt="Bukti foto %s"></a>',
+                $mediaUrl,
+                $mediaUrl,
+                $originalName,
+            );
+        })->implode('');
+
+        return new HtmlString('<div class="flex flex-wrap gap-3">'.$thumbnails.'</div>');
     }
 
     private static function notifyCapacityUnavailable(PickupCapacityUnavailable $exception): void

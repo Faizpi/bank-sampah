@@ -18,6 +18,15 @@
     @if (session('success'))
         <x-ui.success-state title="Pembayaran berhasil" :description="session('success')" />
     @endif
+    @if ($receipt)
+        <x-ui.success-state
+            title="Pembayaran tercatat"
+            :reference="$receipt['number']"
+            :value="'Rp '.number_format($receipt['value'], 0, ',', '.')"
+            :time="$receipt['occurredAt']"
+            :status="$receipt['status']"
+        />
+    @endif
 
     {{-- Withdrawal List --}}
     @forelse ($withdrawals as $withdrawal)
@@ -72,11 +81,85 @@
                 </dl>
                 <x-ui.select wire:model.live="recipientVerification" label="Cara verifikasi penerima" name="recipientVerification"
                     hint="{{ $verificationHint }}"
-                    :options="['kartu_nasabah' => 'Kartu nasabah', 'nomor_nasabah' => 'Nomor nasabah']" />
-                <x-ui.input wire:model="recipientReference" label="Nomor nasabah yang diverifikasi" name="recipientReference"
-                    placeholder="Masukkan CST-########"
-                    hint="Masukkan nomor yang tercetak pada kartu atau yang disebutkan warga. Jangan isi nomor pengajuan pencairan."
-                    :error="$errors->first('recipientReference')" />
+                    :options="['kartu_nasabah' => 'Pindai kartu nasabah', 'nomor_nasabah' => 'Masukkan nomor nasabah']" />
+                @if ($recipientVerification === 'kartu_nasabah')
+                    <x-ui.button type="button" variant="secondary" wire:click="openScanner">Pindai QR kartu nasabah</x-ui.button>
+                    @if ($scannerOpen)
+                        <div
+                            x-data="{
+                                stream: null,
+                                detector: null,
+                                running: false,
+                                error: '',
+                                async start() {
+                                    if (!('BarcodeDetector' in window) || ! navigator.mediaDevices?.getUserMedia) {
+                                        this.error = 'Peramban ini belum mendukung pemindaian QR kamera. Masukkan token QR sebagai alternatif.';
+                                        return;
+                                    }
+
+                                    try {
+                                        const formats = await BarcodeDetector.getSupportedFormats();
+                                        if (! formats.includes('qr_code')) {
+                                            this.error = 'Pemindaian QR belum tersedia di peramban ini. Masukkan token QR sebagai alternatif.';
+                                            return;
+                                        }
+                                        this.detector = new BarcodeDetector({ formats: ['qr_code'] });
+                                        this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+                                        this.$refs.video.srcObject = this.stream;
+                                        await this.$refs.video.play();
+                                        this.running = true;
+                                        this.read();
+                                    } catch (exception) {
+                                        this.error = exception?.name === 'NotAllowedError'
+                                            ? 'Izin kamera ditolak. Masukkan token QR sebagai alternatif.'
+                                            : 'Kamera tidak dapat digunakan. Masukkan token QR sebagai alternatif.';
+                                        this.stop();
+                                    }
+                                },
+                                async read() {
+                                    if (! this.running) return;
+                                    try {
+                                        const codes = await this.detector.detect(this.$refs.video);
+                                        const rawValue = codes[0]?.rawValue;
+                                        if (typeof rawValue === 'string' && rawValue !== '') {
+                                            this.stop();
+                                            await $wire.scanCustomerCard(rawValue);
+                                            return;
+                                        }
+                                    } catch (exception) {
+                                        this.error = 'QR belum terbaca. Pastikan kartu berada di dalam bingkai.';
+                                    }
+                                    if (this.running) requestAnimationFrame(() => this.read());
+                                },
+                                stop() {
+                                    this.running = false;
+                                    this.stream?.getTracks().forEach((track) => track.stop());
+                                    this.stream = null;
+                                    if (this.$refs.video) this.$refs.video.srcObject = null;
+                                }
+                            }"
+                            x-init="start(); return () => stop()"
+                            x-on:livewire:navigating.window="stop()"
+                            class="space-y-4"
+                        >
+                            <div class="relative overflow-hidden rounded-xl border border-border bg-deep-green">
+                                <video x-ref="video" class="aspect-video w-full object-cover" playsinline muted aria-label="Pratinjau kamera pemindai QR"></video>
+                                <div class="pointer-events-none absolute inset-8 rounded-xl border-2 border-white/80"></div>
+                            </div>
+                            <p x-show="error" x-text="error" role="alert" class="text-body-sm font-semibold text-terracotta"></p>
+                            <x-ui.input wire:model="scanToken" label="Token QR kartu" name="scanToken" placeholder="Masukkan token QR bila pemindai tidak tersedia" :error="$errors->first('recipientReference')" />
+                            <div class="flex flex-col gap-3 sm:flex-row">
+                                <x-ui.button type="button" wire:click="scanCustomerCard(scanToken)">Resolusi kartu</x-ui.button>
+                                <x-ui.button type="button" variant="quiet" x-on:click="stop(); $wire.closeScanner()">Tutup</x-ui.button>
+                                <x-ui.button type="button" variant="quiet" x-on:click="stop(); start()">Coba Lagi</x-ui.button>
+                            </div>
+                        </div>
+                    @endif
+                @else
+                    <x-ui.input wire:model="recipientReference" label="Nomor nasabah" name="recipientReference" placeholder="Masukkan CST-########" hint="Wajib berformat CST-########." :error="$errors->first('recipientReference')" />
+                @endif
+                @if ($resolvedCustomerName)<p role="status" class="text-body-sm font-semibold text-forest-700">Kartu cocok: {{ $resolvedCustomerName }}</p>@endif
+                @error('recipientReference')<p role="alert" class="text-body-sm font-semibold text-terracotta">{{ $message }}</p>@enderror
                 <div class="rounded-md border border-info-bg bg-info-bg p-4 text-body-sm text-text-primary" role="note">
                     <p class="font-semibold text-deep-green">Kartu dan nomor nasabah berbeda</p>
                     <p class="mt-1">Kartu adalah media identitasnya; nomor nasabah adalah kode unik di dalam kartu. Pilihan di atas mencatat cara Anda memeriksa penerima, sedangkan field berikut mencatat kode yang dicocokkan sistem.</p>

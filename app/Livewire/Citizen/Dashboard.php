@@ -6,6 +6,8 @@ namespace App\Livewire\Citizen;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Groceries\Enums\GroceryStatus;
+use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Ledger\Models\LedgerEntry;
@@ -79,6 +81,18 @@ final class Dashboard extends Component
             ->take(3)
             ->get();
 
+        $activeGroceries = GroceryRedemption::query()
+            ->where('customer_id', $actor->id)
+            ->whereNotIn('status', [
+                GroceryStatus::Completed->value,
+                GroceryStatus::Rejected->value,
+                GroceryStatus::Cancelled->value,
+                GroceryStatus::Expired->value,
+            ])
+            ->latest()
+            ->take(3)
+            ->get();
+
         return view('livewire.citizen.dashboard', [
             'actorName' => $actor->name,
             'availableBalance' => $availableBalance,
@@ -89,6 +103,7 @@ final class Dashboard extends Component
             'recentDeposits' => $recentDeposits,
             'activePickups' => $activePickups,
             'activeWithdrawals' => $activeWithdrawals,
+            'activeGroceries' => $activeGroceries,
             'groceryHref' => route('citizen.grocery.create'),
         ]);
     }

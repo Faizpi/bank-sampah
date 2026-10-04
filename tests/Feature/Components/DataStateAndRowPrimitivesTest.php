@@ -76,11 +76,12 @@ final class DataStateAndRowPrimitivesTest extends TestCase
 
         self::assertStringContainsString('data-success-receipt', $html);
         self::assertStringContainsString('data-lucide="circle-check"', $html);
-        self::assertStringContainsString('STR-2026-001', $html);
-        self::assertStringContainsString('Rp125.000', $html);
-        self::assertStringContainsString('amount-tabular', $html);
-        self::assertStringContainsString('29 Juli 2026, 10.15', $html);
+        self::assertStringContainsString('Berhasil', $html);
         self::assertStringContainsString('data-status="success"', $html);
+        self::assertStringNotContainsString('STR-2026-001', $html);
+        self::assertStringNotContainsString('Rp125.000', $html);
+        self::assertStringNotContainsString('amount-tabular', $html);
+        self::assertStringNotContainsString('29 Juli 2026, 10.15', $html);
         self::assertStringContainsString('Lihat bukti', $html);
         self::assertStringContainsString('Cetak bukti', $html);
     }

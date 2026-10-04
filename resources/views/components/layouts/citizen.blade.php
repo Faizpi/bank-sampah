@@ -50,11 +50,12 @@
             </div>
             <div class="flex min-h-touch shrink-0 items-center gap-1">
                 @isset($headerActions){{ $headerActions }}@endisset
-                {{-- Logout button --}}
-                <form method="POST" action="{{ route('logout') }}">
+                {{-- Logout confirmation --}}
+                <form id="citizen-logout-form" method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit"
                         aria-label="Keluar dari akun"
+                        x-on:click.prevent="$dispatch('open-dialog', { id: 'citizen-logout-confirmation', invoker: $el })"
                         class="inline-flex min-h-touch min-w-touch items-center justify-center rounded-xl text-text-secondary transition hover:bg-danger-bg hover:text-terracotta">
                         <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="m16 17 5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -64,6 +65,14 @@
             </div>
         </div>
     </header>
+
+    <x-ui.dialog id="citizen-logout-confirmation" name="citizen-logout" title="Keluar dari akun" description="Sesi Anda akan diakhiri pada perangkat ini.">
+        <p>Anda yakin ingin keluar?</p>
+        <x-slot:actions>
+            <button type="button" x-on:click="closeModal()" class="inline-flex min-h-touch items-center justify-center rounded-md border border-border bg-surface px-5 text-label text-deep-green transition hover:bg-warm-canvas">Batal</button>
+            <button type="submit" form="citizen-logout-form" class="inline-flex min-h-touch items-center justify-center rounded-md bg-terracotta px-5 text-label text-white transition hover:opacity-90">Keluar</button>
+        </x-slot:actions>
+    </x-ui.dialog>
 
     {{-- Main Content --}}
     <main id="konten-utama" tabindex="-1"

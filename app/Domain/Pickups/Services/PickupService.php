@@ -291,7 +291,7 @@ final readonly class PickupService
         $this->authorize($actor, 'pickup.schedule');
         $this->assertRecordScope($actor, $pickup, false);
         $this->assertActiveAssignedStaff($staff, $pickup);
-        $scheduledDate = $date === null ? CarbonImmutable::parse((string) $pickup->selected_date, 'Asia/Jakarta') : $this->businessDate($date);
+        $scheduledDate = $date === null ? CarbonImmutable::parse((string) $pickup->selected_date, 'Asia/Jakarta') : $this->businessDate($date, 'scheduled_date');
 
         return DB::transaction(function () use ($actor, $pickup, $staff, $scheduledDate): PickupRequest {
             $locked = $this->lockPickup($pickup);
@@ -391,7 +391,18 @@ final readonly class PickupService
             });
         } catch (Throwable $exception) {
             if ($media instanceof Media) {
-                $this->deleteStoredMedia($media);
+                $durablePickup = PickupRequest::query()->with('media')->find($pickup->id);
+                $durableMedia = Media::query()->find($media->id);
+                $isCommittedEvidence = $durablePickup instanceof PickupRequest
+                    && $durablePickup->status === PickupStatus::Completed
+                    && $durablePickup->deposit_id !== null
+                    && $durableMedia instanceof Media
+                    && $durableMedia->attachable_type === PickupRequest::class
+                    && $durableMedia->attachable_id === $durablePickup->id;
+
+                if (! $isCommittedEvidence) {
+                    $this->deleteStoredMedia($media);
+                }
             }
 
             throw $exception;
@@ -711,7 +722,7 @@ final readonly class PickupService
             type: $type,
             title: $title,
             body: $body,
-            reference: '/notifikasi',
+            reference: '/warga/penjemputan/'.$pickup->id,
             dedupeKey: NotificationDedupeKey::for($type.':'.$pickup->request_number, $pickup->customer_id, 'pickup-v1'),
         ));
     }
@@ -723,10 +734,10 @@ final readonly class PickupService
         }
     }
 
-    private function businessDate(mixed $value): CarbonImmutable
+    private function businessDate(mixed $value, string $field = 'selected_date'): CarbonImmutable
     {
         if (! is_string($value) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
-            throw ValidationException::withMessages(['selected_date' => 'Tanggal layanan harus berformat YYYY-MM-DD.']);
+            throw ValidationException::withMessages([$field => 'Tanggal layanan harus berformat YYYY-MM-DD.']);
         }
         try {
             $date = CarbonImmutable::createFromFormat('!Y-m-d', $value, 'Asia/Jakarta');
@@ -734,7 +745,7 @@ final readonly class PickupService
             $date = false;
         }
         if (! $date instanceof CarbonImmutable || $date->format('Y-m-d') !== $value || $date->isBefore(today('Asia/Jakarta')) || $date->diffInDays(today('Asia/Jakarta')) > (int) config('app.pickup_booking_horizon_days', 30)) {
-            throw ValidationException::withMessages(['selected_date' => 'Tanggal layanan tidak tersedia dalam horizon pemesanan.']);
+            throw ValidationException::withMessages([$field => 'Tanggal layanan tidak tersedia: pilih hari ini hingga batas horizon pemesanan.']);
         }
 
         return $date;

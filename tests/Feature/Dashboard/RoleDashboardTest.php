@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dashboard;
 
+use App\Domain\Groceries\Enums\GroceryStatus;
+use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
@@ -81,6 +83,33 @@ final class RoleDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Rp12.345')
             ->assertDontSee('Rp54.321');
+    }
+
+    public function test_citizen_dashboard_shows_only_its_active_grocery_requests_with_a_detail_action(): void
+    {
+        $citizen = User::factory()->create();
+        $otherCitizen = User::factory()->create();
+        $this->grant($citizen, 'warga', 'profile.view');
+        GroceryRedemption::factory()->for($citizen, 'customer')->create([
+            'request_number' => 'GRC-DASHBOARD-AKTIF',
+            'status' => GroceryStatus::ReadyForPickup,
+        ]);
+        GroceryRedemption::factory()->for($citizen, 'customer')->create([
+            'request_number' => 'GRC-DASHBOARD-SELESAI',
+            'status' => GroceryStatus::Completed,
+        ]);
+        GroceryRedemption::factory()->for($otherCitizen, 'customer')->create([
+            'request_number' => 'GRC-DASHBOARD-LAIN',
+            'status' => GroceryStatus::ReadyForPickup,
+        ]);
+
+        $this->actingAs($citizen)
+            ->get(route('citizen.dashboard'))
+            ->assertOk()
+            ->assertSee('GRC-DASHBOARD-AKTIF')
+            ->assertSee('href="'.route('citizen.grocery.show', GroceryRedemption::query()->where('request_number', 'GRC-DASHBOARD-AKTIF')->sole()).'"', false)
+            ->assertDontSee('GRC-DASHBOARD-SELESAI')
+            ->assertDontSee('GRC-DASHBOARD-LAIN');
     }
 
     public function test_officer_dashboard_renders_a_safe_task_empty_state_without_listing_visible_users(): void

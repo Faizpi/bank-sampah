@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Notifications;
 
+use App\Domain\CustomersRegions\Models\Dusun;
+use App\Domain\CustomersRegions\Models\Rt;
+use App\Domain\CustomersRegions\Models\Rw;
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
+use App\Domain\Pickups\Enums\PickupStatus;
+use App\Domain\Pickups\Models\PickupRequest;
 use App\Http\Middleware\EnsureSessionIsFresh;
 use App\Http\Middleware\RequirePermission;
 use App\Livewire\Notifications\NotificationCenter;
@@ -164,6 +170,59 @@ final class NotificationCenterTest extends TestCase
         $this->notificationCenterFor($recipient)
             ->assertSee('href="/riwayat"', false)
             ->assertDontSee('href="/transactions/42"', false);
+    }
+
+    public function test_it_renders_an_authorized_concrete_pickup_reference_for_its_customer(): void
+    {
+        $recipient = User::factory()->create();
+        $dusun = Dusun::query()->create(['code' => 'DS-NOT-OWNED', 'name' => 'Dusun notifikasi', 'is_active' => true]);
+        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-NOT-OWNED', 'name' => 'RW notifikasi', 'is_active' => true]);
+        $rt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-NOT-OWNED', 'name' => 'RT notifikasi', 'is_active' => true]);
+        $area = ServiceArea::query()->create(['name' => 'Area notifikasi', 'is_active' => true]);
+        $pickup = PickupRequest::query()->create([
+            'request_number' => 'PUP-NOTIFICATION-OWNED',
+            'customer_id' => $recipient->id,
+            'rt_id' => $rt->id,
+            'service_area_id' => $area->id,
+            'address' => 'Alamat notifikasi warga',
+            'selected_date' => today()->addDay(),
+            'estimated_weight_kg' => '1.000',
+            'status' => PickupStatus::PendingReview,
+        ]);
+        Notification::factory()->create([
+            'recipient_id' => $recipient->getKey(),
+            'reference' => route('citizen.pickup.show', $pickup, false),
+        ]);
+
+        $this->notificationCenterFor($recipient)
+            ->assertSee('href="'.route('citizen.pickup.show', $pickup, false).'"', false);
+    }
+
+    public function test_it_hides_a_concrete_pickup_reference_not_owned_by_the_recipient(): void
+    {
+        $recipient = User::factory()->create();
+        $other = User::factory()->create();
+        $dusun = Dusun::query()->create(['code' => 'DS-NOT-OTHER', 'name' => 'Dusun notifikasi lain', 'is_active' => true]);
+        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-NOT-OTHER', 'name' => 'RW notifikasi lain', 'is_active' => true]);
+        $rt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-NOT-OTHER', 'name' => 'RT notifikasi lain', 'is_active' => true]);
+        $area = ServiceArea::query()->create(['name' => 'Area notifikasi lain', 'is_active' => true]);
+        $pickup = PickupRequest::query()->create([
+            'request_number' => 'PUP-NOTIFICATION-OTHER',
+            'customer_id' => $other->id,
+            'rt_id' => $rt->id,
+            'service_area_id' => $area->id,
+            'address' => 'Alamat notifikasi warga lain',
+            'selected_date' => today()->addDay(),
+            'estimated_weight_kg' => '1.000',
+            'status' => PickupStatus::PendingReview,
+        ]);
+        Notification::factory()->create([
+            'recipient_id' => $recipient->getKey(),
+            'reference' => route('citizen.pickup.show', $pickup, false),
+        ]);
+
+        $this->notificationCenterFor($recipient)
+            ->assertDontSee('href="'.route('citizen.pickup.show', $pickup, false).'"', false);
     }
 
     public function test_it_renders_an_accessible_empty_state(): void

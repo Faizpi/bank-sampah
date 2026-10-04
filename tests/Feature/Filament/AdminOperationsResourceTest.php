@@ -16,6 +16,7 @@ use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
+use App\Domain\MobileServices\Services\MobileServiceService;
 use App\Domain\Pickups\Models\PickupCapacity;
 use App\Domain\Programs\Enums\TargetStatus;
 use App\Domain\Programs\Models\CollectionTarget;
@@ -173,6 +174,23 @@ final class AdminOperationsResourceTest extends TestCase
 
         self::assertDatabaseHas('collection_targets', ['id' => $target->id, 'status' => TargetStatus::Closed->value, 'closed_progress_kg' => '0.000']);
         self::assertDatabaseHas('audit_logs', ['action' => 'target.closed', 'auditable_id' => $target->id, 'actor_id' => $admin->id]);
+    }
+
+    public function test_mobile_service_resource_shows_safe_error_and_keeps_draft_when_publish_schedule_collides(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->mobileContext();
+        $this->actingAs($admin);
+        $service = app(MobileServiceService::class);
+        $published = $service->create($admin, null, $rt->id, 'Balai RT 01', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 20, '', [$staff->id], [$type->id]);
+        $draft = $service->create($admin, null, $rt->id, 'Lapangan RT 02', '2026-08-10 10:00:00', '2026-08-10 12:00:00', 20, '', [$staff->id], [$type->id]);
+        $service->transition($admin, $published, MobileServiceStatus::Published);
+
+        Livewire::test(ManageMobileServices::class)
+            ->assertTableActionVisible('publish', $draft)
+            ->callTableAction('publish', $draft)
+            ->assertNotified('Layanan belum dapat dipublikasikan');
+
+        self::assertSame(MobileServiceStatus::Draft, $draft->fresh()->status);
     }
 
     public function test_mobile_service_resource_creates_publishes_opens_and_closes_a_schedule(): void

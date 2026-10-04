@@ -93,8 +93,20 @@ final readonly class WithdrawalPaymentService
             });
         } catch (\Throwable $exception) {
             if ($media instanceof Media) {
-                Storage::disk((string) $media->disk)->delete((string) $media->path);
-                $media->delete();
+                $durableWithdrawal = WithdrawalRequest::query()->find($withdrawal->id);
+                $durableMedia = Media::query()->find($media->id);
+                $isCommittedEvidence = $durableWithdrawal instanceof WithdrawalRequest
+                    && $durableWithdrawal->status === WithdrawalStatus::Paid
+                    && $durableWithdrawal->receipt_ledger_entry_id !== null
+                    && $durableWithdrawal->proof_media_id === $media->id
+                    && $durableMedia instanceof Media
+                    && $durableMedia->attachable_type === WithdrawalRequest::class
+                    && $durableMedia->attachable_id === $durableWithdrawal->id;
+
+                if (! $isCommittedEvidence) {
+                    Storage::disk((string) $media->disk)->delete((string) $media->path);
+                    $media->delete();
+                }
             }
             throw $exception;
         }
@@ -196,7 +208,7 @@ final readonly class WithdrawalPaymentService
             type: 'withdrawal.paid',
             title: 'Pencairan selesai',
             body: 'Pencairan '.$withdrawal->request_number.' telah dibayar.',
-            reference: '/notifikasi',
+            reference: '/warga/pencairan/'.$withdrawal->id.'/bukti',
             dedupeKey: NotificationDedupeKey::for('withdrawal.paid:'.$withdrawal->request_number, $withdrawal->customer_id, 'withdrawal-v1'),
         ));
     }

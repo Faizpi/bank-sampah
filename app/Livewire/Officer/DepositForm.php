@@ -50,6 +50,8 @@ final class DepositForm extends Component
 
     public ?UploadedFile $evidence = null;
 
+    public bool $finalizationReviewOpen = false;
+
     public function mount(int $customerId, PermissionChecker $permissions): void
     {
         /** @var User|null $actor */
@@ -128,8 +130,28 @@ final class DepositForm extends Component
         session()->flash('success', 'Draf setoran tersimpan.');
     }
 
+    public function reviewFinalization(): void
+    {
+        $this->validateItems();
+        $this->validate([
+            'evidence' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
+        ]);
+        $this->finalizationReviewOpen = true;
+    }
+
+    public function cancelFinalizationReview(): void
+    {
+        $this->finalizationReviewOpen = false;
+    }
+
     public function finalize(DepositService $service): void
     {
+        if (! $this->finalizationReviewOpen) {
+            $this->addError('items', 'Tinjau lalu konfirmasi finalisasi sebelum mencatat setoran.');
+
+            return;
+        }
+
         $this->validateItems();
         $this->validate([
             'evidence' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
@@ -140,10 +162,30 @@ final class DepositForm extends Component
         $customer = User::query()->findOrFail($this->customerId);
         $this->draft ??= $service->createDraft($actor, $customer, $this->mobileServiceId === null ? 'langsung' : 'keliling', null, $this->mobileServiceId === null ? null : MobileService::query()->findOrFail($this->mobileServiceId));
         $mobileService = $this->mobileServiceId === null ? null : MobileService::query()->findOrFail($this->mobileServiceId);
-        $this->draft = $this->assistedServiceId === null
-            ? $service->finalize($actor, $this->draft, $this->idempotencyKey, $this->items, $this->evidence, $mobileService)
-            : $service->finalizeAndLinkAssisted($actor, $this->draft, $this->idempotencyKey, $this->assistedServiceId, $this->items, $this->evidence, $mobileService);
+        $draftId = $this->draft->id;
+
+        try {
+            $this->draft = $this->assistedServiceId === null
+                ? $service->finalize($actor, $this->draft, $this->idempotencyKey, $this->items, $this->evidence, $mobileService)
+                : $service->finalizeAndLinkAssisted($actor, $this->draft, $this->idempotencyKey, $this->assistedServiceId, $this->items, $this->evidence, $mobileService);
+        } catch (Throwable $exception) {
+            $durableDraft = Deposit::query()->find($draftId);
+            if (! $durableDraft instanceof Deposit || $durableDraft->isDraft()) {
+                throw $exception;
+            }
+
+            $this->draft = $durableDraft->fresh('items');
+            $this->evidence = null;
+            $this->finalizationReviewOpen = false;
+            session()->flash('success', $this->draft->isPendingReview()
+                ? 'Setoran berhasil dicatat dan menunggu persetujuan pemeriksa.'
+                : 'Setoran berhasil difinalisasi.');
+
+            return;
+        }
+
         $this->evidence = null;
+        $this->finalizationReviewOpen = false;
         session()->flash('success', $this->draft->isPendingReview()
             ? 'Setoran bernilai tinggi menunggu persetujuan pemeriksa. Saldo belum ditambahkan.'
             : 'Setoran berhasil difinalisasi.');

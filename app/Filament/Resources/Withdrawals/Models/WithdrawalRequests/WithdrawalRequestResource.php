@@ -128,7 +128,7 @@ final class WithdrawalRequestResource extends Resource
                     ->icon(Heroicon::OutlinedUser)
                     ->visible(fn (WithdrawalRequest $record): bool => $record->status->value === 'disetujui')
                     ->authorize('approve')
-                    ->schema([Select::make('payer_id')->label('Petugas pembayaran')->options(fn (WithdrawalRequest $record): array => User::query()->where('status', 'aktif')->whereHas('roles.permissions', fn (Builder $permissions): Builder => $permissions->where('permissions.name', 'withdrawal.pay'))->pluck('name', 'id')->all())->required()])
+                    ->schema([Select::make('payer_id')->label('Bendahara pembayaran')->helperText('Hanya bendahara aktif pada area nasabah yang dapat dipilih.')->options(fn (WithdrawalRequest $record): array => User::query()->where('status', 'aktif')->whereHas('roles', fn (Builder $roles): Builder => $roles->where('name', 'bendahara'))->whereHas('staffProfile', fn (Builder $profile): Builder => $profile->whereHas('serviceArea.rts.customerProfiles', fn (Builder $customers): Builder => $customers->where('user_id', $record->customer_id))->where(fn (Builder $dates): Builder => $dates->whereNull('active_from')->orWhere('active_from', '<=', today()))->where(fn (Builder $dates): Builder => $dates->whereNull('active_to')->orWhere('active_to', '>=', today())))->orderBy('name')->pluck('name', 'id')->all())->required()])
                     ->action(fn (WithdrawalRequest $record, array $data): WithdrawalRequest => app(WithdrawalService::class)->assignPayer(self::actor(), $record, User::query()->findOrFail((int) $data['payer_id']))),
             ]);
     }

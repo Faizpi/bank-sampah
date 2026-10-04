@@ -8,25 +8,11 @@ use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Notifications\Models\NotificationDeliveryFailure;
 use App\Models\Notification;
 use App\Models\User;
-use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
-use Illuminate\Database\QueryException;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
-final class PersistNotification implements ShouldQueueAfterCommit
+final class PersistNotification
 {
-    use InteractsWithQueue;
-
-    public string $connection = 'database';
-
-    public int $tries = 3;
-
-    /** @return list<int> */
-    public function backoff(): array
-    {
-        return [10, 60];
-    }
-
     public function handle(NotificationRequested $event): void
     {
         try {
@@ -39,7 +25,14 @@ final class PersistNotification implements ShouldQueueAfterCommit
                 ]),
             );
             NotificationDeliveryFailure::query()->where('dedupe_key', $event->payload->dedupeKey)->delete();
-        } catch (QueryException $exception) {
+        } catch (Throwable $exception) {
+            $this->recordFailure($event, $exception);
+        }
+    }
+
+    private function recordFailure(NotificationRequested $event, Throwable $exception): void
+    {
+        try {
             if (Notification::query()->where('dedupe_key', $event->payload->dedupeKey)->exists()) {
                 return;
             }
@@ -55,13 +48,23 @@ final class PersistNotification implements ShouldQueueAfterCommit
                     'retry_after' => now()->addSeconds(10),
                 ],
             );
-            Log::warning('Notification persistence failed after commit.', [
+        } catch (Throwable $recordingException) {
+            $this->logFailure('Notification failure could not be recorded after commit.', $event, $recordingException);
+        }
+
+        $this->logFailure('Notification persistence failed after commit.', $event, $exception);
+    }
+
+    private function logFailure(string $message, NotificationRequested $event, Throwable $exception): void
+    {
+        try {
+            Log::warning($message, [
                 'dedupe_key' => $event->payload->dedupeKey,
                 'type' => $event->payload->type,
                 'error' => $exception->getMessage(),
             ]);
-
-            throw $exception;
+        } catch (Throwable) {
+            // Notification delivery must never affect a committed business transaction.
         }
     }
 }

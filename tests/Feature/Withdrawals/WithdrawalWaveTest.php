@@ -235,7 +235,7 @@ final class WithdrawalWaveTest extends TestCase
             ->call('select', $withdrawal->id)
             ->assertSee('Kartu dan nomor nasabah berbeda')
             ->assertSee('Kartu nasabah adalah media identitas fisik atau digital.')
-            ->assertSee('Masukkan nomor yang tercetak pada kartu atau yang disebutkan warga.')
+            ->assertSee('Pindai QR kartu nasabah')
             ->assertSee('Ambil dari kamera')
             ->assertSee('Pilih dari galeri')
             ->assertSeeHtml('data-photo-picker-max="1"')
@@ -243,6 +243,57 @@ final class WithdrawalWaveTest extends TestCase
             ->assertDontSeeHtml('application/pdf')
             ->set('recipientVerification', 'nomor_nasabah')
             ->assertSee('Nomor nasabah adalah kode unik warga.');
+    }
+
+    public function test_payment_requires_review_confirmation_before_any_financial_effect(): void
+    {
+        Storage::fake('media_private');
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request', 'withdrawal.view']);
+        $this->credit($customer, 50_000);
+        $approver = User::factory()->create();
+        $this->grant($approver, ['withdrawal.approve', 'withdrawal.view', 'user.view.all']);
+        $payer = $this->payerFor($area);
+        $service = app(WithdrawalService::class);
+        $withdrawal = $service->assignPayer($approver, $service->approve($approver, $service->request($customer, $this->requestPayload($area) + ['amount' => 20_000], 'w6-confirmation-request-0001'), true), $payer);
+
+        Livewire::actingAs($payer)
+            ->test(WithdrawalPayments::class)
+            ->call('select', $withdrawal->id)
+            ->set('recipientReference', (string) $customer->customerProfile?->customer_number)
+            ->set('proof', UploadedFile::fake()->image('payment-proof.png'))
+            ->call('pay')
+            ->assertHasErrors(['selectedWithdrawalId']);
+
+        self::assertSame(WithdrawalStatus::ReadyForPickup, $withdrawal->fresh()->status);
+        self::assertSame(0, LedgerEntry::query()->where('source_type', WithdrawalRequest::class)->where('direction', LedgerEntry::DIRECTION_OUT)->count());
+    }
+
+    public function test_treasurer_success_receipt_renders_all_payment_facts(): void
+    {
+        $payer = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($payer, ['withdrawal.pay']);
+        $occurredAt = '15 Agustus 2026, 10:30';
+
+        Livewire::actingAs($payer)
+            ->test(WithdrawalPayments::class)
+            ->set('receipt', ['number' => 'WD-PAYMENT-001', 'value' => 35_000, 'occurredAt' => $occurredAt, 'status' => 'sudah_dibayar'])
+            ->assertSee('Berhasil')
+            ->assertDontSee('WD-PAYMENT-001')
+            ->assertDontSee('Nomor bukti');
+    }
+
+    public function test_payment_card_scan_uses_camera_with_manual_fallback_and_cleanup(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/treasurer/withdrawal-payments.blade.php'));
+
+        self::assertIsString($view);
+        self::assertStringContainsString("'BarcodeDetector' in window", $view);
+        self::assertStringContainsString('navigator.mediaDevices?.getUserMedia', $view);
+        self::assertStringContainsString('$wire.scanCustomerCard(rawValue)', $view);
+        self::assertStringContainsString('stream?.getTracks().forEach((track) => track.stop())', $view);
+        self::assertStringContainsString('wire:model="scanToken"', $view);
+        self::assertStringContainsString('$wire.closeScanner()', $view);
     }
 
     public function test_lane_c_payment_verifies_recipient_keeps_proof_private_and_posts_one_outgoing_entry(): void
@@ -273,6 +324,32 @@ final class WithdrawalWaveTest extends TestCase
         self::assertSame('private', $paid->proofMedia()->firstOrFail()->getRawOriginal('visibility'));
         Storage::disk('media_private')->assertExists($paid->proofMedia->path);
         Event::assertDispatchedTimes(NotificationRequested::class, 1);
+    }
+
+    public function test_terminal_payment_with_a_missing_idempotency_key_does_not_swallow_validation(): void
+    {
+        Storage::fake('media_private');
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request', 'withdrawal.view']);
+        $this->credit($customer, 60_000);
+        $approver = User::factory()->create();
+        $this->grant($approver, ['withdrawal.approve', 'withdrawal.view', 'user.view.all']);
+        $payer = $this->payerFor($area);
+        $service = app(WithdrawalService::class);
+        $withdrawal = $service->assignPayer($approver, $service->approve($approver, $service->request($customer, $this->requestPayload($area) + ['amount' => 20_000], 'w6-reconcile-request-0001'), true), $payer);
+        $reference = (string) $customer->customerProfile?->customer_number;
+        $service->pay($payer, $withdrawal, 'nomor_nasabah', $reference, UploadedFile::fake()->image('committed.png'), 'w6-reconcile-original-0001');
+
+        Livewire::actingAs($payer)
+            ->test(WithdrawalPayments::class)
+            ->set('selectedWithdrawalId', $withdrawal->id)
+            ->set('recipientVerification', 'nomor_nasabah')
+            ->set('recipientReference', $reference)
+            ->set('proof', UploadedFile::fake()->image('different.png'))
+            ->set('idempotencyKey', 'w6-reconcile-missing-0001')
+            ->set('showPaymentReview', true)
+            ->call('pay')
+            ->assertHasErrors(['status']);
     }
 
     public function test_lane_c_payment_normalizes_one_photo_proof_to_jpeg_under_one_megabyte(): void
@@ -422,8 +499,29 @@ final class WithdrawalWaveTest extends TestCase
         $this->actingAs($other)->get(route('citizen.withdrawal.show', $paid))->assertNotFound();
         $this->actingAs($other)->get(route('withdrawal.proof', $paid->proofMedia))->assertNotFound();
         $this->actingAs($customer)->get(route('citizen.withdrawal.show', $paid))->assertOk()->assertSee($paid->request_number);
-        $this->actingAs($customer)->get(route('citizen.withdrawal.receipt', $paid))->assertOk()->assertSee('Pencairan berhasil');
+        $this->actingAs($customer)->get(route('citizen.withdrawal.receipt', $paid))
+            ->assertOk()
+            ->assertSee('Pencairan berhasil')
+            ->assertSee($paid->request_number)
+            ->assertSee('Rp25.000')
+            ->assertSee('Berhasil')
+            ->assertDontSee('Nomor bukti');
         $this->actingAs($customer)->get(route('withdrawal.proof', $paid->proofMedia))->assertOk();
+    }
+
+    public function test_paid_withdrawal_detail_exposes_the_receipt_action(): void
+    {
+        [$customer] = $this->context();
+        $this->grant($customer, ['withdrawal.view']);
+        $paid = WithdrawalRequest::factory()->for($customer, 'customer')->create([
+            'requested_by_id' => $customer->id,
+            'status' => WithdrawalStatus::Paid,
+        ]);
+
+        Livewire::actingAs($customer)
+            ->test(WithdrawalShow::class, ['withdrawal' => $paid])
+            ->assertSee('Buka Bukti Pencairan')
+            ->assertSeeHtml('href="'.route('citizen.withdrawal.receipt', $paid).'"');
     }
 
     /** @return array{User, ServiceArea} */
@@ -457,7 +555,12 @@ final class WithdrawalWaveTest extends TestCase
     private function payerFor(ServiceArea $area): User
     {
         $payer = User::factory()->create(['status' => UserStatus::Active]);
-        $this->grant($payer, ['withdrawal.pay', 'withdrawal.view']);
+        $role = Role::query()->firstOrCreate(['name' => 'bendahara'], ['description' => 'Bendahara']);
+        foreach (['withdrawal.pay', 'withdrawal.view'] as $permissionName) {
+            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
+            $role->permissions()->syncWithoutDetaching([$permission->id]);
+        }
+        $payer->roles()->attach($role);
         StaffProfile::query()->create(['user_id' => $payer->id, 'staff_number' => 'W6-PAYER-'.$payer->id, 'service_area_id' => $area->id, 'active_from' => today(), 'active_to' => null]);
 
         return $payer;

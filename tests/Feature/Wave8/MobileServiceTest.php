@@ -15,12 +15,14 @@ use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\MobileServices\Services\MobileDepositGuard;
 use App\Domain\MobileServices\Services\MobileServiceService;
 use App\Domain\WasteMaster\Actions\ManageWasteMaster;
+use App\Livewire\PublicSite\MobileSchedule;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class MobileServiceTest extends TestCase
@@ -99,12 +101,32 @@ final class MobileServiceTest extends TestCase
                 [$equalNow->id, $current->id, $future->id],
                 app(MobileServiceService::class)->publicQuery()->pluck('id')->all(),
             );
+            $publicService = app(MobileServiceService::class)->publicQuery()->whereKey($current->id)->firstOrFail();
+            self::assertTrue($publicService->relationLoaded('rt'));
+            self::assertTrue($publicService->relationLoaded('rw'));
+            self::assertTrue($publicService->relationLoaded('wasteTypes'));
+            self::assertSame([$type->name], $publicService->wasteTypes->pluck('name')->all());
             self::assertNotContains($expired->id, app(MobileServiceService::class)->publicQuery()->pluck('id')->all());
             self::assertNotContains($closed->id, app(MobileServiceService::class)->publicQuery()->pluck('id')->all());
             self::assertNotContains($cancelled->id, app(MobileServiceService::class)->publicQuery()->pluck('id')->all());
         } finally {
             CarbonImmutable::setTestNow();
         }
+    }
+
+    public function test_public_schedule_renders_status_coverage_accepted_waste_types_and_notes(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai RT Terbuka', now()->addHour()->toDateTimeString(), now()->addHours(2)->toDateTimeString(), 20, 'Bawa sampah yang sudah dipilah.', [$staff->id], [$type->id]);
+        app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
+
+        Livewire::test(MobileSchedule::class)
+            ->assertSee('Terjadwal')
+            ->assertSee('Cakupan wilayah')
+            ->assertSee($rt->name)
+            ->assertSee('Sampah yang diterima')
+            ->assertSee($type->name)
+            ->assertSee('Bawa sampah yang sudah dipilah.');
     }
 
     public function test_mobile_service_acceptance_respects_end_boundary_status_and_capacity(): void

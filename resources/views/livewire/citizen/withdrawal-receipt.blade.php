@@ -8,6 +8,14 @@
         <p class="mt-3 text-body text-text-secondary">Bukti ini hanya dapat dilihat oleh pemilik pencairan yang sudah dibayar.</p>
     </div>
 
+    <x-ui.success-state
+        title="Pencairan berhasil"
+        :reference="$withdrawal->request_number"
+        :value="'Rp '.number_format($withdrawal->amount, 0, ',', '.')"
+        :time="$withdrawal->paid_at?->translatedFormat('d F Y, H:i')"
+        :status="$withdrawal->status->value"
+    />
+
     <x-ui.panel title="Ringkasan pembayaran" description="Saldo keluar tercatat setelah pembayaran sah.">
         <dl class="grid gap-4 text-body md:grid-cols-2">
             <div><dt class="text-body-sm text-text-secondary">Nomor</dt><dd class="mt-1 font-semibold">{{ $withdrawal->request_number }}</dd></div>

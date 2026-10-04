@@ -11,6 +11,7 @@ use Database\Factories\StaffProfileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $user_id
@@ -39,6 +40,18 @@ final class StaffProfile extends Model
         return ['active_from' => 'immutable_date', 'active_to' => 'immutable_date'];
     }
 
+    protected static function booted(): void
+    {
+        self::saved(static function (self $profile): void {
+            if ($profile->service_area_id !== null) {
+                $profile->serviceAreas()->firstOrCreate(
+                    ['service_area_id' => $profile->service_area_id],
+                    ['active_from' => $profile->active_from?->toDateString(), 'active_to' => $profile->active_to?->toDateString()],
+                );
+            }
+        });
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
@@ -49,5 +62,11 @@ final class StaffProfile extends Model
     public function serviceArea(): BelongsTo
     {
         return $this->belongsTo(ServiceArea::class);
+    }
+
+    /** @return HasMany<StaffServiceArea, $this> */
+    public function serviceAreas(): HasMany
+    {
+        return $this->hasMany(StaffServiceArea::class, 'staff_profile_user_id', 'user_id');
     }
 }

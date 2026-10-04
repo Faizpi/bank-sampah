@@ -98,13 +98,45 @@ final class DepositEvidenceTest extends TestCase
         self::assertDatabaseCount('deposits', 1);
 
         $component->set('evidence', UploadedFile::fake()->image('deposit-form-proof.png', 1, 1))
+            ->call('reviewFinalization')
+            ->assertHasNoErrors()
             ->call('finalize')
             ->assertHasNoErrors()
             ->assertSet('draft.id', $draft->id)
-            ->assertSet('draft.status', Deposit::STATUS_FINAL);
+            ->assertSet('draft.status', Deposit::STATUS_FINAL)
+            ->assertSee('Setoran berhasil difinalisasi.')
+            ->assertSee('Berhasil')
+            ->assertDontSee($draft->fresh()->deposit_number)
+            ->assertDontSee('Nomor bukti')
+            ->assertDontSee('Nilai')
+            ->assertDontSee('Waktu');
 
         self::assertDatabaseCount('deposits', 1);
         self::assertDatabaseHas('deposits', ['id' => $draft->id, 'status' => Deposit::STATUS_FINAL]);
+        self::assertDatabaseCount('ledger_entries', 1);
+    }
+
+    public function test_deposit_finalization_disarms_confirmation_after_success_and_cannot_replay_financial_effect(): void
+    {
+        Storage::fake('media_private');
+        [$staff, $customer, $type, $condition] = $this->pricedContext();
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+
+        $draft = app(DepositService::class)->createDraft($staff, $customer);
+        app(DepositService::class)->replaceDraftItems($staff, $draft, [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']]);
+
+        Livewire::actingAs($staff)
+            ->withQueryParams(['draftId' => $draft->id])
+            ->test(DepositForm::class, ['customerId' => $customer->id])
+            ->set('evidence', UploadedFile::fake()->image('deposit-proof.png', 1, 1))
+            ->call('reviewFinalization')
+            ->call('finalize')
+            ->assertHasNoErrors()
+            ->assertSet('finalizationReviewOpen', false)
+            ->call('finalize')
+            ->assertHasErrors(['items']);
+
+        self::assertDatabaseCount('deposits', 1);
         self::assertDatabaseCount('ledger_entries', 1);
     }
 
@@ -175,9 +207,11 @@ final class DepositEvidenceTest extends TestCase
         Livewire::actingAs($staff)
             ->test(DepositForm::class, ['customerId' => $customer->id])
             ->set('items', $items)
-            ->call('finalize')
+            ->call('reviewFinalization')
             ->assertHasErrors(['evidence' => 'required'])
             ->set('evidence', $proof)
+            ->call('reviewFinalization')
+            ->assertHasNoErrors()
             ->call('finalize')
             ->assertHasNoErrors()
             ->assertSet('evidence', null);

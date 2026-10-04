@@ -44,6 +44,22 @@
         </div>
     @endif
 
+    <x-ui.panel title="Permintaan warga" description="Rincian awal menjadi acuan penimbangan; nilai akhir selalu berdasarkan timbang aktual.">
+        <dl class="grid gap-3 text-body sm:grid-cols-3">
+            <div class="rounded-lg bg-warm-canvas px-3 py-2"><dt class="text-caption text-text-secondary">Warga</dt><dd class="mt-0.5 font-semibold text-deep-green">{{ $pickup->customer?->name ?? 'Warga' }}</dd></div>
+            <div class="rounded-lg bg-warm-canvas px-3 py-2"><dt class="text-caption text-text-secondary">Jadwal</dt><dd class="mt-0.5 font-semibold text-deep-green">{{ $pickup->scheduled_date?->translatedFormat('d F Y') ?? 'Belum dijadwalkan' }}</dd></div>
+            <div class="rounded-lg bg-warm-canvas px-3 py-2"><dt class="text-caption text-text-secondary">Estimasi berat</dt><dd class="mt-0.5 font-semibold text-deep-green">{{ \App\Support\WeightFormatter::format($pickup->estimated_weight_kg) }} kg</dd></div>
+        </dl>
+        @if ($pickup->items->isNotEmpty())
+            <ul class="mt-4 divide-y divide-border border-y border-border text-body-sm">
+                @foreach ($pickup->items as $item)
+                    <li class="flex justify-between gap-3 py-2"><span class="font-semibold text-deep-green">{{ $item->wasteType?->name ?? 'Jenis sampah' }}</span><span class="text-text-secondary">{{ \App\Support\WeightFormatter::format($item->estimated_weight_kg) }} kg</span></li>
+                @endforeach
+            </ul>
+        @endif
+        <p class="mt-4 text-body-sm text-text-secondary">Media pengajuan tersimpan privat dan tersedia melalui akses rekam penjemputan yang terotorisasi. {{ $pickup->media->count() }} media tercatat.</p>
+    </x-ui.panel>
+
     {{-- Status Panel --}}
     <x-ui.panel title="Status tugas" description="Urutan status harus diikuti. Estimasi tidak digunakan untuk saldo.">
         <div class="flex items-center gap-3">
@@ -83,7 +99,7 @@
         <x-ui.panel title="Timbang aktual" description="Berat aktual ini menjadi sumber setoran dan saldo." state="success">
             <div class="grid gap-4">
                 @foreach ($actualItems as $index => $item)
-                    <div wire:key="actual-item-{{ $index }}" class="grid gap-3 rounded-xl border border-border bg-warm-canvas p-4 md:grid-cols-3">
+                    <div wire:key="actual-item-{{ $index }}" class="grid gap-3 rounded-xl border border-border bg-warm-canvas p-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
                         <x-ui.select wire:model="actualItems.{{ $index }}.waste_type_id"
                             label="Jenis sampah" name="actualItems.{{ $index }}.waste_type_id"
                             placeholder="Pilih jenis sampah"
@@ -97,6 +113,9 @@
                         <x-ui.input wire:model="actualItems.{{ $index }}.weight_kg"
                             label="Berat aktual (kg)" name="actualItems.{{ $index }}.weight_kg"
                             inputmode="decimal" :error="$errors->first('actualItems.'.$index.'.weight_kg')" />
+                        @if (count($actualItems) > 1)
+                            <button type="button" wire:click="removeActualItem({{ $index }})" class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-4 text-label font-bold text-terracotta transition hover:bg-danger-bg">Hapus</button>
+                        @endif
                     </div>
                 @endforeach
 
@@ -136,19 +155,40 @@
                 </div>
 
                 <div class="flex flex-col gap-3 sm:flex-row">
-                    <button type="button"
-                        wire:click="$set('actualItems', [...$actualItems, ['waste_type_id' => '', 'condition_id' => '', 'weight_kg' => '']])"
-                        class="inline-flex min-h-touch items-center gap-2 justify-self-start rounded-xl border-2 border-forest-600 px-4 text-label font-bold text-forest-700 transition hover:bg-success-bg">
+                    <button type="button" wire:click="addActualItem" class="inline-flex min-h-touch items-center gap-2 justify-self-start rounded-xl border-2 border-forest-600 px-4 text-label font-bold text-forest-700 transition hover:bg-success-bg">
                         <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                         Tambah Detail Timbang
                     </button>
-                    <x-ui.button type="button" wire:click="complete" wire:confirm="Finalkan setoran aktual? Berat dan nilai setoran akan dicatat, saldo nasabah akan bertambah, dan tugas penjemputan akan selesai." wire:loading.attr="disabled" data-photo-picker-action>
-                        <span wire:loading.remove>Finalkan Setoran Aktual</span>
-                        <span wire:loading>Memproses...</span>
+                    <x-ui.button type="button" wire:click="reviewCompletion" wire:loading.attr="disabled" data-photo-picker-action>
+                        <span wire:loading.remove>Review Finalisasi</span>
+                        <span wire:loading>Memeriksa...</span>
                     </x-ui.button>
                 </div>
             </div>
         </x-ui.panel>
+    @endif
+
+    @if ($receipt)
+        <x-ui.success-state
+            title="Setoran pickup berhasil"
+            :reference="$receipt['number']"
+            :value="'Rp '.number_format($receipt['value'], 0, ',', '.')"
+            :time="$receipt['occurredAt']"
+            :status="$receipt['status']"
+        />
+    @endif
+
+    @if ($completionDialogOpen)
+        <div class="fixed inset-0 z-overlay flex items-end justify-center bg-overlay p-4 sm:items-center" role="presentation">
+            <div class="w-full max-w-form rounded-lg border border-border bg-surface p-5 shadow-dialog sm:p-6" role="dialog" aria-modal="true" aria-labelledby="pickup-completion-title">
+                <h2 id="pickup-completion-title" class="text-h2 font-bold text-deep-green">Finalkan setoran aktual?</h2>
+                <p class="mt-2 text-body-sm text-text-secondary">Berat dan nilai akan dicatat, saldo warga bertambah, dan tugas selesai. Tindakan ini tidak dapat dibatalkan dari tugas ini.</p>
+                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <x-ui.button type="button" variant="secondary" wire:click="cancelCompletionReview">Ubah data</x-ui.button>
+                    <x-ui.button type="button" wire:click="complete" wire:loading.attr="disabled" wire:target="complete"><span wire:loading.remove wire:target="complete">Finalkan setoran</span><span wire:loading wire:target="complete">Memproses...</span></x-ui.button>
+                </div>
+            </div>
+        </div>
     @endif
 
     {{-- Status History --}}

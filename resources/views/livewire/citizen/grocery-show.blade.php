@@ -69,6 +69,12 @@
         />
     </x-ui.panel>
 
+    @if ($redemption->status->value === 'siap_diambil')
+        <x-ui.panel title="Langkah selanjutnya" description="Paket Anda sudah siap untuk diserahkan.">
+            <p class="text-body text-text-secondary">Bawa kartu nasabah atau siapkan nomor nasabah Anda, lalu tunggu petugas melakukan serah-terima paket.</p>
+        </x-ui.panel>
+    @endif
+
     @if ($redemption->status->value === 'selesai')
         <a href="{{ route('citizen.grocery.receipt', $redemption) }}"
             class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">

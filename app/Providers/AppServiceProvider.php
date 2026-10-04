@@ -50,13 +50,11 @@ use App\Policies\WasteUnitPolicy;
 use App\Policies\WithdrawalRequestPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AppServiceProvider extends ServiceProvider
@@ -131,6 +129,5 @@ class AppServiceProvider extends ServiceProvider
             ->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
 
         config()->set('livewire.temporary_file_upload.middleware', 'throttle:uploads');
-        Livewire::addPersistentMiddleware(ThrottleRequests::class);
     }
 }

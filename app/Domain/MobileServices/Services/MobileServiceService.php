@@ -146,7 +146,12 @@ final readonly class MobileServiceService
     public function publicQuery(): Builder
     {
         return MobileService::query()
-            ->select(['id', 'service_number', 'rt_id', 'point', 'starts_at', 'ends_at', 'status', 'capacity', 'served_count', 'notes'])
+            ->select(['id', 'service_number', 'rw_id', 'rt_id', 'point', 'starts_at', 'ends_at', 'status', 'capacity', 'served_count', 'notes'])
+            ->with([
+                'rt:id,rw_id,name',
+                'rw:id,name',
+                'wasteTypes:id,name',
+            ])
             ->whereIn('status', [MobileServiceStatus::Published, MobileServiceStatus::Open])
             ->where('ends_at', '>=', now())
             ->orderBy('starts_at');
@@ -174,8 +179,8 @@ final readonly class MobileServiceService
         if ($rwId !== null && ! Rw::query()->whereKey($rwId)->where('is_active', true)->exists()) {
             throw ValidationException::withMessages(['rw_id' => 'RW layanan harus aktif.']);
         }
-        if (User::query()->whereIn('id', $staffIds)->where('status', UserStatus::Active)->count() !== count(array_unique($staffIds)) || WasteType::query()->whereIn('id', $wasteTypeIds)->where('is_active', true)->count() !== count(array_unique($wasteTypeIds))) {
-            throw ValidationException::withMessages(['assignment' => 'Petugas atau jenis sampah harus aktif.']);
+        if (User::query()->whereIn('id', $staffIds)->where('status', UserStatus::Active)->whereHas('staffProfile')->whereHas('roles.permissions', fn (Builder $permissions): Builder => $permissions->where('permissions.name', 'mobile-service.operate'))->count() !== count(array_unique($staffIds)) || WasteType::query()->whereIn('id', $wasteTypeIds)->where('is_active', true)->count() !== count(array_unique($wasteTypeIds))) {
+            throw ValidationException::withMessages(['assignment' => 'Pilih petugas aktif yang berwenang dan jenis sampah aktif.']);
         }
 
         return ['rw_id' => $rwId, 'rt_id' => $rtId, 'point' => $point, 'starts_at' => $start, 'ends_at' => $end, 'capacity' => $capacity, 'notes' => trim($notes) ?: null];

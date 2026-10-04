@@ -27,6 +27,8 @@ use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\WasteMaster\Support\WasteMasterMutationGuard;
 use App\Filament\Resources\Pickups\Models\PickupRequests\Pages\ManagePickupRequests;
 use App\Livewire\Citizen\PickupRequestForm;
+use App\Livewire\Citizen\PickupShow;
+use App\Livewire\Officer\PickupTask;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Testing\TestAction;
@@ -124,6 +126,29 @@ final class PickupWaveTest extends TestCase
 
         self::assertFalse(app(PickupService::class)->canView($other, $pickup));
         self::assertFalse(app(PickupService::class)->canDownloadMedia($other, $pickup->media->sole()));
+    }
+
+    public function test_citizen_pickup_detail_shows_submitted_items_notes_and_private_media_route(): void
+    {
+        [$customer, $area, $type] = $this->context();
+        $this->grant($customer, ['pickup.request', 'pickup.view']);
+        $this->capacity($area, 5, '50.000');
+        Storage::fake('media_private');
+        $pickup = app(PickupService::class)->submit(
+            $customer,
+            array_replace($this->requestData($customer, $area), ['notes' => 'Simpan di teras rumah']),
+            [['waste_type_id' => $type->id, 'estimated_weight_kg' => '2.500']],
+            [UploadedFile::fake()->image('pickup-detail.jpg')],
+            'w5-detail-key-0001',
+        );
+
+        Livewire::actingAs($customer)
+            ->test(PickupShow::class, ['pickup' => $pickup])
+            ->assertSee('Sampah yang diajukan')
+            ->assertSee($type->name)
+            ->assertSee('2,5 kg')
+            ->assertSee('Simpan di teras rumah')
+            ->assertSeeHtml('href="'.route('pickup.media', $pickup->media()->sole()).'"');
     }
 
     public function test_pickup_form_only_exposes_areas_attached_to_the_customers_active_rt_hierarchy(): void
@@ -363,7 +388,10 @@ final class PickupWaveTest extends TestCase
         $admin = User::factory()->create();
         $staff = User::factory()->create(['status' => UserStatus::Active]);
         $this->grant($admin, ['backoffice.access', 'pickup.schedule', 'pickup.view', 'user.view.all']);
-        $this->grant($staff, ['pickup.execute']);
+        $staffRole = Role::query()->firstOrCreate(['name' => 'petugas'], ['description' => 'Petugas']);
+        $pickupExecute = Permission::query()->firstOrCreate(['name' => 'pickup.execute'], ['description' => 'pickup.execute']);
+        $staffRole->permissions()->syncWithoutDetaching([$pickupExecute->id]);
+        $staff->roles()->attach($staffRole);
         StaffProfile::query()->create(['user_id' => $staff->id, 'staff_number' => 'STF-FILAMENT-0001', 'service_area_id' => $area->id, 'active_from' => today(), 'active_to' => null]);
         $alternative = today()->addDays(3)->toDateString();
         $this->capacity($area, 3, '10.000', $alternative);
@@ -481,6 +509,32 @@ final class PickupWaveTest extends TestCase
         self::assertSame(1, Deposit::query()->where('method', 'penjemputan')->count());
         self::assertSame(3_750, (int) $customer->fresh()->ledgerAccount?->availableBalance());
         self::assertSame(1, AuditLog::query()->where('action', 'pickup.completed')->count());
+    }
+
+    public function test_terminal_pickup_with_a_different_idempotency_key_does_not_swallow_validation(): void
+    {
+        Storage::fake('media_private');
+        [$customer, $area, $type, $condition] = $this->pricedContext();
+        $admin = User::factory()->create();
+        $staff = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($customer, ['pickup.request']);
+        $this->grant($admin, ['pickup.review', 'pickup.schedule', 'pickup.view', 'user.view.all']);
+        $this->grant($staff, ['pickup.view', 'pickup.execute', 'pickup.complete', 'deposit.create', 'deposit.update-draft', 'deposit.finalize', 'user.view', 'user.view.all']);
+        StaffProfile::query()->create(['user_id' => $staff->id, 'staff_number' => 'STF-W5-RECONCILE', 'service_area_id' => $area->id, 'active_from' => today()]);
+        $this->capacity($area, 3, '50.000');
+        $service = app(PickupService::class);
+        $pickup = $service->markPickedUp($staff, $service->begin($staff, $service->schedule($admin, $service->review($admin, $service->submit($customer, $this->requestData($customer, $area), [['waste_type_id' => $type->id, 'estimated_weight_kg' => '1.000']], [UploadedFile::fake()->image('pickup.png')], 'w5-reconcile-request-0001'), true), $staff)));
+        $items = [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']];
+        $completed = $service->complete($staff, $pickup, $items, 'w5-reconcile-original-0001', UploadedFile::fake()->image('committed.jpg'));
+
+        Livewire::actingAs($staff)
+            ->test(PickupTask::class, ['pickup' => $completed])
+            ->set('actualItems', $items)
+            ->set('evidence', UploadedFile::fake()->image('different.jpg'))
+            ->set('idempotencyKey', 'w5-reconcile-different-0001')
+            ->set('completionDialogOpen', true)
+            ->call('complete')
+            ->assertHasErrors(['status']);
     }
 
     public function test_lane_d_expiry_is_idempotent_terminal_and_audited_without_deposit_or_balance(): void

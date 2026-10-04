@@ -105,7 +105,19 @@ final readonly class GroceryHandoverService
             return $result;
         } catch (\Throwable $exception) {
             if ($media instanceof Media) {
-                $this->deleteMedia($media);
+                $durableRedemption = GroceryRedemption::query()->find($redemption->id);
+                $durableMedia = Media::query()->find($media->id);
+                $isCommittedEvidence = $durableRedemption instanceof GroceryRedemption
+                    && $durableRedemption->status === GroceryStatus::Completed
+                    && $durableRedemption->receipt_ledger_entry_id !== null
+                    && $durableRedemption->proof_media_id === $media->id
+                    && $durableMedia instanceof Media
+                    && $durableMedia->attachable_type === GroceryRedemption::class
+                    && $durableMedia->attachable_id === $durableRedemption->id;
+
+                if (! $isCommittedEvidence) {
+                    $this->deleteMedia($media);
+                }
             }
             throw $exception;
         }
@@ -202,7 +214,7 @@ final readonly class GroceryHandoverService
 
     private function notify(GroceryRedemption $redemption): void
     {
-        NotificationRequested::dispatch(new NotificationPayload(recipientId: $redemption->customer_id, type: 'grocery.completed', title: 'Penukaran sembako selesai', body: 'Paket '.$redemption->request_number.' telah diserahkan.', reference: '/notifikasi', dedupeKey: NotificationDedupeKey::for('grocery.completed:'.$redemption->request_number, $redemption->customer_id, 'grocery-v1')));
+        NotificationRequested::dispatch(new NotificationPayload(recipientId: $redemption->customer_id, type: 'grocery.completed', title: 'Penukaran sembako selesai', body: 'Paket '.$redemption->request_number.' telah diserahkan.', reference: '/warga/sembako/'.$redemption->id.'/bukti', dedupeKey: NotificationDedupeKey::for('grocery.completed:'.$redemption->request_number, $redemption->customer_id, 'grocery-v1')));
     }
 
     private function correlationId(): string

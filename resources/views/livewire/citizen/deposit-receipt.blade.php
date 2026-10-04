@@ -17,7 +17,7 @@
         :reference="$receipt['number']"
         :value="'Rp '.number_format($receipt['value'], 0, ',', '.')"
         :time="\Illuminate\Support\Carbon::parse($receipt['date'])->translatedFormat('d F Y, H:i')"
-        status="success"
+        :status="$receipt['status']"
     />
 
     <x-ui.panel title="Ringkasan" description="Detail yang aman untuk bukti warga.">

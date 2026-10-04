@@ -20,6 +20,7 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -28,6 +29,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 final class MobileServiceResource extends Resource
@@ -58,8 +60,8 @@ final class MobileServiceResource extends Resource
                 DateTimePicker::make('starts_at')->label('Mulai')->seconds(false)->native(false)->required(),
                 DateTimePicker::make('ends_at')->label('Selesai')->seconds(false)->native(false)->after('starts_at')->required(),
                 TextInput::make('capacity')->label('Kapasitas warga')->numeric()->integer()->minValue(0)->maxValue(1000000)->required(),
-                Select::make('staff_ids')->label('Petugas')->multiple()->required()->minItems(1)->searchable()->preload()->options(fn (): array => User::query()->where('status', UserStatus::Active)->whereHas('staffProfile', fn (Builder $query): Builder => $query)->whereHas('roles.permissions', fn (Builder $query): Builder => $query->where('permissions.name', 'mobile-service.operate'))->orderBy('name')->pluck('name', 'id')->all()),
-                Select::make('waste_type_ids')->label('Jenis diterima')->multiple()->required()->minItems(1)->searchable()->preload()->options(fn (): array => WasteType::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
+                Select::make('staff_ids')->label('Petugas layanan')->helperText('Pilih petugas aktif yang dapat mengoperasikan layanan keliling.')->multiple()->required()->minItems(1)->searchable()->preload()->options(fn (): array => User::query()->where('status', UserStatus::Active)->whereHas('staffProfile', fn (Builder $query): Builder => $query)->whereHas('roles.permissions', fn (Builder $query): Builder => $query->where('permissions.name', 'mobile-service.operate'))->orderBy('name')->pluck('name', 'id')->all()),
+                Select::make('waste_type_ids')->label('Jenis sampah yang diterima')->helperText('Pilih jenis sampah aktif yang dapat disetor pada layanan ini.')->multiple()->required()->minItems(1)->searchable()->preload()->options(fn (): array => WasteType::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
                 Textarea::make('notes')->label('Catatan')->maxLength(2000)->rows(4)->columnSpanFull(),
             ])->columns(2),
         ]);
@@ -78,7 +80,13 @@ final class MobileServiceResource extends Resource
             TextColumn::make('status')->label('Status')->badge(),
         ])->recordActions([
             EditAction::make()->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->using(fn (MobileService $record, array $data): MobileService => self::service()->update(self::actor(), $record, isset($data['rw_id']) ? (int) $data['rw_id'] : null, isset($data['rt_id']) ? (int) $data['rt_id'] : null, (string) $data['point'], (string) $data['starts_at'], (string) $data['ends_at'], (int) $data['capacity'], (string) ($data['notes'] ?? ''), array_map('intval', $data['staff_ids'] ?? []), array_map('intval', $data['waste_type_ids'] ?? []))),
-            Action::make('publish')->label('Publikasikan')->icon(Heroicon::OutlinedMegaphone)->color('success')->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->authorize('publish')->requiresConfirmation()->modalHeading(fn (MobileService $record): string => "Publikasikan layanan {$record->service_number}?")->modalDescription('Jadwal dan titik layanan akan terlihat oleh warga sesuai cakupan yang dipilih.')->modalSubmitActionLabel('Publikasikan layanan')->action(fn (MobileService $record): MobileService => self::service()->transition(self::actor(), $record, MobileServiceStatus::Published)),
+            Action::make('publish')->label('Publikasikan')->icon(Heroicon::OutlinedMegaphone)->color('success')->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->authorize('publish')->requiresConfirmation()->modalHeading(fn (MobileService $record): string => "Publikasikan layanan {$record->service_number}?")->modalDescription('Jadwal dan titik layanan akan terlihat oleh warga sesuai cakupan yang dipilih.')->modalSubmitActionLabel('Publikasikan layanan')->action(function (MobileService $record): void {
+                try {
+                    self::service()->transition(self::actor(), $record, MobileServiceStatus::Published);
+                } catch (ValidationException) {
+                    Notification::make()->title('Layanan belum dapat dipublikasikan')->body('Periksa jadwal dan penugasan petugas, lalu coba publikasikan kembali.')->danger()->send();
+                }
+            }),
             Action::make('open')->label('Buka titik')->icon(Heroicon::OutlinedPlay)->color('success')->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Published)->authorize('operate')->requiresConfirmation()->modalHeading(fn (MobileService $record): string => "Buka titik layanan {$record->service_number}?")->modalDescription('Titik layanan mulai menerima setoran selama jadwal dan kapasitas masih tersedia.')->modalSubmitActionLabel('Buka titik layanan')->action(fn (MobileService $record): MobileService => self::service()->transition(self::actor(), $record, MobileServiceStatus::Open)),
             Action::make('close')->label('Tutup titik')->icon(Heroicon::OutlinedStop)->color('warning')->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Open)->authorize('operate')->requiresConfirmation()->modalHeading(fn (MobileService $record): string => "Tutup layanan {$record->service_number}?")->modalDescription('Titik layanan tidak menerima transaksi baru setelah ditutup.')->modalSubmitActionLabel('Tutup layanan')->action(fn (MobileService $record): MobileService => self::service()->transition(self::actor(), $record, MobileServiceStatus::Closed)),
             Action::make('cancel')->label('Batalkan')->icon(Heroicon::OutlinedXCircle)->color('danger')->visible(fn (MobileService $record): bool => in_array($record->status, [MobileServiceStatus::Draft, MobileServiceStatus::Published], true))->authorize('cancel')->requiresConfirmation()->modalHeading(fn (MobileService $record): string => "Batalkan layanan {$record->service_number}?")->modalDescription('Jadwal layanan tidak dapat dibuka untuk transaksi baru.')->modalSubmitActionLabel('Batalkan layanan')->action(fn (MobileService $record): MobileService => self::service()->transition(self::actor(), $record, MobileServiceStatus::Cancelled)),

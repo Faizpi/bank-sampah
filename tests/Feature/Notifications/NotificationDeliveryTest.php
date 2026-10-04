@@ -11,12 +11,9 @@ use App\Domain\Notifications\Support\NotificationDedupeKey;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
-use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
-use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Queue;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -39,17 +36,16 @@ final class NotificationDeliveryTest extends TestCase
         self::assertContains(ShouldDispatchAfterCommit::class, class_implements(NotificationRequested::class));
     }
 
-    public function test_event_dispatcher_queues_persist_notification_exactly_once_after_the_originating_transaction_commits(): void
+    public function test_event_dispatcher_persists_notification_only_after_the_originating_transaction_commits(): void
     {
         $payload = $this->payload(User::factory()->create());
 
         DB::transaction(function () use ($payload): void {
             NotificationRequested::dispatch($payload);
-            self::assertDatabaseCount('jobs', 0);
+            self::assertDatabaseCount('notifications', 0);
         });
 
-        self::assertDatabaseCount('jobs', 1);
-        self::assertStringContainsString('PersistNotification', DB::table('jobs')->sole()->payload);
+        self::assertDatabaseCount('notifications', 1);
     }
 
     public function test_persistence_is_idempotent_for_the_same_event_recipient_and_template(): void
@@ -98,41 +94,20 @@ final class NotificationDeliveryTest extends TestCase
         );
     }
 
-    public function test_listener_has_bounded_retry_and_after_commit_queue_semantics(): void
-    {
-        $listener = new PersistNotification;
-
-        self::assertInstanceOf(ShouldQueueAfterCommit::class, $listener);
-        self::assertSame(3, $listener->tries);
-        self::assertSame([10, 60], $listener->backoff());
-        self::assertSame('database', $listener->connection);
-    }
-
-    public function test_queued_listener_failure_does_not_rollback_an_already_committed_originating_transaction(): void
+    public function test_persistence_failure_is_recorded_best_effort_without_bubbling(): void
     {
         $recipient = User::factory()->create();
-        $invalidPayload = $this->payload($recipient, recipientId: PHP_INT_MAX);
+        $listener = new PersistNotification;
+        $event = new NotificationRequested($this->payload($recipient, recipientId: PHP_INT_MAX));
 
-        DB::transaction(function () use ($recipient, $invalidPayload): void {
-            $recipient->forceFill(['name' => 'Transaksi Sudah Commit'])->save();
-            NotificationRequested::dispatch($invalidPayload);
+        $listener->handle($event);
 
-            self::assertDatabaseCount('jobs', 0);
-        });
-
-        self::assertDatabaseCount('jobs', 1);
-
-        $job = Queue::connection('database')->pop('default');
-
-        try {
-            $job?->fire();
-            self::fail('Queued notification persistence should fail for a missing recipient.');
-        } catch (QueryException) {
-            // The database queue executes outside the committed originating transaction.
-        }
-
-        self::assertSame('Transaksi Sudah Commit', $recipient->refresh()->name);
         self::assertDatabaseCount('notifications', 0);
+        self::assertDatabaseHas('notification_delivery_failures', [
+            'dedupe_key' => $event->payload->dedupeKey,
+            'type' => $event->payload->type,
+            'attempts' => 1,
+        ]);
     }
 
     private function payload(User $recipient, ?int $recipientId = null): NotificationPayload

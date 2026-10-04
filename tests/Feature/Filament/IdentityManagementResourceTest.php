@@ -12,6 +12,7 @@ use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\CustomersRegions\Support\RegionMutationGuard;
 use App\Domain\Identity\Actions\ManageRoles;
+use App\Domain\Identity\Actions\ManageStaffProfile;
 use App\Domain\Identity\Actions\ManageUsers;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\Permission;
@@ -20,6 +21,7 @@ use App\Domain\Identity\Support\SystemRoles;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Filament\Resources\Identity\Models\Customers\CustomerResource;
 use App\Filament\Resources\Identity\Models\Customers\Pages\ManageCustomers;
+use App\Filament\Resources\Identity\Models\Users\Pages\ManageUsers as ManageUsersPage;
 use App\Filament\Resources\Identity\Models\Users\UserResource;
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
@@ -89,9 +91,16 @@ final class IdentityManagementResourceTest extends TestCase
         self::assertSame([$newer->id, $older->id], CustomerResource::getEloquentQuery()->latest('created_at')->pluck('id')->all());
     }
 
-    public function test_pickup_review_exposes_private_proof_links(): void
+    public function test_pickup_review_uses_authorized_media_route_for_image_thumbnails(): void
     {
-        self::assertStringContainsString("route('pickup.media'", file_get_contents(app_path('Filament/Resources/Pickups/Models/PickupRequests/PickupRequestResource.php')));
+        $resource = file_get_contents(app_path('Filament/Resources/Pickups/Models/PickupRequests/PickupRequestResource.php'));
+
+        self::assertIsString($resource);
+        self::assertStringContainsString("route('pickup.media'", $resource);
+        self::assertStringContainsString('str_starts_with($media->mime_type, \'image/\')', $resource);
+        self::assertStringContainsString('<img class="h-24 w-24', $resource);
+        self::assertStringNotContainsString('Storage::url(', $resource);
+        self::assertStringNotContainsString('public_path(', $resource);
     }
 
     public function test_customer_resource_actions_use_domain_identity_action_without_exposing_qr_token(): void
@@ -156,6 +165,107 @@ final class IdentityManagementResourceTest extends TestCase
         $systemRole = Role::factory()->create(['name' => 'admin']);
         $this->expectException(AuthorizationException::class);
         app(ManageRoles::class)->deleteRole($actor->fresh(), $systemRole);
+    }
+
+    public function test_user_resource_eager_loads_persisted_account_and_profile_context(): void
+    {
+        $actor = User::factory()->create();
+        $target = User::factory()->create(['phone' => '628123456789', 'email' => 'stored@example.test']);
+        $target->customerProfile()->create(['customer_number' => 'NSB-00000001', 'rt_id' => $this->createRt('PERSISTED')->id, 'address' => 'Alamat tersimpan']);
+        $target->roles()->attach(Role::query()->create(['name' => 'petugas']));
+        [$area] = $this->areaWithRt('PERSISTED-STAFF');
+        $target->staffProfile()->create(['staff_number' => 'STF-00000001', 'service_area_id' => $area->id]);
+        $this->grant($actor, 'persisted-context-viewer', 'user.view', 'user.view.all');
+        $this->actingAs($actor->fresh());
+
+        $record = UserResource::getEloquentQuery()->whereKey($target)->sole();
+
+        self::assertTrue($record->relationLoaded('customerProfile'));
+        self::assertTrue($record->relationLoaded('roles'));
+        self::assertTrue($record->relationLoaded('staffProfile'));
+        self::assertTrue($record->staffProfile->relationLoaded('serviceArea'));
+        self::assertSame('628123456789', $record->phone);
+        self::assertSame('stored@example.test', $record->email);
+        self::assertSame('petugas', $record->roles->sole()->name);
+        self::assertSame('Area PERSISTED-STAFF', $record->staffProfile->serviceArea->name);
+    }
+
+    public function test_filament_role_assignment_accepts_a_single_scalar_role_id(): void
+    {
+        $actor = User::factory()->create();
+        $target = User::factory()->create();
+        $role = Role::factory()->create(['name' => 'scalar-role']);
+        $this->grant($actor, 'scalar-role-manager', 'role.manage', 'user.view', 'user.view.all', 'user.update');
+        $this->actingAs($actor->fresh());
+
+        Livewire::test(ManageUsersPage::class)
+            ->callAction(TestAction::make('assignRoles')->table($target), data: [
+                'role_ids' => $role->id,
+                'reason' => 'Payload select tunggal dari tindakan Filament.',
+            ]);
+
+        self::assertSame([$role->id], $target->fresh()->roles()->pluck('roles.id')->all());
+    }
+
+    public function test_staff_profile_action_creates_updates_and_audits_operational_staff(): void
+    {
+        $actor = User::factory()->create();
+        $target = User::factory()->create(['phone' => '628123456789', 'email' => 'petugas@example.test']);
+        $petugas = Role::query()->create(['name' => 'petugas']);
+        $target->roles()->attach($petugas);
+        [$area] = $this->areaWithRt('STAFF');
+        $this->grant($actor, 'staff-profile-manager', 'user.view', 'user.view.all', 'user.update');
+        $this->actingAs($actor->fresh());
+
+        Livewire::test(ManageUsersPage::class)
+            ->assertActionVisible(TestAction::make('manageStaffProfile')->table($target))
+            ->callAction(TestAction::make('manageStaffProfile')->table($target), data: [
+                'service_area_id' => $area->id,
+                'active_from' => '2026-01-01',
+                'active_to' => '2026-12-31',
+            ]);
+
+        $profile = $target->fresh(['staffProfile.serviceArea'])->staffProfile;
+        self::assertNotNull($profile);
+        self::assertSame('STF-'.str_pad((string) $target->id, 8, '0', STR_PAD_LEFT), $profile->staff_number);
+        self::assertSame($area->id, $profile->service_area_id);
+        self::assertSame('Area STAFF', $profile->serviceArea->name);
+        $this->assertDatabaseHas('audit_logs', ['actor_id' => $actor->id, 'action' => 'identity.staff_profile.created', 'auditable_id' => $target->id]);
+
+        app(ManageStaffProfile::class)->save($actor->fresh(), $target->fresh(), [
+            'service_area_id' => $area->id,
+            'active_from' => '2026-02-01',
+            'active_to' => null,
+        ]);
+        $this->assertDatabaseHas('audit_logs', ['actor_id' => $actor->id, 'action' => 'identity.staff_profile.updated', 'auditable_id' => $target->id]);
+    }
+
+    public function test_staff_profile_rejects_invalid_area_dates_and_unscoped_subjects(): void
+    {
+        $actor = User::factory()->create();
+        $target = User::factory()->create();
+        $target->roles()->attach(Role::query()->create(['name' => 'bendahara']));
+        $inactiveArea = ServiceArea::query()->create(['name' => 'Area nonaktif', 'is_active' => false]);
+        $this->grant($actor, 'staff-profile-limited', 'user.view', 'user.view.all', 'user.update');
+
+        try {
+            app(ManageStaffProfile::class)->save($actor->fresh(), $target->fresh(), ['service_area_id' => $inactiveArea->id, 'active_from' => null, 'active_to' => null]);
+            self::fail('Expected inactive service area validation failure.');
+        } catch (ValidationException $exception) {
+            self::assertSame('Area pelayanan harus aktif.', $exception->errors()['service_area_id'][0]);
+        }
+
+        [$area] = $this->areaWithRt('STAFF-DATES');
+        try {
+            app(ManageStaffProfile::class)->save($actor->fresh(), $target->fresh(), ['service_area_id' => $area->id, 'active_from' => '2026-12-31', 'active_to' => '2026-01-01']);
+            self::fail('Expected invalid date range validation failure.');
+        } catch (ValidationException $exception) {
+            self::assertSame('Tanggal akhir aktif tidak boleh lebih awal dari tanggal mulai aktif.', $exception->errors()['active_to'][0]);
+        }
+
+        $outsideActor = User::factory()->create();
+        $this->expectException(AuthorizationException::class);
+        app(ManageStaffProfile::class)->save($outsideActor->fresh(), $target->fresh(), ['service_area_id' => $area->id, 'active_from' => null, 'active_to' => null]);
     }
 
     public function test_role_assignment_requires_exactly_one_role_without_altering_existing_assignments(): void

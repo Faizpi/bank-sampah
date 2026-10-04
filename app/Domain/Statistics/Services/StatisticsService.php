@@ -62,15 +62,19 @@ final readonly class StatisticsService
     }
 
     /** @return array<string, mixed> */
-    public function public(string $start, string $end): array
+    public function public(string $start, string $end, ?int $rtId = null): array
     {
+        $period = ['start' => $start, 'end' => $end];
         $publication = StatisticPublication::query()->where('publication_key', 'public-dashboard')->where('is_active', true)->first();
         if ($publication === null) {
-            return ['suppressed' => true, 'metrics' => []];
+            return ['suppressed' => true, 'metrics' => [], 'period' => $period, 'rt_id' => null];
         }
-        $aggregate = $this->aggregate($start, $end, null, true);
+        $rawDimensions = $publication->getAttribute('dimensions');
+        $configuredDimensions = is_array($rawDimensions) ? array_values(array_filter($rawDimensions, static fn (mixed $dimension): bool => is_string($dimension))) : [];
+        $aggregateRtId = in_array('rt_id', $configuredDimensions, true) ? $rtId : null;
+        $aggregate = $this->aggregate($start, $end, $aggregateRtId, true);
         if ($aggregate['subject_count'] < $publication->privacy_threshold) {
-            return ['suppressed' => true, 'metrics' => []];
+            return ['suppressed' => true, 'metrics' => [], 'period' => $period, 'rt_id' => $aggregateRtId];
         }
         $rawMetrics = $publication->getAttribute('metrics');
         $configuredMetrics = is_array($rawMetrics) ? array_values(array_filter($rawMetrics, static fn (mixed $metric): bool => is_string($metric))) : [];
@@ -80,7 +84,7 @@ final readonly class StatisticsService
             $result[$metric] = $aggregate[$metric] ?? null;
         }
 
-        return ['suppressed' => false, 'metrics' => $result];
+        return ['suppressed' => false, 'metrics' => $result, 'period' => $period, 'rt_id' => $aggregateRtId];
     }
 
     /**

@@ -93,7 +93,10 @@ final readonly class GroceryDecisionService
             ])->save();
             $locked->statusHistory()->create(['old_status' => $old->value, 'new_status' => $next->value, 'actor_id' => $actor->id, 'reason' => $reason, 'occurred_at' => now()]);
             $this->auditLogger->record($actor, $event, $locked, ['status' => $old->value], ['status' => $next->value], $this->correlationId());
-            $this->notify($locked, 'Status penukaran diperbarui', 'Penukaran '.$locked->request_number.' '.$reason, $event);
+            $message = $next === GroceryStatus::ReadyForPickup
+                ? 'Penukaran '.$locked->request_number.' siap diambil. Bawa kartu nasabah atau siapkan nomor nasabah Anda, lalu tunggu petugas melakukan serah-terima paket.'
+                : 'Penukaran '.$locked->request_number.' '.$reason;
+            $this->notify($locked, 'Status penukaran diperbarui', $message, $event);
 
             return $locked->fresh(['package', 'balanceHold', 'customer', 'preparedBy']);
         });

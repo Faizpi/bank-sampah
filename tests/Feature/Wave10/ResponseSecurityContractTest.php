@@ -15,6 +15,8 @@ use App\Domain\Platform\Models\Media;
 use App\Domain\Reports\Services\ReportExportService;
 use App\Http\Middleware\ApplyResponseSecurityHeaders;
 use App\Models\User;
+use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -145,7 +147,10 @@ it('enforces the public QR rate limit and wires every critical named limiter cen
     expect(app('router')->getRoutes()->getByName('citizen.withdrawal.create')?->gatherMiddleware())->toContain('throttle:financial');
     expect(app('router')->getRoutes()->getByName('officer.deposit-form')?->gatherMiddleware())->toContain('throttle:financial');
     expect(config('livewire.temporary_file_upload.middleware'))->toBe('throttle:uploads');
-    expect(Livewire::getPersistentMiddleware())->toContain(ThrottleRequests::class);
+    expect(Livewire::getPersistentMiddleware())
+        ->not->toContain(ThrottleRequests::class)
+        ->toContain(Authenticate::class)
+        ->toContain(Authorize::class);
 });
 
 it('throttles private export downloads without bypassing authorization or private cache controls', function (): void {

@@ -53,6 +53,7 @@
                                 </div>
                             </div>
                             <p class="mt-4 text-body-sm leading-6 text-text-secondary">{{ $target['purpose'] }}</p>
+                            <p class="mt-3 text-body-sm leading-6 text-text-secondary"><span class="font-semibold text-text-primary">Cakupan:</span> {{ $target['scope'] }}</p>
                             <dl class="mt-6 grid gap-3 border-t border-border pt-4 text-body-sm">
                                 <div class="flex justify-between gap-4">
                                     <dt class="text-text-secondary">Progres bersih</dt>
@@ -75,6 +76,19 @@
                     title="Ringkasan desa"
                     description="Ringkasan ini hanya menampilkan metrik yang diizinkan untuk publikasi dan telah memenuhi ambang privasi."
                 />
+                <p class="mt-3 text-body-sm text-text-secondary">Periode 12 bulan: {{ \Carbon\CarbonImmutable::parse($statistics['period']['start'])->translatedFormat('d F Y') }} – {{ \Carbon\CarbonImmutable::parse($statistics['period']['end'])->subDay()->translatedFormat('d F Y') }}</p>
+                @if ($rtFilteringEnabled)
+                    <div class="mt-5 max-w-sm">
+                        <label for="public-statistics-rt" class="block text-label font-semibold text-text-primary">Cakupan statistik</label>
+                        <select id="public-statistics-rt" wire:model.live="rtId" class="mt-2 min-h-touch w-full rounded-md border border-border bg-surface px-3 text-body text-text-primary focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30">
+                            <option value="">Seluruh desa</option>
+                            @foreach ($rts as $rt)
+                                <option value="{{ $rt->id }}">{{ $rt->name }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-2 text-body-sm text-text-secondary">{{ $statistics['rt_id'] === null ? 'Menampilkan agregat seluruh desa.' : 'Menampilkan agregat untuk RT terpilih.' }}</p>
+                    </div>
+                @endif
 
                 @if ($statistics['suppressed'])
                     <div class="mt-6 flex gap-3 rounded-lg border border-border bg-surface p-5" role="status">
@@ -89,10 +103,19 @@
                         @foreach ($statistics['metrics'] as $metric => $value)
                             <article class="rounded-lg border border-border bg-surface p-5">
                                 <div class="flex items-start justify-between gap-3">
-                                    <p class="text-body-sm text-text-secondary">{{ str_replace('_', ' ', ucfirst($metric)) }}</p>
+                                    <p class="text-body-sm text-text-secondary">{{ match ($metric) {
+                                        'active_customers' => 'Nasabah aktif',
+                                        'deposit_count' => 'Jumlah setoran',
+                                        'total_weight_kg' => 'Total berat',
+                                        'plastic_weight_kg' => 'Berat plastik',
+                                        'dominant_waste_type' => 'Jenis sampah dominan',
+                                        'target_progress_kg' => 'Progres target',
+                                        'mobile_service_count' => 'Jumlah layanan keliling',
+                                        default => 'Metrik publik',
+                                    } }}</p>
                                     <x-public.icon name="bar-chart-3" size="size-5" class="text-forest-600" />
                                 </div>
-                                <p class="mt-3 text-amount tabular-nums text-deep-green">{{ is_scalar($value) ? $value : '—' }}</p>
+                                <p class="mt-3 text-amount tabular-nums text-deep-green">{{ in_array($metric, ['total_weight_kg', 'plastic_weight_kg', 'target_progress_kg'], true) && is_scalar($value) ? \App\Support\WeightFormatter::format((string) $value).' kg' : (is_scalar($value) ? $value : '—') }}</p>
                             </article>
                         @endforeach
                     </div>

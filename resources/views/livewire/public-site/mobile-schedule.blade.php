@@ -82,6 +82,20 @@
                                     <dt class="flex items-center gap-2 text-text-secondary"><x-public.icon name="scale" size="size-4" />Kapasitas</dt>
                                     <dd class="font-semibold text-text-primary">{{ $service->capacity - $service->served_count }} tersisa</dd>
                                 </div>
+                                <div class="grid gap-1">
+                                    <dt class="text-text-secondary">Cakupan wilayah</dt>
+                                    <dd class="font-semibold text-text-primary">{{ $service->rt?->name ?? $service->rw?->name ?? 'Wilayah layanan' }}</dd>
+                                </div>
+                                <div class="grid gap-1">
+                                    <dt class="text-text-secondary">Sampah yang diterima</dt>
+                                    <dd class="font-semibold text-text-primary">{{ $service->wasteTypes->pluck('name')->implode(', ') }}</dd>
+                                </div>
+                                @if ($service->notes !== null)
+                                    <div class="grid gap-1">
+                                        <dt class="text-text-secondary">Catatan layanan</dt>
+                                        <dd class="text-text-primary">{{ $service->notes }}</dd>
+                                    </div>
+                                @endif
                             </dl>
                         </article>
                     @endforeach
