@@ -33,8 +33,10 @@ Thumbs.db
 /artifacts/
 /referensi_style/
 /bank-sampah-maskot/
+/public/bank-sampah-maskot/
 /bank_sampah
 /documents/__pycache__/
+/storage/tmp-phpstan*.txt
 /final-qc-*.png
 /qa-*.png
 /qa-*.yml
