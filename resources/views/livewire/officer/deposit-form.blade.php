@@ -20,7 +20,20 @@
             <svg viewBox="0 0 24 24" class="size-5 shrink-0 text-forest-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z"/><path d="m9 12 2 2 4-4"/>
             </svg>
-            {{ session('success') }}
+            <div>{{ session('success') }}</div>
+            @if ($draft?->isFinal() || $draft?->isPendingReview())
+                <div class="ml-auto text-right text-body-sm"><strong>{{ $draft->deposit_number }}</strong> · Rp {{ number_format((int) $draft->total_value, 0, ',', '.') }} · {{ $draft->occurred_at->translatedFormat('d F Y, H:i') }} · {{ $draft->status }}</div>
+            @endif
+        </div>
+    @endif
+
+    @if ($finalizationReviewOpen)
+        <div class="fixed inset-0 z-overlay flex items-end justify-center bg-overlay p-4 sm:items-center" role="presentation">
+            <div class="w-full max-w-form rounded-lg border border-border bg-surface p-5 shadow-dialog sm:p-6" role="dialog" aria-modal="true" aria-labelledby="deposit-finalization-title">
+                <h2 id="deposit-finalization-title" class="text-h2 font-bold text-deep-green">Finalisasi setoran?</h2>
+                <p class="mt-2 text-body-sm text-text-secondary">Nilai final akan dihitung ulang di server, bukti privat disimpan, dan saldo dapat bertambah setelah finalisasi atau persetujuan pemeriksa.</p>
+                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><x-ui.button type="button" variant="secondary" wire:click="cancelFinalizationReview">Ubah data</x-ui.button><x-ui.button type="button" wire:click="finalize" wire:loading.attr="disabled" wire:target="finalize"><span wire:loading.remove wire:target="finalize">Finalisasi setoran</span><span wire:loading wire:target="finalize">Memproses...</span></x-ui.button></div>
+            </div>
         </div>
     @endif
 
@@ -97,9 +110,9 @@
                     <span wire:loading.remove wire:target="saveDraft">Simpan Draf</span>
                     <span wire:loading wire:target="saveDraft">Menyimpan...</span>
                 </x-ui.button>
-                <x-ui.button type="button" wire:click="finalize" wire:loading.attr="disabled" data-photo-picker-action>
-                    <span wire:loading.remove wire:target="finalize">Finalisasi Setoran</span>
-                    <span wire:loading wire:target="finalize">Memproses...</span>
+                <x-ui.button type="button" wire:click="reviewFinalization" wire:loading.attr="disabled" data-photo-picker-action>
+                    <span wire:loading.remove wire:target="reviewFinalization">Tinjau Finalisasi</span>
+                    <span wire:loading wire:target="reviewFinalization">Memeriksa...</span>
                 </x-ui.button>
              </div>
          </div>

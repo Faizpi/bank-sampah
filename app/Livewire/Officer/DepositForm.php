@@ -50,6 +50,8 @@ final class DepositForm extends Component
 
     public ?UploadedFile $evidence = null;
 
+    public bool $finalizationReviewOpen = false;
+
     public function mount(int $customerId, PermissionChecker $permissions): void
     {
         /** @var User|null $actor */
@@ -128,8 +130,28 @@ final class DepositForm extends Component
         session()->flash('success', 'Draf setoran tersimpan.');
     }
 
+    public function reviewFinalization(): void
+    {
+        $this->validateItems();
+        $this->validate([
+            'evidence' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
+        ]);
+        $this->finalizationReviewOpen = true;
+    }
+
+    public function cancelFinalizationReview(): void
+    {
+        $this->finalizationReviewOpen = false;
+    }
+
     public function finalize(DepositService $service): void
     {
+        if (! $this->finalizationReviewOpen) {
+            $this->addError('items', 'Tinjau lalu konfirmasi finalisasi sebelum mencatat setoran.');
+
+            return;
+        }
+
         $this->validateItems();
         $this->validate([
             'evidence' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
@@ -144,6 +166,7 @@ final class DepositForm extends Component
             ? $service->finalize($actor, $this->draft, $this->idempotencyKey, $this->items, $this->evidence, $mobileService)
             : $service->finalizeAndLinkAssisted($actor, $this->draft, $this->idempotencyKey, $this->assistedServiceId, $this->items, $this->evidence, $mobileService);
         $this->evidence = null;
+        $this->finalizationReviewOpen = false;
         session()->flash('success', $this->draft->isPendingReview()
             ? 'Setoran bernilai tinggi menunggu persetujuan pemeriksa. Saldo belum ditambahkan.'
             : 'Setoran berhasil difinalisasi.');

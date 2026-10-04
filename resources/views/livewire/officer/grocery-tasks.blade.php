@@ -18,6 +18,9 @@
     @if (session('success'))
         <x-ui.success-state title="Berhasil" :description="session('success')" />
     @endif
+    @if ($receipt)
+        <x-ui.success-state title="Serah-terima berhasil" description="{{ $receipt['number'] }} · Rp {{ number_format($receipt['value'], 0, ',', '.') }} · {{ $receipt['occurredAt'] }} · Status: {{ $receipt['status'] }}" />
+    @endif
 
     {{-- Redemption Tasks --}}
     @forelse ($redemptions as $redemption)
@@ -83,10 +86,19 @@
     @if ($selectedRedemptionId !== null && $canHandover)
         <x-ui.panel title="Verifikasi penerima dan bukti" description="Nomor nasabah wajib cocok dengan data warga. Bukti disimpan privat dan hanya dapat diakses melalui halaman terotorisasi." state="success">
             <div class="grid gap-4">
-                <x-ui.select wire:model="recipientVerification" label="Metode verifikasi penerima" name="recipientVerification"
-                    :options="['kartu_nasabah' => 'Kartu nasabah', 'nomor_nasabah' => 'Nomor nasabah']" />
-                <x-ui.input wire:model="recipientReference" label="Nomor/referensi penerima" name="recipientReference"
-                    placeholder="Contoh CST-00000001" />
+                <x-ui.select wire:model.live="recipientVerification" label="Metode verifikasi penerima" name="recipientVerification"
+                    :options="['kartu_nasabah' => 'Pindai kartu nasabah', 'nomor_nasabah' => 'Masukkan nomor nasabah']" />
+                @if ($recipientVerification === 'kartu_nasabah')
+                    <x-ui.button type="button" variant="secondary" wire:click="openScanner">Pindai QR kartu nasabah</x-ui.button>
+                    @if ($scannerOpen)
+                        <x-ui.input wire:model="scanToken" label="Token QR kartu" name="scanToken" placeholder="Masukkan token QR bila pemindai tidak tersedia" :error="$errors->first('recipientReference')" />
+                        <div class="flex gap-3"><x-ui.button type="button" wire:click="scanCustomerCard(scanToken)">Resolusi kartu</x-ui.button><x-ui.button type="button" variant="quiet" wire:click="closeScanner">Tutup</x-ui.button></div>
+                    @endif
+                @else
+                    <x-ui.input wire:model="recipientReference" label="Nomor nasabah" name="recipientReference" placeholder="CST-00000001" hint="Wajib berformat CST-########." :error="$errors->first('recipientReference')" />
+                @endif
+                @if ($resolvedCustomerName)<p role="status" class="text-body-sm font-semibold text-forest-700">Kartu cocok: {{ $resolvedCustomerName }}</p>@endif
+                @error('recipientReference')<p role="alert" class="text-body-sm font-semibold text-terracotta">{{ $message }}</p>@enderror
                 <x-ui.media-picker
                     id="grocery-proof"
                     property="proof"
@@ -100,10 +112,13 @@
                 @error('proof')
                     <p class="text-body-sm font-semibold text-terracotta">{{ $message }}</p>
                 @enderror
-                <x-ui.button type="button" wire:click="handover" wire:confirm="Konfirmasi serah-terima paket? Paket akan diserahkan, saldo warga akan dikurangi, dan status penukaran akan selesai." wire:loading.attr="disabled" data-photo-picker-action>
-                    <span wire:loading.remove>Konfirmasi serah-terima</span>
-                    <span wire:loading>Memproses...</span>
+                <x-ui.button type="button" wire:click="reviewHandover" wire:loading.attr="disabled" data-photo-picker-action>
+                    <span wire:loading.remove>Tinjau serah-terima</span>
+                    <span wire:loading>Memeriksa...</span>
                 </x-ui.button>
+                @if ($handoverReviewOpen)
+                    <div class="rounded-md border-2 border-harvest-gold bg-warning-bg p-4" role="alert"><h3 class="text-title font-bold text-deep-green">Konfirmasi serah-terima final</h3><p class="mt-1 text-body-sm text-text-primary">Paket diserahkan, saldo warga dikurangi, dan status penukaran selesai. Tindakan ini tidak dapat dibatalkan dari tugas ini.</p><div class="mt-4 flex flex-col gap-3 sm:flex-row"><x-ui.button type="button" variant="secondary" wire:click="cancelHandoverReview">Ubah data</x-ui.button><x-ui.button type="button" wire:click="handover" wire:loading.attr="disabled" wire:target="handover"><span wire:loading.remove wire:target="handover">Serahkan paket</span><span wire:loading wire:target="handover">Memproses...</span></x-ui.button></div></div>
+                @endif
             </div>
         </x-ui.panel>
     @endif
