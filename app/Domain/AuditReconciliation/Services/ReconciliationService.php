@@ -36,13 +36,13 @@ final readonly class ReconciliationService
         }
         $areaId = $actor->staffProfile?->service_area_id;
         if ($areaId !== null) {
-            return $query->where('service_area_id', $areaId)->orWhere('created_by', $actor->id);
+            return $query->where(static fn (Builder $scope): Builder => $scope->where('service_area_id', $areaId)->orWhere('created_by', $actor->id));
         }
 
         return $query->where('created_by', $actor->id);
     }
 
-    public function create(User $actor, string $businessDate, ?int $serviceAreaId, string $notes = ''): Reconciliation
+    public function create(User $actor, string $businessDate, ?int $serviceAreaId, string $notes = '', ?int $cashTotal = null): Reconciliation
     {
         $this->authorize($actor, 'reconciliation.create');
         $date = $this->date($businessDate);
@@ -50,14 +50,14 @@ final readonly class ReconciliationService
             throw new AuthorizationException('Wilayah rekonsiliasi berada di luar scope Anda.');
         }
 
-        return DB::transaction(function () use ($actor, $date, $serviceAreaId, $notes): Reconciliation {
+        return DB::transaction(function () use ($actor, $date, $serviceAreaId, $notes, $cashTotal): Reconciliation {
             $scopeKey = $serviceAreaId === null ? 'all' : 'area-'.$serviceAreaId;
             $version = ((int) Reconciliation::query()->whereDate('business_date', $date)->where('scope_key', $scopeKey)->max('version')) + 1;
             $totals = $this->totals($actor, $date, $serviceAreaId);
             $record = new Reconciliation;
-            $record->forceFill(['uuid' => (string) Str::uuid(), 'business_date' => $date, 'service_area_id' => $serviceAreaId, 'scope_key' => $scopeKey, 'status' => ReconciliationStatus::Draft, 'version' => $version, 'opening_total' => 0, 'deposit_total' => $totals['deposit_total'], 'withdrawal_total' => $totals['withdrawal_total'], 'grocery_total' => $totals['grocery_total'], 'hold_total' => $totals['hold_total'], 'closing_total' => $totals['closing_total'], 'difference' => $totals['difference'], 'notes' => trim($notes) !== '' ? trim($notes) : null, 'created_by' => $actor->id])->save();
+            $record->forceFill(['uuid' => (string) Str::uuid(), 'business_date' => $date, 'service_area_id' => $serviceAreaId, 'scope_key' => $scopeKey, 'status' => ReconciliationStatus::Draft, 'version' => $version, 'opening_total' => 0, 'deposit_total' => $totals['deposit_total'], 'withdrawal_total' => $totals['withdrawal_total'], 'grocery_total' => $totals['grocery_total'], 'hold_total' => $totals['hold_total'], 'cash_total' => $cashTotal, 'closing_total' => $totals['closing_total'], 'difference' => $cashTotal === null ? $totals['difference'] : $cashTotal - $totals['closing_total'], 'notes' => trim($notes) !== '' ? trim($notes) : null, 'created_by' => $actor->id])->save();
             if ($record->difference !== 0) {
-                $record->items()->create(['item_type' => 'cash_difference', 'expected_total' => $record->closing_total, 'actual_total' => $record->closing_total + $record->difference, 'difference' => $record->difference, 'status' => ReconciliationItemStatus::Open]);
+                $record->items()->create(['item_type' => 'cash_difference', 'expected_total' => $record->closing_total, 'actual_total' => $record->cash_total ?? ($record->closing_total + $record->difference), 'difference' => $record->difference, 'status' => ReconciliationItemStatus::Open]);
             }
             $this->auditLogger->record($actor, 'reconciliation.created', $record, [], ['version' => $version, 'difference' => $record->difference], $this->correlationId());
 
@@ -68,13 +68,22 @@ final readonly class ReconciliationService
     public function submit(User $actor, Reconciliation $record): Reconciliation
     {
         $this->authorize($actor, 'reconciliation.create');
+        $this->assertVisible($actor, $record);
 
         return $this->transition($actor, $record, ReconciliationStatus::Submitted);
+    }
+
+    private function assertVisible(User $actor, Reconciliation $record): void
+    {
+        if (! $this->visibleFor($actor)->whereKey($record->id)->exists()) {
+            throw new AuthorizationException('Rekonsiliasi berada di luar scope Anda.');
+        }
     }
 
     public function approve(User $actor, Reconciliation $record, string $notes = ''): Reconciliation
     {
         $this->authorize($actor, 'reconciliation.approve');
+        $this->assertVisible($actor, $record);
         if ($record->created_by === $actor->id) {
             throw new AuthorizationException('Pembuat rekonsiliasi tidak dapat mengesahkan record sendiri.');
         }
@@ -97,6 +106,7 @@ final readonly class ReconciliationService
     public function reject(User $actor, Reconciliation $record, string $reason): Reconciliation
     {
         $this->authorize($actor, 'reconciliation.approve');
+        $this->assertVisible($actor, $record);
         if (mb_strlen(trim($reason)) < 10 || $record->created_by === $actor->id) {
             throw ValidationException::withMessages(['reason' => 'Alasan penolakan wajib dan pembuat tidak dapat menolak sendiri.']);
         }
@@ -122,8 +132,15 @@ final readonly class ReconciliationService
             throw ValidationException::withMessages(['item' => 'Selisih hanya dapat ditelusuri pada draf dengan catatan memadai.']);
         }
         DB::transaction(function () use ($actor, $record, $item): void {
-            $record->items()->create(['item_type' => (string) ($item['item_type'] ?? 'cash_difference'), 'reference_type' => isset($item['reference_type']) ? (string) $item['reference_type'] : null, 'reference_id' => isset($item['reference_id']) ? (int) $item['reference_id'] : null, 'expected_total' => (int) ($item['expected_total'] ?? 0), 'actual_total' => (int) ($item['actual_total'] ?? 0), 'difference' => 0, 'status' => ReconciliationItemStatus::Resolved, 'note' => trim((string) $item['note'])]);
-            $this->auditLogger->record($actor, 'reconciliation.discrepancy.resolved', $record, [], ['item_type' => $item['item_type'] ?? 'cash_difference', 'status' => ReconciliationItemStatus::Resolved->value], $this->correlationId());
+            $record = Reconciliation::query()->whereKey($record->id)->lockForUpdate()->firstOrFail();
+            if ($record->status !== ReconciliationStatus::Draft) {
+                throw ValidationException::withMessages(['item' => 'Selisih hanya dapat ditelusuri pada draf dengan catatan memadai.']);
+            }
+            $latest = $record->items()->where('item_type', (string) ($item['item_type'] ?? 'cash_difference'))->latest('id')->first();
+            $expected = (int) ($item['expected_total'] ?? $latest->expected_total ?? 0);
+            $actual = (int) ($item['actual_total'] ?? $latest->actual_total ?? 0);
+            $record->items()->create(['item_type' => (string) ($item['item_type'] ?? 'cash_difference'), 'reference_type' => isset($item['reference_type']) ? (string) $item['reference_type'] : null, 'reference_id' => isset($item['reference_id']) ? (int) $item['reference_id'] : null, 'expected_total' => $expected, 'actual_total' => $actual, 'difference' => $actual - $expected, 'status' => ReconciliationItemStatus::Resolved, 'note' => trim((string) $item['note'])]);
+            $this->auditLogger->record($actor, 'reconciliation.discrepancy.resolved', $record, [], ['item_type' => $item['item_type'] ?? 'cash_difference', 'expected_total' => $expected, 'actual_total' => $actual, 'difference' => $actual - $expected, 'status' => ReconciliationItemStatus::Resolved->value], $this->correlationId());
         });
 
         return $record->fresh('items');
@@ -132,12 +149,11 @@ final readonly class ReconciliationService
     public function revise(User $actor, Reconciliation $record, string $notes = ''): Reconciliation
     {
         $this->authorize($actor, 'reconciliation.create');
-        if (! $this->visibleFor($actor)->whereKey($record->id)->exists()) {
-            throw new AuthorizationException('Rekonsiliasi berada di luar scope Anda.');
-        }
+        $this->assertVisible($actor, $record);
 
-        $revision = $this->create($actor, $record->business_date->toDateString(), $record->service_area_id, $notes ?: (string) $record->notes);
+        $revision = $this->create($actor, $record->business_date->toDateString(), $record->service_area_id, $notes ?: (string) $record->notes, $record->cash_total);
         $revision->forceFill(['parent_id' => $record->id])->save();
+        $this->auditLogger->record($actor, 'reconciliation.revised', $revision, ['parent_id' => $record->id], ['version' => $revision->version], $this->correlationId());
 
         return $revision->fresh('items');
     }

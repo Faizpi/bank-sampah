@@ -6,9 +6,11 @@ namespace App\Domain\Corrections\Models;
 
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Ledger\Models\LedgerEntry;
+use App\Domain\Platform\Models\Media;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use LogicException;
 
 final class TransactionReversal extends Model
@@ -38,6 +40,12 @@ final class TransactionReversal extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** @return MorphMany<Media, $this> */
+    public function media(): MorphMany
+    {
+        return $this->morphMany(Media::class, 'attachable');
     }
 
     protected static function booted(): void

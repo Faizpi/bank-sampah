@@ -23,7 +23,9 @@ final class AuditLogResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMagnifyingGlass;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pengawasan';
+    protected static string|UnitEnum|null $navigationGroup = 'Laporan & Rekonsiliasi';
+
+    protected static ?int $navigationSort = 10;
 
     protected static ?string $navigationLabel = 'Audit log';
 

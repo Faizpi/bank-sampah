@@ -10,6 +10,7 @@ use App\Domain\Communication\Enums\AnnouncementAudience;
 use App\Domain\Communication\Enums\AnnouncementStatus;
 use App\Domain\Communication\Models\Announcement;
 use App\Domain\CustomersRegions\Models\Rt;
+use App\Domain\Identity\Models\CustomerProfile;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -42,13 +43,33 @@ final readonly class AnnouncementService
         });
     }
 
+    /** @param list<int> $rtIds */
+    public function update(User $actor, Announcement $announcement, string $title, string $body, string $audience, string $startsAt, ?string $endsAt, array $rtIds = [], int $priority = 0): Announcement
+    {
+        $this->authorize($actor, 'announcement.manage');
+        $clean = $this->validate($title, $body, $audience, $startsAt, $endsAt, $rtIds, $priority);
+
+        return DB::transaction(function () use ($actor, $announcement, $clean, $rtIds): Announcement {
+            $locked = Announcement::query()->whereKey($announcement->id)->lockForUpdate()->firstOrFail();
+            if (! in_array($locked->status, [AnnouncementStatus::Draft, AnnouncementStatus::Inactive], true)) {
+                throw ValidationException::withMessages(['announcement' => 'Pengumuman terbit harus dinonaktifkan sebelum diubah.']);
+            }
+            $old = $this->auditValues($locked);
+            $locked->forceFill($clean)->save();
+            $locked->rts()->sync($rtIds);
+            $this->auditLogger->record($actor, 'announcement.updated', $locked, $old, $this->auditValues($locked), $this->correlationId());
+
+            return $locked->fresh('rts');
+        });
+    }
+
     public function publish(User $actor, Announcement $announcement): Announcement
     {
         $this->authorize($actor, 'announcement.publish');
 
         return DB::transaction(function () use ($actor, $announcement): Announcement {
             $locked = Announcement::query()->whereKey($announcement->id)->lockForUpdate()->firstOrFail();
-            if ($locked->status !== AnnouncementStatus::Draft || $locked->publish_end !== null && $locked->publish_end <= now()) {
+            if (! in_array($locked->status, [AnnouncementStatus::Draft, AnnouncementStatus::Inactive], true) || $locked->publish_end !== null && $locked->publish_end <= now()) {
                 throw ValidationException::withMessages(['announcement' => 'Pengumuman tidak dapat diterbitkan pada status atau periode ini.']);
             }
             $old = $locked->status->value;
@@ -59,22 +80,55 @@ final readonly class AnnouncementService
         });
     }
 
+    public function unpublish(User $actor, Announcement $announcement): Announcement
+    {
+        $this->authorize($actor, 'announcement.publish');
+
+        return DB::transaction(function () use ($actor, $announcement): Announcement {
+            $locked = Announcement::query()->whereKey($announcement->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== AnnouncementStatus::Published) {
+                throw ValidationException::withMessages(['announcement' => 'Hanya pengumuman terbit yang dapat dinonaktifkan.']);
+            }
+            $locked->forceFill(['status' => AnnouncementStatus::Inactive])->save();
+            $this->auditLogger->record($actor, 'announcement.unpublished', $locked, ['status' => AnnouncementStatus::Published->value], ['status' => AnnouncementStatus::Inactive->value], $this->correlationId());
+
+            return $locked->fresh('rts');
+        });
+    }
+
     public function canView(User $actor, Announcement $announcement): bool
     {
-        if (! $this->permissions->allows($actor, 'announcement.view')) {
-            return false;
+        return $this->visibleQuery($actor)->whereKey($announcement->getKey())->exists();
+    }
+
+    /** @return Builder<Announcement> */
+    public function visibleQuery(User $actor): Builder
+    {
+        $canManage = $this->permissions->allows($actor, 'announcement.manage');
+        if (! $canManage && ! $this->permissions->allows($actor, 'announcement.view')) {
+            return Announcement::query()->whereRaw('1 = 0');
         }
-        if ($announcement->audience === AnnouncementAudience::Public || $this->permissions->allows($actor, 'announcement.manage')) {
-            return true;
-        }
-        if ($announcement->audience === AnnouncementAudience::Citizen) {
-            return $actor->customerProfile !== null;
-        }
-        if ($announcement->audience === AnnouncementAudience::Officer) {
-            return $actor->staffProfile !== null;
+        if ($canManage) {
+            return Announcement::query();
         }
 
-        return $this->permissions->allows($actor, 'user.view.all') || $announcement->rts()->whereIn('rt.id', $actor->customerProfile?->rt_id === null ? [] : [$actor->customerProfile->rt_id])->exists();
+        $customerProfile = $actor->customerProfile()->first(['user_id', 'rt_id']);
+        $hasStaffProfile = $actor->staffProfile()->exists();
+
+        return Announcement::query()
+            ->where('status', AnnouncementStatus::Published)
+            ->where('publish_start', '<=', now())
+            ->where(static fn (Builder $query): Builder => $query->whereNull('publish_end')->orWhere('publish_end', '>', now()))
+            ->where(static function (Builder $query) use ($customerProfile, $hasStaffProfile): void {
+                $query->where('audience', AnnouncementAudience::Public);
+                if ($customerProfile instanceof CustomerProfile) {
+                    $query->orWhere('audience', AnnouncementAudience::Citizen);
+                    $query->orWhere(static fn (Builder $region): Builder => $region->where('audience', AnnouncementAudience::Region)->whereHas('rts', static fn (Builder $rts): Builder => $rts->whereKey($customerProfile->rt_id)));
+                }
+                if ($hasStaffProfile) {
+                    $query->orWhere('audience', AnnouncementAudience::Officer);
+                }
+            });
     }
 
     /** @return Builder<Announcement> */

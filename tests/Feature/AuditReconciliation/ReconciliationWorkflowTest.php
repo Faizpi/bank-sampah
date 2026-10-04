@@ -11,6 +11,8 @@ use App\Domain\AuditReconciliation\Services\ReconciliationService;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
+use App\Domain\Ledger\Models\LedgerAccount;
+use App\Domain\Ledger\Models\LedgerEntry;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -108,6 +110,27 @@ final class ReconciliationWorkflowTest extends TestCase
         $this->assertThrows(fn (): mixed => app(ReconciliationService::class)->reject($approver, $record, 'pendek'), ValidationException::class);
     }
 
+    public function test_actual_cash_is_compared_with_ledger_closing_total_and_resolution_records_actual_total(): void
+    {
+        $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
+        $this->seedDeposit($creator, 5_000, '2026-08-01 10:00:00', 'DEP-REC-CASH');
+
+        $service = app(ReconciliationService::class);
+        $record = $service->create($creator, '2026-08-01', null, 'Hitung kas fisik', 4_000);
+
+        self::assertSame(4_000, $record->cash_total);
+        self::assertSame(-1_000, $record->difference);
+        self::assertSame(5_000, $record->items()->latest('id')->first()->expected_total);
+        self::assertSame(4_000, $record->items()->latest('id')->first()->actual_total);
+        self::assertSame(ReconciliationItemStatus::Open, $record->items()->latest('id')->first()->status);
+
+        $resolved = $service->resolveDiscrepancy($creator, $record, ['actual_total' => 5_000, 'note' => 'Kas dihitung ulang dan cocok dengan saldo ledger penutupan.']);
+        $item = $resolved->items()->latest('id')->first();
+        self::assertSame(5_000, $item->actual_total);
+        self::assertSame(0, $item->difference);
+        self::assertSame(ReconciliationItemStatus::Resolved, $item->status);
+    }
+
     public function test_rejected_reconciliation_cannot_be_approved(): void
     {
         $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
@@ -140,6 +163,66 @@ final class ReconciliationWorkflowTest extends TestCase
         self::assertDatabaseHas('reconciliations', ['id' => $revision->id, 'parent_id' => $approved->id, 'version' => 2]);
     }
 
+    public function test_revision_preserves_cash_snapshot_and_difference_item_actual_total(): void
+    {
+        $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
+        $approver = $this->userWith('reconciliation.approve', 'reconciliation.view', 'user.view.all', 'report.view');
+        $this->seedDeposit($creator, 5_000, '2026-08-01 10:00:00', 'DEP-REC-REVISION-CASH');
+
+        $service = app(ReconciliationService::class);
+        $record = $service->create($creator, '2026-08-01', null, 'Hitung kas fisik', 4_000);
+        $resolved = $service->resolveDiscrepancy($creator, $record, ['note' => 'Kas dihitung ulang dan cocok dengan saldo kas fisik.']);
+        $submitted = $service->submit($creator, $resolved);
+        $approved = $service->approve($approver, $submitted);
+        $revision = $service->revise($creator, $approved, 'Revisi setelah bukti tambahan ditemukan.');
+        $item = $revision->items()->latest('id')->first();
+
+        self::assertSame(4_000, $revision->cash_total);
+        self::assertSame(-1_000, $revision->difference);
+        self::assertSame(4_000, $item->actual_total);
+        self::assertSame(-1_000, $item->difference);
+    }
+
+    public function test_rejected_revision_preserves_cash_snapshot_and_difference_item_actual_total(): void
+    {
+        $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
+        $approver = $this->userWith('reconciliation.approve', 'reconciliation.view', 'user.view.all', 'report.view');
+        $this->seedDeposit($creator, 5_000, '2026-08-01 10:00:00', 'DEP-REC-REJECTED-CASH');
+
+        $service = app(ReconciliationService::class);
+        $record = $service->create($creator, '2026-08-01', null, 'Hitung kas fisik', 4_000);
+        $submitted = $service->submit($creator, $record);
+        $rejected = $service->reject($approver, $submitted, 'Bukti kas perlu dilengkapi sebelum disahkan.');
+        $revision = $service->revise($creator, $rejected, 'Revisi setelah bukti kas dilengkapi.');
+        $item = $revision->items()->latest('id')->first();
+
+        self::assertSame(4_000, $revision->cash_total);
+        self::assertSame(-1_000, $revision->difference);
+        self::assertSame(4_000, $item->actual_total);
+        self::assertSame(-1_000, $item->difference);
+    }
+
+    public function test_discrepancy_resolution_rejects_stale_draft_after_submission_without_mutation(): void
+    {
+        $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
+        $this->seedDeposit($creator, 5_000, '2026-08-01 10:00:00', 'DEP-REC-LOCKED-RESOLVE');
+
+        $service = app(ReconciliationService::class);
+        $record = $service->create($creator, '2026-08-01', null, 'Hitung kas fisik', 4_000);
+        $itemCount = $record->items()->count();
+        $service->submit($creator, $record);
+
+        $this->assertThrows(fn (): mixed => $service->resolveDiscrepancy($creator, $record, [
+            'actual_total' => 5_000,
+            'note' => 'Kas dihitung ulang setelah record diajukan untuk pengesahan.',
+        ]), ValidationException::class);
+
+        $fresh = $record->fresh();
+        self::assertSame(ReconciliationStatus::Submitted, $fresh->status);
+        self::assertSame($itemCount, $fresh->items()->count());
+        self::assertSame(0, AuditLog::query()->where('action', 'reconciliation.discrepancy.resolved')->count());
+    }
+
     public function test_append_only_enforcement(): void
     {
         $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
@@ -161,9 +244,38 @@ final class ReconciliationWorkflowTest extends TestCase
         $record->delete();
     }
 
+    public function test_actor_cannot_submit_an_out_of_scope_reconciliation(): void
+    {
+        $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
+        $otherActor = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
+        $record = app(ReconciliationService::class)->create($creator, '2026-08-01', null);
+
+        $this->expectException(AuthorizationException::class);
+        app(ReconciliationService::class)->submit($otherActor, $record);
+    }
+
+    public function test_revision_is_audited_without_mutating_the_approved_snapshot(): void
+    {
+        $creator = $this->userWith('reconciliation.create', 'reconciliation.view', 'report.view');
+        $approver = $this->userWith('reconciliation.approve', 'reconciliation.view', 'user.view.all', 'report.view');
+        $record = app(ReconciliationService::class)->create($creator, '2026-08-01', null);
+        $approved = app(ReconciliationService::class)->approve($approver, app(ReconciliationService::class)->submit($creator, $record));
+
+        $revision = app(ReconciliationService::class)->revise($creator, $approved, 'Bukti tambahan dicatat pada revisi ini.');
+
+        self::assertSame($approved->id, $revision->parent_id);
+        self::assertSame(2, $revision->version);
+        self::assertNull($approved->fresh()->parent_id);
+        self::assertDatabaseHas('audit_logs', [
+            'actor_id' => $creator->id,
+            'action' => 'reconciliation.revised',
+            'auditable_id' => $revision->id,
+        ]);
+    }
+
     private function seedDeposit(User $owner, int $value, string $occurredAt, string $number = 'DEP-REC-OK'): object
     {
-        return Deposit::query()->create([
+        $deposit = Deposit::query()->create([
             'deposit_number' => $number.'-'.$owner->id,
             'customer_id' => $owner->id,
             'staff_id' => $owner->id,
@@ -174,6 +286,10 @@ final class ReconciliationWorkflowTest extends TestCase
             'total_value' => $value,
             'finalized_at' => $occurredAt,
         ]);
+        $account = LedgerAccount::query()->create(['user_id' => $owner->id, 'status' => 'aktif', 'currency' => 'IDR']);
+        LedgerEntry::query()->create(['entry_number' => 'LED-REC-'.$owner->id.'-'.str()->random(6), 'ledger_account_id' => $account->id, 'direction' => LedgerEntry::DIRECTION_IN, 'kind' => LedgerEntry::KIND_DEPOSIT, 'amount' => $value, 'source_type' => Deposit::class, 'source_id' => $deposit->id, 'source_key' => 'deposit:rec:'.$deposit->id, 'effective_at' => $occurredAt, 'balance_after' => $value]);
+
+        return $deposit;
     }
 
     private function userWith(string ...$permissions): User

@@ -16,5 +16,6 @@ final readonly class AssistedServiceRecord
         public string $consentVersion,
         public DateTimeImmutable $consentedAt,
         public int $evidenceMediaId,
+        public ?int $depositId = null,
     ) {}
 }

@@ -21,6 +21,7 @@ use LogicException;
  * @property int|null $approver_id
  * @property int|null $rejector_id
  * @property int $difference
+ * @property int|null $cash_total
  * @property int $closing_total
  * @property string|null $notes
  */
@@ -38,6 +39,7 @@ final class Reconciliation extends Model
             'withdrawal_total' => 'integer',
             'grocery_total' => 'integer',
             'hold_total' => 'integer',
+            'cash_total' => 'integer',
             'closing_total' => 'integer',
             'difference' => 'integer',
             'submitted_at' => 'immutable_datetime',

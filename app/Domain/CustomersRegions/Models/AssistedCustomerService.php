@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\CustomersRegions\Models;
 
+use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Platform\Models\Media;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -37,6 +38,12 @@ final class AssistedCustomerService extends Model
     public function evidence(): BelongsTo
     {
         return $this->belongsTo(Media::class, 'evidence_media_id');
+    }
+
+    /** @return BelongsTo<Deposit, $this> */
+    public function deposit(): BelongsTo
+    {
+        return $this->belongsTo(Deposit::class);
     }
 
     public function delete(): ?bool

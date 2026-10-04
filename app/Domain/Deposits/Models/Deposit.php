@@ -7,11 +7,13 @@ namespace App\Domain\Deposits\Models;
 use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Models\PickupRequest;
+use App\Domain\Platform\Models\Media;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use LogicException;
 
 /**
@@ -80,6 +82,12 @@ final class Deposit extends Model
     public function items(): HasMany
     {
         return $this->hasMany(DepositItem::class);
+    }
+
+    /** @return MorphMany<Media, $this> */
+    public function media(): MorphMany
+    {
+        return $this->morphMany(Media::class, 'attachable');
     }
 
     /** @return HasMany<LedgerEntry, $this> */
