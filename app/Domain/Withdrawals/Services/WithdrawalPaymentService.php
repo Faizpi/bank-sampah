@@ -196,7 +196,7 @@ final readonly class WithdrawalPaymentService
             type: 'withdrawal.paid',
             title: 'Pencairan selesai',
             body: 'Pencairan '.$withdrawal->request_number.' telah dibayar.',
-            reference: '/warga/pencairan/'.$withdrawal->id.'/bukti',
+            reference: '/notifikasi',
             dedupeKey: NotificationDedupeKey::for('withdrawal.paid:'.$withdrawal->request_number, $withdrawal->customer_id, 'withdrawal-v1'),
         ));
     }

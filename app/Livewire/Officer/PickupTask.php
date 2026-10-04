@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Officer;
 
 use App\Domain\Deposits\Data\DepositItemInput;
-use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Pickups\Services\PickupService;
@@ -41,11 +40,6 @@ final class PickupTask extends Component
 
     public bool $failureDialogOpen = false;
 
-    public bool $completionDialogOpen = false;
-
-    /** @var array{number: string, value: int, occurredAt: string, status: string}|null */
-    public ?array $receipt = null;
-
     public function mount(PickupRequest $pickup, PickupService $service): void
     {
         /** @var User $actor */
@@ -70,38 +64,6 @@ final class PickupTask extends Component
         $actor = auth()->user();
         $this->assertAssigned($actor);
         $this->pickup = $service->markPickedUp($actor, $this->pickup);
-    }
-
-    public function addActualItem(): void
-    {
-        $this->actualItems[] = ['waste_type_id' => '', 'condition_id' => '', 'weight_kg' => ''];
-    }
-
-    public function removeActualItem(int $index): void
-    {
-        if (count($this->actualItems) <= 1) {
-            return;
-        }
-
-        unset($this->actualItems[$index]);
-        $this->actualItems = array_values($this->actualItems);
-    }
-
-    public function reviewCompletion(): void
-    {
-        $this->validate($this->completionRules(), $this->completionMessages());
-        if ($this->evidence === null && ! $this->pickup->media()->exists()) {
-            $this->addError('evidence', 'Tambahkan bukti foto penjemputan melalui kamera atau galeri sebelum menyelesaikan tugas.');
-
-            return;
-        }
-
-        $this->completionDialogOpen = true;
-    }
-
-    public function cancelCompletionReview(): void
-    {
-        $this->completionDialogOpen = false;
     }
 
     public function reportFailure(PickupService $service): void
@@ -143,12 +105,6 @@ final class PickupTask extends Component
 
     public function complete(PickupService $service): void
     {
-        if (! $this->completionDialogOpen) {
-            $this->addError('actualItems', 'Tinjau lalu konfirmasi finalisasi sebelum menyelesaikan tugas.');
-
-            return;
-        }
-
         /** @var User $actor */
         $actor = auth()->user();
         $this->assertAssigned($actor);
@@ -160,12 +116,7 @@ final class PickupTask extends Component
         }
 
         $this->pickup = $service->complete($actor, $this->pickup, array_map(static fn (array $item): DepositItemInput => DepositItemInput::fromArray($item), $this->actualItems), $this->idempotencyKey, $this->evidence);
-        $deposit = $this->pickup->deposit;
-        $this->receipt = $deposit instanceof Deposit
-            ? ['number' => $deposit->deposit_number, 'value' => (int) $deposit->total_value, 'occurredAt' => $deposit->occurred_at->translatedFormat('d F Y, H:i'), 'status' => $deposit->status]
-            : null;
         $this->evidence = null;
-        $this->completionDialogOpen = false;
         session()->flash('success', 'Penjemputan selesai dan setoran aktual telah dibuat.');
     }
 

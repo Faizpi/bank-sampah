@@ -235,7 +235,7 @@ final class WithdrawalWaveTest extends TestCase
             ->call('select', $withdrawal->id)
             ->assertSee('Kartu dan nomor nasabah berbeda')
             ->assertSee('Kartu nasabah adalah media identitas fisik atau digital.')
-            ->assertSee('Pindai QR kartu nasabah')
+            ->assertSee('Masukkan nomor yang tercetak pada kartu atau yang disebutkan warga.')
             ->assertSee('Ambil dari kamera')
             ->assertSee('Pilih dari galeri')
             ->assertSeeHtml('data-photo-picker-max="1"')
@@ -426,21 +426,6 @@ final class WithdrawalWaveTest extends TestCase
         $this->actingAs($customer)->get(route('withdrawal.proof', $paid->proofMedia))->assertOk();
     }
 
-    public function test_paid_withdrawal_detail_exposes_the_receipt_action(): void
-    {
-        [$customer] = $this->context();
-        $this->grant($customer, ['withdrawal.view']);
-        $paid = WithdrawalRequest::factory()->for($customer, 'customer')->create([
-            'requested_by_id' => $customer->id,
-            'status' => WithdrawalStatus::Paid,
-        ]);
-
-        Livewire::actingAs($customer)
-            ->test(WithdrawalShow::class, ['withdrawal' => $paid])
-            ->assertSee('Buka Bukti Pencairan')
-            ->assertSeeHtml('href="'.route('citizen.withdrawal.receipt', $paid).'"');
-    }
-
     /** @return array{User, ServiceArea} */
     private function context(): array
     {
@@ -472,12 +457,7 @@ final class WithdrawalWaveTest extends TestCase
     private function payerFor(ServiceArea $area): User
     {
         $payer = User::factory()->create(['status' => UserStatus::Active]);
-        $role = Role::query()->firstOrCreate(['name' => 'bendahara'], ['description' => 'Bendahara']);
-        foreach (['withdrawal.pay', 'withdrawal.view'] as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
-            $role->permissions()->syncWithoutDetaching([$permission->id]);
-        }
-        $payer->roles()->attach($role);
+        $this->grant($payer, ['withdrawal.pay', 'withdrawal.view']);
         StaffProfile::query()->create(['user_id' => $payer->id, 'staff_number' => 'W6-PAYER-'.$payer->id, 'service_area_id' => $area->id, 'active_from' => today(), 'active_to' => null]);
 
         return $payer;

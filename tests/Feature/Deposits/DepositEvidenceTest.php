@@ -98,8 +98,6 @@ final class DepositEvidenceTest extends TestCase
         self::assertDatabaseCount('deposits', 1);
 
         $component->set('evidence', UploadedFile::fake()->image('deposit-form-proof.png', 1, 1))
-            ->call('reviewFinalization')
-            ->assertHasNoErrors()
             ->call('finalize')
             ->assertHasNoErrors()
             ->assertSet('draft.id', $draft->id)
@@ -177,11 +175,9 @@ final class DepositEvidenceTest extends TestCase
         Livewire::actingAs($staff)
             ->test(DepositForm::class, ['customerId' => $customer->id])
             ->set('items', $items)
-            ->call('reviewFinalization')
+            ->call('finalize')
             ->assertHasErrors(['evidence' => 'required'])
             ->set('evidence', $proof)
-            ->call('reviewFinalization')
-            ->assertHasNoErrors()
             ->call('finalize')
             ->assertHasNoErrors()
             ->assertSet('evidence', null);

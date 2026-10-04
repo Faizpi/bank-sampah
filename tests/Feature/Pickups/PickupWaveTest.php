@@ -27,7 +27,6 @@ use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\WasteMaster\Support\WasteMasterMutationGuard;
 use App\Filament\Resources\Pickups\Models\PickupRequests\Pages\ManagePickupRequests;
 use App\Livewire\Citizen\PickupRequestForm;
-use App\Livewire\Citizen\PickupShow;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Testing\TestAction;
@@ -125,29 +124,6 @@ final class PickupWaveTest extends TestCase
 
         self::assertFalse(app(PickupService::class)->canView($other, $pickup));
         self::assertFalse(app(PickupService::class)->canDownloadMedia($other, $pickup->media->sole()));
-    }
-
-    public function test_citizen_pickup_detail_shows_submitted_items_notes_and_private_media_route(): void
-    {
-        [$customer, $area, $type] = $this->context();
-        $this->grant($customer, ['pickup.request', 'pickup.view']);
-        $this->capacity($area, 5, '50.000');
-        Storage::fake('media_private');
-        $pickup = app(PickupService::class)->submit(
-            $customer,
-            array_replace($this->requestData($customer, $area), ['notes' => 'Simpan di teras rumah']),
-            [['waste_type_id' => $type->id, 'estimated_weight_kg' => '2.500']],
-            [UploadedFile::fake()->image('pickup-detail.jpg')],
-            'w5-detail-key-0001',
-        );
-
-        Livewire::actingAs($customer)
-            ->test(PickupShow::class, ['pickup' => $pickup])
-            ->assertSee('Sampah yang diajukan')
-            ->assertSee($type->name)
-            ->assertSee('2,5 kg')
-            ->assertSee('Simpan di teras rumah')
-            ->assertSeeHtml('href="'.route('pickup.media', $pickup->media()->sole()).'"');
     }
 
     public function test_pickup_form_only_exposes_areas_attached_to_the_customers_active_rt_hierarchy(): void
@@ -387,10 +363,7 @@ final class PickupWaveTest extends TestCase
         $admin = User::factory()->create();
         $staff = User::factory()->create(['status' => UserStatus::Active]);
         $this->grant($admin, ['backoffice.access', 'pickup.schedule', 'pickup.view', 'user.view.all']);
-        $staffRole = Role::query()->firstOrCreate(['name' => 'petugas'], ['description' => 'Petugas']);
-        $pickupExecute = Permission::query()->firstOrCreate(['name' => 'pickup.execute'], ['description' => 'pickup.execute']);
-        $staffRole->permissions()->syncWithoutDetaching([$pickupExecute->id]);
-        $staff->roles()->attach($staffRole);
+        $this->grant($staff, ['pickup.execute']);
         StaffProfile::query()->create(['user_id' => $staff->id, 'staff_number' => 'STF-FILAMENT-0001', 'service_area_id' => $area->id, 'active_from' => today(), 'active_to' => null]);
         $alternative = today()->addDays(3)->toDateString();
         $this->capacity($area, 3, '10.000', $alternative);

@@ -202,7 +202,7 @@ final readonly class GroceryHandoverService
 
     private function notify(GroceryRedemption $redemption): void
     {
-        NotificationRequested::dispatch(new NotificationPayload(recipientId: $redemption->customer_id, type: 'grocery.completed', title: 'Penukaran sembako selesai', body: 'Paket '.$redemption->request_number.' telah diserahkan.', reference: '/warga/sembako/'.$redemption->id.'/bukti', dedupeKey: NotificationDedupeKey::for('grocery.completed:'.$redemption->request_number, $redemption->customer_id, 'grocery-v1')));
+        NotificationRequested::dispatch(new NotificationPayload(recipientId: $redemption->customer_id, type: 'grocery.completed', title: 'Penukaran sembako selesai', body: 'Paket '.$redemption->request_number.' telah diserahkan.', reference: '/notifikasi', dedupeKey: NotificationDedupeKey::for('grocery.completed:'.$redemption->request_number, $redemption->customer_id, 'grocery-v1')));
     }
 
     private function correlationId(): string
