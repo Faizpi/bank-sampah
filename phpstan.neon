@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+
+    paths:
+        - app
+        - routes
+
+    tmpDir: storage/framework/cache/phpstan
+
+    checkModelProperties: true
+    noEnvCallsOutsideOfConfig: true
