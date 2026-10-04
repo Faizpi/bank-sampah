@@ -18,6 +18,9 @@
     @if (session('success'))
         <x-ui.success-state title="Pembayaran berhasil" :description="session('success')" />
     @endif
+    @if ($receipt)
+        <x-ui.success-state title="Pembayaran tercatat" description="{{ $receipt['number'] }} · Rp {{ number_format($receipt['value'], 0, ',', '.') }} · {{ $receipt['occurredAt'] }} · Status: {{ $receipt['status'] }}" />
+    @endif
 
     {{-- Withdrawal List --}}
     @forelse ($withdrawals as $withdrawal)
@@ -72,11 +75,18 @@
                 </dl>
                 <x-ui.select wire:model.live="recipientVerification" label="Cara verifikasi penerima" name="recipientVerification"
                     hint="{{ $verificationHint }}"
-                    :options="['kartu_nasabah' => 'Kartu nasabah', 'nomor_nasabah' => 'Nomor nasabah']" />
-                <x-ui.input wire:model="recipientReference" label="Nomor nasabah yang diverifikasi" name="recipientReference"
-                    placeholder="Masukkan CST-########"
-                    hint="Masukkan nomor yang tercetak pada kartu atau yang disebutkan warga. Jangan isi nomor pengajuan pencairan."
-                    :error="$errors->first('recipientReference')" />
+                    :options="['kartu_nasabah' => 'Pindai kartu nasabah', 'nomor_nasabah' => 'Masukkan nomor nasabah']" />
+                @if ($recipientVerification === 'kartu_nasabah')
+                    <x-ui.button type="button" variant="secondary" wire:click="openScanner">Pindai QR kartu nasabah</x-ui.button>
+                    @if ($scannerOpen)
+                        <x-ui.input wire:model="scanToken" label="Token QR kartu" name="scanToken" placeholder="Masukkan token QR bila pemindai tidak tersedia" :error="$errors->first('recipientReference')" />
+                        <div class="flex gap-3"><x-ui.button type="button" wire:click="scanCustomerCard(scanToken)">Resolusi kartu</x-ui.button><x-ui.button type="button" variant="quiet" wire:click="closeScanner">Tutup</x-ui.button></div>
+                    @endif
+                @else
+                    <x-ui.input wire:model="recipientReference" label="Nomor nasabah" name="recipientReference" placeholder="Masukkan CST-########" hint="Wajib berformat CST-########." :error="$errors->first('recipientReference')" />
+                @endif
+                @if ($resolvedCustomerName)<p role="status" class="text-body-sm font-semibold text-forest-700">Kartu cocok: {{ $resolvedCustomerName }}</p>@endif
+                @error('recipientReference')<p role="alert" class="text-body-sm font-semibold text-terracotta">{{ $message }}</p>@enderror
                 <div class="rounded-md border border-info-bg bg-info-bg p-4 text-body-sm text-text-primary" role="note">
                     <p class="font-semibold text-deep-green">Kartu dan nomor nasabah berbeda</p>
                     <p class="mt-1">Kartu adalah media identitasnya; nomor nasabah adalah kode unik di dalam kartu. Pilihan di atas mencatat cara Anda memeriksa penerima, sedangkan field berikut mencatat kode yang dicocokkan sistem.</p>
