@@ -4,7 +4,7 @@
             <div>
         <p class="text-sm font-semibold text-forest-700">Data master</p>
         <h2 id="regions-title" class="mt-1 text-2xl font-bold text-deep-green">Wilayah</h2>
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Kelola area, dusun, RW, dan RT di satu tempat agar penugasan dan wilayah layanan tetap konsisten.</p>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Kelola struktur area, dusun, RW, dan RT dari satu pintu agar penugasan dan cakupan layanan tetap konsisten.</p>
             </div>
             <img src="{{ asset('images/landing/mascot-4.png') }}" alt="Maskot badak menata wilayah layanan dan cakupan area" class="h-24 w-24 self-end object-contain sm:h-28 sm:w-28 sm:self-auto">
         </div>

@@ -60,7 +60,7 @@ final class FieldOperationsTest extends TestCase
             ->set('actualItems', [['waste_type_id' => (string) $type->id, 'condition_id' => (string) $condition->id, 'weight_kg' => '1.000']])
             ->call('complete')
             ->assertHasErrors('actualItems')
-            ->assertSee('Tinjau lalu konfirmasi penyelesaian sebelum menyelesaikan tugas.')
+            ->assertSee('Tinjau lalu konfirmasi finalisasi sebelum menyelesaikan tugas.')
             ->call('reviewCompletion')
             ->assertHasErrors('evidence');
 
@@ -128,8 +128,8 @@ final class FieldOperationsTest extends TestCase
         Livewire::test(PickupTask::class, ['pickup' => $pickup])
             ->call('begin')
             ->call('markPickedUp')
-            ->assertSee('Periksa penyelesaian')
-            ->assertSee('Harga aktif dan subtotal akan dihitung ulang server saat penyelesaian.');
+            ->assertSee('Review Finalisasi')
+            ->assertSee('Harga aktif dan subtotal akan dihitung ulang server saat finalisasi.');
 
         $handoverOfficer = $this->userWith('grocery.handover');
         $package = GroceryPackage::query()->create([

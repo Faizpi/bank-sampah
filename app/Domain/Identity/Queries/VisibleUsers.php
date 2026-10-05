@@ -37,17 +37,15 @@ final readonly class VisibleUsers
                             ->whereHas('rw', static fn (Builder $rw): Builder => $rw
                                 ->where('is_active', true)
                                 ->whereHas('dusun', static fn (Builder $dusun): Builder => $dusun->where('is_active', true)))
-                            ->whereHas('serviceAreas', static fn (Builder $serviceAreas): Builder => $serviceAreas
-                                ->where('is_active', true)
-                                ->whereHas('staffAssignments', function (Builder $assignments) use ($actor, $today): void {
-                                    $assignments->where('staff_profile_user_id', $actor->getKey())
-                                        ->where(static function (Builder $dates) use ($today): void {
-                                            $dates->whereNull('active_from')->orWhere('active_from', '<=', $today);
-                                        })
-                                        ->where(static function (Builder $dates) use ($today): void {
-                                            $dates->whereNull('active_to')->orWhere('active_to', '>=', $today);
-                                        });
-                                }));
+                            ->whereHas('serviceAreas.staffAssignments', function (Builder $assignments) use ($actor, $today): void {
+                                $assignments->where('staff_profile_user_id', $actor->getKey())
+                                    ->where(static function (Builder $dates) use ($today): void {
+                                        $dates->whereNull('active_from')->orWhere('active_from', '<=', $today);
+                                    })
+                                    ->where(static function (Builder $dates) use ($today): void {
+                                        $dates->whereNull('active_to')->orWhere('active_to', '>=', $today);
+                                    });
+                            });
                     });
                 });
             }

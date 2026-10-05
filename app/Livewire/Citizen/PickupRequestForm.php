@@ -160,7 +160,7 @@ final class PickupRequestForm extends Component
         } catch (PickupCapacityUnavailable $exception) {
             $this->refreshAvailableDates($service, false);
             $alternatives = array_values(array_intersect($exception->alternatives, $this->availableDates));
-            $message = 'Tanggal yang Anda pilih baru saja tidak tersedia. Silakan pilih tanggal lain.';
+            $message = 'Tanggal pilihan baru saja tidak tersedia. Pilih tanggal lain yang tersedia.';
             if ($alternatives !== []) {
                 $message .= ' Alternatif: '.implode(', ', array_map(static fn (string $date): string => CarbonImmutable::parse($date, 'Asia/Jakarta')->locale('id')->translatedFormat('d F Y'), $alternatives)).'.';
             }

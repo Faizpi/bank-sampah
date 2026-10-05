@@ -101,11 +101,11 @@ final readonly class WithdrawalRequestService
     /** @return Builder<ServiceArea> */
     public function availableAreasFor(User $actor): Builder
     {
-        $rtId = User::query()->with('customerProfile')->find($actor->getKey())?->customerProfile?->rt_id;
+        $rtId = $this->customerForRequest($actor->id)->customerProfile?->rt_id;
 
         return ServiceArea::query()
             ->where('is_active', true)
-            ->whereHas('rts', static fn ($rts) => $rts->whereKey($rtId ?? 0));
+            ->whereHas('rts', static fn ($rts) => $rts->whereKey($rtId));
     }
 
     /** @return Builder<WithdrawalRequest> */

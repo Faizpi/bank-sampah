@@ -9,7 +9,7 @@
             <p class="text-label font-semibold text-harvest-gold">Bendahara</p>
             <h1 id="withdrawal-payments-title" class="mt-2 text-h1 font-bold text-deep-green">Pembayaran Pencairan</h1>
             <p class="mt-3 text-body text-text-secondary">
-                Pembayaran hanya dapat dilakukan oleh bendahara atau petugas yang ditugaskan. Pilih pencairan yang menjadi tanggung jawab Anda. Verifikasi penerima dan bukti sebelum membayar.
+                Pembayaran hanya untuk Bendahara atau petugas yang ditugaskan. Pilih pencairan yang menjadi tugas Anda; verifikasi penerima dan bukti wajib sebelum saldo keluar.
             </p>
         </div>
         <x-ui.mascot variant="12" bubble="Bayar tepat waktu!" bubblePosition="top" class="h-28 w-auto shrink-0" />
@@ -95,14 +95,14 @@
                                 error: '',
                                 async start() {
                                     if (!('BarcodeDetector' in window) || ! navigator.mediaDevices?.getUserMedia) {
-                                        this.error = 'Peramban ini belum mendukung pemindaian QR kamera. Masukkan kode QR kartu sebagai alternatif.';
+                                        this.error = 'Peramban ini belum mendukung pemindaian QR kamera. Masukkan token QR sebagai alternatif.';
                                         return;
                                     }
 
                                     try {
                                         const formats = await BarcodeDetector.getSupportedFormats();
                                         if (! formats.includes('qr_code')) {
-                                            this.error = 'Pemindaian QR belum tersedia di peramban ini. Masukkan kode QR kartu sebagai alternatif.';
+                                            this.error = 'Pemindaian QR belum tersedia di peramban ini. Masukkan token QR sebagai alternatif.';
                                             return;
                                         }
                                         this.detector = new BarcodeDetector({ formats: ['qr_code'] });
@@ -113,8 +113,8 @@
                                         this.read();
                                     } catch (exception) {
                                         this.error = exception?.name === 'NotAllowedError'
-                                            ? 'Izin kamera ditolak. Masukkan kode QR kartu sebagai alternatif.'
-                                            : 'Kamera tidak dapat digunakan. Masukkan kode QR kartu sebagai alternatif.';
+                                            ? 'Izin kamera ditolak. Masukkan token QR sebagai alternatif.'
+                                            : 'Kamera tidak dapat digunakan. Masukkan token QR sebagai alternatif.';
                                         this.stop();
                                     }
                                 },
@@ -149,9 +149,9 @@
                                 <div class="pointer-events-none absolute inset-8 rounded-xl border-2 border-white/80"></div>
                             </div>
                             <p x-show="error" x-text="error" role="alert" class="text-body-sm font-semibold text-terracotta"></p>
-                            <x-ui.input wire:model="scanToken" label="Kode QR kartu" name="scanToken" placeholder="Masukkan kode QR kartu bila pemindai tidak tersedia" :error="$errors->first('recipientReference')" />
+                            <x-ui.input wire:model="scanToken" label="Token QR kartu" name="scanToken" placeholder="Masukkan token QR bila pemindai tidak tersedia" :error="$errors->first('recipientReference')" />
                             <div class="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
-                                <x-ui.button type="button" wire:click="scanCustomerCard(scanToken)">Cocokkan kartu</x-ui.button>
+                                <x-ui.button type="button" wire:click="scanCustomerCard(scanToken)">Resolusi kartu</x-ui.button>
                                 <x-ui.button type="button" variant="quiet" x-on:click="stop(); $wire.closeScanner()">Tutup</x-ui.button>
                                 <x-ui.button type="button" variant="quiet" x-on:click="stop(); start()">Coba Lagi</x-ui.button>
                             </div>
@@ -164,13 +164,13 @@
                 @error('recipientReference')<p role="alert" class="text-body-sm font-semibold text-terracotta">{{ $message }}</p>@enderror
                 <div class="rounded-md border border-info-bg bg-info-bg p-4 text-body-sm text-text-primary" role="note">
                     <p class="font-semibold text-deep-green">Kartu dan nomor nasabah berbeda</p>
-                    <p class="mt-1">Kartu adalah identitas fisik atau digital; nomor nasabah adalah kode unik di dalamnya. Pilihan di atas mencatat cara verifikasi, sedangkan kolom berikut mencatat kode yang dicocokkan sistem.</p>
+                    <p class="mt-1">Kartu adalah media identitasnya; nomor nasabah adalah kode unik di dalam kartu. Pilihan di atas mencatat cara Anda memeriksa penerima, sedangkan field berikut mencatat kode yang dicocokkan sistem.</p>
                 </div>
                 <x-ui.media-picker
                     id="payment-proof"
                     property="proof"
                     label="Satu foto bukti pembayaran"
-                    hint="Ambil satu foto dari kamera atau galeri, maksimal 1 MB."
+                    hint="Ambil foto melalui kamera atau pilih satu foto dari galeri. Foto dikompres menjadi JPEG maksimal 1 MB sebelum dimasukkan ke formulir."
                     remove-method="clearProof"
                     confirm-method="confirmProofUpload"
                     wire:key="payment-proof-picker-{{ $selectedWithdrawal->id }}"

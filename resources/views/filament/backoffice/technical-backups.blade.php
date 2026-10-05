@@ -3,12 +3,12 @@
     @if ($canRunBackup)
         <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-labelledby="technical-backup-title">
             <h2 id="technical-backup-title" class="text-xl font-semibold text-gray-950">Catat metadata cadangan</h2>
-            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-600">Catat lokasi, kode pemeriksaan berkas, ukuran, status, dan masa simpan. Berkas cadangan dibuat melalui prosedur penerapan.</p>
+            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-600">Formulir ini mencatat lokasi, checksum, ukuran, status, dan masa simpan. Berkas cadangan dibuat melalui prosedur penerapan.</p>
             <form wire:submit="recordBackupMetadata" class="mt-6 grid gap-4 sm:grid-cols-2">
                 <label class="block text-sm font-medium text-gray-800">Lokasi basis data<input wire:model="backupDatabaseAlias" placeholder="Contoh: backup-db-20260811" required class="mt-2 backoffice-form-control"></label>
                 <label class="block text-sm font-medium text-gray-800">Lokasi media<input wire:model="backupMediaAlias" placeholder="Contoh: backup-media-20260811" required class="mt-2 backoffice-form-control"></label>
-                <label class="block text-sm font-medium text-gray-800">Kode pemeriksaan cadangan basis data<input wire:model="backupDatabaseSha256" placeholder="64 karakter heksadesimal" required minlength="64" maxlength="64" class="mt-2 backoffice-form-control"></label>
-                <label class="block text-sm font-medium text-gray-800">Kode pemeriksaan cadangan media<input wire:model="backupMediaSha256" placeholder="64 karakter heksadesimal" required minlength="64" maxlength="64" class="mt-2 backoffice-form-control"></label>
+                <label class="block text-sm font-medium text-gray-800">Checksum basis data (SHA-256)<input wire:model="backupDatabaseSha256" placeholder="64 karakter heksadesimal" required minlength="64" maxlength="64" class="mt-2 backoffice-form-control"></label>
+                <label class="block text-sm font-medium text-gray-800">Checksum media (SHA-256)<input wire:model="backupMediaSha256" placeholder="64 karakter heksadesimal" required minlength="64" maxlength="64" class="mt-2 backoffice-form-control"></label>
                 <label class="block text-sm font-medium text-gray-800">Ukuran basis data (byte)<input wire:model="backupDatabaseSizeBytes" inputmode="numeric" required class="mt-2 backoffice-form-control"></label>
                 <label class="block text-sm font-medium text-gray-800">Ukuran media (byte)<input wire:model="backupMediaSizeBytes" inputmode="numeric" required class="mt-2 backoffice-form-control"></label>
                 <label class="block text-sm font-medium text-gray-800">Pertahankan sampai<input wire:model="backupRetentionUntil" type="datetime-local" required class="mt-2 backoffice-form-control"></label>
@@ -21,7 +21,7 @@
     @if ($canRestoreBackup)
         <section class="mt-6 rounded-xl border border-info-200 bg-info-50 p-5 shadow-sm" aria-labelledby="technical-restore-title">
             <h2 id="technical-restore-title" class="text-xl font-semibold text-gray-950">Verifikasi pemulihan</h2>
-            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-700">Verifikasi di lingkungan terisolasi. Halaman ini hanya mencatat bukti dan hasil, bukan menjalankan pemulihan.</p>
+            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-700">Lakukan pada lingkungan terisolasi. Formulir ini hanya mencatat bukti dan hasil, bukan menjalankan pemulihan.</p>
             <form wire:submit="recordRestoreVerification" class="mt-6 grid gap-4 sm:grid-cols-2">
                 <label class="block text-sm font-medium text-gray-800">ID cadangan<input wire:model="restoreBackupId" inputmode="numeric" required class="mt-2 backoffice-form-control"></label>
                 <label class="block text-sm font-medium text-gray-800">Alias lingkungan verifikasi<input wire:model="restoreTargetAlias" required class="mt-2 backoffice-form-control"></label>

@@ -162,7 +162,7 @@ final class DepositForm extends Component
     public function finalize(DepositService $service): void
     {
         if (! $this->finalizationReviewOpen) {
-            $this->addError('items', 'Tinjau lalu konfirmasi sebelum mencatat setoran.');
+            $this->addError('items', 'Tinjau lalu konfirmasi finalisasi sebelum mencatat setoran.');
 
             return;
         }
@@ -194,7 +194,7 @@ final class DepositForm extends Component
             $this->finalizationReviewOpen = false;
             session()->flash('success', $this->draft->isPendingReview()
                 ? 'Setoran berhasil dicatat dan menunggu persetujuan pemeriksa.'
-                : 'Setoran berhasil dicatat.');
+                : 'Setoran berhasil difinalisasi.');
 
             return;
         }
@@ -203,7 +203,7 @@ final class DepositForm extends Component
         $this->finalizationReviewOpen = false;
         session()->flash('success', $this->draft->isPendingReview()
             ? 'Setoran bernilai tinggi menunggu persetujuan pemeriksa. Saldo belum ditambahkan.'
-            : 'Setoran berhasil dicatat.');
+            : 'Setoran berhasil difinalisasi.');
     }
 
     /** @return array<string, array<int, string>> */

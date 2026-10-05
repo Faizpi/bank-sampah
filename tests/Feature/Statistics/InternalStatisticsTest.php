@@ -148,7 +148,7 @@ final class InternalStatisticsTest extends TestCase
         app(StatisticsService::class)->configurePublic($actor, ['total_weight_kg'], ['period'], 2, true);
 
         Livewire::test(PublicPrograms::class)
-            ->assertSee('Wilayah dan jenis sampah:')
+            ->assertSee('Cakupan:')
             ->assertSee('RT Program')
             ->assertSee($type->name)
             ->assertSee('Periode 12 bulan:')
@@ -175,11 +175,12 @@ final class InternalStatisticsTest extends TestCase
         app(StatisticsService::class)->configurePublic($actor, ['total_weight_kg'], ['period', 'rt_id'], 2, true);
 
         Livewire::test(PublicPrograms::class)
-            ->assertSee('Wilayah statistik')
+            ->assertSee('Cakupan statistik')
             ->assertSee('Seluruh desa')
             ->assertSee('RT Satu')
             ->assertSee('RT Dua')
             ->set('rtId', (string) $firstRt->id)
+            ->assertSee('Menampilkan agregat untuk RT terpilih.')
             ->assertSee('2 kg')
             ->set('rtId', (string) $secondRt->id)
             ->assertSee('4 kg');
@@ -187,7 +188,7 @@ final class InternalStatisticsTest extends TestCase
         app(StatisticsService::class)->configurePublic($actor, ['total_weight_kg'], ['period'], 2, true);
 
         Livewire::test(PublicPrograms::class)
-            ->assertDontSee('Wilayah statistik')
+            ->assertDontSee('Cakupan statistik')
             ->assertSee('6 kg');
     }
 

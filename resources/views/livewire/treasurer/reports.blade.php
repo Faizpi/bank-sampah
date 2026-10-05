@@ -38,7 +38,7 @@
             <button type="button" wire:click="setPeriod('today')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'today' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Hari ini</button>
             <button type="button" wire:click="setPeriod('week')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'week' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Minggu ini</button>
             <button type="button" wire:click="setPeriod('month')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'month' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Per bulan</button>
-            <button type="button" wire:click="setPeriod('custom')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'custom' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Rentang tanggal</button>
+            <button type="button" wire:click="setPeriod('custom')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'custom' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Tanggal custom</button>
         </div>
         <form wire:submit="refreshReport" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filter laporan">
             <x-ui.select wire:model="reportType" name="reportType" label="Jenis laporan" :options="$reportTypes" />
@@ -59,7 +59,7 @@
             <x-ui.input wire:model="search" name="search" label="Nomor transaksi" placeholder="Contoh: STR-2026-001" />
             <x-ui.button type="submit" wire:loading.attr="disabled" class="justify-self-end lg:self-end">
                 <span wire:loading.remove>Terapkan</span>
-                <span wire:loading>Menerapkan...</span>
+                <span wire:loading>Memuat...</span>
             </x-ui.button>
         </form>
     </x-ui.panel>
@@ -74,12 +74,12 @@
                     </svg>
                     <span class="whitespace-nowrap">Unduh Excel</span>
                 </span>
-                <span wire:loading wire:target="export" class="inline-flex w-full flex-nowrap items-center justify-center whitespace-nowrap">Mengekspor...</span>
+                <span wire:loading wire:target="export" class="inline-flex w-full flex-nowrap items-center justify-center whitespace-nowrap">Menyiapkan...</span>
             </x-ui.button>
         </div>
     </x-ui.panel>
 
-    <x-ui.panel title="Hasil laporan" description="Data yang tampil mengikuti hak akses dan filter yang dipilih.">
+    <x-ui.panel title="Hasil laporan" description="Data hanya dapat dilihat dan mengikuti cakupan akses serta filter yang dipilih.">
         <div class="grid gap-3 md:hidden">
             @forelse ($rows as $row)
                 @php($isWeight = $row['value_format'] === 'weight')

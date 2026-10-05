@@ -9,7 +9,7 @@
             <p class="text-label font-semibold text-forest-600">Operasional Petugas</p>
             <h1 id="deposit-title" class="mt-2 text-h1 font-bold text-deep-green">Setoran Baru</h1>
             <p class="mt-3 text-body text-text-secondary">
-                Tambahkan berat aktual. Harga dan subtotal selalu dihitung ulang server saat pencatatan.
+                Tambahkan berat aktual. Harga dan subtotal selalu dihitung ulang server saat finalisasi.
             </p>
         </div>
         <x-ui.mascot variant="11" bubble="Timbang dengan akurat!" bubblePosition="top" class="h-28 w-auto shrink-0" />
@@ -19,8 +19,8 @@
         $depositComplete = $draft?->isFinal() || $draft?->isPendingReview();
         $depositSteps = [
             ['key' => 'input', 'title' => 'Isi item setoran', 'description' => 'Tambahkan jenis sampah, kondisi, dan berat aktual.', 'icon' => 'clipboard-check'],
-            ['key' => 'evidence', 'title' => 'Unggah bukti transaksi', 'description' => 'Bukti privat diperlukan sebelum pencatatan.', 'icon' => 'file-check'],
-            ['key' => 'review', 'title' => 'Tinjau pencatatan', 'description' => 'Periksa kembali nilai sebelum transaksi dicatat.', 'icon' => 'eye'],
+            ['key' => 'evidence', 'title' => 'Unggah bukti transaksi', 'description' => 'Bukti privat diperlukan sebelum finalisasi.', 'icon' => 'file-check'],
+            ['key' => 'review', 'title' => 'Tinjau finalisasi', 'description' => 'Periksa kembali nilai sebelum transaksi dicatat.', 'icon' => 'eye'],
             ['key' => 'final', 'title' => 'Setoran selesai', 'description' => 'Setoran tercatat dan saldo diproses sesuai statusnya.', 'icon' => 'circle-check'],
         ];
         $depositCurrentStatus = $depositComplete ? 'final' : ($finalizationReviewOpen ? 'review' : ($evidence ? 'evidence' : 'input'));
@@ -32,7 +32,7 @@
 
     @if ($depositComplete)
         <x-ui.success-state
-            :title="$draft->isPendingReview() ? 'Setoran menunggu persetujuan' : 'Setoran berhasil dicatat'"
+            :title="$draft->isPendingReview() ? 'Setoran menunggu persetujuan' : 'Setoran berhasil difinalisasi'"
             :reference="(string) $draft->deposit_number"
             :value="'Rp '.number_format((int) $draft->total_value, 0, ',', '.')"
             :time="$draft->occurred_at->setTimezone('Asia/Jakarta')->translatedFormat('d F Y, H:i')"
@@ -57,9 +57,9 @@
     @if ($finalizationReviewOpen)
         <div class="fixed inset-0 z-overlay flex items-end justify-center bg-overlay p-4 sm:items-center" role="presentation">
             <div class="w-full max-w-form rounded-lg border border-border bg-surface p-5 shadow-dialog sm:p-6" role="dialog" aria-modal="true" aria-labelledby="deposit-finalization-title">
-                <h2 id="deposit-finalization-title" class="text-h2 font-bold text-deep-green">Catat setoran?</h2>
+                <h2 id="deposit-finalization-title" class="text-h2 font-bold text-deep-green">Finalisasi setoran?</h2>
                 <p class="mt-2 text-body-sm text-text-secondary">Nilai final akan dihitung ulang di server, bukti privat disimpan, dan saldo dapat bertambah setelah finalisasi atau persetujuan pemeriksa.</p>
-                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><x-ui.button type="button" variant="secondary" wire:click="cancelFinalizationReview">Ubah data</x-ui.button><x-ui.button type="button" wire:click="finalize" wire:loading.attr="disabled" wire:target="finalize"><span wire:loading.remove wire:target="finalize">Catat setoran</span><span wire:loading wire:target="finalize">Memproses...</span></x-ui.button></div>
+                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><x-ui.button type="button" variant="secondary" wire:click="cancelFinalizationReview">Ubah data</x-ui.button><x-ui.button type="button" wire:click="finalize" wire:loading.attr="disabled" wire:target="finalize"><span wire:loading.remove wire:target="finalize">Finalisasi setoran</span><span wire:loading wire:target="finalize">Memproses...</span></x-ui.button></div>
             </div>
         </div>
     @endif
@@ -109,7 +109,7 @@
                 <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                     <div>
                         <h3 class="text-label font-bold text-deep-green">Review nilai setoran</h3>
-                        <p class="text-body-sm text-text-secondary">Harga aktif dan subtotal akan dihitung ulang server saat pencatatan.</p>
+                        <p class="text-body-sm text-text-secondary">Harga aktif dan subtotal akan dihitung ulang server saat finalisasi.</p>
                     </div>
                     @if ($pricePreview['complete'])
                         <strong class="amount-tabular text-title text-forest-700">Rp {{ number_format($pricePreview['total'], 0, ',', '.') }}</strong>
@@ -139,7 +139,7 @@
                     <span wire:loading wire:target="saveDraft">Menyimpan...</span>
                 </x-ui.button>
                 <x-ui.button type="button" wire:click="reviewFinalization" wire:loading.attr="disabled" data-photo-picker-action>
-                    <span wire:loading.remove wire:target="reviewFinalization">Tinjau Pencatatan</span>
+                    <span wire:loading.remove wire:target="reviewFinalization">Tinjau Finalisasi</span>
                     <span wire:loading wire:target="reviewFinalization">Memeriksa...</span>
                 </x-ui.button>
              </div>
@@ -152,7 +152,7 @@
          </x-ui.panel>
      @endif
 
-     <x-ui.panel title="Bukti setoran" description="Unggah bukti foto atau PDF. File disimpan privat dan wajib saat pencatatan.">
+     <x-ui.panel title="Bukti setoran" description="Unggah bukti foto atau PDF. File disimpan privat dan wajib saat finalisasi.">
          <x-ui.media-picker
              id="deposit-evidence"
              property="evidence"

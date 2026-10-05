@@ -27,7 +27,7 @@ final class BackofficeLoginFormTest extends TestCase
             ->assertOk()
             ->assertSee('Panel pengelolaan bank sampah')
             ->assertSee('Masuk dengan akun Anda')
-            ->assertSee('Kembali ke halaman utama')
+            ->assertSee('Kembali ke landing page')
             ->assertSee(route('home'), false);
     }
 

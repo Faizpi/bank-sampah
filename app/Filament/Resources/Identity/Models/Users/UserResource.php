@@ -135,7 +135,7 @@ final class UserResource extends Resource
                     })
                     ->requiresConfirmation()
                     ->modalHeading(fn (User $record): string => "Atur peran {$record->name}?")
-                    ->modalDescription('Peran menentukan izin pengguna ini. Perubahan akan dicatat di riwayat aktivitas.')
+                    ->modalDescription('Peran menentukan izin yang tersedia bagi pengguna ini. Perubahan akan dicatat pada audit log.')
                     ->modalSubmitActionLabel('Simpan peran')
                     ->action(fn (User $record, array $data): User => app(ManageRoles::class)->assignRoles(self::actor(), $record, [(int) $data['role_ids']], (string) $data['reason']))
                     ->successNotificationTitle('Peran pengguna diperbarui.'),

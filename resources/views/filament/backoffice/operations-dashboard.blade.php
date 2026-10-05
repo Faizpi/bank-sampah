@@ -4,7 +4,7 @@
             <div>
         <p class="text-sm font-semibold text-forest-700">Administrasi sistem</p>
         <h2 id="technical-overview-title" class="mt-1 text-2xl font-bold text-deep-green">Health sistem</h2>
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Kondisi aplikasi hanya dapat dilihat oleh petugas berwenang.</p>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Lihat ringkasan kondisi teknis aplikasi.</p>
             </div>
             <img src="{{ asset('images/landing/mascot-10.png') }}" alt="Maskot badak memeriksa kesehatan dan keamanan sistem" class="h-24 w-24 self-end object-contain sm:h-28 sm:w-28 sm:self-auto">
         </div>

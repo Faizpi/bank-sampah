@@ -104,7 +104,7 @@ final class DepositEvidenceTest extends TestCase
             ->assertHasNoErrors()
             ->assertSet('draft.id', $draft->id)
             ->assertSet('draft.status', Deposit::STATUS_FINAL)
-            ->assertSee('Setoran berhasil dicatat.')
+            ->assertSee('Setoran berhasil difinalisasi.')
             ->assertSee('Berhasil')
             ->assertSee($draft->fresh()->deposit_number)
             ->assertSee('Nilai')

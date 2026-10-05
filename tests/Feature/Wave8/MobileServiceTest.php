@@ -197,7 +197,7 @@ final class MobileServiceTest extends TestCase
 
         Livewire::test(MobileSchedule::class)
             ->assertSee('Terjadwal')
-            ->assertSee('Wilayah layanan')
+            ->assertSee('Cakupan wilayah')
             ->assertSee($rt->name)
             ->assertSee('Sampah yang diterima')
             ->assertSee($type->name)

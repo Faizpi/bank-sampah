@@ -253,7 +253,7 @@ final class WithdrawalWaveTest extends TestCase
 
         Livewire::actingAs($petugas)
             ->test(WithdrawalPayments::class)
-            ->assertSee('Pembayaran hanya dapat dilakukan oleh bendahara atau petugas yang ditugaskan.');
+            ->assertSee('Pembayaran hanya untuk Bendahara atau petugas yang ditugaskan.');
 
         $this->expectException(AuthorizationException::class);
         $service->pay($petugas, $withdrawal, 'kartu_nasabah', (string) $customer->customerProfile?->customer_number, UploadedFile::fake()->image('unassigned.png'), 'w6-role-boundary-payment-0001');
@@ -540,14 +540,15 @@ final class WithdrawalWaveTest extends TestCase
         $this->actingAs($other)->get(route('citizen.withdrawal.show', $paid))->assertNotFound();
         $this->actingAs($other)->get(route('withdrawal.proof', $paid->proofMedia))->assertNotFound();
         $this->actingAs($customer)->get(route('citizen.withdrawal.show', $paid))->assertOk()->assertSee($paid->request_number);
+        $proofUrl = route('withdrawal.proof', $paid->proofMedia);
         $this->actingAs($customer)->get(route('citizen.withdrawal.receipt', $paid))
             ->assertOk()
             ->assertSee('Pencairan berhasil')
             ->assertSee($paid->request_number)
             ->assertSee('Rp25.000')
             ->assertSee('Berhasil')
-            ->assertSee('Cetak bukti')
-            ->assertDontSee(route('withdrawal.proof', $paid->proofMedia), false)
+            ->assertSeeHtml('<img src="'.$proofUrl.'" alt="Bukti pembayaran pencairan '.$paid->request_number.'" class="max-h-96 w-full object-contain" />')
+            ->assertSeeHtml('href="'.$proofUrl.'"')
             ->assertDontSee('storage/')
             ->assertDontSee('Nomor bukti');
         $this->actingAs($customer)->get(route('withdrawal.proof', $paid->proofMedia))->assertOk();
@@ -579,7 +580,7 @@ final class WithdrawalWaveTest extends TestCase
         $this->actingAs($customer)->get(route('citizen.withdrawal.receipt', $paid))
             ->assertOk()
             ->assertDontSee('<img', false)
-            ->assertDontSee(route('withdrawal.proof', $proofMedia), false);
+            ->assertSeeHtml('href="'.route('withdrawal.proof', $proofMedia).'"');
     }
 
     public function test_paid_withdrawal_detail_exposes_the_receipt_action(): void

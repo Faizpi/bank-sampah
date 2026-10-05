@@ -90,7 +90,7 @@ final class BackofficePanelTest extends TestCase
 
         $this->actingAs($superadmin->fresh())->get('/backoffice/login')->assertRedirect('/backoffice');
         self::assertSame(
-            ['Kondisi sistem'],
+            ['Health'],
             $this->navigationLabelsForGroup($panel, 'Administrasi sistem', includeChildren: true),
         );
         self::assertContains(
@@ -232,7 +232,7 @@ final class BackofficePanelTest extends TestCase
 
         $this->actingAs($superadmin->fresh());
         $this->get('/backoffice/reconciliation')->assertOk()->assertSee('Rekonsiliasi saldo harian');
-        $this->get('/backoffice/technical-health-page')->assertOk()->assertSee('Kondisi sistem');
+        $this->get('/backoffice/technical-health-page')->assertOk()->assertSee('Health sistem');
 
         foreach ([
             '/backoffice/operations-dashboard',
@@ -314,6 +314,7 @@ final class BackofficePanelTest extends TestCase
             ->assertOk()
             ->assertSee('Verifikasi warga')
             ->assertSee('data-disclosure-chevron')
+            ->assertSee('Panduan pemeriksaan yang aman')
             ->assertDontSee('Pickup hari ini')
             ->assertDontSee('Pencairan menunggu keputusan')
             ->assertDontSee('Setoran perlu ditinjau');
