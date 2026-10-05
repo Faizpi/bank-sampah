@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "artifacts" / "document-review-2026-10-05"
+OUT = ROOT / "artifacts" / "document-review-cutover-2026-10-05"
 OUT.mkdir(parents=True, exist_ok=True)
 
 for filename in (
@@ -21,11 +21,12 @@ for filename in (
     folder.mkdir(exist_ok=True)
     thumbnails = []
     subprocess.run(["pdftoppm", "-scale-to", "1280", "-png", str(ROOT / "documents" / filename), str(folder / "page")], check=True)
+    rendered = sorted(folder.glob("page-*.png"), key=lambda p: int(p.stem.split("-")[-1]))
     for index, page in enumerate(document.pages):
         for char in page.chars:
             if char["x0"] < -1 or char["top"] < -1 or char["x1"] > page.width + 1 or char["bottom"] > page.height + 1:
                 raise ValueError(f"Text outside page: {filename}, page {index + 1}")
-        destination = folder / f"page-{index + 1:02}.png"
+        destination = rendered[index]
         thumbnail = Image.open(destination).convert("RGB")
         thumbnail.thumbnail((840, 840))
         thumbnails.append(thumbnail)

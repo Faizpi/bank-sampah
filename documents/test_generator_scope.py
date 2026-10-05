@@ -82,8 +82,10 @@ def test_proposal_preserves_current_business_scope() -> None:
 
 def test_proposal_nonfunctional_sections_are_sequential() -> None:
     content = proposal_content()
-    assert "17.7 teknologi pengembangan" in content
-    assert "17.8 teknologi pengembangan" not in content
+    assert "workflow web empat role" in content
+    assert "superadmin" not in content
+    assert "tanpa smartphone" not in content
+    assert "expiry otomatis" in content
 
 
 if __name__ == "__main__":
