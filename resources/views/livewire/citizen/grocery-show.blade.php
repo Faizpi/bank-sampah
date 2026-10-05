@@ -4,8 +4,7 @@
 @php
     $groceryStages = [
         ['title' => 'Diajukan', 'description' => 'Permintaan tercatat dan menunggu verifikasi.', 'icon' => 'file-check', 'statuses' => ['menunggu_verifikasi']],
-        ['title' => 'Disetujui', 'description' => 'Permintaan disetujui dan paket masuk tahap persiapan.', 'icon' => 'clipboard-check', 'statuses' => ['disetujui']],
-        ['title' => 'Sedang disiapkan', 'description' => 'Paket sedang disiapkan sesuai rekaman saat pengajuan.', 'icon' => 'package-open', 'statuses' => ['sedang_disiapkan']],
+        ['title' => 'Disetujui', 'description' => 'Permintaan disetujui dan paket masuk tahap persiapan.', 'icon' => 'clipboard-check', 'statuses' => ['disetujui', 'sedang_disiapkan']],
         ['title' => 'Siap diambil', 'description' => 'Paket tersedia untuk diserahkan kepada penerima.', 'icon' => 'calendar-days', 'statuses' => ['siap_diambil']],
         ['title' => 'Selesai diserahkan', 'description' => 'Paket diserahkan dan bukti penyerahan tersimpan.', 'icon' => 'package-check', 'statuses' => ['selesai']],
     ];
@@ -24,6 +23,7 @@
 @endphp
 
 <section aria-labelledby="grocery-detail-title" class="grid gap-6">
+    <x-ui.service-progress :status="$redemption->status" :next-step="$redemption->status->value === 'siap_diambil' ? 'Paket sudah siap. Bawa kartu atau nomor nasabah untuk serah-terima.' : null" />
     {{-- Page header --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -58,7 +58,9 @@
         </dl>
     </x-ui.panel>
 
-    <x-ui.panel title="Tahapan penukaran" description="Persetujuan terpisah dari serah-terima. Dana yang ditahan dilepas pada tahap akhir tanpa menjadi saldo keluar.">
+    <details class="rounded-xl border border-border bg-surface p-4">
+        <summary class="cursor-pointer text-label font-semibold text-deep-green">Lihat rincian tahapan</summary>
+    <x-ui.panel title="Tahapan penukaran" description="Persetujuan terpisah dari serah-terima. Dana tertahan menjadi saldo keluar hanya setelah paket diserahkan.">
         <x-ui.status-stepper
             :steps="$groceryStages"
             :current-status="$groceryStatus"
@@ -68,6 +70,7 @@
             label="Tahapan penukaran sembako"
         />
     </x-ui.panel>
+    </details>
 
     @if ($redemption->status->value === 'siap_diambil')
         <x-ui.panel title="Langkah selanjutnya" description="Paket Anda sudah siap untuk diserahkan.">

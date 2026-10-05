@@ -19,6 +19,7 @@ final class ManageCustomers extends ManageRecords
         return [
             CreateAction::make()->label('Nasabah baru')->using(fn (array $data): User => app(ManageUsers::class)->createCustomer(auth()->user(), [
                 'name' => $data['name'],
+                'username' => $data['username'],
                 'phone' => $data['phone'],
                 'email' => $data['email'] ?? null,
                 'rt_id' => (int) $data['rt_id'],

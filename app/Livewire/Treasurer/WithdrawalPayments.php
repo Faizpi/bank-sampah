@@ -135,9 +135,7 @@ final class WithdrawalPayments extends Component
 
     public function pay(WithdrawalService $service): void
     {
-        if (! $this->showPaymentReview) {
-            $this->addError('selectedWithdrawalId', 'Tinjau lalu konfirmasi pembayaran sebelum melanjutkan.');
-
+        if ($this->receipt !== null && $this->selectedWithdrawalId === null) {
             return;
         }
 

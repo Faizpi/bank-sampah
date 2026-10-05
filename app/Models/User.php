@@ -72,6 +72,8 @@ class User extends Authenticatable implements FilamentUser
     /**
      * Canonicalize username to lowercase on every write so that the
      * unique index naturally prevents duplicate canonical usernames.
+     *
+     * @return Attribute<string|null, string|null>
      */
     protected function username(): Attribute
     {

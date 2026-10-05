@@ -54,18 +54,10 @@
 
                 {{-- Actions --}}
                 <div class="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
-                    @if ($redemption->status->value === 'disetujui' && $canPrepare)
-                        <button type="button" wire:click="prepare({{ $redemption->id }})" wire:loading.attr="disabled"
-                            class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700 disabled:cursor-wait disabled:opacity-60">
-                            <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
-                            Mulai siapkan
-                        </button>
-                    @elseif ($redemption->status->value === 'sedang_disiapkan' && $canPrepare)
-                        <button type="button" wire:click="ready({{ $redemption->id }})" wire:loading.attr="disabled"
-                            class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-sky-blue px-5 text-label font-bold text-white transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60">
-                            <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z"/><path d="m9 12 2 2 4-4"/></svg>
-                            Tandai siap diambil
-                        </button>
+                    @if (in_array($redemption->status->value, ['disetujui', 'sedang_disiapkan'], true) && $canPrepare)
+                        <x-ui.button type="button" wire:click="ready({{ $redemption->id }})" wire:loading.attr="disabled">
+                            Paket sudah siap - beri tahu warga
+                        </x-ui.button>
                     @elseif ($redemption->status->value === 'disetujui' || $redemption->status->value === 'sedang_disiapkan')
                         <p class="text-body-sm text-text-secondary">Menunggu petugas dengan izin persiapan untuk melanjutkan paket.</p>
                     @elseif ($redemption->status->value === 'siap_diambil' && $canHandover)

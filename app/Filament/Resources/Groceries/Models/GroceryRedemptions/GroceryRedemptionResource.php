@@ -10,6 +10,7 @@ use App\Domain\Groceries\Services\GroceryService;
 use App\Filament\Resources\Groceries\Models\GroceryRedemptions\Pages\ManageGroceryRedemptions;
 use App\Models\User;
 use App\Support\StatusLabel;
+use App\Support\WorkQueue;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
@@ -62,6 +63,8 @@ final class GroceryRedemptionResource extends Resource
                 TextColumn::make('approver.name')->label('Disetujui oleh')->placeholder('Belum disetujui'),
             ])
             ->filters([
+                SelectFilter::make('queue')->label('Antrean kerja')->options(['grocery_pending' => 'Menunggu keputusan'])
+                    ->query(fn (Builder $query, array $data): Builder => empty($data['value']) ? $query : WorkQueue::apply($query, (string) $data['value'])),
                 SelectFilter::make('status')->label('Status')->options(collect(GroceryStatus::cases())->mapWithKeys(fn (GroceryStatus $status): array => [$status->value => StatusLabel::for($status)])->all()),
                 SelectFilter::make('grocery_package_id')->label('Paket')->relationship('package', 'name')->searchable()->preload(),
             ])
@@ -98,16 +101,9 @@ final class GroceryRedemptionResource extends Resource
                     ->modalDescription('Penolakan melepaskan dana yang ditahan kembali ke saldo tersedia nasabah.')
                     ->schema([Textarea::make('reason')->label('Alasan')->required()->minLength(10)->maxLength(1000)->rows(4)])
                     ->action(fn (GroceryRedemption $record, array $data): GroceryRedemption => app(GroceryService::class)->approve(self::actor(), $record, false, null, (string) $data['reason'])),
-                Action::make('prepare')
-                    ->label('Mulai siapkan')->icon(Heroicon::OutlinedCube)
-                    ->visible(fn (GroceryRedemption $record): bool => $record->status === GroceryStatus::Approved)->authorize('prepare')->requiresConfirmation()
-                    ->modalHeading(fn (GroceryRedemption $record): string => "Mulai siapkan {$record->request_number}?")
-                    ->modalDescription(fn (GroceryRedemption $record): string => 'Petugas akan dicatat sebagai penyiap paket '.data_get($record->package_snapshot, 'name', 'sembako').'.')
-                    ->modalSubmitActionLabel('Mulai siapkan')
-                    ->action(fn (GroceryRedemption $record): GroceryRedemption => app(GroceryService::class)->prepare(self::actor(), $record)),
                 Action::make('ready')
                     ->label('Tandai siap')->icon(Heroicon::OutlinedCheck)
-                    ->visible(fn (GroceryRedemption $record): bool => $record->status === GroceryStatus::Preparing)->authorize('prepare')->requiresConfirmation()
+                    ->visible(fn (GroceryRedemption $record): bool => in_array($record->status, [GroceryStatus::Approved, GroceryStatus::Preparing], true))->authorize('prepare')->requiresConfirmation()
                     ->modalHeading(fn (GroceryRedemption $record): string => "Tandai {$record->request_number} siap diambil?")
                     ->modalDescription('Paket akan tersedia untuk proses serah-terima; dana tetap ditahan hingga serah-terima tercatat.')
                     ->modalSubmitActionLabel('Tandai siap diambil')

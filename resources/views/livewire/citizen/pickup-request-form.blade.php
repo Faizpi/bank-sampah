@@ -99,7 +99,12 @@
         @if ($step === 1)
             <x-ui.panel title="Lokasi dan tanggal layanan" description="Pilih area aktif dan tanggal pilihan penjemputan Anda.">
                 <div class="grid gap-4 md:grid-cols-2">
-                    <x-ui.select wire:model.live="serviceAreaId" label="Area pelayanan" name="serviceAreaId" placeholder="Pilih area pelayanan" :options="$areas->pluck('name', 'id')->all()" :error="$errors->first('serviceAreaId')" />
+                    @if ($areas->count() === 1)
+                        <p class="text-body-sm text-text-secondary">Area pelayanan: {{ $areas->first()->name }}</p>
+                        @error('serviceAreaId')<p role="alert" class="text-terracotta">{{ $message }}</p>@enderror
+                    @else
+                        <x-ui.select wire:model.live="serviceAreaId" label="Area pelayanan" name="serviceAreaId" placeholder="Pilih area pelayanan" :options="$areas->pluck('name', 'id')->all()" :error="$errors->first('serviceAreaId')" />
+                    @endif
                     <x-ui.input
                         wire:model="selectedDate"
                         label="Tanggal pilihan"

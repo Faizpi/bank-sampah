@@ -21,6 +21,7 @@
 @endphp
 
 <section aria-labelledby="pickup-detail-title" class="grid gap-6">
+    <x-ui.service-progress :status="$pickup->status" :next-step="$pickup->deposit?->isPendingReview() ? 'Hasil timbang sedang diperiksa. Saldo belum bertambah.' : null" />
     @if ($pickup->deposit?->isPendingReview())
         <p role="status" class="rounded-xl border border-border bg-warning-bg p-4">Sampah sudah dijemput. Hasil timbang sedang diperiksa; saldo belum bertambah.</p>
     @endif
@@ -86,6 +87,8 @@
         @endif
     </x-ui.panel>
 
+    <details class="rounded-xl border border-border bg-surface p-4">
+        <summary class="cursor-pointer text-label font-semibold text-deep-green">Lihat rincian tahapan</summary>
     <x-ui.panel title="Tahapan penjemputan" description="Setoran hanya dibuat setelah penimbangan aktual berhasil difinalkan.">
         <x-ui.status-stepper
             :steps="$pickupStages"
@@ -96,6 +99,7 @@
             label="Tahapan penjemputan"
         />
     </x-ui.panel>
+    </details>
 
     @if (in_array($pickup->status->value, ['menunggu_pemeriksaan', 'diterima', 'dijadwalkan'], true))
         <div class="flex justify-end">

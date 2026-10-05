@@ -11,6 +11,7 @@ use App\Filament\Resources\Pickups\Models\PickupRequests\Pages\ManagePickupReque
 use App\Models\User;
 use App\Support\StatusLabel;
 use App\Support\WeightFormatter;
+use App\Support\WorkQueue;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -74,6 +75,8 @@ final class PickupRequestResource extends Resource
                 TextColumn::make('assignedStaff.name')->label('Petugas')->placeholder('Belum ditugaskan'),
             ])
             ->filters([
+                SelectFilter::make('queue')->label('Antrean kerja')->options(['pickup_today' => 'Pickup hari ini', 'pickup_overdue' => 'Pickup terlambat'])
+                    ->query(fn (Builder $query, array $data): Builder => empty($data['value']) ? $query : WorkQueue::apply($query, (string) $data['value'])),
                 SelectFilter::make('status')->label('Status')->options([
                     PickupStatus::PendingReview->value => 'Menunggu pemeriksaan',
                     PickupStatus::Accepted->value => 'Diterima',
@@ -109,15 +112,6 @@ final class PickupRequestResource extends Resource
                         Textarea::make('timeline')->label('Riwayat status')->disabled()->rows(6),
                     ])
                     ->fillForm(fn (PickupRequest $record): array => self::inspectionData($record)),
-                Action::make('accept')
-                    ->label('Terima pengajuan')
-                    ->icon(Heroicon::OutlinedCheckCircle)
-                    ->color('success')
-                    ->visible(fn (PickupRequest $record): bool => $record->status->value === 'menunggu_pemeriksaan')
-                    ->authorize('review')
-                    ->action(function (PickupRequest $record): PickupRequest {
-                        return app(PickupService::class)->review(self::actor(), $record, true);
-                    }),
                 Action::make('reject')
                     ->label('Tolak')
                     ->icon(Heroicon::OutlinedXCircle)
@@ -127,16 +121,17 @@ final class PickupRequestResource extends Resource
                     ->schema([Textarea::make('reason')->label('Alasan penolakan')->required()->minLength(10)->maxLength(1000)->rows(4)])
                     ->action(fn (PickupRequest $record, array $data): PickupRequest => app(PickupService::class)->review(self::actor(), $record, false, (string) $data['reason'])),
                 Action::make('schedule')
-                    ->label('Jadwalkan')
+                    ->label('Terima dan jadwalkan')
                     ->icon(Heroicon::OutlinedCalendarDays)
-                    ->visible(fn (PickupRequest $record): bool => $record->status->value === 'diterima')
-                    ->authorize('schedule')
+                    ->visible(fn (PickupRequest $record): bool => in_array($record->status->value, ['menunggu_pemeriksaan', 'diterima'], true))
+                    ->authorize(fn (PickupRequest $record): bool => self::actor()->can('schedule', $record) && ($record->status !== PickupStatus::PendingReview || self::actor()->can('review', $record)))
                     ->schema([
                         Select::make('assigned_staff_id')->label('Petugas penjemputan')->helperText('Hanya petugas aktif pada area penjemputan ini yang dapat dipilih.')->options(fn (PickupRequest $record): array => User::query()->where('users.status', 'aktif')->whereHas('roles', fn (Builder $roles): Builder => $roles->where('roles.name', 'petugas'))->whereHas('staffProfile.serviceAreas', fn (Builder $assignment): Builder => $assignment->where('staff_service_areas.service_area_id', $record->service_area_id)->where(fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_from')->orWhereDate('staff_service_areas.active_from', '<=', today()))->where(fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_to')->orWhereDate('staff_service_areas.active_to', '>=', today()))->whereHas('serviceArea', fn (Builder $area): Builder => $area->where('service_areas.is_active', true)))->orderBy('users.name')->pluck('users.name', 'users.id')->all())->required(),
                         DatePicker::make('scheduled_date')->label('Tanggal jadwal')->helperText('Pilih tanggal mulai hari ini sampai batas waktu pemesanan.')->minDate(today('Asia/Jakarta'))->maxDate(today('Asia/Jakarta')->addDays((int) config('app.pickup_booking_horizon_days', 30)))->required(),
                     ])
+                    ->fillForm(fn (PickupRequest $record): array => ['scheduled_date' => $record->selected_date->max(today('Asia/Jakarta'))->toDateString()])
                     ->action(function (PickupRequest $record, array $data): PickupRequest {
-                        return app(PickupService::class)->schedule(self::actor(), $record, User::query()->findOrFail((int) $data['assigned_staff_id']), (string) $data['scheduled_date']);
+                        return app(PickupService::class)->acceptAndSchedule(self::actor(), $record, User::query()->findOrFail((int) $data['assigned_staff_id']), (string) $data['scheduled_date']);
                     }),
             ]);
     }

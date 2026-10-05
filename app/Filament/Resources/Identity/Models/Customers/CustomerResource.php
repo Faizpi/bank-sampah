@@ -110,13 +110,16 @@ final class CustomerResource extends Resource
                         'service_region' => $record->customerProfile?->serviceRegion(),
                     ];
                 }),
-                EditAction::make()->label('Ubah')->authorize('updateCustomer')->using(fn (User $record, array $data): User => app(ManageUsers::class)->updateCustomer(self::actor(), $record, [
-                    'name' => $data['name'],
-                    'phone' => $data['phone'],
-                    'email' => $data['email'] ?? null,
-                    'rt_id' => (int) $data['rt_id'],
-                    'address' => $data['address'],
-                ])),
+                EditAction::make()->label('Ubah')->authorize('updateCustomer')
+                    ->fillForm(fn (User $record): array => ['name' => $record->name, 'username' => $record->username, 'phone' => $record->phone, 'email' => $record->email, 'rt_id' => $record->customerProfile?->rt_id, 'address' => $record->customerProfile?->address])
+                    ->using(fn (User $record, array $data): User => app(ManageUsers::class)->updateCustomer(self::actor(), $record, [
+                        'name' => $data['name'],
+                        'username' => $data['username'],
+                        'phone' => $data['phone'],
+                        'email' => $data['email'] ?? null,
+                        'rt_id' => (int) $data['rt_id'],
+                        'address' => $data['address'],
+                    ])),
                 Action::make('issueIdentity')->label('Terbitkan kartu dan QR')->icon(Heroicon::OutlinedQrCode)->color('success')->authorize(fn (User $record): bool => auth()->user() instanceof User && auth()->user()->can('manageView', $record) && app(PermissionChecker::class)->allows(auth()->user(), 'customer.card.issue'))->visible(fn (User $record): bool => $record->customerProfile?->customer_number === null)->requiresConfirmation()->modalHeading('Terbitkan kartu dan QR?')->modalDescription('Nomor nasabah dan QR baru akan diterbitkan. QR tidak ditampilkan di panel ini.')->modalSubmitActionLabel('Terbitkan kartu dan QR')->action(function (User $record): void {
                     app(ManageCustomerIdentity::class)->issue(self::actor(), $record);
                 })->successNotificationTitle('Kartu dan QR nasabah diterbitkan.'),

@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Actions\Auth\ResolveCitizenVerification;
-use App\Domain\CustomersRegions\Contracts\QrToken;
+use App\Domain\CustomersRegions\Models\Dusun;
+use App\Domain\CustomersRegions\Models\Rt;
+use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
+use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
+use App\Filament\Auth\Responses\BackofficeLoginResponse;
 use App\Livewire\Citizen\CustomerCard;
 use App\Livewire\Officer\Dashboard as OfficerDashboard;
 use App\Models\User;
-use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -30,7 +34,7 @@ final class MultiRoleRedirectAndQrActivationTest extends TestCase
             'status' => UserStatus::Active,
         ]);
         $role = Role::query()->create(['name' => 'superadmin', 'description' => 'Superadmin']);
-        $permission = \App\Domain\Identity\Models\Permission::query()->create(['name' => 'backoffice.access', 'description' => 'Backoffice']);
+        $permission = Permission::query()->create(['name' => 'backoffice.access', 'description' => 'Backoffice']);
         $role->permissions()->attach($permission);
         $superadmin->roles()->attach($role);
 
@@ -39,7 +43,7 @@ final class MultiRoleRedirectAndQrActivationTest extends TestCase
 
         $this->actingAs($superadmin);
 
-        $loginResponse = new \App\Filament\Auth\Responses\BackofficeLoginResponse;
+        $loginResponse = new BackofficeLoginResponse;
         $response = $loginResponse->toResponse(request());
 
         // Must redirect to backoffice, NOT /dashboard/petugas
@@ -56,8 +60,8 @@ final class MultiRoleRedirectAndQrActivationTest extends TestCase
             'status' => UserStatus::Active,
         ]);
         $role = Role::query()->create(['name' => 'superadmin', 'description' => 'Superadmin']);
-        $perm1 = \App\Domain\Identity\Models\Permission::query()->create(['name' => 'user.view', 'description' => 'User view']);
-        $perm2 = \App\Domain\Identity\Models\Permission::query()->create(['name' => 'backoffice.access', 'description' => 'Backoffice access']);
+        $perm1 = Permission::query()->create(['name' => 'user.view', 'description' => 'User view']);
+        $perm2 = Permission::query()->create(['name' => 'backoffice.access', 'description' => 'Backoffice access']);
         $role->permissions()->attach([$perm1->id, $perm2->id]);
         $superadmin->roles()->attach($role);
 
@@ -70,9 +74,9 @@ final class MultiRoleRedirectAndQrActivationTest extends TestCase
     public function test_legacy_sh_customer_number_is_normalized_on_customer_profile(): void
     {
         $user = User::factory()->create(['status' => UserStatus::Active]);
-        $dusun = \App\Domain\CustomersRegions\Models\Dusun::query()->create(['code' => 'DSN-1', 'name' => 'Dusun 1']);
-        $rw = \App\Domain\CustomersRegions\Models\Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-1', 'name' => 'RW 1']);
-        $rt = \App\Domain\CustomersRegions\Models\Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-1', 'name' => 'RT 1']);
+        $dusun = Dusun::query()->create(['code' => 'DSN-1', 'name' => 'Dusun 1']);
+        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-1', 'name' => 'RW 1']);
+        $rt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-1', 'name' => 'RT 1']);
 
         $profile = CustomerProfile::query()->create([
             'user_id' => $user->id,
@@ -88,14 +92,14 @@ final class MultiRoleRedirectAndQrActivationTest extends TestCase
     {
         $admin = User::factory()->create(['status' => UserStatus::Active]);
         $wargaRole = Role::query()->create(['name' => 'warga', 'description' => 'Warga']);
-        $verifyPerm = \App\Domain\Identity\Models\Permission::query()->create(['name' => 'user.verify', 'description' => 'Verify']);
+        $verifyPerm = Permission::query()->create(['name' => 'user.verify', 'description' => 'Verify']);
         $adminRole = Role::query()->create(['name' => 'admin', 'description' => 'Admin']);
         $adminRole->permissions()->attach($verifyPerm);
         $admin->roles()->attach($adminRole);
 
-        $dusun = \App\Domain\CustomersRegions\Models\Dusun::query()->create(['code' => 'DSN-2', 'name' => 'Dusun 2']);
-        $rw = \App\Domain\CustomersRegions\Models\Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-2', 'name' => 'RW 2']);
-        $rt = \App\Domain\CustomersRegions\Models\Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-2', 'name' => 'RT 2']);
+        $dusun = Dusun::query()->create(['code' => 'DSN-2', 'name' => 'Dusun 2']);
+        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-2', 'name' => 'RW 2']);
+        $rt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-2', 'name' => 'RT 2']);
 
         $pendingUser = User::factory()->create(['status' => UserStatus::PendingVerification]);
         $pendingUser->roles()->attach($wargaRole);
@@ -107,7 +111,7 @@ final class MultiRoleRedirectAndQrActivationTest extends TestCase
         ]);
 
         $resolver = app(ResolveCitizenVerification::class);
-        $resolved = $resolver->verify($admin, $pendingUser, (string) \Illuminate\Support\Str::uuid());
+        $resolved = $resolver->verify($admin, $pendingUser, (string) Str::uuid());
 
         self::assertSame(UserStatus::Active, $resolved->status);
 
@@ -122,13 +126,13 @@ final class MultiRoleRedirectAndQrActivationTest extends TestCase
     {
         $citizen = User::factory()->create(['status' => UserStatus::Active]);
         $wargaRole = Role::query()->create(['name' => 'warga', 'description' => 'Warga']);
-        $viewPerm = \App\Domain\Identity\Models\Permission::query()->create(['name' => 'customer.view', 'description' => 'View']);
+        $viewPerm = Permission::query()->create(['name' => 'customer.view', 'description' => 'View']);
         $wargaRole->permissions()->attach($viewPerm);
         $citizen->roles()->attach($wargaRole);
 
-        $dusun = \App\Domain\CustomersRegions\Models\Dusun::query()->create(['code' => 'DSN-3', 'name' => 'Dusun 3']);
-        $rw = \App\Domain\CustomersRegions\Models\Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-3', 'name' => 'RW 3']);
-        $rt = \App\Domain\CustomersRegions\Models\Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-3', 'name' => 'RT 3']);
+        $dusun = Dusun::query()->create(['code' => 'DSN-3', 'name' => 'Dusun 3']);
+        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-3', 'name' => 'RW 3']);
+        $rt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-3', 'name' => 'RT 3']);
 
         CustomerProfile::query()->create([
             'user_id' => $citizen->id,

@@ -9,6 +9,7 @@ use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
 use App\Support\StatusLabel;
+use App\Support\WorkQueue;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -70,6 +71,8 @@ final class WithdrawalRequestResource extends Resource
                 TextColumn::make('expires_at')->label('Batas')->dateTime('d M Y H:i'),
             ])
             ->filters([
+                SelectFilter::make('queue')->label('Antrean kerja')->options(['withdrawal_unassigned' => 'Belum ditugaskan', 'withdrawal_expiring' => 'Segera kedaluwarsa'])
+                    ->query(fn (Builder $query, array $data): Builder => empty($data['value']) ? $query : WorkQueue::apply($query, (string) $data['value'])),
                 SelectFilter::make('status')->label('Status')->options([
                     WithdrawalStatus::PendingVerification->value => 'Menunggu verifikasi',
                     WithdrawalStatus::Approved->value => 'Disetujui',
@@ -105,7 +108,7 @@ final class WithdrawalRequestResource extends Resource
                     ])
                     ->fillForm(fn (WithdrawalRequest $record): array => self::inspectionData($record)),
                 Action::make('approve')
-                    ->label('Setujui')
+                    ->label('Setujui dan tetapkan bendahara')
                     ->icon(Heroicon::OutlinedCheckCircle)
                     ->color('success')
                     ->visible(fn (WithdrawalRequest $record): bool => $record->status->value === 'menunggu_verifikasi')
@@ -113,8 +116,14 @@ final class WithdrawalRequestResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading(fn (WithdrawalRequest $record): string => "Setujui pencairan {$record->request_number}?")
                     ->modalDescription('Dana tetap ditahan dan pengajuan diteruskan ke petugas pembayaran. Periksa penerima dan bukti sebelum menyetujui.')
-                    ->modalSubmitActionLabel('Setujui pencairan')
-                    ->action(fn (WithdrawalRequest $record): WithdrawalRequest => app(WithdrawalService::class)->approve(self::actor(), $record, true)),
+                    ->modalSubmitActionLabel('Setujui dan tetapkan bendahara')
+                    ->schema([
+                        TextInput::make('customer')->label('Penerima')->disabled()->dehydrated(false),
+                        TextInput::make('amount')->label('Nominal')->disabled()->dehydrated(false),
+                        Select::make('payer_id')->label('Bendahara pembayaran')->helperText('Hanya bendahara aktif di area pengambilan, selain pemberi persetujuan.')->options(fn (WithdrawalRequest $record): array => self::payerOptions($record))->required(),
+                    ])
+                    ->fillForm(fn (WithdrawalRequest $record): array => self::inspectionData($record))
+                    ->action(fn (WithdrawalRequest $record, array $data): WithdrawalRequest => app(WithdrawalService::class)->approveAndAssign(self::actor(), $record, User::query()->findOrFail((int) $data['payer_id']))),
                 Action::make('reject')
                     ->label('Tolak')
                     ->icon(Heroicon::OutlinedXCircle)
@@ -128,7 +137,7 @@ final class WithdrawalRequestResource extends Resource
                     ->icon(Heroicon::OutlinedUser)
                     ->visible(fn (WithdrawalRequest $record): bool => $record->status->value === 'disetujui')
                     ->authorize('approve')
-                    ->schema([Select::make('payer_id')->label('Bendahara pembayaran')->helperText('Pilih bendahara aktif yang bertugas di area warga.')->options(fn (WithdrawalRequest $record): array => User::query()->where('users.status', 'aktif')->whereHas('roles', fn (Builder $roles): Builder => $roles->where('roles.name', 'bendahara'))->whereHas('staffProfile.serviceAreas', fn (Builder $assignment): Builder => $assignment->where('staff_service_areas.service_area_id', $record->service_area_id)->where(fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_from')->orWhereDate('staff_service_areas.active_from', '<=', today()))->where(fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_to')->orWhereDate('staff_service_areas.active_to', '>=', today()))->whereHas('serviceArea', fn (Builder $area): Builder => $area->where('service_areas.is_active', true)))->orderBy('users.name')->pluck('users.name', 'users.id')->all())->required()])
+                    ->schema([Select::make('payer_id')->label('Bendahara pembayaran')->helperText('Hanya bendahara aktif di area pengambilan, selain pemberi persetujuan.')->options(fn (WithdrawalRequest $record): array => self::payerOptions($record))->required()])
                     ->action(fn (WithdrawalRequest $record, array $data): WithdrawalRequest => app(WithdrawalService::class)->assignPayer(self::actor(), $record, User::query()->findOrFail((int) $data['payer_id']))),
             ]);
     }
@@ -167,6 +176,20 @@ final class WithdrawalRequestResource extends Resource
             'evidence' => data_get($record->proofMedia, 'original_name') ?? ($record->assistedService?->evidence_media_id === null ? 'Belum ada bukti privat.' : 'Bukti persetujuan privat tersimpan.'),
             'impact' => $impact,
         ];
+    }
+
+    /** @return array<int, string> */
+    private static function payerOptions(WithdrawalRequest $record): array
+    {
+        return User::query()->where('status', 'aktif')->whereKeyNot($record->approver_id ?? self::actor()->id)
+            ->whereHas('roles', fn (Builder $roles): Builder => $roles->where('name', 'bendahara'))
+            ->whereHas('roles.permissions', fn (Builder $permissions): Builder => $permissions->where('name', 'withdrawal.pay'))
+            ->whereHas('staffProfile.serviceAreas', fn (Builder $assignments): Builder => $assignments
+                ->where('service_area_id', $record->service_area_id)
+                ->where(fn (Builder $dates): Builder => $dates->whereNull('active_from')->orWhereDate('active_from', '<=', today()))
+                ->where(fn (Builder $dates): Builder => $dates->whereNull('active_to')->orWhereDate('active_to', '>=', today()))
+                ->whereHas('serviceArea', fn (Builder $areas): Builder => $areas->where('is_active', true)))
+            ->orderBy('name')->pluck('name', 'id')->all();
     }
 
     private static function actor(): User

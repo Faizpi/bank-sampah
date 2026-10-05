@@ -215,6 +215,26 @@ final class GroceryWaveTest extends TestCase
         self::assertDatabaseCount('balance_holds', 1);
     }
 
+    public function test_approved_package_can_be_marked_ready_in_one_step_without_outflow(): void
+    {
+        [$customer, $package] = $this->customerAndPackage();
+        $this->grant($customer, ['grocery.request', 'grocery.view']);
+        $this->credit($customer, 100000);
+        $admin = User::factory()->create();
+        $this->grant($admin, ['grocery.approve', 'grocery.view', 'user.view.all']);
+        $staff = User::factory()->create();
+        $this->grant($staff, ['grocery.prepare', 'grocery.view', 'user.view.all']);
+        $service = app(GroceryService::class);
+        $request = $service->request($customer, ['package_id' => $package->id], 'audit-grocery-ready-0001');
+        $request = $service->approve($admin, $request, true, 'Paket tersedia secara fisik.');
+        $ready = $service->ready($staff, $request);
+        self::assertSame(GroceryStatus::ReadyForPickup, $ready->status);
+        self::assertSame($staff->id, $ready->prepared_by_id);
+        self::assertNotNull($ready->prepared_at);
+        self::assertSame(BalanceHold::STATUS_ACTIVE, $ready->balanceHold->status);
+        self::assertSame(0, LedgerEntry::where('direction', LedgerEntry::DIRECTION_OUT)->count());
+    }
+
     public function test_lane_b_rejects_inactive_package_insufficient_balance_and_conflicting_retry_without_effects(): void
     {
         [$customer, $package] = $this->customerAndPackage();

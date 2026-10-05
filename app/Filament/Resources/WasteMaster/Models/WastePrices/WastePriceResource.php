@@ -77,7 +77,7 @@ final class WastePriceResource extends Resource
                 })
                 ->state(fn (WastePrice $record): string => $record->effectiveFromDate()->isFuture()
                     ? 'Akan datang'
-                    : ($record->effectiveToDate() === null || $record->effectiveToDate()?->isFuture() ? 'Aktif' : 'Selesai')),
+                    : ($record->effectiveToDate() === null || $record->effectiveToDate()->isFuture() ? 'Aktif' : 'Selesai')),
             TextColumn::make('createdBy.name')->label('Dibuat oleh')->placeholder('Sistem'),
         ])->defaultSort('effective_from', 'desc')->recordActions([
             Action::make('replace')

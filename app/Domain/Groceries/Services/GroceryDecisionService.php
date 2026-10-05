@@ -85,12 +85,15 @@ final readonly class GroceryDecisionService
         return DB::transaction(function () use ($actor, $redemption, $next, $event, $reason): GroceryRedemption {
             $locked = $this->lock($redemption);
             $this->assertScope($actor, $locked);
+            if ($locked->status === $next) {
+                return $locked;
+            }
             $this->assertTransition($locked, $next);
             $old = $locked->status;
             $locked->forceFill([
                 'status' => $next,
-                'prepared_by_id' => $next === GroceryStatus::Preparing ? $actor->id : $locked->prepared_by_id,
-                'prepared_at' => $next === GroceryStatus::Preparing ? now() : $locked->prepared_at,
+                'prepared_by_id' => $locked->prepared_by_id ?? $actor->id,
+                'prepared_at' => $locked->prepared_at ?? now(),
                 'ready_at' => $next === GroceryStatus::ReadyForPickup ? now() : $locked->ready_at,
             ])->save();
             $locked->statusHistory()->create(['old_status' => $old->value, 'new_status' => $next->value, 'actor_id' => $actor->id, 'reason' => $reason, 'occurred_at' => now()]);

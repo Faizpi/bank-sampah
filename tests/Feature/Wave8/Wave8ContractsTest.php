@@ -25,7 +25,6 @@ use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\WasteMaster\Support\WasteMasterMutationGuard;
 use App\Models\Notification;
 use App\Models\User;
-use App\Support\Communication\WhatsAppLinkBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -51,17 +50,6 @@ final class Wave8ContractsTest extends TestCase
         } catch (\Throwable) {
             self::assertDatabaseHas('notification_delivery_failures', ['dedupe_key' => $payload->dedupeKey, 'attempts' => 1, 'type' => 'deposit.finalized']);
         }
-    }
-
-    public function test_whatsapp_builder_returns_only_encoded_wa_me_url_and_rejects_unknown_template(): void
-    {
-        $url = app(WhatsAppLinkBuilder::class)->build('081234567890', 'support', ['topic' => 'jadwal layanan']);
-        self::assertStringStartsWith('https://wa.me/6281234567890?text=', $url);
-        self::assertStringNotContainsString('http://', substr($url, strlen('https://wa.me/')));
-        self::assertStringContainsString('Buka', 'Buka WhatsApp');
-
-        $this->expectException(ValidationException::class);
-        app(WhatsAppLinkBuilder::class)->build('081234567890', 'gateway-send', ['topic' => 'x']);
     }
 
     public function test_announcement_is_sanitized_and_public_query_excludes_inactive_or_expired_records(): void

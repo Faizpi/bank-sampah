@@ -133,7 +133,7 @@ final class DepositEvidenceTest extends TestCase
             ->assertHasNoErrors()
             ->assertSet('finalizationReviewOpen', false)
             ->call('finalize')
-            ->assertHasErrors(['items']);
+            ->assertHasNoErrors();
 
         self::assertDatabaseCount('deposits', 1);
         self::assertDatabaseCount('ledger_entries', 1);

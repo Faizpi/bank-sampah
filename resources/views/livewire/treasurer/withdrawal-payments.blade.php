@@ -9,7 +9,7 @@
             <p class="text-label font-semibold text-harvest-gold">Bendahara</p>
             <h1 id="withdrawal-payments-title" class="mt-2 text-pretty text-h1 font-bold text-deep-green">Pembayaran pencairan</h1>
             <p class="mt-3 max-w-3xl text-pretty text-body text-text-secondary">
-                Pembayaran hanya dapat dilakukan oleh bendahara atau petugas yang ditugaskan. Pilih pencairan yang menjadi tanggung jawab Anda. Verifikasi penerima dan bukti sebelum membayar.
+                Pembayaran hanya dapat dilakukan oleh bendahara aktif yang ditugaskan. Pilih pencairan yang menjadi tanggung jawab Anda. Verifikasi penerima dan bukti sebelum membayar.
             </p>
         </div>
         <x-ui.mascot variant="12" bubble="Bayar tepat waktu!" bubblePosition="top" class="h-28 w-auto shrink-0" />
@@ -193,26 +193,15 @@
                 @error('proof')
                     <p class="mt-2 text-body-sm font-semibold text-terracotta">{{ $message }}</p>
                 @enderror
-                <div class="flex flex-col items-stretch sm:flex-row sm:justify-end">
-                    <x-ui.button type="button" wire:click="reviewPayment" wire:loading.attr="disabled" wire:target="reviewPayment" data-photo-picker-action>
-                        <span wire:loading.remove wire:target="reviewPayment">Tinjau sebelum bayar</span>
-                        <span wire:loading wire:target="reviewPayment">Memeriksa...</span>
-                    </x-ui.button>
-                </div>
-
-                @if ($showPaymentReview)
-                    <div class="rounded-md border-2 border-harvest-gold bg-warning-bg p-4" role="alert">
-                        <h3 class="text-title font-bold text-deep-green">Konfirmasi pembayaran final</h3>
-                        <p class="mt-1 text-body-sm text-text-primary">Pembayaran akan mengubah dana ditahan menjadi saldo keluar dan tidak dapat diulang. Pastikan penerima, nominal, dan bukti sudah benar.</p>
-                        <div class="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-                            <x-ui.button type="button" variant="secondary" wire:click="cancelPaymentReview">Ubah data</x-ui.button>
-                            <x-ui.button type="button" wire:click="pay" wire:loading.attr="disabled" wire:target="pay">
-                                <span wire:loading.remove wire:target="pay">Bayar dan catat bukti</span>
-                                <span wire:loading wire:target="pay">Memproses...</span>
-                            </x-ui.button>
-                        </div>
+                <div class="rounded-xl border border-border bg-warning-bg p-4">
+                    <p class="text-body-sm text-deep-green">Periksa penerima, nominal, dan foto. Tekan tombol ini hanya setelah uang tunai diserahkan. Sistem mencatat pembayaran, bukan mengirim uang.</p>
+                    <div class="mt-4 flex justify-end">
+                        <x-ui.button type="button" wire:click="pay" wire:loading.attr="disabled" wire:target="pay" data-photo-picker-action>
+                            <span wire:loading.remove wire:target="pay">Uang tunai sudah diserahkan - catat pembayaran</span>
+                            <span wire:loading wire:target="pay">Mencatat pembayaran...</span>
+                        </x-ui.button>
                     </div>
-                @endif
+                </div>
             </div>
         </x-ui.panel>
     @endif

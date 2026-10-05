@@ -253,7 +253,7 @@ final class WithdrawalWaveTest extends TestCase
 
         Livewire::actingAs($petugas)
             ->test(WithdrawalPayments::class)
-            ->assertSee('Pembayaran hanya dapat dilakukan oleh bendahara atau petugas yang ditugaskan.');
+            ->assertSee('Pembayaran hanya dapat dilakukan oleh bendahara aktif yang ditugaskan.');
 
         $this->expectException(AuthorizationException::class);
         $service->pay($petugas, $withdrawal, 'kartu_nasabah', (string) $customer->customerProfile?->customer_number, UploadedFile::fake()->image('unassigned.png'), 'w6-role-boundary-payment-0001');
@@ -289,7 +289,7 @@ final class WithdrawalWaveTest extends TestCase
             ->assertSee('Nomor nasabah adalah kode unik warga.');
     }
 
-    public function test_payment_requires_review_confirmation_before_any_financial_effect(): void
+    public function test_payment_uses_one_explicit_confirmation_with_valid_identity_and_evidence(): void
     {
         Storage::fake('media_private');
         [$customer, $area] = $this->context();
@@ -307,10 +307,10 @@ final class WithdrawalWaveTest extends TestCase
             ->set('recipientReference', (string) $customer->customerProfile?->customer_number)
             ->set('proof', UploadedFile::fake()->image('payment-proof.png'))
             ->call('pay')
-            ->assertHasErrors(['selectedWithdrawalId']);
+            ->assertHasNoErrors();
 
-        self::assertSame(WithdrawalStatus::ReadyForPickup, $withdrawal->fresh()->status);
-        self::assertSame(0, LedgerEntry::query()->where('source_type', WithdrawalRequest::class)->where('direction', LedgerEntry::DIRECTION_OUT)->count());
+        self::assertSame(WithdrawalStatus::Paid, $withdrawal->fresh()->status);
+        self::assertSame(1, LedgerEntry::query()->where('source_type', WithdrawalRequest::class)->where('direction', LedgerEntry::DIRECTION_OUT)->count());
     }
 
     public function test_treasurer_success_receipt_renders_all_payment_facts(): void
@@ -513,6 +513,31 @@ final class WithdrawalWaveTest extends TestCase
             self::assertSame(WithdrawalStatus::Approved, $pending->fresh()->status);
             self::assertSame(BalanceHold::STATUS_ACTIVE, $pending->fresh()->balanceHold->status);
         }
+    }
+
+    public function test_combined_approval_and_assignment_is_atomic_and_repeatable(): void
+    {
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request', 'withdrawal.view']);
+        $this->credit($customer, 100000);
+        $admin = User::factory()->create();
+        $this->grant($admin, ['withdrawal.approve', 'withdrawal.view', 'user.view.all']);
+        $service = app(WithdrawalService::class);
+        $request = $service->request($customer, $this->requestPayload($area) + ['amount' => '40000'], 'audit-combined-withdrawal-01');
+        try {
+            $service->approveAndAssign($admin, $request, User::factory()->create());
+            self::fail('An ineligible payer must roll back the approval.');
+        } catch (ValidationException) {
+            self::assertSame(WithdrawalStatus::PendingVerification, $request->fresh()->status);
+            self::assertNull($request->fresh()->approver_id);
+        }
+        $payer = $this->payerFor($area);
+        $ready = $service->approveAndAssign($admin, $request, $payer);
+        $retry = $service->approveAndAssign($admin, $request, $payer);
+        self::assertSame(WithdrawalStatus::ReadyForPickup, $ready->status);
+        self::assertSame($ready->id, $retry->id);
+        self::assertSame(1, AuditLog::where('action', 'withdrawal.approved')->count());
+        self::assertSame(0, LedgerEntry::where('direction', LedgerEntry::DIRECTION_OUT)->count());
     }
 
     public function test_form_retry_returns_the_original_request_after_all_balance_is_held(): void

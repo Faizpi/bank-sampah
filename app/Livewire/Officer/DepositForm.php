@@ -190,9 +190,7 @@ final class DepositForm extends Component
 
     public function finalize(DepositService $service): void
     {
-        if (! $this->finalizationReviewOpen) {
-            $this->addError('items', 'Tinjau lalu konfirmasi sebelum mencatat setoran.');
-
+        if ($this->draft !== null && ! $this->draft->isDraft()) {
             return;
         }
 
@@ -359,7 +357,7 @@ final class DepositForm extends Component
             }
 
             try {
-                $price = app(ResolveWastePrice::class)->resolve($type, (int) $condition->id, $this->draft?->occurred_at ?? now('Asia/Jakarta'));
+                $price = app(ResolveWastePrice::class)->resolve($type, (int) $condition->id, $this->draft->occurred_at ?? now('Asia/Jakarta'));
                 $snapshot = $price->snapshot()->withWeight($weight);
             } catch (Throwable) {
                 $complete = false;

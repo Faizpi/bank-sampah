@@ -7,9 +7,11 @@ namespace Tests\Feature\Authorization;
 use App\Actions\Auth\ChangePassword;
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Models\AuditLog;
+use App\Domain\CustomersRegions\Actions\ManageRegions;
 use App\Domain\Identity\Actions\ManageRoles;
 use App\Domain\Identity\Actions\ManageUsers;
 use App\Domain\Identity\Models\Role;
+use App\Domain\Identity\Models\StaffProfile;
 use App\Filament\Pages\TechnicalHealthPage;
 use App\Http\Middleware\EnsureSessionIsFresh;
 use App\Http\Middleware\RequirePermission;
@@ -131,5 +133,37 @@ final class AuditSecurityRegressionTest extends TestCase
             'components' => [['snapshot' => $snapshot, 'updates' => [], 'calls' => [['path' => '', 'method' => '$refresh', 'params' => []]]]],
         ], ['X-Livewire' => 'true']);
         $response->assertForbidden();
+    }
+
+    public function test_remembered_authentication_without_original_timestamps_requires_login(): void
+    {
+        $this->actingAs($this->actor('superadmin'));
+        $guard = auth()->guard();
+        (new \ReflectionProperty($guard, 'viaRemember'))->setValue($guard, true);
+        $response = $this->get('/backoffice')->assertRedirect();
+        self::assertStringEndsWith('/login', $response->headers->get('Location'));
+        $this->assertGuest();
+    }
+
+    public function test_unified_user_form_preserves_identity_and_rejects_empty_assignments(): void
+    {
+        $admin = $this->actor('superadmin');
+        $staff = $this->actor('petugas');
+        $staff->forceFill(['phone' => '6281234500099', 'email' => 'synthetic@example.test'])->save();
+        $regions = app(ManageRegions::class);
+        $dusun = $regions->createDusun($admin, 'EDIT-DS', 'Dusun uji');
+        $rw = $regions->createRw($admin, $dusun, 'EDIT-RW', 'RW uji');
+        $rt = $regions->createRt($admin, $rw, 'EDIT-RT', 'RT uji');
+        $area = $regions->createServiceArea($admin, 'Area edit', [$rt]);
+        StaffProfile::create(['user_id' => $staff->id, 'staff_number' => 'STF-EDIT-001', 'service_area_id' => $area->id, 'active_from' => today()]);
+        $this->actingAs($admin);
+        Livewire::test(\App\Filament\Resources\Identity\Models\Users\Pages\ManageUsers::class)
+            ->mountTableAction('edit', $staff)
+            ->assertSchemaStateSet(['name' => $staff->name, 'username' => $staff->username, 'phone' => $staff->phone, 'email' => $staff->email]);
+        Livewire::test(\App\Filament\Resources\Identity\Models\Users\Pages\ManageUsers::class)
+            ->callTableAction('edit', $staff, data: ['name' => $staff->name, 'username' => $staff->username, 'phone' => $staff->phone, 'email' => $staff->email, 'service_areas' => [], 'new_role_id' => null])
+            ->assertHasActionErrors(['service_areas']);
+        self::assertSame('synthetic@example.test', $staff->fresh()->email);
+        self::assertSame(1, $staff->staffProfile->serviceAreas()->count());
     }
 }

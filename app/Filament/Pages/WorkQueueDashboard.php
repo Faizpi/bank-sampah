@@ -8,13 +8,11 @@ use App\Authorization\PermissionChecker;
 use App\Domain\Communication\Enums\AnnouncementStatus;
 use App\Domain\Communication\Services\AnnouncementService;
 use App\Domain\CustomersRegions\Models\ServiceArea;
-use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Services\GroceryService;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
-use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Services\PickupService;
 use App\Domain\Programs\Enums\TargetStatus;
 use App\Domain\Programs\Services\TargetService;
@@ -28,6 +26,7 @@ use App\Filament\Resources\Pickups\Models\PickupRequests\PickupRequestResource;
 use App\Filament\Resources\Programs\Models\CollectionTargets\CollectionTargetResource;
 use App\Filament\Resources\Withdrawals\Models\WithdrawalRequests\WithdrawalRequestResource;
 use App\Models\User;
+use App\Support\WorkQueue;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -78,23 +77,17 @@ final class WorkQueueDashboard extends Page
             $pickupQuery = app(PickupService::class)->visibleFor($actor);
             $queues[] = [
                 'label' => 'Pickup hari ini',
-                'count' => (clone $pickupQuery)->whereIn('status', [PickupStatus::Scheduled, PickupStatus::EnRoute, PickupStatus::PickedUp])->where(function ($query) use ($today): void {
-                    $query->whereDate('scheduled_date', $today)->orWhereDate('selected_date', $today);
-                })->count(),
+                'count' => WorkQueue::apply(clone $pickupQuery, 'pickup_today')->count(),
                 'description' => 'Pantau penugasan dan keterlambatan.',
                 'cta' => 'Pantau pickup',
-                'href' => PickupRequestResource::getUrl('index'),
+                'href' => PickupRequestResource::getUrl('index', ['filters' => ['queue' => ['value' => 'pickup_today']]]),
             ];
             $queues[] = [
                 'label' => 'Pickup terlambat',
-                'count' => (clone $pickupQuery)->whereIn('status', [PickupStatus::Scheduled, PickupStatus::EnRoute, PickupStatus::PickedUp])->where(function ($query) use ($today): void {
-                    $query->whereDate('scheduled_date', '<', $today)->orWhere(function ($query) use ($today): void {
-                        $query->whereNull('scheduled_date')->whereDate('selected_date', '<', $today);
-                    });
-                })->count(),
+                'count' => WorkQueue::apply(clone $pickupQuery, 'pickup_overdue')->count(),
                 'description' => 'Tindak lanjuti tugas yang melewati jadwal.',
                 'cta' => 'Tinjau pickup',
-                'href' => PickupRequestResource::getUrl('index'),
+                'href' => PickupRequestResource::getUrl('index', ['filters' => ['queue' => ['value' => 'pickup_overdue']]]),
             ];
         }
 
@@ -109,10 +102,10 @@ final class WorkQueueDashboard extends Page
             ];
             $queues[] = [
                 'label' => 'Pencairan belum ditugaskan',
-                'count' => (clone $withdrawalQuery)->where('status', WithdrawalStatus::Approved)->whereNull('payer_id')->count(),
+                'count' => WorkQueue::apply(clone $withdrawalQuery, 'withdrawal_unassigned')->count(),
                 'description' => 'Tetapkan petugas pembayaran untuk pencairan.',
                 'cta' => 'Tetapkan petugas',
-                'href' => WithdrawalRequestResource::getUrl('index'),
+                'href' => WithdrawalRequestResource::getUrl('index', ['filters' => ['queue' => ['value' => 'withdrawal_unassigned']]]),
             ];
         }
 
@@ -120,10 +113,10 @@ final class WorkQueueDashboard extends Page
             $withdrawalQuery ??= app(WithdrawalService::class)->visibleFor($actor);
             $queues[] = [
                 'label' => 'Segera kedaluwarsa',
-                'count' => (clone $withdrawalQuery)->whereIn('status', [WithdrawalStatus::Approved, WithdrawalStatus::ReadyForPickup])->whereBetween('expires_at', [$now, $expiryHorizon])->count(),
+                'count' => WorkQueue::apply(clone $withdrawalQuery, 'withdrawal_expiring')->count(),
                 'description' => 'Selesaikan dalam 2 hari.',
                 'cta' => 'Lihat batas waktu',
-                'href' => WithdrawalRequestResource::getUrl('index'),
+                'href' => WithdrawalRequestResource::getUrl('index', ['filters' => ['queue' => ['value' => 'withdrawal_expiring']]]),
             ];
         }
 
@@ -131,10 +124,10 @@ final class WorkQueueDashboard extends Page
             $groceryQuery = app(GroceryService::class)->visibleFor($actor);
             $queues[] = [
                 'label' => 'Penukaran sembako',
-                'count' => (clone $groceryQuery)->where('status', GroceryStatus::PendingVerification)->count(),
+                'count' => WorkQueue::apply(clone $groceryQuery, 'grocery_pending')->count(),
                 'description' => 'Periksa ketersediaan dan setujui pengajuan.',
                 'cta' => 'Tinjau sembako',
-                'href' => GroceryRedemptionResource::getUrl('index'),
+                'href' => GroceryRedemptionResource::getUrl('index', ['filters' => ['queue' => ['value' => 'grocery_pending']]]),
             ];
         }
 

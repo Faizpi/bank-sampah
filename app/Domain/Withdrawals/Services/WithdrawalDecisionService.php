@@ -32,7 +32,7 @@ final readonly class WithdrawalDecisionService
         private VisibleUsers $visibleUsers,
     ) {}
 
-    public function approve(User $actor, WithdrawalRequest $withdrawal, bool $approved, ?string $reason = null, ?string $location = null, ?string $date = null): WithdrawalRequest
+    public function approve(User $actor, WithdrawalRequest $withdrawal, bool $approved, ?string $reason = null, ?string $location = null, ?string $date = null, bool $notify = true): WithdrawalRequest
     {
         $this->authorize($actor, 'withdrawal.approve');
         $this->assertApprovalScope($actor, $withdrawal);
@@ -41,7 +41,7 @@ final readonly class WithdrawalDecisionService
         }
         $reason = $approved ? null : $this->requiredReason($reason);
 
-        return DB::transaction(function () use ($actor, $withdrawal, $approved, $reason, $location, $date): WithdrawalRequest {
+        return DB::transaction(function () use ($actor, $withdrawal, $approved, $reason, $location, $date, $notify): WithdrawalRequest {
             $locked = $this->lockWithdrawal($withdrawal);
             $next = $approved ? WithdrawalStatus::Approved : WithdrawalStatus::Rejected;
             $this->assertTransition($locked, $next);
@@ -62,7 +62,9 @@ final readonly class WithdrawalDecisionService
             }
             $locked->statusHistory()->create(['old_status' => $old->value, 'new_status' => $next->value, 'actor_id' => $actor->id, 'reason' => $reason ?? 'Pengajuan disetujui.', 'occurred_at' => now()]);
             $this->auditLogger->record($actor, $approved ? 'withdrawal.approved' : 'withdrawal.rejected', $locked, ['status' => $old->value], ['status' => $next->value, 'reason' => $reason], $this->correlationId());
-            $this->notify($locked, $approved ? 'Pencairan disetujui' : 'Pencairan ditolak', $approved ? 'Pengajuan '.$locked->request_number.' disetujui.' : 'Pengajuan '.$locked->request_number.' ditolak.', $approved ? 'withdrawal.approved' : 'withdrawal.rejected');
+            if ($notify) {
+                $this->notify($locked, $approved ? 'Pencairan disetujui' : 'Pencairan ditolak', $approved ? 'Pengajuan '.$locked->request_number.' disetujui.' : 'Pengajuan '.$locked->request_number.' ditolak.', $approved ? 'withdrawal.approved' : 'withdrawal.rejected');
+            }
 
             return $locked->fresh(['balanceHold', 'customer', 'approver']);
         });
@@ -95,6 +97,22 @@ final readonly class WithdrawalDecisionService
             $this->notify($locked, 'Pencairan siap diambil', 'Bendahara pembayaran telah ditetapkan untuk pengajuan '.$locked->request_number.'.', 'withdrawal.ready');
 
             return $locked->fresh(['balanceHold', 'customer', 'payer']);
+        });
+    }
+
+    public function approveAndAssign(User $actor, WithdrawalRequest $withdrawal, User $payer): WithdrawalRequest
+    {
+        $this->authorize($actor, 'withdrawal.approve');
+        $this->assertApprovalScope($actor, $withdrawal);
+
+        return DB::transaction(function () use ($actor, $withdrawal, $payer): WithdrawalRequest {
+            $locked = $this->lockWithdrawal($withdrawal);
+            if ($locked->status === WithdrawalStatus::ReadyForPickup && $locked->approver_id === $actor->id && $locked->payer_id === $payer->id) {
+                return $locked;
+            }
+            $approved = $this->approve($actor, $locked, true, notify: false);
+
+            return $this->assignPayer($actor, $approved, $payer);
         });
     }
 

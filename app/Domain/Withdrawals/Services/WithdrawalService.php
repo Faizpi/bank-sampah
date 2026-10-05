@@ -36,6 +36,11 @@ final readonly class WithdrawalService
         return $this->decisions->assignPayer($actor, $withdrawal, $payer);
     }
 
+    public function approveAndAssign(User $actor, WithdrawalRequest $withdrawal, User $payer): WithdrawalRequest
+    {
+        return $this->decisions->approveAndAssign($actor, $withdrawal, $payer);
+    }
+
     public function pay(User $actor, WithdrawalRequest $withdrawal, string $recipientVerification, string $recipientReference, UploadedFile $proof, string $idempotencyKey): WithdrawalRequest
     {
         return $this->payments->handle($actor, $withdrawal, $recipientVerification, $recipientReference, $proof, $idempotencyKey);

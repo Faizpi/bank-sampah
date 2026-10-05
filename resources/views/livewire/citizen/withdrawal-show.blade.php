@@ -23,6 +23,7 @@
 @endphp
 
 <section aria-labelledby="withdrawal-detail-title" class="grid gap-6">
+    <x-ui.service-progress :status="$withdrawal->status" :next-step="$withdrawal->status->value === 'siap_diambil' ? 'Bawa kartu atau nomor nasabah ke lokasi pengambilan tunai yang tercantum.' : null" />
     {{-- Page header --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -61,6 +62,8 @@
         </dl>
     </x-ui.panel>
 
+    <details class="rounded-xl border border-border bg-surface p-4">
+        <summary class="cursor-pointer text-label font-semibold text-deep-green">Lihat rincian tahapan</summary>
     <x-ui.panel title="Tahapan pencairan" description="Tahap yang belum tercapai tetap terlihat agar status dan langkah berikutnya mudah dipahami.">
         <x-ui.status-stepper
             :steps="$withdrawalStages"
@@ -71,6 +74,7 @@
             label="Tahapan pencairan"
         />
     </x-ui.panel>
+    </details>
 
     @if ($withdrawal->status->value === 'sudah_dibayar')
         <div class="flex justify-end">

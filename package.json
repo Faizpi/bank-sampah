@@ -4,7 +4,9 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:browser": "node tests/browser/workflow-smoke.mjs",
+        "test:browser-guard": "node --test tests/browser/support/isolated-environment.test.mjs"
     },
     "devDependencies": {
         "@axe-core/playwright": "^4.12.1",

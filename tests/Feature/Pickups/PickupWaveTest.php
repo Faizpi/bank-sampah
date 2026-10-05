@@ -33,7 +33,6 @@ use App\Livewire\Citizen\PickupShow;
 use App\Livewire\Officer\PickupTask;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Filament\Actions\Testing\TestAction;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -405,7 +404,7 @@ final class PickupWaveTest extends TestCase
         }
     }
 
-    public function test_filament_accept_transition_removes_capacity_requirements_and_allows_any_valid_date(): void
+    public function test_filament_combined_schedule_requires_assignment_permission(): void
     {
         [$customer, $area] = $this->context();
         $admin = User::factory()->create();
@@ -418,11 +417,10 @@ final class PickupWaveTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(ManagePickupRequests::class)
-            ->callAction(TestAction::make('accept')->table($pickup))
-            ->assertHasNoActionErrors();
+            ->assertTableActionHidden('schedule', $pickup);
 
-        self::assertSame(PickupStatus::Accepted, $pickup->fresh()->status);
-        self::assertNotNull($pickup->fresh()->accepted_at);
+        self::assertSame(PickupStatus::PendingReview, $pickup->fresh()->status);
+        self::assertNull($pickup->fresh()->accepted_at);
         self::assertDatabaseCount('pickup_capacities', 0);
     }
 
@@ -735,6 +733,32 @@ final class PickupWaveTest extends TestCase
         self::assertSame(PickupStatus::Cancelled, $cancelled->status);
         self::assertNull($cancelled->deposit_id);
         self::assertSame(0, Deposit::query()->count());
+    }
+
+    public function test_combined_accept_and_schedule_rolls_back_when_assignment_is_invalid(): void
+    {
+        [$customer, $area, $type] = $this->context();
+        Storage::fake('media_private');
+        $admin = User::factory()->create();
+        $staff = User::factory()->create();
+        $this->grant($customer, ['pickup.request']);
+        $this->grant($admin, ['pickup.review', 'pickup.schedule', 'pickup.view', 'user.view.all']);
+        $this->grant($staff, ['pickup.execute', 'pickup.view']);
+        $service = app(PickupService::class);
+        $request = $service->submit($customer, $this->requestData($customer, $area), [['waste_type_id' => $type->id, 'estimated_weight_kg' => '1.000']], [UploadedFile::fake()->image('request.jpg')], 'audit-combined-pickup-0001');
+        $date = today()->addDay()->toDateString();
+        try {
+            $service->acceptAndSchedule($admin, $request, $staff, $date);
+            self::fail('Unassigned staff must not leave an accepted request behind.');
+        } catch (ValidationException|AuthorizationException) {
+            self::assertSame(PickupStatus::PendingReview, $request->fresh()->status);
+        }
+        StaffProfile::query()->create(['user_id' => $staff->id, 'staff_number' => 'STF-COMBINED-001', 'service_area_id' => $area->id, 'active_from' => today()]);
+        $scheduled = $service->acceptAndSchedule($admin, $request, $staff, $date);
+        self::assertSame(PickupStatus::Scheduled, $scheduled->status);
+        self::assertNotNull($scheduled->accepted_at);
+        self::assertSame($scheduled->id, $service->acceptAndSchedule($admin, $request, $staff, $date)->id);
+        self::assertSame(1, AuditLog::where('action', 'pickup.accepted')->count());
     }
 
     /** @return array{User, ServiceArea, WasteType, WasteCondition} */

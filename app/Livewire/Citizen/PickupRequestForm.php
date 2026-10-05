@@ -40,10 +40,19 @@ final class PickupRequestForm extends Component
 
     public int $step = 1;
 
-    public function mount(): void
+    public function mount(?PickupService $service = null): void
     {
+        $service ??= app(PickupService::class);
         $this->idempotencyKey = (string) str()->uuid();
         $this->items = [['waste_type_id' => '', 'estimated_weight_kg' => '', 'estimated_quantity' => '']];
+        /** @var User|null $actor */
+        $actor = auth()->user();
+        if (! $actor instanceof User) {
+            return;
+        }
+        $this->address = (string) ($actor->customerProfile->address ?? '');
+        $areas = $service->eligibleAreasFor($actor)->get();
+        $this->serviceAreaId = $areas->count() === 1 ? (string) $areas->first()->id : '';
     }
 
     public function updatedServiceAreaId(): void

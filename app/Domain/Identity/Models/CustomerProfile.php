@@ -7,11 +7,16 @@ namespace App\Domain\Identity\Models;
 use App\Domain\CustomersRegions\Contracts\CustomerNumber;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Database\Factories\CustomerProfileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property CarbonImmutable|null $joined_at
+ * @property CarbonImmutable|null $qr_rotated_at
+ */
 final class CustomerProfile extends Model
 {
     /** @use HasFactory<CustomerProfileFactory> */

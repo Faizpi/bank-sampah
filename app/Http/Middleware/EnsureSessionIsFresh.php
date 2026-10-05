@@ -32,6 +32,7 @@ final readonly class EnsureSessionIsFresh
         $lastActivity = $request->session()->get(self::LAST_ACTIVITY_KEY);
         $expired = is_int($lastActivity) && now()->getTimestamp() - $lastActivity >= $idleMinutes * 60;
         $started = $request->session()->get(SessionAccess::STARTED_AT);
+        $recalledWithoutSession = auth()->viaRemember() && (! is_int($started) || ! is_int($lastActivity));
         $absoluteExpired = is_int($started) && now()->getTimestamp() - $started >= 8 * 60 * 60;
         $currentActor = $actor->fresh();
         $fingerprint = $currentActor instanceof User ? SessionAccess::fingerprint($currentActor) : null;
@@ -39,7 +40,7 @@ final readonly class EnsureSessionIsFresh
         $accessChanged = ! $currentActor instanceof User || $currentActor->status !== UserStatus::Active
             || (is_string($previous) && $previous !== $fingerprint);
 
-        if ($expired || $absoluteExpired || $accessChanged) {
+        if ($expired || $absoluteExpired || $accessChanged || $recalledWithoutSession) {
             $reason = $accessChanged ? 'access.session.authorization_changed' : ($absoluteExpired ? 'access.session.absolute_expired' : 'access.session.idle_expired');
             $this->logoutUser->handle($request, $reason);
 

@@ -11,7 +11,7 @@ use Livewire\Features\SupportRedirects\Redirector;
 
 class BackofficeLoginResponse implements Responsable
 {
-    public function toResponse($request): RedirectResponse | Redirector
+    public function toResponse($request): RedirectResponse|Redirector
     {
         $intended = session()->pull('url.intended');
         $backofficeUrl = Filament::getUrl();

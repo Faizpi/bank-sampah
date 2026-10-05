@@ -14,6 +14,7 @@ use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
+use Illuminate\Contracts\Session\Session;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Validation\ValidationException;
 use SensitiveParameter;
@@ -56,7 +57,7 @@ final class BackofficeLogin extends Login
         if ($response instanceof LoginResponse) {
             $actor = Filament::auth()->user();
             if ($actor instanceof User) {
-                SessionAccess::begin(session(), $actor);
+                SessionAccess::begin(app(Session::class), $actor);
             }
 
             return new BackofficeLoginResponse;
@@ -93,6 +94,11 @@ final class BackofficeLogin extends Login
             ->required()
             ->autocomplete('username')
             ->autofocus();
+    }
+
+    protected function getRememberFormComponent(): Component
+    {
+        return parent::getRememberFormComponent()->hidden()->dehydrated(false);
     }
 
     /**

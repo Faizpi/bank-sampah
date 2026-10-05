@@ -173,7 +173,6 @@ final class TransactionLaneResourceTest extends TestCase
             ->assertTableActionVisible('inspect', $redemption)
             ->assertTableActionVisible('approve', $redemption)
             ->assertTableActionVisible('reject', $redemption)
-            ->assertTableActionHidden('prepare', $redemption)
             ->assertTableActionHidden('ready', $redemption)
             ->mountTableAction('inspect', $redemption)
             ->assertSchemaStateSet([

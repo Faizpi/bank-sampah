@@ -41,7 +41,6 @@ final readonly class PickupService
 
     private const IDEMPOTENCY_COMPLETE_SCOPE = 'pickup.complete';
 
-    /** @var list<string> */
     public function __construct(
         private PermissionChecker $permissions,
         private StorePrivateMedia $mediaStore,
@@ -216,6 +215,24 @@ final readonly class PickupService
             $this->notifyStatus($locked, 'Penjemputan dijadwalkan', 'Penjemputan '.$locked->request_number.' telah dijadwalkan.', 'pickup.scheduled');
 
             return $locked->fresh(['items', 'media', 'assignedStaff']);
+        });
+    }
+
+    public function acceptAndSchedule(User $actor, PickupRequest $pickup, User $staff, string $date): PickupRequest
+    {
+        $this->authorize($actor, 'pickup.schedule');
+        $this->assertRecordScope($actor, $pickup, false);
+
+        return DB::transaction(function () use ($actor, $pickup, $staff, $date): PickupRequest {
+            $locked = $this->lockPickup($pickup);
+            if ($locked->status === PickupStatus::Scheduled && $locked->assigned_staff_id === $staff->id && $locked->scheduled_date?->toDateString() === $date) {
+                return $locked;
+            }
+            if ($locked->status === PickupStatus::PendingReview) {
+                $locked = $this->review($actor, $locked, true);
+            }
+
+            return $this->schedule($actor, $locked, $staff, $date);
         });
     }
 
@@ -685,11 +702,6 @@ final readonly class PickupService
         } catch (Throwable) {
             return false;
         }
-    }
-
-    private function isNonNegativeWeight(string $value): bool
-    {
-        return $value === '0' || $this->isPositiveWeight($value);
     }
 
     private function validateIdempotencyKey(string $key): void

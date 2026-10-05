@@ -7,6 +7,7 @@ namespace App\Livewire\Citizen;
 use App\Authorization\PermissionChecker;
 use App\Domain\CustomersRegions\Contracts\QrToken;
 use App\Domain\CustomersRegions\Services\CustomerQrPresenter;
+use App\Domain\Identity\Models\CustomerProfile;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
@@ -42,7 +43,7 @@ final class CustomerCard extends Component
         if ($profile->customer_number === null || $profile->customer_number === '') {
             do {
                 $number = 'CST-'.str_pad((string) random_int(1, 99_999_999), 8, '0', STR_PAD_LEFT);
-            } while (\App\Domain\Identity\Models\CustomerProfile::query()->where('customer_number', $number)->exists());
+            } while (CustomerProfile::query()->where('customer_number', $number)->exists());
             $profile->customer_number = $number;
             $needsSave = true;
         } elseif (preg_match('/^SH-([0-9]+)$/', (string) $profile->customer_number, $matches)) {
@@ -54,12 +55,12 @@ final class CustomerCard extends Component
             $token = QrToken::generate();
             $profile->qr_token_hash = $token->hash();
             $profile->qr_token_encrypted = $token->value();
-            $profile->qr_rotated_at = now();
+            $profile->qr_rotated_at = now()->toImmutable();
             $needsSave = true;
         }
 
         if ($profile->joined_at === null) {
-            $profile->joined_at = today();
+            $profile->joined_at = today()->toImmutable();
             $needsSave = true;
         }
 

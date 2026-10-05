@@ -25,10 +25,14 @@ final class WithdrawalRequestForm extends Component
 
     public string $idempotencyKey = '';
 
-    public function mount(): void
+    public function mount(WithdrawalService $service): void
     {
         $this->pickupDate = today()->addDay()->toDateString();
         $this->idempotencyKey = (string) str()->uuid();
+        /** @var User $actor */
+        $actor = auth()->user();
+        $areas = $service->availableAreasFor($actor)->get();
+        $this->serviceAreaId = $areas->count() === 1 ? (string) $areas->first()->id : '';
     }
 
     public function updatedAmount(): void

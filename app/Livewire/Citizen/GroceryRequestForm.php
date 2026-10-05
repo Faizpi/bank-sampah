@@ -21,9 +21,13 @@ final class GroceryRequestForm extends Component
 
     public string $idempotencyKey = '';
 
-    public function mount(): void
+    public function mount(GroceryService $service): void
     {
         $this->idempotencyKey = (string) str()->uuid();
+        /** @var User $actor */
+        $actor = auth()->user();
+        $areas = $service->availableAreasFor($actor)->get();
+        $this->serviceAreaId = $areas->count() === 1 ? (string) $areas->first()->id : '';
     }
 
     public function updatedPackageId(): void

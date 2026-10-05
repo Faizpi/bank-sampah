@@ -66,6 +66,7 @@ final class BackofficePanelProvider extends PanelProvider
             ->id('backoffice')
             ->path('backoffice')
             ->login(BackofficeLogin::class)
+            ->brandName('Bank Sampah Sindangheula')
             ->colors([
                 'primary' => self::PRIMARY_PALETTE,
                 'success' => self::PRIMARY_PALETTE,

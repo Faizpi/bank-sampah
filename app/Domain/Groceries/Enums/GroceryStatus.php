@@ -19,7 +19,7 @@ enum GroceryStatus: string
     {
         return match ($this) {
             self::PendingVerification => in_array($next, [self::Approved, self::Rejected, self::Cancelled, self::Expired], true),
-            self::Approved => in_array($next, [self::Preparing, self::Rejected, self::Cancelled, self::Expired], true),
+            self::Approved => in_array($next, [self::Preparing, self::ReadyForPickup, self::Rejected, self::Cancelled, self::Expired], true),
             self::Preparing => in_array($next, [self::ReadyForPickup, self::Cancelled, self::Expired], true),
             self::ReadyForPickup => in_array($next, [self::Completed, self::Cancelled, self::Expired], true),
             self::Completed, self::Rejected, self::Cancelled, self::Expired => false,
