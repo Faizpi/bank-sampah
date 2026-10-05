@@ -9,12 +9,12 @@ Keamanan melindungi saldo, transaksi, identitas warga, bukti privat, operasi pet
 | Publik | harga aktif, jadwal publik, agregat desa, pengumuman | Allowlist, rate limit, cache publik terpisah |
 | Internal | tugas, kapasitas, laporan operasional | Auth, permission, scope, audit sesuai risiko |
 | Pribadi | profil, alamat, telepon, saldo, riwayat | Least privilege, masking, akses record-level |
-| Sensitif | password hash, token, bukti, backup, secret | Enkripsi/proteksi ketat, tidak masuk log/publik |
+| Sensitif | password hash, token, bukti, secret | Enkripsi atau proteksi ketat, tidak masuk log atau publik |
 | Finansial kritis | ledger, hold, koreksi, pay/handover | Transaction, lock, idempotensi, separation of duties, audit |
 
 ## 2. Autentikasi dan password
 
-- Password di-hash menggunakan driver Laravel yang direkomendasikan dan tersedia pada PHP 8.5, dengan Argon2id bila lingkungan mendukung secara stabil; parameter ditinjau dan rehash saat login bila kebijakan berubah.
+- Password di-hash menggunakan driver Laravel yang tersedia pada PHP 8.3 atau lebih baru, dengan Argon2id bila lingkungan mendukung secara stabil; parameter ditinjau dan rehash saat login bila kebijakan berubah.
 - Password plaintext tidak disimpan, dicatat, dikirim kembali, atau diketahui admin.
 - Minimal 10 karakter, konfirmasi, dan penolakan password umum mengikuti [VALIDATION.md](VALIDATION.md).
 - Perubahan kata sandi hanya melalui dua jalur. Jalur berbantuan langsung hanya untuk pengguna yang benar-benar lupa kata sandi dan tidak dapat login: admin atau superadmin berizin melalui alur PasswordAssistance, dengan `user.reset-password` dan `session.revoke`, mengubah target lain dalam scope sah sesudah verifikasi `tatap_muka` atau `callback_nomor_terdaftar` dan alasan tervalidasi 10–1000 karakter. Aktor berizin tidak dapat menargetkan diri sendiri.
@@ -88,12 +88,12 @@ Nilai numerik ditentukan setelah load test/UAT dan dicatat sebagai konfigurasi, 
 - Idempotency key terikat actor, scope, dan hash payload. Retry payload sama mengembalikan hasil lama; payload berbeda ditolak.
 - Saldo tersedia dihitung/diperiksa ulang di bawah lock dan tidak boleh negatif.
 - Audit aksi finansial berada dalam transaction yang sama atau operasi gagal.
-- Jalur gagal rollback penuh; notifikasi nonkritis diproses setelah commit.
+- Jalur gagal rollback penuh; informasi nonkritis tidak boleh mengubah hasil transaksi yang telah commit.
 - Laporan harian menampilkan transaksi, bukti, dan status yang dapat diekspor sesuai scope.
 
 ## 8. File privat dan upload
 
-- Bukti, foto penjemputan/transaksi, ekspor, dan backup tidak ditempatkan pada document root.
+- Bukti, foto penjemputan atau transaksi, dan ekspor tidak ditempatkan pada document root.
 - Database hanya menyimpan metadata/path acak; tidak menyimpan blob.
 - Download memakai route yang memeriksa auth, permission, dan record scope, atau signed URL berumur pendek.
 - Signed URL tidak ditulis ke log atau dikirim melalui template publik; expiration dan content disposition benar.
@@ -122,7 +122,7 @@ Nilai numerik ditentukan setelah load test/UAT dan dicatat sebagai konfigurasi, 
 
 ## 10. Audit dan logging
 
-Audit wajib untuk login penting, pengguna/akses, harga, transaksi, koreksi/reversal, ledger/hold, status, approve, pay, handover, ekspor, setting, backup/restore, dan retensi.
+Audit wajib untuk login penting, pengguna atau akses, harga, transaksi, koreksi atau reversal, ledger atau hold, status, approve, pay, handover, dan ekspor.
 
 Audit memuat actor, action, object, old/new yang disanitasi, waktu, correlation ID, dan konteks aman. Audit tidak dapat diubah pengguna operasional.
 
@@ -138,23 +138,17 @@ Gunakan incident ID dan masking. Akses ke log dibatasi pengelola teknis.
 
 ## 11. Secret dan konfigurasi
 
-- Pengaturan teknis non-secret dapat dikelola melalui UI terotorisasi dengan `system.settings.manage`, validasi server, scope teknis, dan audit. UI ini tidak menerima, menampilkan, atau menyimpan secret.
-- Secret hanya melalui `.env`/secret store CI/hosting; `.env` tidak di-commit dan tidak berada di document root.
-- `APP_KEY`, credential DB/mail/S3, token deployment, dan credential backup berbeda antar-environment.
+- Administrasi teknis aktif pada UI hanya Health dan bersifat baca-saja.
+- Secret hanya melalui `.env` atau secret store CI atau hosting; `.env` tidak di-commit dan tidak berada di document root.
+- `APP_KEY`, credential database, mail, atau S3, dan token deployment berbeda antar-environment.
 - `APP_DEBUG=false` di produksi.
 - Rotasi secret memiliki prosedur dampak: credential DB/mail/S3 diganti; session/token yang terdampak diinvali­dasi; `APP_KEY` tidak diganti tanpa rencana re-enkripsi.
 - Secret tidak disalin ke dokumentasi, tiket, chat, nama file, command history, atau log.
-- Hak file `.env`, storage, dan backup dibuat paling ketat yang didukung Hostinger.
+- Hak file `.env` dan storage dibuat paling ketat yang didukung provider.
 
-## 12. Database dan backup
+## 12. Database
 
-- MySQL 8.0.30 memakai user least privilege, password kuat, host restriction bila tersedia, dan TLS bila didukung.
-- Backup database harian dan media berkala; salinan terenkripsi/terproteksi berada terpisah dari hosting utama.
-- Backup memuat checksum, status, waktu, dan retensi; akses terbatas.
-- Uji restore berkala dilakukan pada environment terisolasi, bukan menimpa produksi.
-- Sasaran awal RPO maksimal 24 jam dan RTO maksimal 8 jam.
-- Backup tidak dianggap valid sebelum verifikasi integritas dan latihan restore.
-- Penghapusan/retensi backup mengikuti kebutuhan hukum/operasional yang disetujui dan diaudit.
+MySQL 8.0.30 memakai user least privilege, password kuat, pembatasan host bila tersedia, dan TLS bila didukung. Prosedur infrastruktur di luar aplikasi ditetapkan oleh pengelola deployment dan tidak dipresentasikan sebagai kapabilitas UI.
 
 ## 13. Dependency dan supply chain
 
@@ -163,7 +157,7 @@ Gunakan incident ID dan masking. Akses ke log dibatasi pengelola teknis.
 - Paket hanya dari sumber tepercaya; minimalkan plugin Filament/Livewire pihak ketiga.
 - Build Vite dilakukan di lokal/CI; server tidak mengandalkan Node.js.
 - Artefak build dan source release dapat diberi checksum.
-- PHP web dan CLI sama-sama diverifikasi 8.5 sebelum migrasi/scheduler.
+- PHP web dan CLI sama-sama memenuhi `^8.3` serta menggunakan versi yang selaras sebelum migrasi atau scheduler.
 
 ## 14. PWA dan browser storage
 
@@ -179,7 +173,7 @@ Gunakan incident ID dan masking. Akses ke log dibatasi pengelola teknis.
 
 | Level | Contoh | Target respons awal |
 |---|---|---|
-| S1 Kritis | kebocoran data, takeover admin, ledger berubah ganda, backup hilang | segera, hentikan dampak |
+| S1 Kritis | kebocoran data, takeover admin, atau ledger berubah ganda | segera, hentikan dampak |
 | S2 Tinggi | akses lintas warga, file privat terbuka, pembayaran salah | hari yang sama |
 | S3 Sedang | brute force meningkat, error berulang tanpa kebocoran | ≤1 hari kerja |
 | S4 Rendah | anomali minor/log hygiene | sesuai backlog operasional |
@@ -187,11 +181,11 @@ Gunakan incident ID dan masking. Akses ke log dibatasi pengelola teknis.
 ### Langkah
 
 1. **Deteksi dan catat:** waktu, reporter, incident ID, gejala, sistem terdampak; jangan salin secret/data berlebih.
-2. **Containment:** maintenance mode bila perlu, cabut sesi/akun, rotasi credential terarah, nonaktifkan endpoint/job, lindungi log dan backup.
+2. **Containment:** hentikan trafik atau proses terdampak melalui mekanisme provider, cabut sesi atau akun, rotasi credential terarah, nonaktifkan endpoint atau job, dan lindungi log.
 3. **Preservasi:** simpan log/audit/checksum dan snapshot yang diperlukan tanpa memodifikasi bukti.
 4. **Analisis:** tentukan akar masalah, rentang waktu, record/pengguna terdampak, dan integritas ledger.
 5. **Eradikasi:** perbaiki kontrol, dependency, permission, secret, atau data melalui koreksi/reversal resmi.
-6. **Pemulihan:** restore bila diperlukan, jalankan migration/test, verifikasi laporan, akses, dan monitoring.
+6. **Verifikasi perbaikan:** jalankan migration dan test yang relevan, lalu periksa laporan, akses, serta monitoring.
 7. **Komunikasi:** pengelola menentukan pemberitahuan pihak terdampak dan kewajiban yang berlaku; informasi akurat tanpa klaim belum terbukti.
 8. **Tinjauan:** dokumentasikan timeline, dampak, tindakan, test regresi, dan perbaikan SOP.
 
@@ -207,9 +201,9 @@ Khusus dugaan saldo ganda: hentikan pengulangan, periksa idempotency/audit/ledge
 - QR/statistik tidak membuka data pribadi.
 - Formula injection pada Excel dan XSS konten lulus.
 - Dependency audit tanpa risiko kritis tak tertangani.
-- Backup terbaru valid dan rollback tersedia.
+- Rollback tersedia sebelum perubahan berisiko.
 - Rehearsal MySQL 8.0.30 disposable release tercatat sebelum UAT/production; bila IMP-107 termasuk baseline rilis, bukti trigger append-only/immutability MySQL terisolasi tersedia. Hasil SQLite tidak diperlakukan sebagai bukti MySQL production.
-- Cron/timezone serta queue terbatas terverifikasi.
+- Cron dan timezone terverifikasi; queue tetap `sync`.
 - Secret scan source/build/log lulus.
 
 ## 17. Referensi

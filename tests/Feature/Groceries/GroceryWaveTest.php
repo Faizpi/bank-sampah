@@ -6,6 +6,7 @@ namespace Tests\Feature\Groceries;
 
 use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\CustomersRegions\Actions\ManageRegions;
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Groceries\Actions\ManageGroceryPackages;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryPackage;
@@ -134,7 +135,7 @@ final class GroceryWaveTest extends TestCase
         Livewire::actingAs($handoverOfficer)
             ->test(GroceryTasks::class)
             ->assertSee('Tugas sembako')
-            ->assertSee('Serah-terima hanya tersedia bagi petugas dengan izin penyerahan dan memerlukan verifikasi penerima serta bukti privat.')
+            ->assertSee('Verifikasi penerima dan unggah bukti privat sebelum menyerahkan paket.')
             ->assertDontSee('Catat bantuan gratis');
 
         $unauthorized = User::factory()->create(['status' => UserStatus::Active]);
@@ -373,7 +374,7 @@ final class GroceryWaveTest extends TestCase
         $areaManager = User::factory()->create(['status' => UserStatus::Active]);
         $this->grant($areaManager, ['region.manage']);
         $rt = $customer->customerProfile()->firstOrFail()->rt()->firstOrFail();
-        $area = app(ManageRegions::class)->createServiceArea($areaManager, 'Area W7 '.$customer->id, [$rt]);
+        $area = ServiceArea::query()->whereHas('rts', static fn ($rts) => $rts->whereKey($rt->id))->sole();
         $preparer = User::factory()->create(['status' => UserStatus::Active]);
         $handoverOfficer = User::factory()->create(['status' => UserStatus::Active]);
         $this->grant($preparer, ['user.view', 'user.view.area', 'grocery.view', 'grocery.prepare']);
@@ -495,7 +496,7 @@ final class GroceryWaveTest extends TestCase
     public function test_lane_d_cancel_and_expiry_release_hold_once_and_invalid_transition_stops(): void
     {
         [$customer, $package] = $this->customerAndPackage();
-        $this->grant($customer, ['grocery.request', 'grocery.view', 'grocery.cancel', 'grocery.prepare']);
+        $this->grant($customer, ['grocery.request', 'grocery.view', 'grocery.cancel', 'grocery.prepare', 'user.view.all']);
         $this->credit($customer, 200_000);
         $service = app(GroceryService::class);
         $cancelled = $service->request($customer, ['package_id' => $package->id], 'w7-cancel-key-0001');
@@ -554,6 +555,46 @@ final class GroceryWaveTest extends TestCase
             ->assertDontSee('Nomor bukti');
     }
 
+    public function test_snapshot_scope_survives_relocation_and_requires_an_effective_assignment(): void
+    {
+        [$customer, $package] = $this->customerAndPackage();
+        $this->grant($customer, ['grocery.request', 'grocery.view']);
+        $this->credit($customer, 100_000);
+        $manager = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($manager, ['region.manage']);
+        $regions = app(ManageRegions::class);
+        $newDusun = $regions->createDusun($manager, 'W7-MOVE-DS-'.$customer->id, 'Dusun Pindah');
+        $newRw = $regions->createRw($manager, $newDusun, 'W7-MOVE-RW-'.$customer->id, 'RW Pindah');
+        $newRt = $regions->createRt($manager, $newRw, 'W7-MOVE-RT-'.$customer->id, 'RT Pindah');
+        $oldRt = $customer->customerProfile()->firstOrFail()->rt()->firstOrFail();
+        $oldArea = ServiceArea::query()->whereHas('rts', static fn ($rts) => $rts->whereKey($oldRt->id))->sole();
+        $newArea = $regions->createServiceArea($manager, 'Area Pindah '.$customer->id, [$newRt]);
+        $oldOfficer = User::factory()->create(['status' => UserStatus::Active]);
+        $newOfficer = User::factory()->create(['status' => UserStatus::Active]);
+        $expiredOfficer = User::factory()->create(['status' => UserStatus::Active]);
+        $this->grant($oldOfficer, ['grocery.view', 'grocery.approve', 'grocery.prepare']);
+        $this->grant($newOfficer, ['grocery.view', 'grocery.approve', 'grocery.prepare']);
+        $this->grant($expiredOfficer, ['grocery.view', 'grocery.approve']);
+        StaffProfile::query()->create(['user_id' => $oldOfficer->id, 'staff_number' => 'STF-OLD-'.$oldOfficer->id, 'service_area_id' => $oldArea->id, 'active_from' => today()->subDay()]);
+        StaffProfile::query()->create(['user_id' => $newOfficer->id, 'staff_number' => 'STF-NEW-'.$newOfficer->id, 'service_area_id' => $newArea->id, 'active_from' => today()->subDay()]);
+        StaffProfile::query()->create(['user_id' => $expiredOfficer->id, 'staff_number' => 'STF-EXP-'.$expiredOfficer->id, 'service_area_id' => $oldArea->id, 'active_from' => today()->subDays(2), 'active_to' => today()->subDay()]);
+        $service = app(GroceryService::class);
+        $redemption = $service->request($customer, ['package_id' => $package->id], 'w7-area-snapshot-request-0001');
+        self::assertSame($oldRt->id, $redemption->rt_id);
+        self::assertSame($oldArea->id, $redemption->service_area_id);
+        $customer->customerProfile()->firstOrFail()->forceFill(['rt_id' => $newRt->id])->save();
+        self::assertFalse($service->canView($newOfficer, $redemption));
+        self::assertFalse($service->canView($expiredOfficer, $redemption));
+        try {
+            $service->approve($newOfficer, $redemption, true, 'Paket tersedia.');
+            self::fail('A staff member in only the customer\'s new area must be denied.');
+        } catch (AuthorizationException) {
+            self::assertSame(GroceryStatus::PendingVerification, $redemption->fresh()->status);
+        }
+        self::assertTrue($service->canView($oldOfficer, $redemption));
+        self::assertSame(GroceryStatus::Approved, $service->approve($oldOfficer, $redemption, true, 'Paket tersedia.')->status);
+    }
+
     /** @return array{User, GroceryPackage} */
     private function customerAndPackage(): array
     {
@@ -569,6 +610,7 @@ final class GroceryWaveTest extends TestCase
             'rt_id' => $rt->id,
             'address' => 'Alamat warga W7',
         ]);
+        $regions->createServiceArea($manager, 'Area W7 '.$customer->id, [$rt]);
         $package = GroceryPackage::query()->create([
             'code' => 'GRC-W7-'.$customer->id,
             'name' => 'Paket W7',

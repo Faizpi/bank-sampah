@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Groceries\Services;
 
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Platform\Models\Media;
@@ -61,6 +62,12 @@ final readonly class GroceryService
     public function expire(GroceryRedemption $redemption): GroceryRedemption
     {
         return $this->terminals->expire($redemption);
+    }
+
+    /** @return Builder<ServiceArea> */
+    public function availableAreasFor(User $actor): Builder
+    {
+        return $this->requests->availableAreasFor($actor);
     }
 
     /** @return Builder<GroceryRedemption> */

@@ -8,6 +8,8 @@ use App\Authorization\PermissionChecker;
 use App\Domain\CustomersRegions\Contracts\CustomerNumber;
 use App\Domain\CustomersRegions\Contracts\CustomerSummary;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Queries\VisibleUsers;
+use App\Domain\MobileServices\Models\MobileService;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,10 +18,13 @@ use Illuminate\Validation\ValidationException;
 
 final readonly class SearchCustomers
 {
-    public function __construct(private PermissionChecker $permissions) {}
+    public function __construct(
+        private PermissionChecker $permissions,
+        private VisibleUsers $visibleUsers,
+    ) {}
 
     /** @return list<CustomerSummary> */
-    public function search(User $actor, string $term, int $limit = 10): array
+    public function search(User $actor, string $term, int $limit = 10, ?MobileService $mobileService = null): array
     {
         $this->ensureAllowed($actor);
         $normalized = $this->normalize($term);
@@ -28,7 +33,7 @@ final readonly class SearchCustomers
             return [];
         }
 
-        $customers = $this->scopedQuery($actor)
+        $customers = $this->scopedQuery($actor, $mobileService)
             ->where(function (Builder $query) use ($normalized): void {
                 $query->whereHas('customerProfile', static fn (Builder $profile): Builder => $profile->where('customer_number', 'like', $normalized.'%'))
                     ->orWhere('name', 'like', $normalized.'%');
@@ -52,33 +57,13 @@ final readonly class SearchCustomers
     }
 
     /** @return Builder<User> */
-    private function scopedQuery(User $actor): Builder
+    private function scopedQuery(User $actor, ?MobileService $mobileService): Builder
     {
-        $query = User::query()->where('status', UserStatus::Active->value);
+        $query = $mobileService === null
+            ? $this->visibleUsers->queryFor($actor, UserStatus::Active)
+            : $this->visibleUsers->queryForMobileService($actor, $mobileService, UserStatus::Active);
 
-        if ($this->permissions->allows($actor, 'user.view') && $this->permissions->allows($actor, 'user.view.all')) {
-            return $query->whereHas('customerProfile');
-        }
-
-        if (! $this->permissions->allows($actor, 'user.view') || ! $this->permissions->allows($actor, 'user.view.area')) {
-            return $query->whereKey($actor->getKey())->whereHas('customerProfile');
-        }
-
-        $today = today()->toDateString();
-
-        return $query->where(function (Builder $scope) use ($actor, $today): void {
-            $scope->whereHas('customerProfile.rt', static function (Builder $rt) use ($actor, $today): void {
-                $rt->where('is_active', true)->whereHas('serviceAreas', static function (Builder $area) use ($actor, $today): void {
-                    $area->where('is_active', true)->whereHas('staffProfiles', static function (Builder $staff) use ($actor, $today): void {
-                        $staff->where('user_id', $actor->getKey())
-                            ->where(static fn (Builder $dates): Builder => $dates->whereNull('active_from')->orWhere('active_from', '<=', $today))
-                            ->where(static fn (Builder $dates): Builder => $dates->whereNull('active_to')->orWhere('active_to', '>=', $today));
-                    });
-                });
-            })->orWhere(function (Builder $own) use ($actor): void {
-                $own->whereKey($actor->getKey())->whereHas('customerProfile');
-            });
-        });
+        return $query->whereHas('customerProfile');
     }
 
     private function normalize(string $term): string

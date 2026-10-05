@@ -91,7 +91,7 @@ final class CustomerIdentification extends Component
         $actor = auth()->user();
         $this->resetCandidate();
         $this->validate(['search' => ['required', 'string', 'max:120']]);
-        $matches = $searchCustomers->search($actor, $this->search, 1);
+        $matches = $searchCustomers->search($actor, $this->search, 1, $this->identificationMobileService($actor));
         $this->candidate = $matches[0] ?? null;
     }
 
@@ -103,7 +103,7 @@ final class CustomerIdentification extends Component
         $this->scannerOpen = false;
 
         try {
-            $this->candidate = $identity->scan($actor, $rawToken);
+            $this->candidate = $identity->scan($actor, $rawToken, $this->identificationMobileService($actor));
         } catch (Throwable $exception) {
             if ($exception instanceof ValidationException) {
                 $this->scannerOpen = true;
@@ -134,6 +134,7 @@ final class CustomerIdentification extends Component
         }
 
         $this->confirmed = true;
+        $this->selectedService = 'deposit';
     }
 
     public function chooseService(string $service): void
@@ -143,6 +144,11 @@ final class CustomerIdentification extends Component
         }
 
         $this->selectedService = $service;
+    }
+
+    public function updatedMobileServiceId(): void
+    {
+        $this->resetCandidate();
     }
 
     public function updatedWithdrawalAmount(): void
@@ -169,7 +175,7 @@ final class CustomerIdentification extends Component
         return $this->confirmMediaPickerUpload(
             'assistedEvidence',
             ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
-            ['assistedEvidence.required' => 'Bukti privat wajib diunggah.'],
+            ['assistedEvidence.required' => 'Bukti persetujuan wajib diunggah dan hanya dapat dilihat oleh pihak berwenang.'],
         );
     }
 
@@ -184,7 +190,7 @@ final class CustomerIdentification extends Component
         return $this->confirmMediaPickerUpload(
             'withdrawalEvidence',
             ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
-            ['withdrawalEvidence.required' => 'Bukti privat wajib diunggah.'],
+            ['withdrawalEvidence.required' => 'Bukti persetujuan wajib diunggah dan hanya dapat dilihat oleh pihak berwenang.'],
         );
     }
 
@@ -205,7 +211,7 @@ final class CustomerIdentification extends Component
             'assistedEvidence' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
         ], [
             'assistedConsent.accepted' => 'Persetujuan warga wajib dicatat.',
-            'assistedEvidence.required' => 'Bukti privat wajib diunggah.',
+            'assistedEvidence.required' => 'Bukti persetujuan wajib diunggah dan hanya dapat dilihat oleh pihak berwenang.',
         ]);
 
         /** @var User $actor */
@@ -236,7 +242,7 @@ final class CustomerIdentification extends Component
 
         $this->assistedRecorded = true;
         $this->selectedService = 'assisted';
-        session()->flash('success', 'Layanan berbantuan tercatat dengan persetujuan dan bukti privat.');
+        session()->flash('success', 'Layanan berbantuan tercatat dengan persetujuan dan bukti yang hanya dapat dilihat oleh pihak berwenang.');
     }
 
     public function handoff(AssistedCustomerServiceAction $service): void
@@ -271,7 +277,7 @@ final class CustomerIdentification extends Component
             'withdrawalDate' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
         ], [
             'withdrawalConsent.accepted' => 'Persetujuan warga wajib dicatat.',
-            'withdrawalEvidence.required_if' => 'Bukti privat wajib diunggah.',
+            'withdrawalEvidence.required_if' => 'Bukti persetujuan wajib diunggah dan hanya dapat dilihat oleh pihak berwenang.',
         ]);
 
         if ((int) $this->withdrawalAmount > $this->availableBalanceFor($this->candidate->userId)) {
@@ -329,7 +335,7 @@ final class CustomerIdentification extends Component
         $this->assistedWithdrawalId = $withdrawal->id;
         $this->selectedService = 'withdrawal';
         $this->withdrawalEvidence = null;
-        session()->flash('success', 'Pencairan berbantuan berhasil diajukan dengan consent dan bukti privat.');
+        session()->flash('success', 'Pencairan berbantuan berhasil diajukan dengan persetujuan dan bukti yang hanya dapat dilihat oleh pihak berwenang.');
     }
 
     public function render(PermissionChecker $permissions): View
@@ -341,8 +347,25 @@ final class CustomerIdentification extends Component
             'canCreateAssisted' => $permissions->allows($actor, 'customer.create-assisted'),
             'canCreateAssistedWithdrawal' => $permissions->allows($actor, 'customer.create-assisted') && $permissions->allows($actor, 'withdrawal.request'),
             'candidateAvailableBalance' => $this->candidate === null ? null : $this->availableBalanceFor($this->candidate->userId),
-            'mobileServices' => MobileService::query()->whereHas('staff', static fn (Builder $staff): Builder => $staff->whereKey($actor->id))->where('status', MobileServiceStatus::Open)->where('ends_at', '>=', now())->orderBy('starts_at')->get(),
+            'mobileServices' => $permissions->allows($actor, 'mobile-service.operate')
+                ? MobileService::query()->whereHas('staff', static fn (Builder $staff): Builder => $staff->whereKey($actor->id))->where('status', MobileServiceStatus::Open)->where('starts_at', '<=', now())->where('ends_at', '>=', now())->orderBy('starts_at')->get()
+                : collect(),
         ]);
+    }
+
+    private function identificationMobileService(User $actor): ?MobileService
+    {
+        if ($this->mobileServiceId === null || ! app(PermissionChecker::class)->allows($actor, 'mobile-service.operate')) {
+            return null;
+        }
+
+        return MobileService::query()
+            ->whereKey($this->mobileServiceId)
+            ->whereHas('staff', static fn (Builder $staff): Builder => $staff->whereKey($actor->id))
+            ->where('status', MobileServiceStatus::Open)
+            ->where('starts_at', '<=', now())
+            ->where('ends_at', '>=', now())
+            ->first();
     }
 
     private function availableBalanceFor(int $customerId): int
@@ -372,7 +395,7 @@ final class CustomerIdentification extends Component
     {
         $this->clearAssistedEvidence();
         $this->clearWithdrawalEvidence();
-        $this->reset(['candidate', 'confirmed', 'selectedService', 'assistedRecorded', 'assistedServiceId', 'assistedConsent', 'assistedEvidence', 'mobileServiceId', 'withdrawalConsent', 'withdrawalEvidence', 'withdrawalAmount', 'withdrawalLocation', 'assistedWithdrawalServiceId', 'assistedWithdrawalId']);
+        $this->reset(['candidate', 'confirmed', 'selectedService', 'assistedRecorded', 'assistedServiceId', 'assistedConsent', 'assistedEvidence', 'withdrawalConsent', 'withdrawalEvidence', 'withdrawalAmount', 'withdrawalLocation', 'assistedWithdrawalServiceId', 'assistedWithdrawalId']);
         $this->withdrawalDate = today('Asia/Jakarta')->addDay()->toDateString();
         $this->assistedWithdrawalIdempotencyKey = (string) str()->uuid();
         $this->resetErrorBag(['search', 'token', 'assistedConsent', 'assistedEvidence', 'withdrawalConsent', 'withdrawalEvidence', 'withdrawalAmount', 'withdrawalLocation', 'withdrawalDate']);

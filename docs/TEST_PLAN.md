@@ -11,20 +11,20 @@ Prioritas: P0 finansial/otorisasi/privasi; P1 operasional utama; P2 informasi/pr
 | Tingkat | Fokus | Contoh |
 |---|---|---|
 | Unit | Value object, rumus, pembulatan, status, policy helper | Money, Weight, AvailableBalance, transitions |
-| Feature/integration | HTTP/Livewire/action, DB transaction, policy, file, notification | finalisasi setoran, hold, pay, correction |
+| Feature/integration | HTTP/Livewire/action, DB transaction, policy, file, dan informasi status | finalisasi setoran, hold, pay, correction |
 | Browser/E2E | Alur nyata, JS/Livewire/Filament, fokus, upload, navigation | registrasi, setoran, pencairan, warga berbantuan |
 | Security | Auth, IDOR, CSRF/XSS/SQLi, upload, rate limit, secret, QR/publik | lintas warga, file privat, formula Excel |
 | Accessibility | WCAG AA otomatis+manual | keyboard, screen reader, focus, status |
 | Responsive | 360/390/768/1280 | shell, bottom nav, tabel, dialog/sheet |
 | UAT | Kesesuaian proses desa dan bahasa | warga, petugas, bendahara, admin |
-| Deployment/operations | Hostinger, PHP, cron, backup, rollback | scheduler timezone, restore drill |
+| Deployment/operations | Hosting, PHP, cron, Health, rollback | scheduler timezone, Health privat, rollback |
 
 ## 3. Environment dan data
 
 - Unit/feature dan quality gate implementasi harian memakai SQLite `:memory:` sebagai database test terisolasi normatif.
 - Runtime lokal memakai Laragon dengan MySQL 8.0.30 dan InnoDB. Laragon adalah stack lokal, bukan engine database; bukti runtime ini terpisah dari suite SQLite.
 - Suite kritis untuk MySQL 8.0.30 tetap berupa release-validation terjadwal pada environment disposable sebelum UAT/production, dengan evidence environment/runner/waktu/skenario terpisah. Hasil SQLite tidak membuktikan perilaku MySQL production, termasuk locking, constraint, transaction, atau trigger khusus engine.
-- Browser test memakai environment nonproduksi dengan storage/mail/queue fake atau sandbox terkontrol.
+- Browser test memakai environment nonproduksi dengan storage dan mail fake atau sandbox terkontrol. Queue tetap `sync`.
 - Clock dapat dibekukan pada `Asia/Jakarta` untuk expiry, periode harga, target, dan laporan.
 - Factory menyediakan lima role, beberapa RT/RW, warga lintas scope, harga lama/baru, saldo/hold, status terminal, file privat, dan record koreksi/reversal.
 - Tidak memakai data pribadi produksi. Data finansial test memiliki expected ledger eksplisit.
@@ -64,7 +64,7 @@ Release diblokir oleh kegagalan P0/P1, test flaky yang menyentuh kritis, atau re
 **TC-BAL-003 — Penolakan tidak membuat keluar (P0)**  
 **Given** pencairan dengan hold aktif  
 **When** admin menolak  
-**Then** hold dilepas, saldo keluar tidak dibuat, status ditolak, alasan/audit/notifikasi tersimpan.
+**Then** hold dilepas, saldo keluar tidak dibuat, status ditolak, serta alasan dan audit tersimpan.
 
 ### Koreksi, reversal, harga lama
 
@@ -76,7 +76,7 @@ Release diblokir oleh kegagalan P0/P1, test flaky yang menyentuh kritis, atau re
 **TC-DEP-004 — Batal koreksi (P0)**  
 **Given** form koreksi telah menghitung dampak  
 **When** pengguna membatalkan konfirmasi  
-**Then** tidak ada correction, mutasi, perubahan transaksi, audit sukses, atau notifikasi koreksi.
+**Then** tidak ada correction, mutasi, perubahan transaksi, audit sukses, atau informasi koreksi palsu.
 
 **TC-PRC-002 — Harga snapshot lama (P0)**  
 **Given** transaksi final memakai Rp3.000/kg  
@@ -169,11 +169,6 @@ Release diblokir oleh kegagalan P0/P1, test flaky yang menyentuh kritis, atau re
 **When** admin menolak  
 **Then** hold dilepas dan jalur prepare/handover/saldo keluar tidak terjadi.
 
-**TC-GRC-002 — Bantuan gratis (P1)**  
-**Given** penyerahan diklasifikasikan bantuan gratis  
-**When** dicatat  
-**Then** tidak ada hold atau ledger keluar.
-
 ## 6. Suite domain lain
 
 | ID | Given/When/Then ringkas | Requirement |
@@ -188,7 +183,6 @@ Release diblokir oleh kegagalan P0/P1, test flaky yang menyentuh kritis, atau re
 | TC-WST-001 | Kategori, satuan, jenis, dan beberapa kondisi aktif → pivot jenis/kondisi valid → katalog/transaksi; satuan berat ke `kg` hanya bila faktor ada, satuan non-berat tidak auto-convert; histori tetap, jenis baru nonaktif dibatasi | WST-001 |
 | TC-PRC-001 | Harga valid → aktivasi → satu periode aktif dan audit | PRC-001 |
 | TC-DEP-001 | Multi-item+3 desimal → final → subtotal half-up/total/ledger benar | DEP-001 |
-| TC-NOT-001 | Event commit/notifikasi gagal → transaksi tetap, retry dedupe | NOT-001 |
 | TC-ANN-001 | Audiens/periode/XSS → publish → hanya konten aman/aktif tampil | ANN-001 |
 | TC-TGT-001 | Final/koreksi/reversal → progres → nilai bersih dan tutup periode | TGT-001 |
 | TC-MOB-001 | Jadwal bentrok/buka → layanan → bentrok ditolak, setoran sah saat buka | MOB-001 |
@@ -259,8 +253,6 @@ Peserta: minimal perwakilan warga smartphone, warga tanpa smartphone, petugas la
 
 Setiap skenario memuat data awal, langkah, expected result, hasil aktual, bukti, severity, dan tanda tangan/keputusan. UAT mencakup 36 flow pada [USER_FLOWS.md](USER_FLOWS.md), dengan fokus bahasa, kejelasan status, prosedur gagal, bukti, dan tugas nyata.
 
-Eksekusi teknis browser untuk transaksi kritis sudah direkam di [UAT_EVIDENCE.md](UAT_EVIDENCE.md): 10/10 flow Chromium pada disposable Laragon MySQL lulus tanpa browser error. Hasil ini belum menggantikan observasi stakeholder, pemeriksaan laporan, atau approval tertulis.
-
 Kriteria penerimaan:
 
 - Tidak ada defect P0/P1 terbuka.
@@ -272,14 +264,13 @@ Kriteria penerimaan:
 
 ## 11. Deployment dan operasi test
 
-- PHP web/CLI 8.5, Composer 2, extension, serta Laragon MySQL 8.0.30 untuk pemeriksaan runtime lokal.
+- PHP web dan CLI memenuhi `^8.3` serta selaras, Composer 2 tersedia, extension terpenuhi, dan Laragon MySQL 8.0.30 dipakai untuk pemeriksaan runtime lokal.
 - Release rehearsal MySQL 8.0.30 disposable: migration fresh dan upgrade dari snapshot bila relevan, durasi, rollback/remigrate/no-op/cleanup, dan bukti terpisah sebelum UAT/production; tidak dipenuhi oleh hasil SQLite atau smoke Laragon.
 - Untuk IMP-107, rehearsal tersebut mencakup skenario trigger MySQL terisolasi yang membuktikan penegakan append-only/immutability; hasil SQLite tidak dapat menjadi penggantinya.
 - Document root/exposure probe `.env`, vendor, storage, source.
 - Scheduler heartbeat dan expiry pada timezone cron Hostinger.
-- Queue sync/database one-shot, retry, failed job, no daemon.
-- Backup checksum dan restore drill RPO/RTO.
-- Release rollback kode dan skenario restore DB/media.
+- Queue `sync` dan tidak ada daemon atau klaim retry asinkron.
+- Health privat dan rollback release diuji.
 - Storage quota, permission, signed route, aset Vite, cache Laravel.
 
 ## 12. Traceability requirement ke test
@@ -296,8 +287,7 @@ Kriteria penerimaan:
 | BAL-001–002 | TC-BAL-001–003, TC-WDR-001–002, TC-GRC-001 |
 | PUP-001 | TC-PUP-001–002 |
 | WDR-001 | TC-WDR-001–002, TC-PERM-003 |
-| GRC-001 | TC-GRC-001–002, TC-PERM-004 |
-| NOT-001 | TC-NOT-001 |
+| GRC-001 | TC-GRC-001, TC-PERM-004 |
 | WA-001 | TC-WA-001 |
 | ANN-001 | TC-ANN-001 |
 | TGT-001 | TC-TGT-001 |
@@ -316,6 +306,6 @@ Sebelum release:
 - Seluruh suite wajib hijau dan test flaky diselesaikan.
 - Coverage domain kritis mencapai target.
 - Test P0 concurrency, permission, QR/publik, file, dan ledger lulus pada MySQL 8.0.30 sebagai satu suite release-validation disposable yang tercatat terpisah; untuk IMP-107, trigger append-only/immutability juga terbukti pada MySQL. Hasil SQLite `:memory:` dan runtime MySQL Laragon tetap evidence harian, bukan proof deployment production.
-- Browser, accessibility, responsive, security, UAT, deployment, backup/restore lulus.
+- Browser, accessibility, responsive, security, UAT, deployment, Health, dan rollback lulus.
 - Defect residual memiliki owner, severity, mitigasi, dan tidak melanggar baseline/acceptance criteria.
 - Laporan test mencatat commit, environment, waktu, runner, hasil, coverage, artefak, dan approval.

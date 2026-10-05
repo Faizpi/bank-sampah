@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Wave9;
 
 use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Platform\Models\Media;
 use App\Domain\Reports\Enums\ReportExportStatus;
 use App\Domain\Reports\Services\ReportExportService;
+use App\Domain\WasteMaster\Models\WasteCondition;
+use App\Domain\WasteMaster\Models\WasteType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -106,7 +109,7 @@ final class ReportPdfExportTest extends TestCase
 
     private function seedDeposit(User $owner, int $value, string $occurredAt, string $number): Deposit
     {
-        return Deposit::query()->create([
+        $deposit = Deposit::query()->create([
             'deposit_number' => $number.'-'.$owner->id,
             'customer_id' => $owner->id,
             'staff_id' => $owner->id,
@@ -117,6 +120,16 @@ final class ReportPdfExportTest extends TestCase
             'total_value' => $value,
             'finalized_at' => $occurredAt,
         ]);
+        DepositItem::query()->create([
+            'deposit_id' => $deposit->id,
+            'waste_type_id' => WasteType::factory()->create()->id,
+            'waste_condition_id' => WasteCondition::factory()->create()->id,
+            'weight_kg' => '1.000',
+            'price_per_unit' => $value,
+            'subtotal' => $value,
+        ]);
+
+        return $deposit;
     }
 
     private function userWith(string ...$permissions): User

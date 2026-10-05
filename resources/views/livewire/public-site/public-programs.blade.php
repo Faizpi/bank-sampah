@@ -1,12 +1,12 @@
 @section('title', 'Target dan Statistik Program')
-@section('description', 'Target pengumpulan dan statistik agregat publik Bank Sampah Digital Desa Sindangheula.')
+@section('description', 'Target pengumpulan dan statistik ringkasan publik Bank Sampah Digital Desa Sindangheula.')
 
 <div class="public-canvas">
     <section class="border-b border-deep-green bg-deep-green text-surface" aria-labelledby="programs-page-title">
         <div class="public-container grid items-center gap-8 section-space lg:grid-cols-[1fr_auto]">
             <div>
             <p class="text-label font-semibold tracking-wide text-surface/80">Program desa</p>
-            <h1 id="programs-page-title" class="mt-2 max-w-3xl text-h1 lg:text-h1-lg text-surface">Bergerak lewat angka agregat.</h1>
+            <h1 id="programs-page-title" class="mt-2 max-w-3xl text-h1 lg:text-h1-lg text-surface">Bergerak lewat angka ringkasan.</h1>
             <p class="mt-3 max-w-2xl text-body text-surface/80">Target dan progres ditampilkan tanpa nama, nomor nasabah, alamat, saldo, atau riwayat individu.</p>
             <div class="mt-5 flex flex-wrap gap-2">
                 <a href="{{ route('public.announcements') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md bg-surface px-5 text-label text-deep-green transition duration-180 ease-standard hover:bg-success-bg active:translate-y-px">
@@ -28,7 +28,7 @@
                 id="programs-title"
                 eyebrow="Program berjalan"
                 title="Target aktif"
-                description="Target yang tampil telah melewati ambang publikasi dan hanya memuat ukuran agregat program."
+                description="Target yang tampil telah melewati ambang publikasi dan hanya memuat ukuran ringkasan program."
             />
 
             @if ($targets->isEmpty())
@@ -53,7 +53,7 @@
                                 </div>
                             </div>
                             <p class="mt-4 text-body-sm leading-6 text-text-secondary">{{ $target['purpose'] }}</p>
-                            <p class="mt-3 text-body-sm leading-6 text-text-secondary"><span class="font-semibold text-text-primary">Cakupan:</span> {{ $target['scope'] }}</p>
+                            <p class="mt-3 text-body-sm leading-6 text-text-secondary"><span class="font-semibold text-text-primary">Wilayah dan jenis sampah:</span> {{ $target['scope'] }}</p>
                             <dl class="mt-6 grid gap-3 border-t border-border pt-4 text-body-sm">
                                 <div class="flex justify-between gap-4">
                                     <dt class="text-text-secondary">Progres bersih</dt>
@@ -72,21 +72,21 @@
             <section class="mt-12 border-t border-border pt-8" aria-labelledby="public-statistics-title">
                 <x-public.section-header
                     id="public-statistics-title"
-                    eyebrow="Statistik agregat"
+                    eyebrow="Statistik ringkasan"
                     title="Ringkasan desa"
                     description="Ringkasan ini hanya menampilkan metrik yang diizinkan untuk publikasi dan telah memenuhi ambang privasi."
                 />
                 <p class="mt-3 text-body-sm text-text-secondary">Periode 12 bulan: {{ \Carbon\CarbonImmutable::parse($statistics['period']['start'])->translatedFormat('d F Y') }} – {{ \Carbon\CarbonImmutable::parse($statistics['period']['end'])->subDay()->translatedFormat('d F Y') }}</p>
                 @if ($rtFilteringEnabled)
                     <div class="mt-5 max-w-sm">
-                        <label for="public-statistics-rt" class="block text-label font-semibold text-text-primary">Cakupan statistik</label>
+                        <label for="public-statistics-rt" class="block text-label font-semibold text-text-primary">Wilayah statistik</label>
                         <select id="public-statistics-rt" wire:model.live="rtId" class="mt-2 min-h-touch w-full rounded-md border border-border bg-surface px-3 text-body text-text-primary focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30">
                             <option value="">Seluruh desa</option>
                             @foreach ($rts as $rt)
                                 <option value="{{ $rt->id }}">{{ $rt->name }}</option>
                             @endforeach
                         </select>
-                        <p class="mt-2 text-body-sm text-text-secondary">{{ $statistics['rt_id'] === null ? 'Menampilkan agregat seluruh desa.' : 'Menampilkan agregat untuk RT terpilih.' }}</p>
+                        <p class="mt-2 text-body-sm text-text-secondary">{{ $statistics['rt_id'] === null ? 'Ringkasan seluruh desa.' : 'Ringkasan untuk RT terpilih.' }}</p>
                     </div>
                 @endif
 

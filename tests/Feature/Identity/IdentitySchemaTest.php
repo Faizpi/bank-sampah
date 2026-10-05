@@ -6,7 +6,9 @@ namespace Tests\Feature\Identity;
 
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\StaffProfile;
+use App\Domain\Identity\Models\StaffServiceArea;
 use App\Models\User;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +26,53 @@ final class IdentitySchemaTest extends TestCase
         self::assertTrue(Schema::hasColumns('users', ['id', 'name', 'email', 'email_verified_at', 'password', 'remember_token', 'phone', 'status', 'verified_at', 'verified_by', 'rejection_reason', 'last_login_at', 'terms_version', 'terms_accepted_at', 'deleted_at']));
         self::assertTrue(Schema::hasColumns('sessions', ['id', 'user_id', 'ip_address', 'user_agent', 'payload', 'last_activity', 'expires_at', 'ip_address_hash']));
         self::assertTrue(Schema::hasColumns('password_reset_tokens', ['email', 'token', 'created_at', 'user_id', 'phone', 'expires_at', 'used_at']));
+    }
+
+    public function test_staff_service_area_migration_backfills_legacy_rows_and_is_idempotent(): void
+    {
+        Schema::dropIfExists('staff_service_areas');
+        $area = DB::table('service_areas')->insertGetId(['name' => 'Area legacy', 'is_active' => true]);
+        $legacyWithArea = User::factory()->create();
+        $legacyWithoutArea = User::factory()->create();
+        DB::table('staff_profiles')->insert([
+            ['user_id' => $legacyWithArea->id, 'staff_number' => 'STF-LEGACY-AREA', 'service_area_id' => $area, 'active_from' => '2026-01-01', 'active_to' => '2026-12-31', 'created_at' => now(), 'updated_at' => now()],
+            ['user_id' => $legacyWithoutArea->id, 'staff_number' => 'STF-LEGACY-NULL', 'service_area_id' => null, 'active_from' => null, 'active_to' => null, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $migration = require database_path('migrations/2026_08_15_120000_create_staff_service_areas_table.php');
+        self::assertInstanceOf(Migration::class, $migration);
+        $migration->up();
+        $migration->up();
+
+        $this->assertDatabaseCount('staff_service_areas', 1);
+        $this->assertDatabaseHas('staff_service_areas', [
+            'staff_profile_user_id' => $legacyWithArea->id,
+            'service_area_id' => $area,
+            'active_from' => '2026-01-01',
+            'active_to' => '2026-12-31',
+        ]);
+        $this->assertDatabaseMissing('staff_service_areas', ['staff_profile_user_id' => $legacyWithoutArea->id]);
+    }
+
+    public function test_staff_service_area_schema_preserves_legacy_profile_columns_and_assignment_constraints(): void
+    {
+        self::assertTrue(Schema::hasColumns('staff_profiles', ['user_id', 'service_area_id', 'active_from', 'active_to']));
+        self::assertTrue(Schema::hasColumns('staff_service_areas', ['staff_profile_user_id', 'service_area_id', 'active_from', 'active_to']));
+
+        $profile = StaffProfile::factory()->create(['active_from' => '2026-07-30', 'active_to' => null]);
+        $assignment = StaffServiceArea::query()
+            ->where('staff_profile_user_id', $profile->user_id)
+            ->where('service_area_id', $profile->service_area_id)
+            ->sole();
+
+        self::assertSame($profile->service_area_id, $assignment->service_area_id);
+        $this->expectException(QueryException::class);
+        StaffServiceArea::query()->create([
+            'staff_profile_user_id' => $profile->user_id,
+            'service_area_id' => $profile->service_area_id,
+            'active_from' => '2026-07-30',
+            'active_to' => null,
+        ]);
     }
 
     public function test_email_is_nullable_and_nonunique_while_phone_is_unique_when_present(): void

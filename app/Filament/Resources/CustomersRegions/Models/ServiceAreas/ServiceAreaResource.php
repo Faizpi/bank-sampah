@@ -30,16 +30,13 @@ final class ServiceAreaResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?string $navigationParentItem = 'Wilayah';
+
     protected static ?int $navigationSort = 40;
 
     protected static ?string $navigationLabel = 'Area Pelayanan';
 
     protected static ?string $recordTitleAttribute = 'name';
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return false;
-    }
 
     public static function form(Schema $schema): Schema
     {

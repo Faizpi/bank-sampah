@@ -20,9 +20,12 @@ final class WithdrawalProofController extends Controller
         $path = Storage::disk((string) $media->disk)->path((string) $media->path);
         abort_unless(is_file($path), 404);
 
+        $mimeType = (string) $media->mime_type;
+        $disposition = str_starts_with($mimeType, 'image/') ? 'inline' : 'attachment';
+
         return response()->file($path, [
-            'Content-Type' => (string) $media->mime_type,
-            'Content-Disposition' => 'attachment; filename="'.addcslashes((string) $media->original_name, '"\\').'"',
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => $disposition.'; filename="'.addcslashes((string) $media->original_name, '"\\').'"',
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',
         ]);

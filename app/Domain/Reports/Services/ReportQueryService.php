@@ -8,10 +8,12 @@ use App\Authorization\PermissionChecker;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\StaffServiceArea;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Reports\Enums\ReportType;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
+use App\Support\WeightFormatter;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
@@ -50,11 +52,11 @@ final readonly class ReportQueryService
 
     /** @var array<string, list<string>> */
     private const REPORT_COLUMNS = [
-        'deposits' => ['deposit_number', 'occurred_at', 'customer_id', 'status', 'total_weight_kg', 'total_value'],
-        'withdrawals' => ['request_number', 'paid_at', 'customer_id', 'status', 'amount'],
-        'groceries' => ['request_number', 'handed_over_at', 'customer_id', 'status', 'value_snapshot'],
-        'pickups' => ['request_number', 'completed_at', 'customer_id', 'service_area_id', 'status'],
-        'participation' => ['occurred_at', 'customer_id', 'status', 'total_weight_kg', 'total_value'],
+        'deposits' => ['deposit_number', 'occurred_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'staff_name', 'method', 'location', 'status', 'total_weight_kg', 'total_value'],
+        'withdrawals' => ['request_number', 'paid_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'payer_name', 'pickup_location', 'pickup_date', 'recipient_verification', 'recipient_reference', 'status', 'amount'],
+        'groceries' => ['request_number', 'handed_over_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'package_name', 'package_contents', 'prepared_by_name', 'handover_staff_name', 'availability_note', 'recipient_verification', 'recipient_reference', 'status', 'value_snapshot'],
+        'pickups' => ['request_number', 'customer_name', 'rt', 'service_area', 'address', 'selected_date', 'scheduled_date', 'assigned_staff_name', 'estimated_weight_kg', 'notes', 'completed_at', 'status'],
+        'participation' => ['deposit_number', 'occurred_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'staff_name', 'method', 'location', 'status', 'total_weight_kg', 'total_value'],
     ];
 
     /** @var array<string, list<array{key: string, label: string, format: string}>> */
@@ -197,7 +199,7 @@ final readonly class ReportQueryService
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return list<array{reference: string, date: string, subject_id: string, status: string, amount: int|string}>
+     * @return list<array{reference: string, date: string, subject: string, detail: string, status: string, value: int|string, value_format: 'currency'|'weight'}>
      */
     public function displayRows(User $actor, string|ReportType $reportType, array $filters, string $sort = 'occurred_at', string $direction = 'desc'): array
     {
@@ -207,9 +209,11 @@ final readonly class ReportQueryService
             $rows[] = [
                 'reference' => $this->displayReference($record, $type),
                 'date' => $this->displayDate($record, $type),
-                'subject_id' => (string) ($record->getAttribute('customer_id') ?? ''),
+                'subject' => $this->displaySubject($record),
+                'detail' => $this->displayDetail($record, $type),
                 'status' => $this->displayValue($record->getAttribute('status')),
-                'amount' => $this->displayAmount($record, $type),
+                'value' => $this->displayAmount($record, $type),
+                'value_format' => $type === ReportType::Pickups ? 'weight' : 'currency',
             ];
         }
 
@@ -308,10 +312,10 @@ final readonly class ReportQueryService
     private function scopedQuery(User $actor, ReportType $type, array $filters): Builder
     {
         $query = match ($type) {
-            ReportType::Deposits, ReportType::Participation => Deposit::query()->with('correction')->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED]),
-            ReportType::Withdrawals => WithdrawalRequest::query()->whereNotNull('paid_at'),
-            ReportType::Groceries => GroceryRedemption::query()->whereNotNull('handed_over_at'),
-            ReportType::Pickups => PickupRequest::query()->whereNotNull('completed_at'),
+            ReportType::Deposits, ReportType::Participation => Deposit::query()->with(['correction', 'customer.customerProfile.rt.serviceAreas', 'staff', 'items.wasteType', 'items.condition'])->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED]),
+            ReportType::Withdrawals => WithdrawalRequest::query()->with(['customer.customerProfile.rt.serviceAreas', 'payer'])->whereNotNull('paid_at'),
+            ReportType::Groceries => GroceryRedemption::query()->with(['customer.customerProfile.rt.serviceAreas', 'preparedBy', 'handoverActor'])->whereNotNull('handed_over_at'),
+            ReportType::Pickups => PickupRequest::query()->with(['customer', 'rt', 'serviceArea', 'assignedStaff'])->whereNotNull('completed_at'),
         };
         $this->applyRecordScope($actor, $type, $query);
         $this->applyFilters($query, $type, $filters);
@@ -336,21 +340,29 @@ final readonly class ReportQueryService
         if ($this->permissions->allows($actor, 'user.view.all')) {
             return;
         }
-        $areaId = $actor->staffProfile?->service_area_id;
-        if ($areaId !== null) {
-            $query->where(function (Builder $scope) use ($actor, $type, $areaId): void {
-                if (in_array($type, [ReportType::Deposits, ReportType::Participation], true)) {
-                    $scope->where('staff_id', $actor->id)->orWhereHas('customer.customerProfile.rt.serviceAreas', static fn (Builder $area): Builder => $area->whereKey($areaId));
-                } elseif ($type === ReportType::Pickups) {
-                    $scope->where('service_area_id', $areaId)->orWhere('customer_id', $actor->id);
-                } else {
-                    $scope->where('customer_id', $actor->id)->orWhereHas('customer.customerProfile.rt.serviceAreas', static fn (Builder $area): Builder => $area->whereKey($areaId));
-                }
-            });
+        $today = today()->toDateString();
+        $areaIds = StaffServiceArea::query()
+            ->where('staff_profile_user_id', $actor->id)
+            ->where(static fn (Builder $dates): Builder => $dates->whereNull('active_from')->orWhere('active_from', '<=', $today))
+            ->where(static fn (Builder $dates): Builder => $dates->whereNull('active_to')->orWhere('active_to', '>=', $today))
+            ->whereHas('serviceArea', static fn (Builder $area): Builder => $area->where('is_active', true))
+            ->pluck('service_area_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+        if ($areaIds === []) {
+            $query->where('customer_id', $actor->id);
 
             return;
         }
-        $query->where('customer_id', $actor->id);
+        $query->where(function (Builder $scope) use ($actor, $type, $areaIds): void {
+            if (in_array($type, [ReportType::Deposits, ReportType::Participation], true)) {
+                $scope->where('staff_id', $actor->id)->orWhereHas('customer.customerProfile.rt.serviceAreas', static fn (Builder $area): Builder => $area->whereIn('service_areas.id', $areaIds));
+            } elseif ($type === ReportType::Pickups) {
+                $scope->whereIn('service_area_id', $areaIds)->orWhere('customer_id', $actor->id);
+            } else {
+                $scope->where('customer_id', $actor->id)->orWhereHas('customer.customerProfile.rt.serviceAreas', static fn (Builder $area): Builder => $area->whereIn('service_areas.id', $areaIds));
+            }
+        });
     }
 
     /**
@@ -442,6 +454,50 @@ final readonly class ReportQueryService
         return $this->displayValue($value);
     }
 
+    private function displaySubject(Model $record): string
+    {
+        $customer = $record->getRelation('customer');
+        if ($customer instanceof User && trim($customer->name) !== '') {
+            return $customer->name;
+        }
+
+        return 'Nasabah';
+    }
+
+    private function displayDetail(Model $record, ReportType $type): string
+    {
+        if ($type === ReportType::Pickups) {
+            $area = $record->getRelation('serviceArea');
+            $areaName = $this->displayValue($area?->getAttribute('name'));
+            $address = $this->displayValue($record->getAttribute('address'));
+
+            return $this->joinDisplayValues([$areaName, $address], ' · ', 'Penjemputan terjadwal');
+        }
+
+        return match ($type) {
+            ReportType::Deposits, ReportType::Participation => $this->joinDisplayValues([
+                WeightFormatter::format($record->getAttribute('total_weight_kg'), fixedTwoDecimals: true).' kg',
+                $this->displayValue($record->getAttribute('method')),
+            ], ' · ', 'Setoran sampah'),
+            ReportType::Withdrawals => $this->joinDisplayValues([
+                $this->displayValue($record->getAttribute('pickup_location')),
+                $this->displayValue($record->getAttribute('recipient_reference')),
+            ], ' · ', 'Pencairan saldo'),
+            ReportType::Groceries => $this->joinDisplayValues([
+                $this->displayValue($record->getAttribute('package_snapshot')['code'] ?? null),
+                $this->displayValue($record->getAttribute('availability_note')),
+            ], ' · ', 'Penukaran sembako'),
+        };
+    }
+
+    /** @param list<string> $values */
+    private function joinDisplayValues(array $values, string $separator, string $fallback): string
+    {
+        $values = array_values(array_filter($values, static fn (string $value): bool => trim($value) !== ''));
+
+        return $values === [] ? $fallback : implode($separator, $values);
+    }
+
     private function displayAmount(Model $record, ReportType $type): int|string
     {
         if ($record instanceof Deposit && in_array($type, [ReportType::Deposits, ReportType::Participation], true)) {
@@ -452,10 +508,12 @@ final readonly class ReportQueryService
             ReportType::Deposits, ReportType::Participation => 'total_value',
             ReportType::Withdrawals => 'amount',
             ReportType::Groceries => 'value_snapshot',
-            ReportType::Pickups => null,
+            ReportType::Pickups => 'estimated_weight_kg',
         };
 
-        return $column === null ? '' : (int) ($record->getAttribute($column) ?? 0);
+        return $type === ReportType::Pickups
+            ? $this->displayValue($record->getAttribute($column))
+            : (int) ($record->getAttribute($column) ?? 0);
     }
 
     private function displayValue(mixed $value): string

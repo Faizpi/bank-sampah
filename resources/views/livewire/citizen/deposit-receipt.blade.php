@@ -1,15 +1,17 @@
 <x-slot:title>Bukti setoran</x-slot:title>
 <x-slot:context>{{ $receipt['number'] }}</x-slot:context>
 
-<section aria-labelledby="receipt-title" class="space-y-6">
+<section aria-labelledby="receipt-title" class="space-y-6" data-print-area>
     {{-- Page header --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <p class="text-label font-semibold text-forest-600">Bukti Transaksi</p>
             <h1 id="receipt-title" class="mt-2 text-h1 font-bold text-deep-green">Setoran Selesai</h1>
-            <p class="mt-3 text-body text-text-secondary">Simpan nomor bukti ini untuk verifikasi publik.</p>
+            <p class="mt-3 text-body text-text-secondary">Simpan atau cetak bukti ini sebagai rujukan transaksi Anda.</p>
         </div>
-        <x-ui.mascot variant="2" bubble="Setoran berhasil tercatat!" bubblePosition="top" class="h-28 w-auto shrink-0" />
+        <div data-print-hide>
+            <x-ui.mascot variant="2" bubble="Setoran berhasil tercatat!" bubblePosition="top" class="h-28 w-auto shrink-0" />
+        </div>
     </div>
 
     <x-ui.success-state
@@ -37,7 +39,7 @@
         </dl>
     </x-ui.panel>
 
-    <x-ui.panel title="Item saat transaksi" :description="$receipt['is_corrected'] ? 'Rincian ini adalah snapshot transaksi asli. Nilai akhir di atas mengikuti koreksi resmi.' : 'Perubahan harga master tidak mengubah bukti ini.'">
+    <x-ui.panel title="Item saat transaksi" :description="$receipt['is_corrected'] ? 'Ini adalah rincian transaksi asli yang disimpan saat transaksi dibuat. Nilai akhir di atas mengikuti koreksi resmi.' : 'Perubahan harga master tidak mengubah bukti ini.'">
         <div class="divide-y divide-border">
             @foreach ($deposit->items as $item)
                 <div class="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
@@ -51,13 +53,11 @@
         </div>
     </x-ui.panel>
 
-    <x-ui.qr-display
-        title="QR verifikasi setoran"
-        context="Tunjukkan QR ini kepada petugas atau gunakan nomor bukti bila pemindaian tidak tersedia."
-        :image-src="$qrDataUri"
-        image-alt="QR verifikasi {{ $receipt['number'] }}"
-        :masked-reference="substr($receipt['number'], 0, 8).'****'"
-        :fallback-number="$receipt['number']"
-        :print-href="route('citizen.deposit-receipt', $deposit)"
-    />
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-print-hide>
+        <p class="text-caption text-text-secondary">Butuh arsip? Cetak bukti ini atau simpan sebagai PDF dari dialog cetak.</p>
+        <button type="button" data-print-button class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">
+            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>
+            Cetak bukti
+        </button>
+    </div>
 </section>

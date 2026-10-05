@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Withdrawals\Services;
 
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Platform\Models\Media;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
@@ -48,6 +49,12 @@ final readonly class WithdrawalService
     public function expire(WithdrawalRequest $withdrawal): WithdrawalRequest
     {
         return $this->terminals->expire($withdrawal);
+    }
+
+    /** @return Builder<ServiceArea> */
+    public function availableAreasFor(User $actor): Builder
+    {
+        return $this->requests->availableAreasFor($actor);
     }
 
     /** @return Builder<WithdrawalRequest> */

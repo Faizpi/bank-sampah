@@ -46,7 +46,7 @@ final class PickupCapacityResource extends Resource
         return $schema->components([
             Select::make('service_area_id')->label('Area pelayanan')->relationship('serviceArea', 'name')->required(),
             DatePicker::make('service_date')->label('Tanggal layanan')->required(),
-            TextInput::make('max_addresses')->label('Batas alamat')->numeric()->integer()->minValue(0),
+            TextInput::make('max_addresses')->label('Maksimal alamat yang dilayani')->numeric()->integer()->minValue(0),
             TextInput::make('max_weight_kg')->label('Batas berat (kg)')->numeric()->minValue(0),
             TextInput::make('vehicle_label')->label('Kendaraan')->maxLength(120),
         ]);
@@ -60,7 +60,7 @@ final class PickupCapacityResource extends Resource
             ->columns([
                 TextColumn::make('serviceArea.name')->label('Area')->searchable(),
                 TextColumn::make('service_date')->label('Tanggal')->date('d M Y')->sortable(),
-                TextColumn::make('max_addresses')->label('Alamat')->placeholder('Tanpa batas'),
+                TextColumn::make('max_addresses')->label('Maksimal alamat')->placeholder('Tanpa batas'),
                 TextColumn::make('max_weight_kg')->label('Berat')->formatStateUsing(fn (?string $state): string => WeightFormatter::format($state))->suffix(' kg')->placeholder('Tanpa batas'),
                 TextColumn::make('vehicle_label')->label('Kendaraan')->placeholder('Belum diisi'),
                 IconColumn::make('is_active')->label('Aktif')->boolean(),

@@ -6,6 +6,7 @@ namespace App\Domain\CustomersRegions\Models;
 
 use App\Domain\CustomersRegions\Support\GuardedServiceAreaRtsRelation;
 use App\Domain\Identity\Models\StaffProfile;
+use App\Domain\Identity\Models\StaffServiceArea;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class ServiceArea extends RegionModel
@@ -38,5 +39,11 @@ final class ServiceArea extends RegionModel
     public function staffProfiles(): HasMany
     {
         return $this->hasMany(StaffProfile::class);
+    }
+
+    /** @return HasMany<StaffServiceArea, $this> */
+    public function staffAssignments(): HasMany
+    {
+        return $this->hasMany(StaffServiceArea::class);
     }
 }

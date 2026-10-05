@@ -88,6 +88,9 @@ final readonly class MobileServiceService
             if ($next === MobileServiceStatus::Open && ($locked->staff->isEmpty() || $locked->wasteTypes->isEmpty())) {
                 throw ValidationException::withMessages(['service' => 'Layanan dibuka harus memiliki petugas dan jenis diterima.']);
             }
+            if ($next === MobileServiceStatus::Open && (! $locked->starts_at->lessThanOrEqualTo(now()) || ! $locked->ends_at->greaterThanOrEqualTo(now()))) {
+                throw ValidationException::withMessages(['schedule' => 'Layanan hanya dapat dibuka selama jadwal berlangsung.']);
+            }
             $locked->forceFill(['status' => $next])->save();
             $this->auditLogger->record($actor, 'mobile-service.status.changed', $locked, ['status' => $current->value], ['status' => $next->value], $this->correlationId());
 
@@ -165,7 +168,7 @@ final readonly class MobileServiceService
     private function validated(?int $rwId, ?int $rtId, string $point, string $startsAt, string $endsAt, int $capacity, string $notes, array $staffIds, array $wasteTypeIds): array
     {
         $point = trim($point);
-        if (mb_strlen($point) < 3 || mb_strlen($point) > 255 || $capacity < 0 || $capacity > 1_000_000 || mb_strlen($notes) > 2000 || $staffIds === [] || $wasteTypeIds === []) {
+        if (mb_strlen($point) < 3 || mb_strlen($point) > 255 || $capacity < 1 || $capacity > 1_000_000 || mb_strlen($notes) > 2000 || $staffIds === [] || $wasteTypeIds === []) {
             throw ValidationException::withMessages(['service' => 'Titik, kapasitas, petugas, atau jenis layanan tidak valid.']);
         }
         $start = CarbonImmutable::parse($startsAt, 'Asia/Jakarta');
@@ -178,6 +181,9 @@ final readonly class MobileServiceService
         }
         if ($rwId !== null && ! Rw::query()->whereKey($rwId)->where('is_active', true)->exists()) {
             throw ValidationException::withMessages(['rw_id' => 'RW layanan harus aktif.']);
+        }
+        if ($rwId !== null && $rtId !== null && ! Rt::query()->whereKey($rtId)->where('rw_id', $rwId)->exists()) {
+            throw ValidationException::withMessages(['rt_id' => 'RT layanan harus berada dalam RW yang dipilih.']);
         }
         if (User::query()->whereIn('id', $staffIds)->where('status', UserStatus::Active)->whereHas('staffProfile')->whereHas('roles.permissions', fn (Builder $permissions): Builder => $permissions->where('permissions.name', 'mobile-service.operate'))->count() !== count(array_unique($staffIds)) || WasteType::query()->whereIn('id', $wasteTypeIds)->where('is_active', true)->count() !== count(array_unique($wasteTypeIds))) {
             throw ValidationException::withMessages(['assignment' => 'Pilih petugas aktif yang berwenang dan jenis sampah aktif.']);

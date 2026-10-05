@@ -31,6 +31,6 @@ final readonly class EstimateService
         $price = $this->priceResolver->resolve($type, $condition->id, CarbonImmutable::now('Asia/Jakarta'));
         $value = $price->snapshot()->withWeight($weight->decimal())->subtotal;
 
-        return ['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => $weight->decimal(), 'price_per_kg' => $price->price, 'estimated_value' => $value, 'disclaimer' => 'Estimasi informatif. Nilai akhir mengikuti berat aktual dan harga saat transaksi. Estimasi tidak membuat transaksi, saldo, hold, atau jaminan nilai akhir.'];
+        return ['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => $weight->decimal(), 'price_per_kg' => $price->price, 'estimated_value' => $value, 'disclaimer' => 'Ini hanya perkiraan. Nilai akhir dihitung dari berat dan harga saat transaksi. Perkiraan ini tidak membuat transaksi, menambah saldo, atau menjamin nilai akhir.'];
     }
 }

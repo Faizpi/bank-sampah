@@ -58,7 +58,7 @@ final class WasteTypeResource extends Resource
                 TextInput::make('sort_order')->label('Urutan')->numeric()->integer()->minValue(0)->maxValue(9999)->default(0)->required(),
                 Checkbox::make('is_plastic')->label('Kelompok plastik'),
                 Checkbox::make('is_active')->label('Aktif')->default(true),
-                Textarea::make('education_description')->label('Edukasi kontekstual')->maxLength(5000)->rows(5)->columnSpanFull(),
+                Textarea::make('education_description')->label('Penjelasan untuk warga')->maxLength(5000)->rows(5)->columnSpanFull(),
             ])->columns(2),
         ]);
     }

@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Ledger\Models;
 
 use App\Domain\Shared\InvalidValue;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
 
+/**
+ * @property CarbonImmutable $effective_at
+ */
 final class LedgerEntry extends Model
 {
     public const DIRECTION_IN = 'masuk';

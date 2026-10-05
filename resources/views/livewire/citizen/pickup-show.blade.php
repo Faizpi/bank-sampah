@@ -95,10 +95,12 @@
     </x-ui.panel>
 
     @if (in_array($pickup->status->value, ['menunggu_pemeriksaan', 'diterima', 'dijadwalkan'], true))
-        <button type="button" wire:click="cancel"
-            wire:confirm="Batalkan pengajuan penjemputan ini?"
-            class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
-            Batalkan Pengajuan
-        </button>
+        <div class="flex justify-end">
+            <button type="button" wire:click="cancel"
+                wire:confirm="Batalkan pengajuan penjemputan ini?"
+                class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
+                Batalkan Pengajuan
+            </button>
+        </div>
     @endif
 </section>

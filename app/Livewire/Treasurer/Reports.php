@@ -6,7 +6,7 @@ namespace App\Livewire\Treasurer;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\CustomersRegions\Models\ServiceArea;
-use App\Domain\Reports\Enums\ReportType;
+use App\Domain\Reports\Policies\ReportTypeAccess;
 use App\Domain\Reports\Services\ReportExportService;
 use App\Domain\Reports\Services\ReportQueryService;
 use App\Models\User;
@@ -15,6 +15,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 #[Layout('layouts.officer')]
@@ -24,7 +25,10 @@ final class Reports extends Component
 
     public string $end = '';
 
-    public string $reportType = 'deposits';
+    public string $reportType = 'withdrawals';
+
+    #[Locked]
+    public string $surface = ReportTypeAccess::TREASURER;
 
     public string $period = 'today';
 
@@ -66,28 +70,24 @@ final class Reports extends Component
         'kedaluwarsa' => 'Kedaluwarsa',
     ];
 
-    public function mount(PermissionChecker $permissions): void
+    public function mount(PermissionChecker $permissions, ReportTypeAccess $reportTypes): void
     {
         /** @var User|null $actor */
         $actor = auth()->user();
         abort_unless($actor instanceof User && $permissions->allows($actor, 'report.view'), 403);
+        $this->reportTypes = $reportTypes->optionsFor($this->surface);
+        $this->reportType = $reportTypes->defaultFor($this->surface)->value;
         $today = today('Asia/Jakarta');
         $this->month = $today->format('m');
         $this->year = $today->format('Y');
         $this->start = $today->toDateString();
         $this->end = $today->toDateString();
-        $this->reportTypes = collect(ReportType::cases())->mapWithKeys(static fn (ReportType $type): array => [$type->value => match ($type) {
-            ReportType::Deposits => 'Setoran',
-            ReportType::Withdrawals => 'Pencairan',
-            ReportType::Groceries => 'Sembako',
-            ReportType::Pickups => 'Penjemputan',
-            ReportType::Participation => 'Partisipasi',
-        }])->all();
-        $this->refreshReport(app(ReportQueryService::class));
+        $this->refreshReport(app(ReportQueryService::class), $reportTypes);
     }
 
-    public function refreshReport(ReportQueryService $reports): void
+    public function refreshReport(ReportQueryService $reports, ReportTypeAccess $reportTypes): void
     {
+        $reportTypes->assertAllowed($this->surface, $this->reportType);
         /** @var User $actor */
         $actor = auth()->user();
         [$start, $end] = $this->periodRange();
@@ -106,7 +106,7 @@ final class Reports extends Component
         $this->rows = $reports->displayRows($actor, $this->reportType, $filters);
     }
 
-    public function setPeriod(string $preset, ReportQueryService $reports): void
+    public function setPeriod(string $preset, ReportQueryService $reports, ReportTypeAccess $reportTypes): void
     {
         if (in_array($preset, ['today', 'week', 'month', 'custom'], true)) {
             $this->period = $preset;
@@ -114,11 +114,12 @@ final class Reports extends Component
         [$start, $end] = $this->periodRange();
         $this->start = $start;
         $this->end = CarbonImmutable::parse($end, 'Asia/Jakarta')->subDay()->toDateString();
-        $this->refreshReport($reports);
+        $this->refreshReport($reports, $reportTypes);
     }
 
-    public function export(ReportExportService $exports): void
+    public function export(ReportExportService $exports, ReportTypeAccess $reportTypes): void
     {
+        $reportTypes->assertAllowed($this->surface, $this->reportType);
         /** @var User $actor */
         $actor = auth()->user();
         [$start, $end] = $this->periodRange();

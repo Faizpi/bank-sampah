@@ -17,6 +17,8 @@ final class GroceryRequestForm extends Component
 {
     public string $packageId = '';
 
+    public string $serviceAreaId = '';
+
     public string $idempotencyKey = '';
 
     public function mount(): void
@@ -33,9 +35,11 @@ final class GroceryRequestForm extends Component
     {
         $validated = $this->validate([
             'packageId' => ['required', 'integer'],
+            'serviceAreaId' => ['nullable', 'integer'],
         ], [
             'packageId.required' => 'Pilih paket sembako terlebih dahulu.',
             'packageId.integer' => 'Paket sembako tidak valid.',
+            'serviceAreaId.integer' => 'Area layanan tidak valid.',
         ]);
         /** @var User $actor */
         $actor = auth()->user();
@@ -58,6 +62,7 @@ final class GroceryRequestForm extends Component
         try {
             $redemption = $service->request($actor, [
                 'package_id' => $this->packageId,
+                'service_area_id' => $validated['serviceAreaId'] ?? null,
             ], $this->idempotencyKey);
         } catch (ValidationException $exception) {
             $this->presentRequestErrors($exception);
@@ -76,6 +81,7 @@ final class GroceryRequestForm extends Component
 
         return view('livewire.citizen.grocery-request-form', [
             'packages' => $service->activePackages($actor)->get(),
+            'serviceAreas' => $service->availableAreasFor($actor)->get(),
             'availableBalance' => $this->availableBalance($actor),
         ]);
     }

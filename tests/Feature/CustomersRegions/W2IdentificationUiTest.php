@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\CustomersRegions;
 
 use App\Domain\CustomersRegions\Contracts\QrToken;
+use App\Domain\CustomersRegions\Models\Dusun;
+use App\Domain\CustomersRegions\Models\Rt;
+use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
+use App\Domain\MobileServices\Enums\MobileServiceStatus;
+use App\Domain\MobileServices\Models\MobileService;
 use App\Livewire\Citizen\CustomerCard;
 use App\Livewire\Officer\CustomerIdentification;
 use App\Models\User;
@@ -101,6 +106,105 @@ final class W2IdentificationUiTest extends TestCase
 
         Livewire::actingAs($scopedOfficer)
             ->test(CustomerIdentification::class)
+            ->call('scan', $token->value())
+            ->assertHasErrors(['token'])
+            ->assertSet('candidate', null);
+    }
+
+    public function test_assigned_mobile_service_context_identifies_its_active_rt_customer_by_number_and_qr_only_for_assigned_staff(): void
+    {
+        $assigned = User::factory()->create(['name' => 'Petugas Keliling']);
+        $other = User::factory()->create(['name' => 'Petugas Lain']);
+        $customer = User::factory()->create(['name' => 'Warga Keliling']);
+        $token = QrToken::generate();
+        $dusun = Dusun::query()->create(['code' => 'DS-MOB-ID', 'name' => 'Dusun Mobile', 'is_active' => true]);
+        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-MOB-ID', 'name' => 'RW Mobile', 'is_active' => true]);
+        $rt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-MOB-ID', 'name' => 'RT Mobile', 'is_active' => true]);
+        CustomerProfile::factory()->for($customer)->create([
+            'customer_number' => 'CST-24681357',
+            'rt_id' => $rt->id,
+            'qr_token_hash' => $token->hash(),
+        ]);
+        $service = MobileService::query()->create([
+            'service_number' => 'MOB-IDENTIFICATION-001',
+            'rt_id' => $rt->id,
+            'point' => 'Balai RT Mobile',
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addHour(),
+            'status' => MobileServiceStatus::Open,
+            'capacity' => 20,
+            'served_count' => 0,
+            'created_by' => $assigned->id,
+        ]);
+        $service->staff()->attach($assigned->id);
+        $this->grant($assigned, 'customer.view', 'user.view', 'mobile-service.operate');
+        $this->grant($other, 'customer.view', 'user.view', 'mobile-service.operate');
+
+        $component = Livewire::actingAs($assigned)
+            ->test(CustomerIdentification::class)
+            ->assertSee('Pilih konteks setoran')
+            ->assertSee($service->point)
+            ->set('mobileServiceId', $service->id)
+            ->set('search', 'CST-24681357')
+            ->call('find')
+            ->assertSet('candidate.name', 'Warga Keliling')
+            ->call('confirm')
+            ->assertSet('confirmed', true)
+            ->set('mobileServiceId', null)
+            ->assertSet('candidate', null)
+            ->assertSet('confirmed', false);
+
+        $component
+            ->set('mobileServiceId', $service->id)
+            ->call('scan', $token->value())
+            ->assertSet('candidate.name', 'Warga Keliling');
+
+        Livewire::actingAs($other)
+            ->test(CustomerIdentification::class)
+            ->assertDontSee($service->point)
+            ->set('mobileServiceId', $service->id)
+            ->set('search', 'CST-24681357')
+            ->call('find')
+            ->assertSet('candidate', null)
+            ->call('scan', $token->value())
+            ->assertHasErrors(['token'])
+            ->assertSet('candidate', null);
+    }
+
+    public function test_assigned_actor_without_mobile_service_permission_cannot_list_or_inject_mobile_context(): void
+    {
+        $assigned = User::factory()->create(['name' => 'Petugas Tanpa Izin Keliling']);
+        $customer = User::factory()->create(['name' => 'Warga Mobile Terbatas']);
+        $token = QrToken::generate();
+        $dusun = Dusun::query()->create(['code' => 'DS-MOB-DENY', 'name' => 'Dusun Mobile Deny', 'is_active' => true]);
+        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-MOB-DENY', 'name' => 'RW Mobile Deny', 'is_active' => true]);
+        $rt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-MOB-DENY', 'name' => 'RT Mobile Deny', 'is_active' => true]);
+        CustomerProfile::factory()->for($customer)->create([
+            'customer_number' => 'CST-11223344',
+            'rt_id' => $rt->id,
+            'qr_token_hash' => $token->hash(),
+        ]);
+        $service = MobileService::query()->create([
+            'service_number' => 'MOB-IDENTIFICATION-DENY',
+            'rt_id' => $rt->id,
+            'point' => 'Titik Mobile Terbatas',
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addHour(),
+            'status' => MobileServiceStatus::Open,
+            'capacity' => 20,
+            'served_count' => 0,
+            'created_by' => $assigned->id,
+        ]);
+        $service->staff()->attach($assigned->id);
+        $this->grant($assigned, 'customer.view', 'user.view');
+
+        Livewire::actingAs($assigned)
+            ->test(CustomerIdentification::class)
+            ->assertDontSee($service->point)
+            ->set('mobileServiceId', $service->id)
+            ->set('search', 'CST-11223344')
+            ->call('find')
+            ->assertSet('candidate', null)
             ->call('scan', $token->value())
             ->assertHasErrors(['token'])
             ->assertSet('candidate', null);

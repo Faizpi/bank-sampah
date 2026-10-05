@@ -8,7 +8,7 @@ use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryRedemption;
-use App\Domain\Identity\Queries\VisibleUsers;
+use App\Domain\Groceries\Support\GroceryRedemptionScope;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Services\LedgerService;
 use App\Domain\Notifications\Data\NotificationPayload;
@@ -26,7 +26,7 @@ final readonly class GroceryDecisionService
         private PermissionChecker $permissions,
         private LedgerService $ledger,
         private AuditLogger $auditLogger,
-        private VisibleUsers $visibleUsers,
+        private GroceryRedemptionScope $scope,
     ) {}
 
     public function approve(User $actor, GroceryRedemption $redemption, bool $approved, ?string $availabilityNote = null, ?string $reason = null): GroceryRedemption
@@ -41,6 +41,7 @@ final readonly class GroceryDecisionService
 
         return DB::transaction(function () use ($actor, $redemption, $approved, $availabilityNote, $reason): GroceryRedemption {
             $locked = $this->lock($redemption);
+            $this->assertScope($actor, $locked);
             $next = $approved ? GroceryStatus::Approved : GroceryStatus::Rejected;
             if (! $approved && $locked->status === GroceryStatus::Rejected) {
                 return $locked->fresh(['package', 'balanceHold', 'customer', 'approver']);
@@ -83,6 +84,7 @@ final readonly class GroceryDecisionService
 
         return DB::transaction(function () use ($actor, $redemption, $next, $event, $reason): GroceryRedemption {
             $locked = $this->lock($redemption);
+            $this->assertScope($actor, $locked);
             $this->assertTransition($locked, $next);
             $old = $locked->status;
             $locked->forceFill([
@@ -104,8 +106,8 @@ final readonly class GroceryDecisionService
 
     private function assertScope(User $actor, GroceryRedemption $redemption): void
     {
-        if (! ($this->permissions->allows($actor, 'user.view.all') || $this->visibleUsers->queryFor($actor)->whereKey($redemption->customer_id)->exists())) {
-            throw new AuthorizationException('Penukaran berada di luar scope Anda.');
+        if (! $this->scope->canOperate($actor, $redemption)) {
+            throw new AuthorizationException('Penukaran berada di luar scope area snapshot Anda.');
         }
     }
 

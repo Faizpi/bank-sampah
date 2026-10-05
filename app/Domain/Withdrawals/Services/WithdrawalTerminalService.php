@@ -117,7 +117,7 @@ final readonly class WithdrawalTerminalService
             recipientId: $withdrawal->customer_id,
             type: $type,
             title: 'Status pencairan diperbarui',
-            body: 'Pencairan '.$withdrawal->request_number.' '.$label.' dan hold dilepas.',
+            body: 'Pencairan '.$withdrawal->request_number.' '.$label.' dan dana yang ditahan dikembalikan.',
             reference: '/notifikasi',
             dedupeKey: NotificationDedupeKey::for($type.':'.$withdrawal->request_number, $withdrawal->customer_id, 'withdrawal-v1'),
         ));

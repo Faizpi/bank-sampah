@@ -11,13 +11,13 @@ Dokumentasi ini menjelaskan kontrak produk, teknis, antarmuka, dan operasional S
 ## Status
 
 - Baseline proposal: disetujui.
-- Seluruh fitur yang disetujui: terkunci sebagai satu baseline pengembangan.
+- Ruang lingkup aktif mengikuti kapabilitas aplikasi saat ini dan aturan bisnis yang tetap normatif.
 - Perubahan ruang lingkup: wajib melalui change request.
 - Platform: web responsif mobile-first dan PWA installable dengan cache terbatas untuk halaman informasi umum.
 
 ## Teknologi
 
-- Laravel 13 dan PHP 8.5.
+- Laravel 13 dan PHP 8.3 atau lebih baru sesuai kontrak Composer `^8.3`.
 - Blade, Livewire 4, Alpine.js bawaan Livewire.
 - Tailwind CSS 4.1+.
 - Filament 5 untuk back-office.
@@ -43,10 +43,10 @@ Dokumentasi ini menjelaskan kontrak produk, teknis, antarmuka, dan operasional S
 
 ## Kontrak Teknis
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — modular monolith, boundary modul, UI, storage, queue, cron, dan PWA.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — modular monolith, boundary modul, UI, storage, queue `sync`, cron, Health, dan PWA.
 - [DATA_MODEL.md](DATA_MODEL.md) — ERD, tabel, tipe, indeks, constraint, status, dan deletion policy.
 - [VALIDATION.md](VALIDATION.md) — normalisasi, aturan input/file/status, konkurensi, dan pesan gagal.
-- [SECURITY.md](SECURITY.md) — kontrol aplikasi, data, file, QR, publik, backup, dan insiden.
+- [SECURITY.md](SECURITY.md) — kontrol aplikasi, data, file, QR, publik, Health, dan insiden.
 - [DEPLOYMENT.md](DEPLOYMENT.md) — deployment dan rollback Hostinger shared hosting.
 
 ## Kontrak Antarmuka
@@ -57,7 +57,7 @@ Dokumentasi ini menjelaskan kontrak produk, teknis, antarmuka, dan operasional S
 ## Kualitas dan Operasional
 
 - [TEST_PLAN.md](TEST_PLAN.md) — strategi test, Given/When/Then, coverage, UAT, dan traceability.
-- [OPERATIONS.md](OPERATIONS.md) — SOP seluruh role, layanan, gangguan, laporan, dan pemulihan.
+- [OPERATIONS.md](OPERATIONS.md) — SOP seluruh role, layanan, gangguan, laporan, dan penanganan insiden.
 - [DECISIONS.md](DECISIONS.md) — ADR ringan keputusan final.
 - [CHANGELOG.md](CHANGELOG.md) — riwayat perubahan baseline dan dokumentasi.
 

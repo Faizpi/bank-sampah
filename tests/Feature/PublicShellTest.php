@@ -165,7 +165,7 @@ final class PublicShellTest extends TestCase
             ->assertSee('Nilai terjaga.')
             ->assertSee('Desa bergerak bersama.')
             ->assertSee('Akses Akun Saya')
-            ->assertSee('Masuk Ke Sistem')
+            ->assertSee('Masuk ke akun')
             ->assertSee('mascot-6.png');
 
         $response

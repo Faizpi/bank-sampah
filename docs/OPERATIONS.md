@@ -12,7 +12,7 @@ Dokumen ini menjadi SOP harian bagi warga, petugas, bendahara, admin, dan pengel
 | Petugas | Identifikasi, timbang, setoran, pickup, tugas, bukti, layanan berbantuan/keliling. | Rekap tugas, alat, bukti, insiden. |
 | Bendahara | Verifikasi penerima, pembayaran disetujui, kas, bukti, laporan. | Daftar paid/pending, bukti, dan ekspor laporan. |
 | Admin | Verifikasi, master/harga, approve, kapasitas/jadwal, koreksi, laporan/audit. | Keputusan tertunda, koreksi, selisih, perubahan master. |
-| Superadmin | Seluruh tugas operasional admin, laporan/audit, serta deploy, akses teknis, metadata backup/restore, cron, health, dan insiden teknis. Bersama admin membuka panel back-office (`backoffice.access`). Eksekusi artefak backup/restore dilakukan melalui deployment/SOP, bukan UI aplikasi. | Keputusan operasional, release, backup, secret/access rotation, log insiden. |
+| Superadmin | Seluruh tugas operasional admin, laporan atau audit, role atau permission, Health, deploy, cron, dan insiden teknis. Bersama admin membuka panel back-office (`backoffice.access`). | Keputusan operasional, release, rotasi secret atau akses, dan log insiden. |
 
 ## 3. Pembukaan pelayanan
 
@@ -65,7 +65,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 1. Tinjau foto, jenis/perkiraan, alamat, area, tanggal, dan kapasitas.
 2. Jika tanggal penuh, tawarkan alternatif; jangan memaksa slot melebihi kapasitas.
 3. Nilai kelayakan. Tolak dengan alasan yang jelas dan berhenti tanpa jadwal.
-4. Bila diterima, tetapkan tanggal, petugas, area/rute, dan catatan; kirim notifikasi.
+4. Bila diterima, tetapkan tanggal, petugas, area/rute, dan catatan. Pastikan perubahan terlihat pada status pengajuan warga.
 5. Perubahan jadwal/kapasitas diberitahukan; perkiraan berat bukan nilai saldo.
 
 ### Petugas lapangan
@@ -105,14 +105,13 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 5. Petugas `handover` memverifikasi penerima dan nomor pengajuan.
 6. Serahkan paket, unggah bukti, lalu selesaikan satu kali.
 7. Pastikan saldo keluar dibuat dan hold dikonversi setelah penyerahan.
-8. Bantuan gratis dicatat terpisah dan tidak boleh mengurangi saldo.
 
 ## 9. SOP layanan keliling
 
 ### Persiapan
 
-1. Admin menetapkan RT/RW, titik, waktu, petugas, jenis diterima, dan kapasitas; cek benturan.
-2. Publikasikan jadwal dan kirim pengingat/perubahan.
+1. Admin menetapkan wilayah sesuai hierarki desa, dusun, RW, dan RT, lalu menetapkan titik, waktu, petugas, jenis diterima, serta kapasitas jadwal; cek benturan.
+2. Publikasikan jadwal. Setiap perubahan harus terlihat pada informasi jadwal yang dipakai warga dan petugas.
 3. Petugas membawa alat, daftar tugas, kartu/QR fallback, dan bahan bukti cetak.
 
 ### Pelaksanaan
@@ -170,7 +169,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 3. Isi alasan rinci, bukti, dan nilai benar. Sistem menghitung delta serta dampak saldo.
 4. Tinjau apakah dampak menyebabkan saldo negatif atau menyentuh pengajuan lain; eskalasi sesuai aturan.
 5. Konfirmasi hanya setelah pemeriksaan. Batal harus berhenti tanpa perubahan.
-6. Sistem membuat correction/reversal, mutasi penyesuaian/lawan, audit, dan notifikasi; transaksi asli tidak dihapus.
+6. Sistem membuat correction atau reversal, mutasi penyesuaian atau lawan, dan audit; transaksi asli tidak dihapus serta riwayat warga diperbarui.
 7. Warga menerima informasi sebelum/sesudah, alasan, tanggal, dan dampak yang aman.
 8. Pastikan koreksi tercermin pada laporan setelah proses resmi selesai.
 
@@ -196,52 +195,23 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 
 1. Hentikan penimbangan; jangan menebak berat atau memakai perkiraan pickup.
 2. Periksa permukaan, nol, baterai/daya, dan uji beban referensi.
-3. Jika tetap tidak valid, beri tanda alat tidak dipakai dan gunakan timbangan cadangan terverifikasi.
+3. Jika tetap tidak valid, beri tanda alat tidak dipakai dan gunakan timbangan pengganti yang telah diverifikasi.
 4. Jika tidak ada alat sah, tunda transaksi/penjemputan atau bawa ke lokasi timbang resmi; komunikasikan kepada warga.
 5. Catat alat, waktu, transaksi terdampak, dan tindakan. Transaksi yang terlanjur final salah mengikuti koreksi, bukan edit.
 
-## 17. Backup dan restore
+## 17. Health dan penanganan gangguan
 
-UI aplikasi hanya mengelola metadata, status, dan verifikasi backup/restore. Eksekusi dump, penyalinan, dan pemulihan artefak aktual tetap dilakukan melalui deployment/SOP terpisah.
+Health adalah satu-satunya administrasi teknis aktif pada UI. Superadmin memerlukan `system.maintenance` untuk melihat status aman secara baca-saja; permission tersebut tidak membuka halaman atau tindakan teknis lain.
 
-### Backup
+Jika terjadi gangguan:
 
-1. Setiap permintaan metadata backup baru wajib membawa `operator-key` eksplisit dari pemanggil. Untuk actor dan key yang sama, retry dengan payload kanonik (alias, checksum, ukuran, dan retensi ternormalisasi) mengembalikan backup yang sama; key yang sama untuk payload berbeda ditolak.
-2. Scheduler/teknis menjalankan database harian dan media berkala; backup pra-deploy wajib.
-2. Simpan terpisah, lindungi/enkripsi, hitung checksum, dan catat status/ukuran/waktu.
-3. Periksa kegagalan setiap hari; backup gagal segera diulang/diinvestigasi.
-4. Terapkan retensi yang disetujui tanpa menghapus satu-satunya salinan valid.
+1. Catat incident ID, waktu, gejala, dan proses yang terdampak.
+2. Hentikan pengulangan tindakan finansial sampai status transaksi dan ledger diperiksa.
+3. Gunakan audit serta riwayat status untuk menentukan apakah operasi sudah lengkap atau gagal.
+4. Jalankan koreksi atau reversal resmi bila data finansial benar-benar perlu diperbaiki. Jangan mengedit saldo langsung.
+5. Verifikasi kembali akses, transaksi, ledger, hold, dan file terkait sebelum membuka proses yang dihentikan.
 
-### Uji restore
-
-1. Jadwalkan berkala dan gunakan environment terisolasi.
-2. Pilih backup, verifikasi checksum, restore database dan media yang konsisten.
-3. Periksa login test, row count, transaksi, ledger/hold, file, audit, serta migration status.
-4. Catat waktu mulai/selesai dan bukti RPO/RTO; perbaiki prosedur bila gagal.
-
-### Restore insiden produksi
-
-1. Deklarasikan insiden, maintenance mode, hentikan cron penulis, lindungi log/bukti.
-2. Tentukan restore point dan dampak data setelah RPO.
-3. Restore database+media konsisten, deploy release kompatibel, cache ulang.
-4. Verifikasi integritas, permission, ledger, hold, QR/file, scheduler.
-5. Cocokkan data laporan setelah restore; transaksi yang hilang dipulihkan melalui prosedur resmi, bukan edit saldo.
-6. Dokumentasikan keputusan, pelaksana, hasil, dan komunikasi.
-
-## 18. Retensi foto penjemputan
-
-Retensi ini hanya tersedia untuk superadmin melalui **Administrasi sistem → Kontrol teknis → Retensi foto**. Jangan menghapus isi `storage/app/media` langsung melalui File Manager karena folder itu juga memuat bukti dan media privat lain.
-
-1. Pastikan backup database dan media terbaru tersedia dan lolos pemeriksaan dasar.
-2. Pilih batas tanggal. Aplikasi menolak foto yang belum berusia 30 hari dan memakai 180 hari sebagai nilai awal.
-3. Jalankan **Pratinjau**, lalu periksa nomor penjemputan, status, ukuran, tanggal, dan penanda file yang sudah hilang.
-4. Pastikan kandidat hanya berasal dari penjemputan berstatus selesai, ditolak, atau dibatalkan. Foto pengajuan aktif, setoran, pembayaran, master sampah, dan ekspor tidak boleh muncul.
-5. Jalankan **Hapus batch** dalam 10 menit setelah pratinjau. Satu eksekusi memproses maksimal 100 foto; ulangi pratinjau jika kandidat masih tersisa.
-6. Periksa pesan hasil, kapasitas penyimpanan, dan audit `media.pickup_photo_retention.executed`. Jika eksekusi gagal, jangan menghapus file manual; periksa log karena file yang sempat diproses dikembalikan dari karantina.
-
-Nilai usia dan ukuran batch dapat dinaikkan secara konservatif melalui `OPERATIONS_PICKUP_PHOTO_MINIMUM_AGE_DAYS`, `OPERATIONS_PICKUP_PHOTO_DEFAULT_AGE_DAYS`, dan `OPERATIONS_PICKUP_PHOTO_BATCH_SIZE`. Batas usia minimum efektif tidak pernah kurang dari 30 hari dan batch tidak pernah lebih dari 500 file.
-
-## 19. Pergantian petugas/admin
+## 18. Pergantian petugas/admin
 
 ### Sebelum hari terakhir
 
@@ -259,21 +229,21 @@ Nilai usia dan ukuran batch dapat dinaikkan secara konservatif melalui `OPERATIO
 
 ### Setelah pergantian
 
-Tinjau audit, failed task, laporan, backup, cron, dan contact list. Permission koreksi, pembalikan, dan penyesuaian saldo hanya tersedia pada pemilik rekonsiliasi yang ditetapkan; baseline saat ini berada pada superadmin dan tetap wajib memakai alasan, bukti, serta audit.
+Tinjau audit, failed task, laporan, Health, cron, dan contact list. Permission koreksi, pembalikan, dan penyesuaian saldo hanya tersedia pada pemilik rekonsiliasi yang ditetapkan; baseline saat ini berada pada superadmin dan tetap wajib memakai alasan, bukti, serta audit.
 
-## 20. Monitoring rutin
+## 19. Monitoring rutin
 
 | Frekuensi | Pemeriksaan |
 |---|---|
 | Setiap pelayanan | alat, internet, harga, tugas, failed transaction, kas, laporan |
-| Harian | scheduler heartbeat, failed jobs, backup, error log, storage/inode, hold kedaluwarsa |
-| Mingguan | permission/assignment anomali, kapasitas, transaksi ganda, koreksi, statistik, file temp |
-| Bulanan | dependency/security update, restore sample, performa DB, quota hosting, SSL/domain, SOP |
-| Saat pergantian/rilis | akses, secret, rehearsal MySQL 8.0.30 disposable sebelum UAT/production, backup, rollback, restore, smoke test, training |
+| Harian | Health, scheduler heartbeat, error log, storage atau inode, hold kedaluwarsa |
+| Mingguan | anomali permission atau assignment, kapasitas, transaksi ganda, koreksi, statistik, file sementara |
+| Bulanan | pembaruan dependency atau keamanan, performa database, kuota hosting, SSL atau domain, SOP |
+| Saat pergantian atau rilis | akses, secret, rehearsal MySQL 8.0.30 disposable sebelum UAT atau production, rollback, smoke test, dan pelatihan |
 
-## 21. Eskalasi
+## 20. Eskalasi
 
-- Saldo/transaksi ganda, akses lintas warga, uang/paket diserahkan tanpa record, atau backup hilang: hentikan proses terkait dan eskalasi sebagai insiden kritis.
+- Saldo atau transaksi ganda, akses lintas warga, atau uang atau paket yang diserahkan tanpa record: hentikan proses terkait dan eskalasi sebagai insiden kritis.
 - Selisih kas/ledger: jangan tutup sebagai sesuai; admin+bendahara menelusuri.
 - Gangguan teknis biasa: catat incident ID, gejala, waktu, perangkat, langkah; jangan kirim secret/screenshot data warga tanpa redaksi.
 - Ikuti [SECURITY.md](SECURITY.md) untuk containment dan [DEPLOYMENT.md](DEPLOYMENT.md) untuk rollback.

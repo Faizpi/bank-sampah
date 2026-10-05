@@ -29,4 +29,18 @@ final class WeightFormatterTest extends TestCase
     {
         self::assertSame($expected, WeightFormatter::format($value));
     }
+
+    #[DataProvider('fixedTwoDecimalValues')]
+    public function test_formats_report_weights_with_exactly_two_decimals(string|int|float $value, string $expected): void
+    {
+        self::assertSame($expected, WeightFormatter::format($value, fixedTwoDecimals: true));
+    }
+
+    /** @return iterable<string, array{string|int|float, string}> */
+    public static function fixedTwoDecimalValues(): iterable
+    {
+        yield 'whole number' => ['2', '2,00'];
+        yield 'one decimal' => ['2.5', '2,50'];
+        yield 'rounded three decimals' => ['2.505', '2,51'];
+    }
 }

@@ -39,7 +39,7 @@ erDiagram
   GROCERY_REDEMPTIONS ||--o| BALANCE_HOLDS : reserves
   MOBILE_SERVICES ||--o{ DEPOSITS : hosts
   COLLECTION_TARGETS ||--o{ TARGET_SCOPES : defines
-  USERS ||--o{ NOTIFICATIONS : receives
+
   ANNOUNCEMENTS }o--o{ RT : targets
   MEDIA }o--|| USERS : uploaded_by
   AUDIT_LOGS }o--|| USERS : actor
@@ -50,12 +50,12 @@ erDiagram
 | Tabel | Kolom penting | Indeks/constraint | Penghapusan |
 |---|---|---|---|
 | `users` | `id`, `name VARCHAR(120)`, `phone VARCHAR(20)`, `password VARCHAR(255)`, `status VARCHAR(32)`, `terms_version`, `terms_accepted_at`, `verified_at`, `last_login_at`, timestamps | UQ `phone`; IDX `status` | Nonaktif/soft-delete; RESTRICT bila bereferensi |
-| `terms_acceptance_histories` | `id`, `user_id`, `accepted_version`, `accepted_at` (waktu server), timestamps | FK `user_id`; UQ `(user_id, accepted_version)`; IDX `user_id, accepted_at`; append-only | RESTRICT bersama histori pengguna; retensi mengikuti kebutuhan operasional/hukum yang disetujui |
+| `terms_acceptance_histories` | `id`, `user_id`, `accepted_version`, `accepted_at` (waktu server), timestamps | FK `user_id`; UQ `(user_id, accepted_version)`; IDX `user_id, accepted_at`; append-only | RESTRICT bersama histori pengguna |
 | `customer_profiles` | `user_id`, `customer_number VARCHAR(40)`, `rt_id`, `address VARCHAR(500)`, `joined_at`, `qr_token_hash CHAR(64)`, `qr_rotated_at` | PK/FK `user_id`; UQ nomor dan token; IDX `rt_id` | RESTRICT |
 | `staff_profiles` | `user_id`, `staff_number`, `service_area_id`, `active_from/to` | UQ nomor; IDX area/status | RESTRICT |
 | `roles`, `permissions` | `id`, `name`, `description` | UQ `name` | RESTRICT bila dipakai |
 | `role_user`, `permission_role` | FK terkait, timestamps, pemberi/alasan assignment | PK komposit pasangan; FK cascade untuk pivot | Cascade pivot |
-| `sessions` | session identifier, user, IP ringkas, timestamps | IDX user | Purge sesuai retensi |
+| `sessions` | session identifier, user, IP ringkas, timestamps | IDX user | Hapus saat sesi berakhir atau dicabut |
 
 Perubahan kata sandi berbantuan direkam pada `audit_logs`: aktor, target, metode verifikasi `tatap_muka` atau `callback_nomor_terdaftar`, alasan 10–1000 karakter, dan hasil. Perubahan mandiri direkam pada `audit_logs`: aktor yang sama dengan target, metode `mandiri_profil`, alasan sistem `perubahan_mandiri`, dan hasil. Audit tidak menyimpan kata sandi atau secret. Tidak ada tabel atau data lifecycle token reset, token sementara, maupun kanal pengiriman password/token.
 
@@ -83,7 +83,7 @@ Perubahan kata sandi berbantuan direkam pada `audit_logs`: aktor, target, metode
 | `deposit_items` | deposit/jenis FK, snapshot kode/nama/satuan/kondisi, berat `DECIMAL(15,3)`, harga `BIGINT`, subtotal `BIGINT`, rounding_version | UQ logis bila item digabung; IDX jenis | RESTRICT |
 | `transaction_corrections` | deposit FK, nomor, alasan, before/after JSON aman, delta nilai/berat, pembuat, approved/finalized time, media FK | UQ nomor dan deposit; IDX deposit/date | Append-only |
 | `transaction_reversals` | original deposit/entry, nomor, alasan, actor, time | UQ original per reversal penuh; UQ nomor | Append-only |
-| `idempotency_keys` | key, actor, scope, payload hash, status, result type/id, expiry | UQ `(actor_id,scope,key)`; IDX expiry | Purge setelah retensi aman |
+| `idempotency_keys` | key, actor, scope, payload hash, status, result type/id, expiry | UQ `(actor_id,scope,key)`; IDX expiry | Hapus hanya setelah key kedaluwarsa dan tak lagi diperlukan |
 
 Snapshot pada `deposit_items` wajib berdiri sendiri dari master. Perubahan `waste_prices` atau nama jenis tidak mengubah transaksi lama.
 
@@ -119,9 +119,8 @@ Tidak ada tabel stok rinci, mutasi stok, gudang, atau kuantitas inventori sembak
 | `mobile_service_staff`, `mobile_service_waste_types` | jadwal dengan petugas/jenis | UQ pasangan | Cascade pivot sebelum histori terkunci |
 | `collection_targets` | nomor, nama, tujuan, start/end, target weight `DECIMAL(15,3)`, status, public flag | UQ nomor; IDX status/period | Simpan histori |
 | `target_scopes` | target, jenis/kategori/wilayah nullable terkontrol | IDX target dan dimensi | RESTRICT |
-| `announcements` | judul, isi tersanitasi, audiens, publish start/end, status, author | IDX status/period/audience | Soft-delete setelah retensi |
+| `announcements` | judul, isi tersanitasi, audiens, publish start/end, status, author | IDX status/period/audience | Nonaktif atau soft-delete |
 | `announcement_rt` | announcement/RT | UQ pasangan | Cascade pivot |
-| `notifications` | recipient, type/template, title/body aman, reference, read_at, scheduled_at, dedupe key | UQ dedupe key; IDX recipient/read/date | Retensi terjadwal |
 
 Statistik partisipasi dan publik adalah query/read model agregat dari transaksi final bersih; materialized summary opsional harus dapat dibangun ulang.
 
@@ -129,13 +128,10 @@ Statistik partisipasi dan publik adalah query/read model agregat dari transaksi 
 
 | Tabel | Kolom penting | Indeks/constraint | Penghapusan |
 |---|---|---|---|
-| `media` | UUID, disk, path acak, original name, MIME, size, checksum, visibility, uploader, attachable type/id | UQ UUID/path; IDX attachable | Hapus hanya sesuai retensi dan referensi |
-| `report_exports` | requester, type, filters JSON, format, status, media, expires, error reference | IDX requester/status/date, expiry | File purge; metadata sesuai retensi |
-| `audit_logs` | event UUID, actor, action, auditable type/id, old/new JSON tersanitasi, IP hash/ringkas, user agent ringkas, correlation ID, time | UQ UUID; IDX object/time, actor/time, action/time | Append-only; retensi teknis |
-| `backup_logs` | started/finished, operator key nullable untuk kompatibilitas row lama, request payload hash nullable, type, location alias, checksum, status, size, restore_tested_at, error reference | UQ `(initiated_by,operator_key)` (nilai nullable historis tidak dipakai); IDX status/date | Retensi teknis |
-| `settings` | key, typed value encrypted bila sensitif, group, updated_by | UQ key | Audit perubahan |
-
-Secret utama tetap di environment, bukan `settings` atau audit.
+| `media` | UUID, disk, path acak, original name, MIME, size, checksum, visibility, uploader, attachable type/id | UQ UUID/path; IDX attachable | Hapus hanya bersama lifecycle record yang sah |
+| `report_exports` | requester, type, filters JSON, format, status, media, expires, error reference | IDX requester/status/date, expiry | File kedaluwarsa dapat dibersihkan; metadata tetap terkontrol |
+| `audit_logs` | event UUID, actor, action, auditable type/id, old/new JSON tersanitasi, IP hash/ringkas, user agent ringkas, correlation ID, time | UQ UUID; IDX object/time, actor/time, action/time | Append-only |
+Secret utama tetap di environment dan tidak disimpan pada audit.
 
 ## 10. Enum/value object wajib
 
@@ -149,7 +145,7 @@ Secret utama tetap di environment, bukan `settings` atau audit.
 | Sembako | `menunggu_verifikasi`, `disetujui`, `sedang_disiapkan`, `siap_diambil`, `selesai`, `ditolak`, `dibatalkan`, `kedaluwarsa` |
 | Layanan keliling | `draf`, `dipublikasikan`, `dibuka`, `ditutup`, `dibatalkan` |
 | Target | `draf`, `aktif`, `ditutup`, `dibatalkan` |
-| Export/backup | `menunggu`, `diproses`, `berhasil`, `gagal`, `kedaluwarsa` sesuai domain |
+| Export | `menunggu`, `diproses`, `berhasil`, `gagal`, `kedaluwarsa` sesuai domain |
 
 Transisi mengikuti [BUSINESS_RULES.md](BUSINESS_RULES.md), bukan update string bebas.
 
@@ -161,9 +157,9 @@ Transisi mengikuti [BUSINESS_RULES.md](BUSINESS_RULES.md), bukan update string b
 - Migration besar menghindari lock panjang shared hosting: tambah nullable, backfill terbatas, verifikasi, lalu constraint.
 - JSON hanya untuk snapshot/audit/filter yang tidak menjadi relasi utama; data yang perlu difilter dan dijaga integritasnya menjadi kolom/tabel.
 
-## 12. Data privat dan retensi
+## 12. Data privat
 
-Klasifikasi dan retensi rinci mengikuti [SECURITY.md](SECURITY.md) serta [OPERATIONS.md](OPERATIONS.md). Data pribadi diminimalkan; ekspor dan bukti privat; QR hanya token acak. Backup mencakup database dan media serta diuji restore. Tidak ada model data produksi paving block.
+Klasifikasi data mengikuti [SECURITY.md](SECURITY.md) serta [OPERATIONS.md](OPERATIONS.md). Data pribadi diminimalkan; ekspor dan bukti bersifat privat; QR hanya memuat token acak. Audit tetap append-only. Tidak ada model data produksi paving block.
 
 ## 13. Inspeksi skema development
 

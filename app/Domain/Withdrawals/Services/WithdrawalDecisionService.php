@@ -7,6 +7,7 @@ namespace App\Domain\Withdrawals\Services;
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\StaffServiceArea;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Services\LedgerService;
@@ -72,23 +73,26 @@ final readonly class WithdrawalDecisionService
         $this->authorize($actor, 'withdrawal.approve');
         $this->assertApprovalScope($actor, $withdrawal);
         if ($withdrawal->status !== WithdrawalStatus::Approved) {
-            throw ValidationException::withMessages(['status' => 'Payer hanya dapat ditetapkan pada pencairan yang disetujui.']);
+            throw ValidationException::withMessages(['status' => 'Petugas pembayaran hanya dapat ditetapkan untuk pencairan yang sudah disetujui.']);
         }
         if ($withdrawal->approver_id === $payer->id) {
             throw new AuthorizationException('Separation of duties memerlukan payer berbeda dari approver.');
         }
-        if ($payer->status !== UserStatus::Active || ! $payer->roles()->where('name', 'bendahara')->exists() || ! $this->permissions->allows($payer, 'withdrawal.pay') || ! $this->isStaffInArea($payer, $withdrawal)) {
-            throw ValidationException::withMessages(['payer_id' => 'Payer aktif dengan permission dan area yang sesuai wajib dipilih.']);
+        if (! $this->isEligiblePayer($payer, $withdrawal)) {
+            throw ValidationException::withMessages(['payer_id' => 'Pilih bendahara aktif yang memiliki izin dan penugasan area yang sesuai.']);
         }
 
         return DB::transaction(function () use ($actor, $withdrawal, $payer): WithdrawalRequest {
             $locked = $this->lockWithdrawal($withdrawal);
+            if (! $this->isEligiblePayer($payer, $locked)) {
+                throw ValidationException::withMessages(['payer_id' => 'Pilih bendahara aktif yang memiliki izin dan penugasan area yang sesuai.']);
+            }
             $this->assertTransition($locked, WithdrawalStatus::ReadyForPickup);
             $old = $locked->status;
             $locked->forceFill(['status' => WithdrawalStatus::ReadyForPickup, 'payer_id' => $payer->id])->save();
             $locked->statusHistory()->create(['old_status' => $old->value, 'new_status' => WithdrawalStatus::ReadyForPickup->value, 'actor_id' => $actor->id, 'reason' => 'Payer ditetapkan.', 'occurred_at' => now()]);
             $this->auditLogger->record($actor, 'withdrawal.payer.assigned', $locked, ['status' => $old->value], ['status' => WithdrawalStatus::ReadyForPickup->value, 'payer_id' => $payer->id], $this->correlationId());
-            $this->notify($locked, 'Pencairan siap diambil', 'Payer telah ditetapkan untuk '.$locked->request_number.'.', 'withdrawal.ready');
+            $this->notify($locked, 'Pencairan siap diambil', 'Bendahara pembayaran telah ditetapkan untuk pengajuan '.$locked->request_number.'.', 'withdrawal.ready');
 
             return $locked->fresh(['balanceHold', 'customer', 'payer']);
         });
@@ -101,18 +105,29 @@ final readonly class WithdrawalDecisionService
         }
     }
 
-    private function isStaffInArea(User $payer, WithdrawalRequest $withdrawal): bool
+    private function isEligiblePayer(User $payer, WithdrawalRequest $withdrawal): bool
     {
-        $profile = $payer->staffProfile;
-        $customerProfile = $withdrawal->customerProfile()->with('rt')->first();
-        if ($profile === null || $profile->service_area_id === null || $customerProfile === null || $customerProfile->rt === null) {
+        if ($payer->status !== UserStatus::Active || ! $payer->roles()->where('name', 'bendahara')->exists() || ! $this->permissions->allows($payer, 'withdrawal.pay')) {
+            return false;
+        }
+
+        return $this->hasActiveSnapshotAreaAssignment($payer, $withdrawal);
+    }
+
+    private function hasActiveSnapshotAreaAssignment(User $payer, WithdrawalRequest $withdrawal): bool
+    {
+        if ($withdrawal->service_area_id === null) {
             return false;
         }
         $today = today()->toDateString();
 
-        return $customerProfile->rt->serviceAreas()->where('is_active', true)->whereKey($profile->service_area_id)->exists()
-            && ($profile->active_from === null || $profile->active_from->toDateString() <= $today)
-            && ($profile->active_to === null || $profile->active_to->toDateString() >= $today);
+        return StaffServiceArea::query()
+            ->where('staff_profile_user_id', $payer->id)
+            ->where('service_area_id', $withdrawal->service_area_id)
+            ->where(static fn ($dates) => $dates->whereNull('active_from')->orWhereDate('active_from', '<=', $today))
+            ->where(static fn ($dates) => $dates->whereNull('active_to')->orWhereDate('active_to', '>=', $today))
+            ->whereHas('serviceArea', static fn ($area) => $area->where('is_active', true))
+            ->exists();
     }
 
     private function releaseHold(WithdrawalRequest $withdrawal): void

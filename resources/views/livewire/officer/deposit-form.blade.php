@@ -9,23 +9,44 @@
             <p class="text-label font-semibold text-forest-600">Operasional Petugas</p>
             <h1 id="deposit-title" class="mt-2 text-h1 font-bold text-deep-green">Setoran Baru</h1>
             <p class="mt-3 text-body text-text-secondary">
-                Tambahkan berat aktual. Harga dan subtotal selalu dihitung ulang server saat finalisasi.
+                Tambahkan berat aktual. Harga dan subtotal selalu dihitung ulang server saat pencatatan.
             </p>
         </div>
         <x-ui.mascot variant="11" bubble="Timbang dengan akurat!" bubblePosition="top" class="h-28 w-auto shrink-0" />
     </div>
 
-    @if ($draft?->isFinal() || $draft?->isPendingReview())
+    @php
+        $depositComplete = $draft?->isFinal() || $draft?->isPendingReview();
+        $depositSteps = [
+            ['key' => 'input', 'title' => 'Isi item setoran', 'description' => 'Tambahkan jenis sampah, kondisi, dan berat aktual.', 'icon' => 'clipboard-check'],
+            ['key' => 'evidence', 'title' => 'Unggah bukti transaksi', 'description' => 'Bukti privat diperlukan sebelum pencatatan.', 'icon' => 'file-check'],
+            ['key' => 'review', 'title' => 'Tinjau pencatatan', 'description' => 'Periksa kembali nilai sebelum transaksi dicatat.', 'icon' => 'eye'],
+            ['key' => 'final', 'title' => 'Setoran selesai', 'description' => 'Setoran tercatat dan saldo diproses sesuai statusnya.', 'icon' => 'circle-check'],
+        ];
+        $depositCurrentStatus = $depositComplete ? 'final' : ($finalizationReviewOpen ? 'review' : ($evidence ? 'evidence' : 'input'));
+    @endphp
+
+    <x-ui.panel title="Tahapan setoran" description="Ikuti setiap tahap agar pencatatan setoran tetap jelas.">
+        <x-ui.status-stepper :steps="$depositSteps" :current-status="$depositCurrentStatus" :completed-statuses="['final']" label="Tahapan setoran" />
+    </x-ui.panel>
+
+    @if ($depositComplete)
         <x-ui.success-state
-            :title="$draft->isPendingReview() ? 'Setoran menunggu persetujuan' : 'Setoran berhasil difinalisasi'"
+            :title="$draft->isPendingReview() ? 'Setoran menunggu persetujuan' : 'Setoran berhasil dicatat'"
             :reference="(string) $draft->deposit_number"
             :value="'Rp '.number_format((int) $draft->total_value, 0, ',', '.')"
             :time="$draft->occurred_at->setTimezone('Asia/Jakarta')->translatedFormat('d F Y, H:i')"
             :status="(string) $draft->status"
             :description="session('success')"
-        />
+        >
+            <x-slot:actions>
+                <div class="flex flex-col items-end">
+                    <button type="button" wire:click="startNewDeposit" class="inline-flex min-h-touch items-center justify-center rounded-md border border-border bg-surface px-5 text-label text-deep-green transition hover:border-forest-600 hover:bg-success-bg active:translate-y-px">Buat setoran baru</button>
+                </div>
+            </x-slot:actions>
+        </x-ui.success-state>
     @elseif (session('success'))
-        <div role="status" class="flex items-center gap-3 rounded-xl border border-forest-600 bg-success-bg px-4 py-3.5 text-body text-deep-green">
+        <div role="status" class="flex items-center gap-3 rounded-xl border border-forest-600/25 bg-success-bg px-4 py-3.5 text-body text-deep-green">
             <svg viewBox="0 0 24 24" class="size-5 shrink-0 text-forest-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 6.477 10 12 10Z"/><path d="m9 12 2 2 4-4"/>
             </svg>
@@ -36,13 +57,14 @@
     @if ($finalizationReviewOpen)
         <div class="fixed inset-0 z-overlay flex items-end justify-center bg-overlay p-4 sm:items-center" role="presentation">
             <div class="w-full max-w-form rounded-lg border border-border bg-surface p-5 shadow-dialog sm:p-6" role="dialog" aria-modal="true" aria-labelledby="deposit-finalization-title">
-                <h2 id="deposit-finalization-title" class="text-h2 font-bold text-deep-green">Finalisasi setoran?</h2>
+                <h2 id="deposit-finalization-title" class="text-h2 font-bold text-deep-green">Catat setoran?</h2>
                 <p class="mt-2 text-body-sm text-text-secondary">Nilai final akan dihitung ulang di server, bukti privat disimpan, dan saldo dapat bertambah setelah finalisasi atau persetujuan pemeriksa.</p>
-                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><x-ui.button type="button" variant="secondary" wire:click="cancelFinalizationReview">Ubah data</x-ui.button><x-ui.button type="button" wire:click="finalize" wire:loading.attr="disabled" wire:target="finalize"><span wire:loading.remove wire:target="finalize">Finalisasi setoran</span><span wire:loading wire:target="finalize">Memproses...</span></x-ui.button></div>
+                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><x-ui.button type="button" variant="secondary" wire:click="cancelFinalizationReview">Ubah data</x-ui.button><x-ui.button type="button" wire:click="finalize" wire:loading.attr="disabled" wire:target="finalize"><span wire:loading.remove wire:target="finalize">Catat setoran</span><span wire:loading wire:target="finalize">Memproses...</span></x-ui.button></div>
             </div>
         </div>
     @endif
 
+    @unless ($depositComplete)
     <x-ui.panel title="Item setoran" description="Berat dalam kilogram dengan maksimal tiga angka desimal.">
         <div class="space-y-3">
             @forelse ($items as $index => $item)
@@ -87,7 +109,7 @@
                 <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                     <div>
                         <h3 class="text-label font-bold text-deep-green">Review nilai setoran</h3>
-                        <p class="text-body-sm text-text-secondary">Harga aktif dan subtotal akan dihitung ulang server saat finalisasi.</p>
+                        <p class="text-body-sm text-text-secondary">Harga aktif dan subtotal akan dihitung ulang server saat pencatatan.</p>
                     </div>
                     @if ($pricePreview['complete'])
                         <strong class="amount-tabular text-title text-forest-700">Rp {{ number_format($pricePreview['total'], 0, ',', '.') }}</strong>
@@ -107,7 +129,7 @@
                 @endif
             </div>
 
-            <div class="flex flex-col gap-3 pt-2 sm:flex-row">
+            <div class="flex flex-col items-end gap-3 pt-2 sm:flex-row sm:justify-end">
                 <x-ui.button type="button" wire:click="addItem" variant="secondary">
                     <svg viewBox="0 0 24 24" class="mr-2 size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     Tambah Item
@@ -117,7 +139,7 @@
                     <span wire:loading wire:target="saveDraft">Menyimpan...</span>
                 </x-ui.button>
                 <x-ui.button type="button" wire:click="reviewFinalization" wire:loading.attr="disabled" data-photo-picker-action>
-                    <span wire:loading.remove wire:target="reviewFinalization">Tinjau Finalisasi</span>
+                    <span wire:loading.remove wire:target="reviewFinalization">Tinjau Pencatatan</span>
                     <span wire:loading wire:target="reviewFinalization">Memeriksa...</span>
                 </x-ui.button>
              </div>
@@ -130,7 +152,7 @@
          </x-ui.panel>
      @endif
 
-     <x-ui.panel title="Bukti setoran" description="Unggah bukti foto atau PDF. File disimpan privat dan wajib saat finalisasi.">
+     <x-ui.panel title="Bukti setoran" description="Unggah bukti foto atau PDF. File disimpan privat dan wajib saat pencatatan.">
          <x-ui.media-picker
              id="deposit-evidence"
              property="evidence"
@@ -143,5 +165,6 @@
          @error('evidence')
              <p class="mt-2 text-body-sm font-semibold text-terracotta">{{ $message }}</p>
          @enderror
-     </x-ui.panel>
-</section>
+      </x-ui.panel>
+    @endunless
+ </section>

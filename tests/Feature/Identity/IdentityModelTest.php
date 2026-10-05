@@ -9,6 +9,7 @@ use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\DatabaseSession;
 use App\Domain\Identity\Models\PasswordResetToken;
 use App\Domain\Identity\Models\StaffProfile;
+use App\Domain\Identity\Models\StaffServiceArea;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,6 +33,9 @@ final class IdentityModelTest extends TestCase
             ->and($user->staffProfile->is($staff))->toBeTrue()
             ->and($profile->rt->customerProfiles->contains($profile))->toBeTrue()
             ->and($staff->serviceArea->staffProfiles->contains($staff))->toBeTrue()
+            ->and($staff->serviceAreas)->toHaveCount(1)
+            ->and($staff->serviceAreas->sole()->service_area_id)->toBe($staff->service_area_id)
+            ->and(StaffServiceArea::query()->where('staff_profile_user_id', $user->id)->where('service_area_id', $staff->service_area_id)->exists())->toBeTrue()
             ->and($user->databaseSessions)->toHaveCount(1)
             ->and($user->passwordResetTokens)->toHaveCount(1);
 

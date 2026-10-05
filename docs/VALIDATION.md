@@ -151,7 +151,6 @@ Transisi yang tidak tercantum pada BR-PUP-009 ditolak. Pembatalan warga setelah 
 
 - Paket: nama 2–120, isi 3–1000, nilai integer positif untuk penukaran saldo, periode valid, status enum; tidak ada field jumlah stok rinci.
 - Nilai paket disnapshot saat pengajuan.
-- Bantuan gratis memakai jenis sumber yang berbeda dan tidak boleh masuk alur hold/saldo keluar.
 - Pengajuan memerlukan paket aktif dan saldo cukup.
 - Persetujuan memerlukan hasil cek ketersediaan manual, catatan, dan `grocery.approve`.
 - Persiapan/siap diambil mengikuti urutan status.
@@ -168,9 +167,9 @@ Transisi yang tidak tercantum pada BR-PUP-009 ditolak. Pembatalan warga setelah 
 
 ### Layanan keliling
 
-- Titik 3–255 karakter, RT/RW aktif, waktu mulai < selesai, minimal satu petugas dan jenis diterima.
-- Jadwal petugas/titik tidak boleh overlap.
-- Kapasitas nonnegatif dan status mengikuti `draf → dipublikasikan → dibuka → ditutup`, dengan `dibatalkan` sebagai endpoint sah sebelum dibuka.
+- Titik 3–255 karakter dan wilayah harus mengikuti hierarki desa, dusun, RW, dan RT yang aktif. Waktu mulai harus sebelum selesai, dengan minimal satu petugas dan jenis diterima.
+- Jadwal petugas atau titik tidak boleh overlap.
+- Kapasitas nonnegatif berlaku per jadwal dan membatasi penerimaan layanan. Status mengikuti `draf → dipublikasikan → dibuka → ditutup`, dengan `dibatalkan` sebagai endpoint sah sebelum dibuka.
 - Transaksi bertipe keliling memerlukan jadwal `dibuka` dan petugas terdaftar.
 
 ### Estimasi
@@ -186,9 +185,9 @@ Transisi yang tidak tercantum pada BR-PUP-009 ditolak. Pembatalan warga setelah 
 - Query publik hanya memilih kolom allowlist dan menerapkan ambang privasi.
 - Data publik tidak menerima nama field bebas, raw SQL, atau sort column di luar allowlist.
 
-## 12. Notifikasi, WhatsApp, pengumuman, dan laporan
+## 12. WhatsApp, pengumuman, dan laporan
 
-- Template notifikasi/WhatsApp memakai key yang terdaftar; placeholder hanya dari allowlist dan di-escape/URL-encode.
+- Template WhatsApp memakai key yang terdaftar; placeholder hanya dari allowlist dan di-escape atau URL-encode.
 - Nomor `wa.me` dinormalisasi; aplikasi hanya menghasilkan URL dan tidak menerima status “terkirim”.
 - Pengumuman: judul 3–160, isi 3–10.000, audiens enum, periode valid, konten disanitasi.
 - Filter laporan: periode wajib dalam batas; wilayah/status/jenis dari enum/FK; sort dan kolom ekspor allowlist.

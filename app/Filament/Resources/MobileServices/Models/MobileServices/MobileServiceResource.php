@@ -59,7 +59,7 @@ final class MobileServiceResource extends Resource
                 TextInput::make('point')->label('Titik layanan')->required()->minLength(3)->maxLength(255),
                 DateTimePicker::make('starts_at')->label('Mulai')->seconds(false)->native(false)->required(),
                 DateTimePicker::make('ends_at')->label('Selesai')->seconds(false)->native(false)->after('starts_at')->required(),
-                TextInput::make('capacity')->label('Kapasitas warga')->numeric()->integer()->minValue(0)->maxValue(1000000)->required(),
+                TextInput::make('capacity')->label('Kapasitas warga')->numeric()->integer()->minValue(1)->maxValue(1000000)->required(),
                 Select::make('staff_ids')->label('Petugas layanan')->helperText('Pilih petugas aktif yang dapat mengoperasikan layanan keliling.')->multiple()->required()->minItems(1)->searchable()->preload()->options(fn (): array => User::query()->where('status', UserStatus::Active)->whereHas('staffProfile', fn (Builder $query): Builder => $query)->whereHas('roles.permissions', fn (Builder $query): Builder => $query->where('permissions.name', 'mobile-service.operate'))->orderBy('name')->pluck('name', 'id')->all()),
                 Select::make('waste_type_ids')->label('Jenis sampah yang diterima')->helperText('Pilih jenis sampah aktif yang dapat disetor pada layanan ini.')->multiple()->required()->minItems(1)->searchable()->preload()->options(fn (): array => WasteType::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
                 Textarea::make('notes')->label('Catatan')->maxLength(2000)->rows(4)->columnSpanFull(),
@@ -79,7 +79,10 @@ final class MobileServiceResource extends Resource
             TextColumn::make('served_count')->label('Terlayani'),
             TextColumn::make('status')->label('Status')->badge(),
         ])->recordActions([
-            EditAction::make()->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->using(fn (MobileService $record, array $data): MobileService => self::service()->update(self::actor(), $record, isset($data['rw_id']) ? (int) $data['rw_id'] : null, isset($data['rt_id']) ? (int) $data['rt_id'] : null, (string) $data['point'], (string) $data['starts_at'], (string) $data['ends_at'], (int) $data['capacity'], (string) ($data['notes'] ?? ''), array_map('intval', $data['staff_ids'] ?? []), array_map('intval', $data['waste_type_ids'] ?? []))),
+            EditAction::make()->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->fillForm(fn (MobileService $record): array => [
+                'staff_ids' => $record->staff()->pluck('users.id')->all(),
+                'waste_type_ids' => $record->wasteTypes()->pluck('waste_types.id')->all(),
+            ])->using(fn (MobileService $record, array $data): MobileService => self::service()->update(self::actor(), $record, isset($data['rw_id']) ? (int) $data['rw_id'] : null, isset($data['rt_id']) ? (int) $data['rt_id'] : null, (string) $data['point'], (string) $data['starts_at'], (string) $data['ends_at'], (int) $data['capacity'], (string) ($data['notes'] ?? ''), array_map('intval', $data['staff_ids'] ?? []), array_map('intval', $data['waste_type_ids'] ?? []))),
             Action::make('publish')->label('Publikasikan')->icon(Heroicon::OutlinedMegaphone)->color('success')->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->authorize('publish')->requiresConfirmation()->modalHeading(fn (MobileService $record): string => "Publikasikan layanan {$record->service_number}?")->modalDescription('Jadwal dan titik layanan akan terlihat oleh warga sesuai cakupan yang dipilih.')->modalSubmitActionLabel('Publikasikan layanan')->action(function (MobileService $record): void {
                 try {
                     self::service()->transition(self::actor(), $record, MobileServiceStatus::Published);

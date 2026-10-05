@@ -8,7 +8,7 @@ Status: `Accepted`, `Superseded`, atau `Deprecated`. Semua keputusan di bawah be
 
 - **Status:** Accepted
 - **Konteks:** Tim membutuhkan aplikasi web mobile-first dengan server-rendered UI, interaksi cukup kaya, satu stack utama, dan operasi sederhana di shared hosting.
-- **Keputusan:** Laravel 13/PHP 8.5 dengan Blade, Livewire 4, Alpine.js bawaan Livewire, Tailwind CSS 4.1+. React tidak digunakan.
+- **Keputusan:** Laravel 13 dengan PHP 8.3 atau lebih baru sesuai `composer.json`, Blade, Livewire 4, Alpine.js bawaan Livewire, dan Tailwind CSS 4.1+. React tidak digunakan.
 - **Konsekuensi:** Domain, UI, auth, validasi, dan deploy lebih terpadu. Komponen Livewire harus menjaga boundary dan performa. Alpine tidak boleh dimuat dua kali.
 - **Alternatif ditolak:** React SPA karena menambah toolchain, duplikasi state/API, dan kompleksitas deploy yang tidak diperlukan.
 - **Referensi:** [ARCHITECTURE.md](ARCHITECTURE.md), [DESIGN.md](DESIGN.md).
@@ -18,7 +18,7 @@ Status: `Accepted`, `Superseded`, atau `Deprecated`. Semua keputusan di bawah be
 - **Status:** Accepted
 - **Konteks:** Admin memerlukan CRUD/tabel/action data-dense, sedangkan warga dan petugas memerlukan pengalaman khusus yang sederhana dan lapangan-first.
 - **Keputusan:** Filament 5 dipakai hanya untuk panel teknis back-office yang mensyaratkan `backoffice.access`. Baseline permission ini diberikan kepada `admin` dan `superadmin`; keduanya dapat memasuki `/backoffice` dan masing-masing dibedakan oleh scope teknis (lihat [PERMISSIONS.md](PERMISSIONS.md)). UI publik, warga, petugas, dan bendahara operasional dibuat khusus dengan Blade/Livewire. Filament diberi custom theme Sindangheula Green Ledger.
-- **Konsekuensi:** `backoffice.access` hanya mengizinkan admission ke panel teknis, bukan permission domain/bisnis dan bukan bypass role, policy, action, record scope, atau separation of duties. `superadmin` mewarisi seluruh hak `admin` (termasuk admission) ditambah permission teknis (mis. `role.manage`, `system.maintenance`, backup/retensi); mutasi tetap melewati policy/action dan dicatat. Produktivitas back-office tinggi tanpa memaksakan pola admin pada warga.
+- **Konsekuensi:** `backoffice.access` hanya mengizinkan admission ke panel teknis, bukan permission domain atau bisnis dan bukan bypass role, policy, action, record scope, atau separation of duties. `superadmin` mewarisi seluruh hak `admin`, lalu mendapat `role.manage` dan Health. Mutasi tetap melewati policy atau action dan dicatat.
 - **Alternatif ditolak:** seluruh UI memakai Filament karena tidak memenuhi saldo-first/task-first dan kontrol navigasi mobile.
 - **Referensi:** [DESIGN.md](DESIGN.md), [PERMISSIONS.md](PERMISSIONS.md).
 
@@ -30,8 +30,8 @@ IMP-019 menetapkan fondasi teknis back-office Filament 5 sesuai ADR ini: instala
 
 - **Status:** Accepted
 - **Konteks:** Infrastruktur final adalah Hostinger Web Hosting Premium/Business dengan hPanel, SSH/SFTP, Composer 2, MySQL 8.0.30-compatible, dan cron.
-- **Keputusan:** Arsitektur/deploy mengikuti batas shared hosting. Aset Vite dibangun lokal/CI. Queue `sync` atau database one-shot berbatas waktu via cron. PHP web/CLI wajib 8.5.
-- **Konsekuensi:** Biaya/operasi sederhana, tetapi tidak ada root, Supervisor, Redis, Horizon, WebSocket, worker permanen, atau konfigurasi Nginx sendiri. Job harus singkat dan dapat dipulihkan.
+- **Keputusan:** Arsitektur dan deployment mengikuti batas shared hosting. Aset Vite dibangun lokal atau CI. Queue menggunakan `sync`. PHP web dan CLI wajib memenuhi `^8.3` serta memakai versi yang selaras.
+- **Konsekuensi:** Tidak ada root, Supervisor, Redis, Horizon, WebSocket, worker permanen, queue database, atau konfigurasi Nginx sendiri. Dokumentasi tidak menjanjikan pemrosesan asinkron maupun retry otomatis.
 - **Alternatif ditolak:** asumsi VPS karena tidak sesuai hosting final.
 - **Referensi:** [DEPLOYMENT.md](DEPLOYMENT.md), [OPERATIONS.md](OPERATIONS.md).
 
@@ -74,10 +74,10 @@ IMP-019 menetapkan fondasi teknis back-office Filament 5 sesuai ADR ini: instala
 ## ADR-008 — File privat di storage, bukan blob/public
 
 - **Status:** Accepted
-- **Konteks:** Sistem menyimpan foto warga, bukti transaksi/pembayaran/penyerahan, ekspor, dan backup.
-- **Keputusan:** File berada pada filesystem privat atau object storage kompatibel S3; DB hanya metadata/path/key. Akses melalui route terotorisasi atau signed URL singkat. Hanya turunan/aset yang aman berada di publik.
-- **Konsekuensi:** Backup harus mencakup DB dan media; authorization file wajib; document root hanya `public/`. DB tidak membengkak karena blob.
-- **Alternatif ditolak:** blob DB dan storage publik langsung karena performa, backup, dan privasi.
+- **Konteks:** Sistem menyimpan foto warga, bukti transaksi atau pembayaran atau penyerahan, dan ekspor.
+- **Keputusan:** File berada pada filesystem privat atau object storage kompatibel S3; database hanya menyimpan metadata, path, atau key. Akses melalui route terotorisasi atau signed URL singkat. Hanya turunan atau aset yang aman berada di publik.
+- **Konsekuensi:** Authorization file wajib dan document root hanya menyajikan `public/`. Database tidak membengkak karena blob.
+- **Alternatif ditolak:** blob database dan storage publik langsung karena performa dan privasi.
 - **Referensi:** [SECURITY.md](SECURITY.md), [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## ADR-009 — PWA installable dengan cache terbatas
@@ -133,10 +133,10 @@ IMP-019 menetapkan fondasi teknis back-office Filament 5 sesuai ADR ini: instala
 - **Konsekuensi:** Tidak ada bypass berdasarkan uploader, role, atau media attachment. Tidak ada UI checkbox permission atau CMS landing yang diimplementasikan atau diberi ID tracker baru hanya dari keputusan ini.
 - **Referensi:** [SECURITY.md](SECURITY.md), [PERMISSIONS.md](PERMISSIONS.md), IMP-049, IMP-019, IMP-107.
 
-## ADR-015 — Audit-gap settings dan batas artefak backup/restore
+## ADR-015 — Health sebagai batas administrasi teknis aktif
 
 - **Status:** Accepted
-- **Konteks:** Audit-gap implementation memerlukan pengaturan teknis yang aman untuk operator, sementara secret dan eksekusi artefak backup/restore tetap berada di boundary deployment/SOP.
-- **Keputusan:** UI terotorisasi untuk konfigurasi teknis non-secret termasuk scope implementasi, menggunakan `system.settings.manage`, validasi server, dan audit. Secret tetap environment-only. UI aplikasi hanya mengelola metadata, status, dan verifikasi backup/restore; dump, penyalinan, dan pemulihan artefak aktual dilakukan melalui deployment/SOP.
-- **Konsekuensi:** `backup.run`, `backup.view`, dan `backup.restore` tidak menjadi klaim eksekusi artefak aktual dari aplikasi. Status tracker dan bukti implementasi harus memisahkan metadata/verification dari backup/restore nyata. Perubahan tetap tunduk pada permission, scope, audit, dan gate rilis.
+- **Konteks:** Dokumentasi harus mengikuti UI administrasi yang aktif.
+- **Keputusan:** Health baca-saja adalah satu-satunya administrasi teknis aktif pada aplikasi. Secret dan perubahan infrastruktur tetap berada pada environment atau proses deployment.
+- **Konsekuensi:** Permission, navigasi, SOP, test, dan dokumentasi teknis hanya boleh menyebut Health sebagai UI administrasi teknis aktif. Prosedur infrastruktur tidak boleh ditulis sebagai kapabilitas aplikasi.
 - **Referensi:** [PERMISSIONS.md](PERMISSIONS.md), [SECURITY.md](SECURITY.md), [OPERATIONS.md](OPERATIONS.md), [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).

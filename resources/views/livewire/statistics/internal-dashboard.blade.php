@@ -7,7 +7,7 @@
         <div>
             <p class="text-label font-semibold text-forest-600">Pengawasan berbasis data</p>
             <h1 id="internal-statistics-title" class="mt-1 text-h1 font-bold text-deep-green">Statistik internal</h1>
-            <p class="mt-2 text-body text-text-secondary">Data mengikuti cakupan akun dan metrik dengan jumlah subjek di bawah ambang privasi akan disamarkan.</p>
+            <p class="mt-2 text-body text-text-secondary">Data mengikuti cakupan akun Anda. Data dengan jumlah warga di bawah batas minimum akan disamarkan.</p>
         </div>
         <x-ui.mascot variant="5" class="hidden h-20 w-auto sm:block" />
     </div>
@@ -17,7 +17,7 @@
             <x-ui.input wire:model="start" name="start" label="Mulai" type="date" :error="$errors->first('start')" />
             <x-ui.input wire:model="end" name="end" label="Sampai" type="date" :error="$errors->first('end')" />
             <x-ui.select wire:model="rtId" name="rtId" label="RT (opsional)" :error="$errors->first('rtId')">
-                <option value="">Semua RT dalam cakupan</option>
+                <option value="">Semua RT dalam wilayah akses Anda</option>
                 @foreach ($rts as $rt)
                     <option value="{{ $rt->id }}">{{ $rt->name }}</option>
                 @endforeach

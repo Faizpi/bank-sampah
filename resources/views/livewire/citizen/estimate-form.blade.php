@@ -8,7 +8,7 @@
             <p class="text-label font-semibold text-forest-600">Kalkulator Informasi</p>
             <h1 id="estimate-title" class="mt-2 text-h1 font-bold text-deep-green">Perkirakan nilai setoran.</h1>
             <p class="mt-3 text-body text-text-secondary">
-                Hasil hanya panduan. Tidak ada transaksi, saldo, dana ditahan, reservasi harga, atau jaminan nilai akhir yang dibuat.
+                Hasil hanya panduan. Estimasi tidak membuat transaksi, menahan saldo, atau menjamin nilai akhir.
             </p>
         </div>
         <x-ui.mascot variant="7" bubble="Berapa kira-kira nilainya?" class="h-28 w-auto shrink-0" />
@@ -29,16 +29,18 @@
                 inputmode="decimal" placeholder="Contoh: 1.250"
                 :error="$errors->first('weightKg')" />
 
-            <x-ui.button type="submit" wire:loading.attr="disabled">
-                <span wire:loading.remove>Hitung Estimasi</span>
-                <span wire:loading>Menghitung...</span>
-            </x-ui.button>
+            <div class="flex justify-end">
+                <x-ui.button type="submit" wire:loading.attr="disabled">
+                    <span wire:loading.remove>Hitung Estimasi</span>
+                    <span wire:loading>Menghitung...</span>
+                </x-ui.button>
+            </div>
         </form>
     </x-ui.panel>
 
     {{-- Result --}}
     @if ($result)
-        <div class="rounded-xl border border-forest-600 bg-success-bg p-5 sm:p-6" aria-live="polite" role="status">
+        <div class="rounded-xl border border-forest-600/25 bg-success-bg p-5 sm:p-6" aria-live="polite" role="status">
             <div class="flex items-start gap-3">
                 <svg viewBox="0 0 24 24" class="mt-0.5 size-5 shrink-0 text-forest-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z"/><path d="m9 12 2 2 4-4"/>

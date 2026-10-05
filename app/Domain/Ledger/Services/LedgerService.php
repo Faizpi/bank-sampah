@@ -112,7 +112,7 @@ final readonly class LedgerService
                 ->where('source_id', (int) $source->getKey())
                 ->first();
             if ($existingSource !== null && $existingSource->source_key !== $sourceKey) {
-                throw ValidationException::withMessages(['idempotency_key' => 'Sumber hold sudah digunakan oleh hold lain.']);
+                throw ValidationException::withMessages(['idempotency_key' => 'Sumber dana ini sudah digunakan oleh penahanan dana lain.']);
             }
 
             $existing = BalanceHold::query()->where('source_key', $sourceKey)->first();
@@ -165,7 +165,7 @@ final readonly class LedgerService
                 return LedgerEntry::query()->where('source_key', $sourceKey)->firstOrFail();
             }
             if (! $locked->isActive()) {
-                throw ValidationException::withMessages(['hold' => 'Hold tidak aktif.']);
+                throw ValidationException::withMessages(['hold' => 'Dana yang ditahan sudah tidak aktif.']);
             }
 
             $entry = LedgerEntry::query()->where('source_key', $sourceKey)->first();

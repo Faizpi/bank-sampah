@@ -117,9 +117,9 @@ final class PwaContractTest extends TestCase
         self::assertStringContainsString('<x-public.offline-status />', $citizenLayout);
         self::assertStringContainsString('<x-public.offline-status />', $officerLayout);
         self::assertStringContainsString('x-on:public:offline-action-blocked.window', $offlineStatus);
-        self::assertStringContainsString('Mode offline aktif', $offlineStatus);
+        self::assertStringContainsString('Koneksi terputus', $offlineStatus);
         self::assertStringContainsString('Aksi belum dikirim', $offlineStatus);
-        self::assertStringContainsString('Tidak ada data yang disimpan atau diantrikan.', $offlineStatus);
+        self::assertStringContainsString('Data belum disimpan. Sambungkan internet, lalu kirim ulang.', $offlineStatus);
         self::assertStringContainsString('role="status"', $offlineStatus);
     }
 

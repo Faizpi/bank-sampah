@@ -38,6 +38,7 @@ use App\Filament\Resources\Programs\Models\CollectionTargets\Pages\ManageCollect
 use App\Filament\Resources\Statistics\Models\StatisticPublications\Pages\ManageStatisticPublications;
 use App\Filament\Resources\Statistics\Models\StatisticPublications\StatisticPublicationResource;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -125,6 +126,45 @@ final class AdminOperationsResourceTest extends TestCase
         self::assertFalse($viewer->fresh()->can('view', $otherRegion));
     }
 
+    public function test_announcement_edit_action_preloads_persisted_rt_targets(): void
+    {
+        $admin = $this->userWith('backoffice.access', 'announcement.view', 'announcement.manage');
+        $firstRt = $this->createRt('ANNOUNCEMENT-FIRST');
+        $secondRt = $this->createRt('ANNOUNCEMENT-SECOND');
+        $announcement = Announcement::factory()->create([
+            'audience' => AnnouncementAudience::Region,
+            'status' => AnnouncementStatus::Draft,
+            'created_by' => $admin->id,
+        ]);
+        $announcement->rts()->attach([$firstRt->id, $secondRt->id]);
+        $this->actingAs($admin);
+
+        Livewire::test(ManageAnnouncements::class)
+            ->mountTableAction('edit', $announcement->fresh())
+            ->assertTableActionDataSet([
+                'rt_ids' => [$firstRt->id, $secondRt->id],
+            ]);
+    }
+
+    public function test_mobile_service_edit_action_preloads_persisted_staff_and_waste_types(): void
+    {
+        [$admin, $firstStaff, $rt, $firstType] = $this->mobileContext();
+        $secondStaff = $this->userWith('mobile-service.operate');
+        $secondStaff->staffProfile()->create(['staff_number' => 'RESOURCE-STF-'.uniqid(), 'service_area_id' => null, 'active_from' => today(), 'active_to' => null]);
+        $category = WasteCategory::factory()->create();
+        $unit = WasteUnit::factory()->weight('1.000000')->create();
+        $secondType = WasteType::factory()->create(['waste_category_id' => $category->id, 'waste_unit_id' => $unit->id, 'is_active' => true]);
+        $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Titik edit terhidrasi', '2026-08-11 09:00:00', '2026-08-11 11:00:00', 20, '', [$firstStaff->id, $secondStaff->id], [$firstType->id, $secondType->id]);
+        $this->actingAs($admin);
+
+        Livewire::test(ManageMobileServices::class)
+            ->mountTableAction('edit', $service->fresh())
+            ->assertTableActionDataSet([
+                'staff_ids' => [$firstStaff->id, $secondStaff->id],
+                'waste_type_ids' => [$firstType->id, $secondType->id],
+            ]);
+    }
+
     public function test_target_progress_batch_preserves_formula_and_avoids_row_aggregation_queries(): void
     {
         $admin = $this->userWith('target.view', 'target.manage', 'target.publish', 'waste.manage');
@@ -153,6 +193,27 @@ final class AdminOperationsResourceTest extends TestCase
         self::assertSame('1.250', $aggregates[$targetA->id]['plastic_weight_kg']);
         self::assertSame($aggregates[$targetA->id], $aggregates[$targetB->id]);
         self::assertLessThanOrEqual(8, $queries);
+    }
+
+    public function test_target_progress_scoped_to_waste_type_counts_only_matching_items_in_mixed_deposit(): void
+    {
+        $admin = $this->userWith('target.view', 'target.manage', 'target.publish', 'waste.manage');
+        $category = WasteCategory::factory()->create();
+        $unit = WasteUnit::factory()->weight('1.000000')->create();
+        $condition = WasteCondition::factory()->create();
+        $matchingType = WasteType::factory()->create(['waste_category_id' => $category->id, 'waste_unit_id' => $unit->id, 'is_plastic' => true]);
+        $nonMatchingType = WasteType::factory()->create(['waste_category_id' => $category->id, 'waste_unit_id' => $unit->id, 'is_plastic' => false]);
+        $target = CollectionTarget::query()->create(['target_number' => 'TGT-SCOPED-'.uniqid(), 'name' => 'Target plastik terpilih', 'purpose' => 'Uji lingkup jenis sampah', 'period_start' => today()->subDay(), 'period_end' => today()->addDay(), 'target_weight_kg' => '10.000', 'status' => TargetStatus::Active, 'is_public' => false, 'created_by' => $admin->id]);
+        $target->scopes()->create(['waste_type_id' => $matchingType->id]);
+        $customer = User::factory()->create();
+        $deposit = Deposit::query()->create(['deposit_number' => 'DEP-SCOPED-'.uniqid(), 'customer_id' => $customer->id, 'staff_id' => $admin->id, 'method' => 'loket', 'occurred_at' => now(), 'status' => Deposit::STATUS_FINAL]);
+        $deposit->items()->create(['waste_type_id' => $matchingType->id, 'waste_condition_id' => $condition->id, 'weight_kg' => '1.250']);
+        $deposit->items()->create(['waste_type_id' => $nonMatchingType->id, 'waste_condition_id' => $condition->id, 'weight_kg' => '3.750']);
+
+        $aggregate = app(TargetProgressService::class)->aggregate($target->load('scopes'));
+
+        self::assertSame('1.250', $aggregate['weight_kg']);
+        self::assertSame(1, $aggregate['deposit_count']);
     }
 
     public function test_target_resource_activates_and_closes_with_progress_snapshot(): void
@@ -195,37 +256,43 @@ final class AdminOperationsResourceTest extends TestCase
 
     public function test_mobile_service_resource_creates_publishes_opens_and_closes_a_schedule(): void
     {
-        [$admin, $staff, $rt, $type] = $this->mobileContext();
-        $this->actingAs($admin);
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta'));
 
-        Livewire::test(ManageMobileServices::class)
-            ->callAction('create', data: [
-                'rw_id' => null,
-                'rt_id' => $rt->id,
-                'point' => 'Balai RT 01',
-                'starts_at' => '2026-08-10 09:00:00',
-                'ends_at' => '2026-08-10 11:00:00',
-                'capacity' => 20,
-                'notes' => 'Bawa timbangan.',
-                'staff_ids' => [$staff->id],
-                'waste_type_ids' => [$type->id],
-            ]);
+        try {
+            [$admin, $staff, $rt, $type] = $this->mobileContext();
+            $this->actingAs($admin);
 
-        $service = MobileService::query()->latest('id')->firstOrFail();
-        self::assertSame(MobileServiceStatus::Draft, $service->status);
+            Livewire::test(ManageMobileServices::class)
+                ->callAction('create', data: [
+                    'rw_id' => null,
+                    'rt_id' => $rt->id,
+                    'point' => 'Balai RT 01',
+                    'starts_at' => '2026-08-10 09:00:00',
+                    'ends_at' => '2026-08-10 11:00:00',
+                    'capacity' => 20,
+                    'notes' => 'Bawa timbangan.',
+                    'staff_ids' => [$staff->id],
+                    'waste_type_ids' => [$type->id],
+                ]);
 
-        Livewire::test(ManageMobileServices::class)
-            ->assertTableActionVisible('publish', $service)
-            ->callTableAction('publish', $service);
-        Livewire::test(ManageMobileServices::class)
-            ->assertTableActionVisible('open', $service->fresh())
-            ->callTableAction('open', $service->fresh());
-        Livewire::test(ManageMobileServices::class)
-            ->assertTableActionVisible('close', $service->fresh())
-            ->callTableAction('close', $service->fresh());
+            $service = MobileService::query()->latest('id')->firstOrFail();
+            self::assertSame(MobileServiceStatus::Draft, $service->status);
 
-        self::assertDatabaseHas('mobile_services', ['id' => $service->id, 'status' => MobileServiceStatus::Closed->value]);
-        self::assertDatabaseHas('audit_logs', ['action' => 'mobile-service.status.changed', 'auditable_id' => $service->id, 'actor_id' => $admin->id]);
+            Livewire::test(ManageMobileServices::class)
+                ->assertTableActionVisible('publish', $service)
+                ->callTableAction('publish', $service);
+            Livewire::test(ManageMobileServices::class)
+                ->assertTableActionVisible('open', $service->fresh())
+                ->callTableAction('open', $service->fresh());
+            Livewire::test(ManageMobileServices::class)
+                ->assertTableActionVisible('close', $service->fresh())
+                ->callTableAction('close', $service->fresh());
+
+            self::assertDatabaseHas('mobile_services', ['id' => $service->id, 'status' => MobileServiceStatus::Closed->value]);
+            self::assertDatabaseHas('audit_logs', ['action' => 'mobile-service.status.changed', 'auditable_id' => $service->id, 'actor_id' => $admin->id]);
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
     }
 
     public function test_capacity_key_change_deactivates_the_old_record_without_direct_deletion(): void

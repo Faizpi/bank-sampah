@@ -84,6 +84,9 @@ final class RoleResource extends Resource
             ->recordActions([
                 EditAction::make()
                     ->label('Ubah')
+                    ->fillForm(fn (Role $record): array => [
+                        'permissions' => $record->permissions()->pluck('permissions.id')->all(),
+                    ])
                     ->using(fn (Role $record, array $data): Role => tap($record, fn () => app(ManageRolesAction::class)->updateRole(self::actor(), $record, $data['description'] ?? '', array_map('intval', $data['permissions'] ?? [])))),
                 DeleteAction::make()
                     ->label('Hapus')

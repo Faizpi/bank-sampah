@@ -47,8 +47,8 @@ final class WastePriceResource extends Resource
             Section::make('Periode harga')->schema([
                 Select::make('waste_type_id')->label('Jenis sampah')->relationship('wasteType', 'name', modifyQueryUsing: fn ($query) => $query->where('is_active', true)->whereHas('category', fn ($categoryQuery) => $categoryQuery->where('is_active', true)))->required()->searchable()->preload(),
                 Select::make('waste_condition_id')->label('Kondisi')->relationship('condition', 'name', modifyQueryUsing: fn ($query) => $query->where('is_active', true))->required()->searchable()->preload(),
-                TextInput::make('price')->label('Harga rupiah per satuan')->numeric()->integer()->minValue(0)->maxValue(9_000_000_000_000_000)->required(),
-                Checkbox::make('zero_price_confirmed')->label('Saya mengonfirmasi harga nol sebagai kebijakan penerimaan tanpa nilai.')->visible(fn ($get): bool => (int) $get('price') === 0)->accepted(),
+                TextInput::make('price')->label('Harga per satuan (Rp)')->numeric()->integer()->minValue(0)->maxValue(9_000_000_000_000_000)->required(),
+                Checkbox::make('zero_price_confirmed')->label('Saya menyetujui harga Rp0 karena sampah ini diterima tanpa nilai.')->visible(fn ($get): bool => (int) $get('price') === 0)->accepted(),
                 DateTimePicker::make('effective_from')->label('Berlaku mulai')->seconds(false)->native(false)->required(),
                 DateTimePicker::make('effective_to')->label('Berlaku sampai')->seconds(false)->native(false)->after('effective_from'),
             ])->columns(2),

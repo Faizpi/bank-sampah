@@ -494,7 +494,7 @@ it('rejects a non-HTTPS URL or insecure session cookie in production', function 
         ->toContain('secure_session_cookie_required');
 });
 
-it('uses the shared eligibility predicate for rollback and operational health', function (): void {
+it('uses the shared eligibility predicate for rollback while excluding backup from operational health', function (): void {
     $backup = BackupLog::query()->create([
         'backup_pair_uuid' => (string) Str::uuid(),
         'initiated_by' => User::factory()->create()->id,
@@ -521,7 +521,7 @@ it('uses the shared eligibility predicate for rollback and operational health', 
     ));
 
     expect($rollback->passes())->toBeTrue()
-        ->and(app(OperationalHealthService::class)->check()->toArray()['verified_backup']['status'])->toBe('ok');
+        ->and(app(OperationalHealthService::class)->check()->toArray())->not->toHaveKey('verified_backup');
 });
 
 it('sanitizes unexpected rollback infrastructure failures at the command boundary', function (): void {

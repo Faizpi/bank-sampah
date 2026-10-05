@@ -75,8 +75,7 @@ it('returns a sanitized healthy operational contract when both scheduler heartbe
         ->assertJsonPath('checks.scheduler.status', 'ok')
         ->assertJsonPath('checks.scheduler.topology', 'cron')
         ->assertJsonPath('checks.queue.status', 'not_applicable')
-        ->assertJsonPath('checks.verified_backup.status', 'ok')
-        ->assertJsonPath('checks.verified_backup.verified_at', 'recent');
+        ->assertJsonMissingPath('checks.verified_backup');
 
     expect((string) $response->headers->get('Cache-Control'))
         ->toContain('private')
@@ -177,21 +176,6 @@ function grantOperationalHealthPermission(User $user): void
     $role->permissions()->attach($permission, ['reason' => 'Operational health test']);
     $user->roles()->attach($role, ['reason' => 'Operational health test']);
 }
-
-it('fails closed for null or invalid restore evidence in health eligibility', function (mixed $evidenceReference): void {
-    $backup = operationalVerifiedBackup();
-    $backup->forceFill(['restore_verification_evidence_reference' => $evidenceReference])->save();
-
-    $result = app(OperationalHealthService::class)->check()->toArray();
-
-    expect($result['verified_backup'])->toBe([
-        'status' => 'degraded',
-        'reason' => 'verified_backup_stale_or_missing',
-    ]);
-})->with([
-    'null evidence' => null,
-    'invalid evidence' => 'invalid-evidence-reference',
-]);
 
 function operationalVerifiedBackup(): BackupLog
 {

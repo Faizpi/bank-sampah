@@ -25,6 +25,8 @@ use UnitEnum;
 
 class OperationsDashboard extends Page
 {
+    protected static bool $isDiscovered = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;
 
     protected static string|UnitEnum|null $navigationGroup = 'Administrasi sistem';

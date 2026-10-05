@@ -187,6 +187,40 @@ final class TransactionLaneResourceTest extends TestCase
         self::assertTrue(GroceryRedemptionResource::canViewAny());
     }
 
+    public function test_backoffice_inspection_presents_transaction_details_without_raw_json_payloads(): void
+    {
+        [$customer, $deposit, , $entry] = $this->transactionContext();
+        $package = GroceryPackage::query()->create([
+            'code' => 'GRC-RAW-JSON',
+            'name' => 'Paket JSON',
+            'contents' => 'Beras',
+            'value' => 50_000,
+            'status' => 'aktif',
+        ]);
+        $redemption = GroceryRedemption::query()->create([
+            'request_number' => 'GRC-RAW-JSON-001',
+            'customer_id' => $customer->id,
+            'requested_by_id' => $customer->id,
+            'grocery_package_id' => $package->id,
+            'value_snapshot' => $package->value,
+            'package_snapshot' => ['name' => $package->name, 'contents' => $package->contents],
+            'status' => GroceryStatus::PendingVerification,
+        ]);
+        $admin = User::factory()->create();
+        $this->grant($admin, 'raw-json-viewer', 'backoffice.access', 'deposit.view', 'ledger.view', 'grocery.view', 'user.view', 'user.view.all');
+        $this->actingAs($admin);
+
+        Livewire::test(ManageDeposits::class)
+            ->mountTableAction('inspect', $deposit)
+            ->assertSet('mountedActions.0.data.snapshot', fn (string $state): bool => str_contains($state, 'Plastik · Kondisi: Baik · Berat: 1 kg · Harga per kg: Rp 20.000 · Subtotal: Rp 20.000'));
+        Livewire::test(ManageLedgerEntries::class)
+            ->mountTableAction('inspect', $entry)
+            ->assertSet('mountedActions.0.data.source', fn (string $state): bool => str_contains($state, 'Jenis sumber: Deposit'));
+        Livewire::test(ManageGroceryRedemptions::class)
+            ->mountTableAction('inspect', $redemption)
+            ->assertSet('mountedActions.0.data.snapshot', fn (string $state): bool => str_contains($state, 'Nama paket: Paket JSON') && str_contains($state, 'Isi paket: Beras'));
+    }
+
     public function test_missing_permission_and_missing_explicit_scope_fail_closed(): void
     {
         [, $deposit, $account, $entry, $hold] = $this->transactionContext();

@@ -312,7 +312,8 @@ final class DepositWaveTest extends TestCase
 
         $this->actingAs($customer)->get(route('citizen.deposit-receipt', $deposit))
             ->assertOk()
-            ->assertSee('QR verifikasi setoran')
+            ->assertSee('Cetak bukti')
+            ->assertDontSee('QR verifikasi setoran')
             ->assertSee($deposit->deposit_number)
             ->assertSee('Rp 3.000')
             ->assertSee('Berhasil')

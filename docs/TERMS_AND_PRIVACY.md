@@ -40,8 +40,8 @@ Sistem menggunakan data yang diperlukan untuk:
 
 - verifikasi akun dan pencegahan duplikasi;
 - penyediaan layanan bank sampah, termasuk pencatatan transaksi dan saldo;
-- pemberitahuan dalam aplikasi serta pembukaan tautan WhatsApp manual atas tindakan pengguna;
-- keamanan, pencegahan penyalahgunaan, audit, backup, dan operasi layanan.
+- informasi status pada halaman terkait serta pembukaan tautan WhatsApp manual atas tindakan pengguna;
+- keamanan, pencegahan penyalahgunaan, audit, dan operasi layanan.
 
 ### 2. Akses dan keterbukaan terbatas
 
@@ -49,15 +49,11 @@ Akses data diberikan menurut peran dan cakupan record. Pengguna hanya dapat memb
 
 Halaman QR verifikasi dan statistik publik hanya menampilkan informasi terbatas yang tidak mengidentifikasi warga. Statistik publik berbentuk agregat yang diizinkan. Nama, alamat, telepon, saldo, foto privat, dan riwayat individu tidak dibuka melalui halaman publik.
 
-### 3. Media, backup, dan keamanan
+### 3. Media dan keamanan
 
-Foto, bukti, ekspor, dan media privat dilindungi dengan akses terotorisasi. Backup juga diperlakukan sebagai data terlindungi. Kata sandi, token, dan secret tidak dicatat dalam bentuk plaintext pada log atau audit.
+Foto, bukti, ekspor, dan media privat dilindungi dengan akses terotorisasi. Kata sandi, token, dan secret tidak dicatat dalam bentuk plaintext pada log atau audit.
 
-### 4. Retensi
-
-Data dan catatan operasional disimpan sesuai kebutuhan operasional atau kebutuhan hukum yang telah disetujui. Dokumen ini tidak menjanjikan durasi retensi tertentu.
-
-### 5. Hubungan dengan ketentuan
+### 4. Hubungan dengan ketentuan
 
 Penerimaan Ketentuan Operasional v1.0 mencakup pengakuan bahwa Kebijakan Privasi Ringkas v1.0 telah tersedia untuk dibaca. Persetujuan layanan berbantuan tetap merupakan persetujuan terpisah untuk tindakan bantuan yang relevan.
 

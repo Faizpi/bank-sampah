@@ -47,7 +47,11 @@ final class ApplyResponseSecurityHeaders
 
     private static function permissionsPolicy(Request $request): string
     {
-        if ($request->route()?->getName() === 'officer.customer-identification') {
+        if (in_array($request->route()?->getName(), [
+            'officer.customer-identification',
+            'officer.grocery.tasks',
+            'treasurer.withdrawal.payments',
+        ], true)) {
             return str_replace('camera=()', 'camera=(self)', self::PERMISSIONS_POLICY);
         }
 

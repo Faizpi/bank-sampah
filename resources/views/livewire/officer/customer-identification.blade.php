@@ -15,8 +15,29 @@
         <x-ui.mascot variant="6" bubble="Cari warga dengan mudah!" bubblePosition="top" class="h-28 w-auto shrink-0" />
     </div>
 
+    @php
+        $identificationSteps = [
+            ['key' => 'identify', 'title' => 'Identifikasi', 'description' => 'Pindai QR atau cari nomor warga.', 'icon' => 'eye'],
+            ['key' => 'confirm', 'title' => 'Konfirmasi', 'description' => 'Pastikan nama warga sesuai.', 'icon' => 'circle-check'],
+            ['key' => 'service', 'title' => 'Pilih layanan', 'description' => 'Tentukan proses yang akan dijalankan.', 'icon' => 'clipboard-check'],
+            ['key' => 'complete', 'title' => 'Selesaikan', 'description' => 'Jalankan layanan yang dipilih.', 'icon' => 'flag'],
+            ['key' => 'summary', 'title' => 'Ringkasan', 'description' => 'Periksa hasil layanan warga.', 'icon' => 'file-check'],
+        ];
+        $identificationCurrentStep = $candidate === null
+            ? 'identify'
+            : (! $confirmed ? 'confirm' : ($selectedService === '' ? 'service' : 'complete'));
+    @endphp
+
+    <x-ui.panel title="Tahapan layanan warga" description="Ikuti alur ini agar identifikasi dan layanan warga tetap jelas.">
+        <x-ui.status-stepper
+            :steps="$identificationSteps"
+            :current-status="$identificationCurrentStep"
+            label="Tahapan layanan warga"
+        />
+    </x-ui.panel>
+
     @if ($scannerOpen)
-        <x-ui.panel title="Pindai QR nasabah" description="Arahkan kamera ke QR kartu nasabah. QR hanya berisi token acak; nama tetap harus dikonfirmasi." state="success">
+        <x-ui.panel title="Pindai QR nasabah" description="Arahkan kamera ke QR kartu nasabah. QR hanya digunakan untuk mengenali kartu nasabah; nama tetap harus dikonfirmasi." state="success">
             <div
                 x-data="{
                     stream: null,
@@ -82,18 +103,31 @@
                 @error('token')
                     <p role="alert" class="text-body-sm font-semibold text-terracotta">{{ $message }}</p>
                 @enderror
-                <div class="flex flex-col gap-3 sm:flex-row">
+                <div class="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
                     <x-ui.button type="button" variant="secondary" x-on:click="stop(); $wire.closeScanner()">Tutup Pemindai</x-ui.button>
                     <x-ui.button type="button" variant="quiet" x-on:click="stop(); start()">Coba Lagi</x-ui.button>
                 </div>
             </div>
         </x-ui.panel>
     @else
-        <x-ui.panel title="Pindai dengan kamera" description="Gunakan kamera perangkat untuk membaca QR kartu nasabah. Token tidak ditampilkan di layar.">
+        <x-ui.panel title="Pindai dengan kamera" description="Gunakan kamera perangkat untuk membaca QR kartu nasabah. Kodenya tidak ditampilkan di layar.">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p class="text-body-sm text-text-secondary">Jika kamera tidak tersedia atau izin ditolak, gunakan nomor atau nama warga di bawah.</p>
-                <x-ui.button type="button" wire:click="openScanner">Buka Pemindai QR</x-ui.button>
+                <p class="text-body-sm text-text-secondary">Jika kamera tidak tersedia atau izinnya ditolak, cari warga menggunakan nomor atau nama di bawah.</p>
+                <div class="flex flex-col items-end">
+                    <x-ui.button type="button" wire:click="openScanner">Buka Pemindai QR</x-ui.button>
+                </div>
             </div>
+        </x-ui.panel>
+    @endif
+
+    @if ($mobileServices->isNotEmpty())
+        <x-ui.panel title="Pilih konteks setoran" description="Pilih layanan keliling aktif sebelum memindai QR atau mencari nomor warga. Pilih setoran langsung untuk memakai cakupan area tugas biasa.">
+            <x-ui.select name="mobileServiceId" label="Metode setoran" wire:model.live="mobileServiceId">
+                <option value="">Setoran langsung</option>
+                @foreach ($mobileServices as $mobileService)
+                    <option value="{{ $mobileService->id }}">Keliling · {{ $mobileService->point }} · {{ $mobileService->starts_at->format('d M H:i') }}</option>
+                @endforeach
+            </x-ui.select>
         </x-ui.panel>
     @endif
 
@@ -109,18 +143,20 @@
                 :error="$errors->first('search')"
             />
             <p id="identification-help" class="text-body-sm text-text-secondary">
-                Data warga hanya tampil dalam cakupan tugas Anda.
+                Data warga hanya tampil dalam wilayah dan layanan yang menjadi tanggung jawab Anda.
             </p>
-            <x-ui.button type="submit" wire:loading.attr="disabled">
-                <span wire:loading.remove>Cari Nasabah</span>
-                <span wire:loading>Mencari...</span>
-            </x-ui.button>
+            <div class="flex flex-col items-end">
+                <x-ui.button type="submit" wire:loading.attr="disabled">
+                    <span wire:loading.remove>Cari Nasabah</span>
+                    <span wire:loading>Mencari...</span>
+                </x-ui.button>
+            </div>
         </form>
     </x-ui.panel>
 
     {{-- Candidate Result --}}
     @if ($candidate)
-        <x-ui.panel title="Kandidat identitas" state="{{ $confirmed ? 'success' : 'default' }}">
+        <x-ui.panel title="Kandidat identitas">
             @if ($confirmed)
                 <div role="status" class="space-y-1">
                     <div class="flex items-center gap-2">
@@ -132,61 +168,25 @@
                     <p class="text-h2 font-bold text-deep-green">{{ $candidate->name }}</p>
                     <p class="text-body-sm text-text-secondary">Nomor referensi: {{ $candidate->maskedNumber() }}</p>
 
-                    <ol class="mt-5 grid gap-2 border-t border-border pt-4 text-body-sm sm:grid-cols-5">
-                        <li class="font-semibold text-forest-700">1. Identifikasi</li>
-                        <li class="font-semibold text-forest-700">2. Konfirmasi</li>
-                        <li class="font-semibold {{ $selectedService === '' ? 'text-deep-green' : 'text-forest-700' }}">3. Pilih layanan</li>
-                        <li class="text-text-secondary">4. Selesaikan</li>
-                        <li class="text-text-secondary">5. Ringkasan</li>
-                    </ol>
-
-                    @if ($selectedService === '')
-                        <div class="mt-5">
-                            <h3 class="text-title font-bold text-deep-green">Pilih layanan warga</h3>
-                            <p class="mt-1 text-body-sm text-text-secondary">Pisahkan jalur agar tindakan yang dipilih tetap jelas dan tidak tercampur.</p>
-                            <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                                <button type="button" wire:click="chooseService('deposit')" class="min-h-28 rounded-md border-2 border-forest-600 bg-success-bg p-4 text-left transition hover:bg-surface">
-                                    <span class="block text-label font-bold text-deep-green">Setoran</span>
-                                    <span class="mt-1 block text-body-sm text-text-secondary">Catat setoran langsung atau keliling.</span>
-                                </button>
-                                @if ($canCreateAssisted)
-                                    <button type="button" wire:click="chooseService('assisted')" class="min-h-28 rounded-md border border-border bg-warm-canvas p-4 text-left transition hover:border-forest-600 hover:bg-success-bg">
-                                        <span class="block text-label font-bold text-deep-green">Layanan berbantuan</span>
-                                        <span class="mt-1 block text-body-sm text-text-secondary">Catat persetujuan dan bukti privat.</span>
-                                    </button>
-                                @endif
-                                @if ($canCreateAssistedWithdrawal)
-                                    <button type="button" wire:click="chooseService('withdrawal')" class="min-h-28 rounded-md border border-border bg-warning-bg p-4 text-left transition hover:border-harvest-gold">
-                                        <span class="block text-label font-bold text-deep-green">Pencairan berbantuan</span>
-                                        <span class="mt-1 block text-body-sm text-text-secondary">Ajukan pencairan dengan consent warga.</span>
-                                    </button>
-                                @endif
-                            </div>
-                            <a href="{{ route('officer.deposit-form', ['customerId' => $candidate->userId, 'assistedServiceId' => $assistedServiceId]) }}" class="mt-4 inline-flex min-h-touch items-center gap-2 text-label font-bold text-forest-700 underline underline-offset-4">Mulai Setoran</a>
-                        </div>
-                    @endif
 
                     @if ($selectedService === 'deposit')
                         <div class="mt-5 border-t border-border pt-4">
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                                <a href="{{ route('officer.deposit-form', ['customerId' => $candidate->userId, 'assistedServiceId' => $assistedServiceId]) }}"
-
-                            class="inline-flex min-h-touch items-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">
-                            <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                            Mulai Setoran
-                                </a>
-                            </div>
-                            @if ($mobileServices->isNotEmpty())
-                                <div class="mt-4 rounded-xl border border-border bg-warm-canvas p-4">
-                                    <x-ui.select name="mobileServiceId" label="Jadwal keliling (opsional)" wire:model="mobileServiceId">
-                                        <option value="">Setoran langsung</option>
-                                        @foreach ($mobileServices as $mobileService)
-                                            <option value="{{ $mobileService->id }}">{{ $mobileService->point }} · {{ $mobileService->starts_at->format('d M H:i') }}</option>
-                                        @endforeach
-                                    </x-ui.select>
-                                    <a href="{{ route('officer.deposit-form', ['customerId' => $candidate->userId]) }}?{{ http_build_query(array_filter(['mobileServiceId' => $mobileServiceId, 'assistedServiceId' => $assistedServiceId])) }}" class="mt-3 inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-forest-600 px-5 text-label font-bold text-forest-700 transition hover:bg-success-bg">Mulai Setoran Keliling</a>
+                            @php
+                                $depositQuery = http_build_query(array_filter([
+                                    'mobileServiceId' => $mobileServiceId,
+                                    'assistedServiceId' => $assistedServiceId,
+                                ]));
+                                $depositUrl = route('officer.deposit-form', ['customerId' => $candidate->userId]).($depositQuery !== '' ? '?'.$depositQuery : '');
+                                $depositLabel = $mobileServiceId === null ? 'Mulai Setoran Langsung' : 'Mulai Setoran Keliling';
+                            @endphp
+                            <div class="rounded-xl border border-border bg-warm-canvas p-4">
+                                <div class="flex flex-col items-end">
+                                    <a href="{{ $depositUrl }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
+                                        {{ $depositLabel }}
+                                        <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                                    </a>
                                 </div>
-                            @endif
+                            </div>
                         </div>
                     @endif
 
@@ -195,9 +195,11 @@
                             <p class="text-label font-bold text-deep-green">Layanan berbantuan</p>
                             <p class="mt-1 text-body-sm text-text-secondary">Catat layanan atas nama warga setelah persetujuan terpisah. Kata sandi tidak pernah diminta.</p>
                             @if ($assistedRecorded)
-                                <p role="status" class="mt-3 text-body-sm font-semibold text-forest-700">Layanan berbantuan tercatat dengan persetujuan dan bukti privat.</p>
+                                <p role="status" class="mt-3 text-body-sm font-semibold text-forest-700">Layanan berbantuan tercatat dengan persetujuan dan bukti yang hanya dapat dilihat oleh pihak berwenang.</p>
                                 @if ($assistedServiceId)
-                                    <button type="button" wire:click="handoff" wire:loading.attr="disabled" class="mt-3 inline-flex min-h-touch items-center rounded-xl border-2 border-forest-600 px-5 text-label font-bold text-forest-700 transition hover:bg-success-bg">Serahkan Bukti dan Saldo</button>
+                                    <div class="mt-3 flex flex-col items-end">
+                                        <button type="button" wire:click="handoff" wire:loading.attr="disabled" class="inline-flex min-h-touch items-center rounded-xl border-2 border-forest-600 px-5 text-label font-bold text-forest-700 transition hover:bg-success-bg">Serahkan Bukti dan Saldo</button>
+                                    </div>
                                 @endif
                                 @if (session('assisted-handoff'))
                                     @php
@@ -229,10 +231,12 @@
                                     @error('assistedEvidence')
                                         <p class="text-body-sm font-semibold text-terracotta">{{ $message }}</p>
                                     @enderror
-                                    <x-ui.button type="button" wire:click="recordAssistedService" wire:loading.attr="disabled" data-photo-picker-action>
-                                        <span wire:loading.remove wire:target="recordAssistedService">Catat Layanan Berbantuan</span>
-                                        <span wire:loading wire:target="recordAssistedService">Menyimpan...</span>
-                                    </x-ui.button>
+                                    <div class="flex flex-col items-end">
+                                        <x-ui.button type="button" wire:click="recordAssistedService" wire:loading.attr="disabled" data-photo-picker-action>
+                                            <span wire:loading.remove wire:target="recordAssistedService">Catat Layanan Berbantuan</span>
+                                            <span wire:loading wire:target="recordAssistedService">Menyimpan...</span>
+                                        </x-ui.button>
+                                    </div>
                                 </div>
                             @endif
                         </div>
@@ -284,7 +288,7 @@
                                     @error('withdrawalEvidence')
                                         <p class="sm:col-span-2 text-body-sm font-semibold text-terracotta">{{ $message }}</p>
                                     @enderror
-                                    <div class="sm:col-span-2">
+                                    <div class="flex flex-col items-end sm:col-span-2">
                                         <x-ui.button type="button" wire:click="requestAssistedWithdrawal" wire:loading.attr="disabled" wire:target="requestAssistedWithdrawal" :disabled="$withdrawalBalanceInsufficient" data-photo-picker-action>
                                             <span wire:loading.remove wire:target="requestAssistedWithdrawal">Ajukan Pencairan Berbantuan</span>
                                             <span wire:loading wire:target="requestAssistedWithdrawal">Memproses...</span>
@@ -302,7 +306,9 @@
                         <p class="mt-0.5 text-title font-bold text-deep-green">{{ $candidate->name }}</p>
                         <p class="mt-0.5 text-body-sm text-text-secondary">Nomor referensi: {{ $candidate->maskedNumber() }}</p>
                     </div>
-                    <x-ui.button type="button" wire:click="confirm">Konfirmasi Nama</x-ui.button>
+                    <div class="flex flex-col items-end">
+                        <x-ui.button type="button" wire:click="confirm">Konfirmasi Nama</x-ui.button>
+                    </div>
                 </div>
             @endif
         </x-ui.panel>

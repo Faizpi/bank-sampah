@@ -13,7 +13,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 #### AUTH-001 — Registrasi dan verifikasi akun warga
 - **Aktor:** warga, admin.
 - **Prasyarat:** nomor telepon belum terikat pada akun aktif; wilayah tersedia; warga menerima secara afirmatif [Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0](TERMS_AND_PRIVACY.md).
-- **Alur:** warga mengisi data dan mencentang kontrol persetujuan yang kosong secara awal; sistem memvalidasi; versi v1.0 serta waktu persetujuan yang dicatat server disimpan; akun disimpan `menunggu_verifikasi`; admin memeriksa domisili dan duplikasi; admin menyetujui atau menolak dengan alasan; sistem memberi notifikasi.
+- **Alur:** warga mengisi data dan mencentang kontrol persetujuan yang kosong secara awal; sistem memvalidasi; versi v1.0 serta waktu persetujuan yang dicatat server disimpan; akun disimpan `menunggu_verifikasi`; admin memeriksa domisili dan duplikasi; admin menyetujui atau menolak dengan alasan; hasil keputusan ditampilkan pada status akun.
 - **Hasil:** akun yang disetujui aktif dan dapat login; akun ditolak menyimpan alasan.
 - **Kegagalan:** data tidak valid atau persetujuan tidak diberikan dikembalikan ke formulir; duplikasi atau domisili tidak sah tidak mengaktifkan akun.
 - **Kriteria penerimaan:** dokumen tersedia publik; status awal benar; keputusan tercatat; penerimaan ketentuan bukan verifikasi, aktivasi, autentikasi, atau login otomatis; hanya akun aktif dapat login; penolakan tidak menjalankan aktivasi.
@@ -66,7 +66,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** nasabah dapat ditemukan tanpa menaruh data pribadi di QR.
 - **Kegagalan:** token tidak valid atau kartu nonaktif tidak memilih nasabah.
 - **Kriteria penerimaan:** nomor dan token unik; token dapat dirotasi; QR tidak memuat identitas; konfirmasi petugas wajib sebelum transaksi.
-- **Jejak:** FL-09, FL-32, FL-33; BR-CST-001–003; TC-CST-001.
+- **Jejak:** FL-09, FL-31, FL-32; BR-CST-001–003; TC-CST-001.
 
 #### CST-002 — Pelayanan warga tanpa smartphone
 - **Aktor:** warga, petugas, admin.
@@ -75,7 +75,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** warga memperoleh layanan yang sama tanpa penyerahan kata sandi.
 - **Kegagalan:** tanpa persetujuan atau identitas valid proses dihentikan.
 - **Kriteria penerimaan:** pelaksana tercatat; petugas tidak mengambil alih kata sandi; bukti dapat dicetak; hak transparansi tetap tersedia.
-- **Jejak:** FL-34; BR-CST-004–006; TC-CST-002.
+- **Jejak:** FL-33; BR-CST-004–006; TC-CST-002.
 
 ### REG — wilayah dan area pelayanan
 
@@ -86,7 +86,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** pengguna, penjemputan, layanan keliling, target, dan laporan memakai referensi wilayah konsisten.
 - **Kegagalan:** parent tidak aktif, duplikasi, atau wilayah bereferensi tidak dapat dihapus fisik.
 - **Kriteria penerimaan:** hierarki valid; kode unik pada scope; deaktivasi mempertahankan riwayat; filter wilayah konsisten.
-- **Jejak:** FL-04, FL-07, FL-34, FL-36; BR-REG-001–003; TC-REG-001.
+- **Jejak:** FL-04, FL-07, FL-33, FL-35; BR-REG-001–003; TC-REG-001.
 
 ### WST — master sampah dan edukasi
 
@@ -97,7 +97,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** katalog aktif tersedia pada harga, estimasi, dan transaksi.
 - **Kegagalan:** data invalid atau bereferensi ditolak; item nonaktif tidak dapat dipakai untuk transaksi baru.
 - **Kriteria penerimaan:** satuan dan kondisi eksplisit; edukasi muncul sesuai konteks; riwayat transaksi lama tetap terbaca.
-- **Jejak:** FL-07, FL-31; BR-WST-001–003; TC-WST-001.
+- **Jejak:** FL-07, FL-30; BR-WST-001–003; TC-WST-001.
 
 ### PRC — harga sampah
 
@@ -125,7 +125,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Aktor:** petugas, warga.
 - **Prasyarat:** nasabah aktif; petugas berwenang; master dan harga aktif tersedia.
 - **Alur:** identitas dikonfirmasi; petugas menambah satu atau lebih jenis, berat aktual maksimal tiga desimal, kondisi, dan bukti; sistem menghitung subtotal/total; petugas meninjau lalu mengonfirmasi.
-- **Hasil:** transaksi final, detail snapshot, bukti, satu mutasi saldo masuk, QR verifikasi, notifikasi, dan audit dibuat atomik.
+- **Hasil:** transaksi final, detail snapshot, bukti, satu mutasi saldo masuk, QR verifikasi, dan audit dibuat atomik.
 - **Kegagalan:** input salah kembali ke penimbangan; kegagalan commit melakukan rollback seluruh efek.
 - **Kriteria penerimaan:** multi-item dihitung benar; berat positif; tidak ada mutasi pada draf; transaksi tidak dapat difinalkan dua kali.
 - **Jejak:** FL-09, FL-16, FL-19, FL-20, FL-25; BR-DEP-001–006; TC-DEP-001.
@@ -146,7 +146,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** satu kejadian bisnis menghasilkan paling banyak satu transaksi final dan mutasi sumber.
 - **Kegagalan:** commit gagal menghasilkan status gagal tanpa saldo berubah.
 - **Kriteria penerimaan:** klik ganda tidak menggandakan saldo; retry aman; insiden dapat dilacak.
-- **Jejak:** FL-20, FL-29; BR-DEP-011–014; TC-DEP-003.
+- **Jejak:** FL-20, FL-28; BR-DEP-011–014; TC-DEP-003.
 
 ### BAL — saldo dan ledger
 
@@ -177,7 +177,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** pengajuan selesai hanya setelah transaksi setoran berhasil; saldo memakai berat aktual.
 - **Kegagalan:** foto/area invalid ditolak; kapasitas penuh tidak menyimpan pada tanggal tersebut; penolakan berhenti tanpa jadwal atau transaksi.
 - **Kriteria penerimaan:** alternatif tanggal tersedia; status mengikuti state machine; perkiraan tidak menjadi saldo; petugas berangkat mencegah pembatalan warga.
-- **Jejak:** FL-10, FL-22, FL-36; BR-PUP-001–010; TC-PUP-001.
+- **Jejak:** FL-10, FL-22, FL-35; BR-PUP-001–010; TC-PUP-001.
 
 ### WDR — pencairan tunai
 
@@ -198,19 +198,8 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Alur:** warga memilih paket; sistem menahan saldo; admin memeriksa ketersediaan manual lalu menyetujui/menolak; petugas menyiapkan, memverifikasi warga, menyerahkan, dan mengunggah bukti; sistem membuat saldo keluar.
 - **Hasil:** penukaran selesai satu kali atau saldo dilepas pada tolak, batal, dan kedaluwarsa.
 - **Kegagalan:** paket tidak aktif/tidak tersedia berhenti tanpa penyerahan; jalur penolakan tidak menuju sukses.
-- **Kriteria penerimaan:** `approve` terpisah dari `handover`; tidak ada stok rinci; bantuan gratis tidak memotong saldo; bukti wajib.
+- **Kriteria penerimaan:** `approve` terpisah dari `handover`; tidak ada stok rinci; bukti wajib.
 - **Jejak:** FL-12, FL-17, FL-18, FL-21, FL-24; BR-GRC-001–009; TC-GRC-001.
-
-### NOT — notifikasi dan pengingat
-
-#### NOT-001 — Notifikasi dalam aplikasi
-- **Aktor:** sistem, seluruh pengguna sesuai kejadian.
-- **Prasyarat:** kejadian domain atau jadwal pengingat valid.
-- **Alur:** sistem menentukan penerima, template, waktu, dan referensi; menyimpan notifikasi; menampilkan status belum dibaca; pengguna membuka atau menandai dibaca.
-- **Hasil:** akun, transaksi, koreksi, saldo, status, harga, jadwal, perubahan, dan kedaluwarsa dapat diberitahukan.
-- **Kegagalan:** kegagalan notifikasi tidak membatalkan transaksi yang sudah commit dan dicatat untuk retry terbatas.
-- **Kriteria penerimaan:** tidak memuat secret; tautan tetap diotorisasi; duplikasi dicegah; preferensi yang berlaku dihormati.
-- **Jejak:** FL-15; BR-NOT-001–004; TC-NOT-001.
 
 ### WA — WhatsApp manual
 
@@ -243,7 +232,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** progres agregat dan sisa target dapat dilihat sesuai visibilitas.
 - **Kegagalan:** target invalid tidak aktif; transaksi draf/dibal­ikkan tidak menambah progres bersih.
 - **Kriteria penerimaan:** unit konsisten; periode tidak ambigu; koreksi/reversal tercermin; publik tanpa data pribadi.
-- **Jejak:** FL-31; BR-TGT-001–006; TC-TGT-001.
+- **Jejak:** FL-30; BR-TGT-001–006; TC-TGT-001.
 
 ### MOB — Bank Sampah Keliling
 
@@ -253,8 +242,8 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Alur:** admin membuat jadwal; sistem mendeteksi benturan; jadwal dipublikasikan; petugas membuka titik; warga datang dengan QR/nomor; setoran mengikuti alur langsung; petugas menutup dan merekap layanan.
 - **Hasil:** layanan terjadwal tercatat per wilayah tanpa diperlakukan sebagai penjemputan rumah.
 - **Kegagalan:** benturan mengharuskan waktu/petugas lain; layanan belum dibuka tidak menerima transaksi bertipe keliling.
-- **Kriteria penerimaan:** RT/RW, titik, waktu, petugas, jenis diterima, kapasitas, dan status jelas; perubahan menghasilkan pengingat.
-- **Jejak:** FL-32; BR-MOB-001–006; TC-MOB-001.
+- **Kriteria penerimaan:** wilayah jadwal mengikuti hierarki desa, dusun, RW, dan RT; titik, waktu, petugas, jenis diterima, kapasitas, serta status harus jelas; kapasitas membatasi penerimaan pada jadwal terkait.
+- **Jejak:** FL-31; BR-MOB-001–006; TC-MOB-001.
 
 ### EST — estimasi nilai
 
@@ -265,7 +254,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** estimasi informatif tanpa record transaksi, mutasi, atau hold.
 - **Kegagalan:** input/harga invalid menampilkan panduan perbaikan tanpa hasil menyesatkan.
 - **Kriteria penerimaan:** penafian selalu terlihat; nilai akhir dinyatakan mengikuti penimbangan aktual; kalkulator tidak mengubah data keuangan.
-- **Jejak:** FL-33; BR-EST-001–004; TC-EST-001.
+- **Jejak:** FL-32; BR-EST-001–004; TC-EST-001.
 
 ### QRV — verifikasi bukti
 
@@ -276,7 +265,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** keaslian bukti dapat diperiksa tanpa login dan tanpa data pribadi.
 - **Kegagalan:** token invalid/nonaktif menampilkan “tidak ditemukan/tidak sah” tanpa petunjuk enumerasi.
 - **Kriteria penerimaan:** token berentropi tinggi; rate limit; transaksi nonfinal tidak dinyatakan sah; saldo, alamat, identitas, dan telepon lengkap tidak tampil.
-- **Jejak:** FL-35; BR-QRV-001–005; TC-QRV-001.
+- **Jejak:** FL-34; BR-QRV-001–005; TC-QRV-001.
 
 ### PUB — partisipasi dan statistik publik
 
@@ -287,7 +276,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** perbandingan wilayah tersedia untuk evaluasi.
 - **Kegagalan:** data di bawah ambang privasi tidak dirinci; akses tanpa izin ditolak.
 - **Kriteria penerimaan:** koreksi/reversal diperhitungkan; filter konsisten; tidak ada saldo individual pada tampilan agregat.
-- **Jejak:** FL-26, FL-36; BR-PUB-001–004; TC-PUB-001.
+- **Jejak:** FL-26; BR-PUB-001–004; TC-PUB-001.
 
 #### PUB-002 — Statistik publik desa
 - **Aktor:** publik, admin penerbit.
@@ -296,7 +285,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Hasil:** statistik desa tersedia tanpa data pribadi.
 - **Kegagalan:** agregat berisiko identifikasi disembunyikan atau digabung; data internal tidak bocor.
 - **Kriteria penerimaan:** hanya allowlist metrik; tidak ada endpoint drill-down individual; cache tidak menyimpan respons privat.
-- **Jejak:** FL-07, FL-26, FL-29; BR-PUB-005–009; TC-PUB-002.
+- **Jejak:** FL-07, FL-26; BR-PUB-005–009; TC-PUB-002.
 
 ### RPT — laporan dan ekspor
 
@@ -311,14 +300,14 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 
 ### AUD — audit log
 
-#### AUD-001 — Audit aktivitas penting dan retensi
-- **Aktor:** sistem, admin/superadmin pembaca, dan superadmin untuk retensi resmi.
+#### AUD-001 — Audit aktivitas penting
+- **Aktor:** sistem serta admin atau superadmin sebagai pembaca berizin.
 - **Prasyarat:** kejadian audit terjadi atau pembaca berizin.
-- **Alur:** sistem mencatat pelaku, waktu, IP/perangkat relevan, aksi, objek, nilai lama/baru yang aman, dan korelasi; admin menelusuri; retensi hanya dijalankan melalui kebijakan teknis.
-- **Hasil:** perubahan akun, akses, harga, transaksi, saldo, status, persetujuan, pembayaran, penyerahan, ekspor, dan konfigurasi teknis non-secret melalui UI berizin dapat ditelusuri.
-- **Kegagalan:** pengguna operasional tidak dapat mengubah/menghapus log; secret tidak dicatat.
+- **Alur:** sistem mencatat pelaku, waktu, konteks teknis yang aman, aksi, objek, perubahan yang disanitasi, dan korelasi; pembaca berizin menelusuri catatan.
+- **Hasil:** perubahan akun, akses, harga, transaksi, saldo, status, persetujuan, pembayaran, dan penyerahan dapat ditelusuri.
+- **Kegagalan:** pengguna operasional tidak dapat mengubah atau menghapus log; secret tidak dicatat.
 - **Kriteria penerimaan:** log append-oriented; pencarian berizin; kegagalan audit pada aksi keuangan memblokir commit atau dicakup transaksi yang sama.
-- **Jejak:** FL-27; BR-AUD-001–006; TC-AUD-001.
+- **Jejak:** FL-27; BR-AUD-001–003, BR-AUD-005–006; TC-AUD-001.
 
 ### PWA — aplikasi web progresif terbatas
 
@@ -342,8 +331,7 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 | NFR-PERF-001 | Query terindeks, pagination, gambar terkompresi, dan pekerjaan ekspor besar dibatasi sesuai shared hosting. | Halaman utama responsif pada volume uji yang disepakati tanpa timeout normal. |
 | NFR-COMP-001 | Mendukung Chrome Android/desktop, Edge, Safari mobile, dan Firefox versi yang masih didukung vendor. | Skenario kritis lulus pada matriks browser. |
 | NFR-TIME-001 | Zona waktu aplikasi `Asia/Jakarta`; waktu database disimpan konsisten dan ditampilkan dalam zona aplikasi. | Pengujian batas hari dan cron menghasilkan tanggal bisnis yang benar. |
-| NFR-OPS-001 | Backup database harian dan media berkala, salinan terpisah, verifikasi, serta uji restore melalui deployment/SOP. | Sasaran awal RPO ≤24 jam dan RTO ≤8 jam terbukti dalam latihan; aplikasi tidak mengklaim menjalankan dump atau restore artefak aktual melalui UI. |
-| NFR-HOST-001 | Deployment sesuai batas Hostinger shared hosting pada [DEPLOYMENT.md](DEPLOYMENT.md). | Tidak memerlukan root, Redis, Horizon, Supervisor, WebSocket, atau worker permanen. |
+| NFR-HOST-001 | Deployment sesuai batas Hostinger shared hosting pada [DEPLOYMENT.md](DEPLOYMENT.md); Health privat bersifat baca-saja dan memerlukan `system.maintenance`. | Tidak memerlukan root, Redis, Horizon, Supervisor, WebSocket, atau worker permanen; Health tidak membuka tindakan teknis lain. |
 | NFR-SCOPE-001 | Data plastik hanya mendukung tujuan pemanfaatan lanjutan paving block; produksi tidak dikelola. | Tidak ada modul formula, batch, suhu, uji tekan, stok produk jadi, distribusi, atau biaya produksi. |
 
 ## 4. Traceability 36 flowchart
@@ -352,7 +340,7 @@ Nomor mengacu pada urutan diagram di `Kumpulan_Flowchart_Bank_Sampah_Digital_Sin
 
 | Flow | Judul | Requirement utama |
 |---|---|---|
-| FL-01 | Tahapan Pengembangan Aplikasi | NFR-OPS-001, seluruh baseline |
+| FL-01 | Tahapan Pengembangan Aplikasi | seluruh ruang lingkup aktif |
 | FL-02 | Peta Jalan Pengembangan | NFR-SCOPE-001, seluruh baseline |
 | FL-03 | Pengujian dan Penerimaan Sistem | seluruh requirement; [TEST_PLAN.md](TEST_PLAN.md) |
 | FL-04 | Diagram Konteks Sistem | USR-001, USR-002 |
@@ -366,7 +354,7 @@ Nomor mengacu pada urutan diagram di `Kumpulan_Flowchart_Bank_Sampah_Digital_Sin
 | FL-12 | Penukaran Saldo dengan Sembako | GRC-001, BAL-002 |
 | FL-13 | Koreksi Transaksi Final | DEP-002, BAL-002, AUD-001 |
 | FL-14 | Perubahan Harga Sampah | PRC-001, PRC-002 |
-| FL-15 | Alur Notifikasi dan Pengingat | NOT-001, WA-001, ANN-001 |
+| FL-15 | Alur Informasi dan WhatsApp Manual | WA-001, ANN-001 |
 | FL-16 | Alur Saldo Masuk | DEP-001, BAL-001 |
 | FL-17 | Alur Saldo Keluar | BAL-001, WDR-001, GRC-001 |
 | FL-18 | Alur Saldo Tertahan | BAL-002, WDR-001, GRC-001 |
@@ -379,14 +367,15 @@ Nomor mengacu pada urutan diagram di `Kumpulan_Flowchart_Bank_Sampah_Digital_Sin
 | FL-25 | Status Transaksi Setoran | DEP-001, DEP-002 |
 | FL-26 | Pembuatan Laporan dan Statistik | RPT-001, PUB-001, PUB-002 |
 | FL-27 | Audit Log | AUD-001 |
-| FL-28 | Backup dan Pemulihan Data | NFR-OPS-001, AUD-001 |
-| FL-29 | Penanganan Kesalahan Transaksi | DEP-003, BAL-002 |
-| FL-31 | Target Pengumpulan Sampah Desa | TGT-001 |
-| FL-32 | Bank Sampah Keliling per RT/RW | MOB-001, DEP-001 |
-| FL-33 | Estimasi Nilai Sebelum Setor | EST-001, WST-001 |
-| FL-34 | Pelayanan Warga Tanpa Smartphone | CST-002, AUTH-001 |
-| FL-35 | Verifikasi Bukti Transaksi dengan QR | QRV-001 |
-| FL-36 | Pengaturan Kapasitas Penjemputan Harian | PUP-001, REG-001 |
+| FL-28 | Penanganan Kesalahan Transaksi | DEP-003, BAL-002 |
+| FL-29 | Laporan dan Ekspor Excel | RPT-001 |
+| FL-30 | Target Pengumpulan Sampah Desa | TGT-001 |
+| FL-31 | Bank Sampah Keliling per RT/RW | MOB-001, DEP-001 |
+| FL-32 | Estimasi Nilai Sebelum Setor | EST-001, WST-001 |
+| FL-33 | Pelayanan Warga Tanpa Smartphone | CST-002, AUTH-001 |
+| FL-34 | Verifikasi Bukti Transaksi dengan QR | QRV-001 |
+| FL-35 | Pengaturan Kapasitas Penjemputan Harian | PUP-001, REG-001 |
+| FL-36 | Health Sistem | NFR-HOST-001, [PERMISSIONS.md](PERMISSIONS.md) |
 
 ID `FL-01`–`FL-36` mengikuti urutan generator dan diagram final sebagaimana dirinci secara normatif di [USER_FLOWS.md](USER_FLOWS.md). Nomor halaman PDF berbeda karena lima halaman pendahuluan; gunakan ID dan judul untuk traceability.
 
@@ -401,7 +390,7 @@ ID `FL-01`–`FL-36` mengikuti urutan generator dan diagram final sebagaimana di
 | Ledger, saldo, hold, koreksi, reversal | BAL-001–002, DEP-002 |
 | Penjemputan dan kapasitas | PUP-001 |
 | Pencairan dan sembako | WDR-001, GRC-001 |
-| Notifikasi, WhatsApp manual, pengumuman | NOT-001, WA-001, ANN-001 |
+| Informasi status, WhatsApp manual, pengumuman | WA-001, ANN-001 |
 | Target, keliling, estimasi, QR bukti | TGT-001, MOB-001, EST-001, QRV-001 |
 | Partisipasi, publik, laporan | PUB-001–002, RPT-001 |
 | Audit dan PWA | AUD-001, PWA-001 |

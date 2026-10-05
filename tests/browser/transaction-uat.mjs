@@ -396,9 +396,9 @@ await run('Petugas memfinalisasi setoran dan saldo masuk', async () => {
     await settle(page);
     await page.locator('#deposit-evidence').setInputFiles(fixture);
     await settle(page);
-    await page.getByRole('button', { name: 'Finalisasi Setoran' }).click();
+    await page.getByRole('button', { name: 'Catat setoran' }).click();
     await waitForLivewire(page);
-    if (!await page.getByText('Setoran berhasil difinalisasi.').isVisible()) {
+    if (!await page.getByText('Setoran berhasil dicatat.').isVisible()) {
         throw new Error('Pesan finalisasi setoran tidak muncul.');
     }
     depositData = tinkerJson(`$d=\\App\\Domain\\Deposits\\Models\\Deposit::where('customer_id',${customerId})->latest('id')->firstOrFail(); echo json_encode(['id'=>$d->id,'number'=>$d->deposit_number,'value'=>$d->total_value,'token'=>$d->verificationToken()]);`);

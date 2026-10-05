@@ -12,6 +12,7 @@ use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\DatabaseSession;
+use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
@@ -37,22 +38,29 @@ final readonly class ManageUsers
         private AuditLogger $auditLogger,
     ) {}
 
-    /** @param array{name: string, phone: string, email?: string|null} $data */
+    /** @param array{name: string, phone: string, email?: string|null, password: string, password_confirmation: string, role_id: int|string} $data */
     public function create(User $actor, array $data): User
     {
         Gate::forUser($actor)->authorize('create', User::class);
         $attributes = $this->userAttributes($data);
+        $password = $this->createPassword($data);
+        $roleId = (int) $data['role_id'];
+        $role = Role::query()->whereKey($roleId)->first();
+        if (! $role instanceof Role) {
+            throw ValidationException::withMessages(['role_id' => 'Peran yang dipilih tidak valid.']);
+        }
 
-        return DB::transaction(function () use ($actor, $attributes): User {
+        return DB::transaction(function () use ($actor, $attributes, $password, $role): User {
             $user = new User;
             $user->forceFill([
                 ...$attributes,
-                'password' => Hash::make(Str::random(64)),
-                'status' => UserStatus::PendingVerification,
+                'password' => Hash::make($password),
+                'status' => UserStatus::Active,
             ])->save();
-            $this->auditLogger->record($actor, 'identity.user.created', $user, [], ['status' => UserStatus::PendingVerification->value], $this->correlationId());
+            $user->roles()->attach($role->id, ['assigned_by' => $actor->id, 'reason' => 'Penugasan saat pembuatan pengguna.']);
+            $this->auditLogger->record($actor, 'identity.user.created', $user, [], ['status' => UserStatus::Active->value, 'role_id' => $role->id], $this->correlationId());
 
-            return $user->fresh();
+            return $user->fresh('roles');
         });
     }
 
@@ -249,6 +257,18 @@ final readonly class ManageUsers
         }
 
         return ['name' => $name, 'phone' => $phone, 'email' => $email === '' ? null : $email];
+    }
+
+    /** @param array<string, mixed> $data */
+    private function createPassword(array $data): string
+    {
+        $password = $data['password'] ?? null;
+        $confirmation = $data['password_confirmation'] ?? null;
+        if (! is_string($password) || mb_strlen($password) < 10 || $password !== $confirmation) {
+            throw ValidationException::withMessages(['password' => 'Kata sandi minimal 10 karakter dan harus sama dengan konfirmasi.']);
+        }
+
+        return $password;
     }
 
     /**

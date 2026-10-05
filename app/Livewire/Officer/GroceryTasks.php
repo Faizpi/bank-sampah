@@ -163,7 +163,7 @@ final class GroceryTasks extends Component
         $actor = auth()->user();
         $this->validateHandoverFields();
         if (! isset($this->proof)) {
-            $this->addError('proof', 'Bukti handover wajib diunggah.');
+            $this->addError('proof', 'Bukti serah-terima wajib diunggah.');
 
             return;
         }
@@ -230,7 +230,7 @@ final class GroceryTasks extends Component
         $this->receipt = $completed->handed_over_at === null
             ? null
             : ['number' => (string) $completed->request_number, 'value' => (int) $completed->value_snapshot, 'occurredAt' => $completed->handed_over_at->setTimezone('Asia/Jakarta')->translatedFormat('d F Y, H:i'), 'status' => $completed->status->value];
-        session()->flash('success', 'Handover tercatat dan saldo warga berhasil dikurangi.');
+        session()->flash('success', 'Serah-terima tercatat dan saldo warga telah digunakan.');
         $this->reset(['selectedRedemptionId', 'recipientReference', 'proof', 'scannerOpen', 'handoverReviewOpen', 'resolvedCustomerName']);
         $this->idempotencyKey = (string) str()->uuid();
     }

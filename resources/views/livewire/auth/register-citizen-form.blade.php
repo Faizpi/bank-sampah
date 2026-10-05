@@ -27,7 +27,7 @@
 
         <div class="bg-surface px-5 py-6 sm:p-8 md:p-8">
             @if ($registered)
-                <div id="registration-success" class="mx-auto max-w-form rounded-2xl border border-forest-600/30 bg-success-bg p-6 text-center shadow-sm" role="status" aria-live="polite" tabindex="-1" x-init="$nextTick(() => $el.focus())">
+                <div id="registration-success" class="mx-auto max-w-form rounded-2xl border border-forest-600/20 bg-success-bg p-6 text-center shadow-sm" role="status" aria-live="polite" tabindex="-1" x-init="$nextTick(() => $el.focus())">
                     <x-ui.mascot variant="12" bubble="Pendaftaran Berhasil!" bubblePosition="top" class="mx-auto h-28 w-auto mb-3" />
                     <h2 class="text-h3 font-extrabold text-deep-green">Pendaftaran Diterima!</h2>
                     <p class="mt-2 text-body-sm text-text-secondary max-w-md mx-auto">Terima kasih sudah mendaftar! Akun Anda sedang dalam proses verifikasi oleh pengurus RT / bank sampah desa.</p>

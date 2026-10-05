@@ -1,238 +1,69 @@
 # Rencana Implementasi Aktif
 
-## 1. Kedudukan dan baseline
+Dokumen ini merangkum pekerjaan dokumentasi dan verifikasi untuk ruang lingkup aplikasi saat ini. Status di sini bukan klaim rilis atau kesiapan produksi.
 
-Dokumen ini adalah satu-satunya tracker implementasi aktif. Dokumen ini mengatur urutan kerja, bukan mengubah kontrak produk. Seluruh baseline yang disetujui tetap wajib, tidak ada fitur berstatus opsional atau masa depan, dan status tracker tidak boleh ditafsirkan sebagai klaim produk telah dirilis.
+## 1. Sumber kontrak
 
-Sumber otoritatif:
+Gunakan sumber berikut:
 
-- [PRODUCT.md](PRODUCT.md), [REQUIREMENTS.md](REQUIREMENTS.md), dan [ROADMAP.md](ROADMAP.md) untuk ruang lingkup serta perilaku.
-- [USER_FLOWS.md](USER_FLOWS.md), [BUSINESS_RULES.md](BUSINESS_RULES.md), [PERMISSIONS.md](PERMISSIONS.md), dan [VALIDATION.md](VALIDATION.md) untuk alur, invariant, akses, serta validasi.
-- [DATA_MODEL.md](DATA_MODEL.md), [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY.md](SECURITY.md), dan [DECISIONS.md](DECISIONS.md) untuk kontrak teknis.
-- [DESIGN.md](DESIGN.md) dan [TEST_PLAN.md](TEST_PLAN.md) untuk antarmuka dan pembuktian.
-- [DEPLOYMENT.md](DEPLOYMENT.md), [OPERATIONS.md](OPERATIONS.md), dan [TERMS_AND_PRIVACY.md](TERMS_AND_PRIVACY.md) untuk rilis, operasi, serta kontrak publik.
+- [PRODUCT.md](PRODUCT.md), [REQUIREMENTS.md](REQUIREMENTS.md), dan [ROADMAP.md](ROADMAP.md) untuk ruang lingkup aktif
+- [USER_FLOWS.md](USER_FLOWS.md), [BUSINESS_RULES.md](BUSINESS_RULES.md), [PERMISSIONS.md](PERMISSIONS.md), dan [VALIDATION.md](VALIDATION.md) untuk alur, invariant, akses, dan validasi
+- [DATA_MODEL.md](DATA_MODEL.md), [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY.md](SECURITY.md), dan [DECISIONS.md](DECISIONS.md) untuk kontrak teknis
+- [DESIGN.md](DESIGN.md) dan [TEST_PLAN.md](TEST_PLAN.md) untuk antarmuka dan pembuktian
+- [DEPLOYMENT.md](DEPLOYMENT.md), [OPERATIONS.md](OPERATIONS.md), dan [TERMS_AND_PRIVACY.md](TERMS_AND_PRIVACY.md) untuk rilis, operasi, dan kontrak publik
 
-Jika sumber bertentangan, hentikan bagian terdampak dan selaraskan kontrak melalui change request. Jangan membuat tracker aktif kedua.
+Jika sumber bertentangan, hentikan pekerjaan terdampak dan selaraskan dokumen sebelum implementasi.
 
-### Konteks environment saat ini
+## 2. Environment
 
-- Pengembangan lokal memakai Laragon sebagai stack web dan MySQL 8.0.30 sebagai engine database melalui `DB_CONNECTION=mysql`.
-- Laragon adalah stack lokal, bukan nama engine database. Bukti runtime MySQL lokal tidak otomatis membuktikan kesiapan deployment production.
-- PHPUnit tetap memakai SQLite `:memory:` untuk suite harian yang terisolasi. Target engine mengikuti MySQL 8.0.30 sampai ada change request yang menggantinya.
+- PHP minimum adalah 8.3 sesuai `composer.json`; PHP web dan CLI harus selaras
+- Pengembangan lokal memakai Laragon dan MySQL 8.0.30
+- Suite harian dapat memakai SQLite `:memory:`; hasilnya tidak membuktikan perilaku engine MySQL production
+- Queue aktif menggunakan `sync`; tidak ada klaim worker asinkron atau retry otomatis
 
-## 2. Baseline terverifikasi
+## 3. Ruang lingkup kerja
 
-Baseline terkunci mencakup 28 kelompok kapabilitas: akun dan autentikasi; pengguna, role, permission, dashboard; wilayah; identitas nasabah, kartu, dan QR; layanan berbantuan; master sampah dan edukasi; harga serta snapshot; setoran dan bukti; ledger, hold, koreksi, reversal; penjemputan dan kapasitas; pencairan; sembako tanpa stok rinci; notifikasi; WhatsApp manual; pengumuman; target; layanan keliling; estimasi; QR bukti; statistik internal dan publik; laporan dan ekspor Excel; audit; media privat; PWA terbatas; scheduler dan queue terbatas; backup, health, deployment, pelatihan, serta operasi awal.
+Pekerjaan aktif mempertahankan fungsi inti akun, pengguna, wilayah, master sampah dan harga, identitas nasabah, setoran, ledger, penjemputan, pencairan, penukaran sembako, pengumuman, WhatsApp manual, jadwal layanan keliling, estimasi, QR bukti, laporan yang tersedia, audit, media privat, dan PWA terbatas.
 
-Cakupan alur dijaga secara kompak melalui tujuh rentang normatif: FL-01..FL-03 perencanaan dan penerimaan, FL-04..FL-07 sistem dan akses, FL-08..FL-15 operasi utama, FL-16..FL-21 saldo dan transaksi, FL-22..FL-25 state machine, FL-26..FL-30 pengawasan dan pemulihan, serta FL-31..FL-36 program, transparansi, dan inklusi. Semua 36 alur wajib lulus sebelum penerimaan baseline.
+Aturan berikut tetap normatif dan tak boleh dilonggarkan untuk menyesuaikan defect:
 
-### Status warisan yang layak dipertahankan
+1. Target yang masih menjadi sasaran produk dihitung dari transaksi final bersih dan tidak menerima nilai progres bebas.
+2. Jadwal layanan keliling mengikuti hierarki desa, dusun, RW, dan RT, menolak benturan, serta menerapkan kapasitas pada jadwal terkait.
+3. Penjemputan memerlukan foto, area aktif, slot kapasitas, alternatif tanggal saat penuh, berat aktual, dan transaksi final sebelum status selesai.
 
-Bukti konkret pada tracker historis menunjukkan fondasi Laravel/PHP, konfigurasi dasar, Livewire/Tailwind/Vite, Pest dan quality tooling, boundary modul, value object dasar, komponen serta shell, Filament foundation, sebagian identitas dan akses, wilayah, media/upload privat, schema notifikasi, delivery dan notification center, dashboard per role, serta sebagian master sampah sudah memiliki hasil pemeriksaan tercatat. Audit lintas domain pernah berada pada tahap review, bukan selesai.
+## 4. Administrasi teknis
 
-Semua status tersebut tetap berlabel **perlu verifikasi ulang** terhadap source saat ini sebelum menjadi dependency. Item tanpa bukti konkret dianggap **belum terverifikasi**. Ringkasan ini bukan bukti release, bukan log historis baru, dan tidak mempromosikan pekerjaan menjadi selesai.
+Health adalah satu-satunya administrasi teknis aktif pada UI dan bersifat baca-saja.
 
-## 3. Prinsip eksekusi
+Secret tetap berada pada environment. Perubahan infrastruktur dilakukan melalui proses deployment di luar UI aplikasi.
 
-1. Kerjakan vertical slice yang menghasilkan perilaku utuh: schema/domain, policy dan record scope, UI/UX, jalur gagal, audit, serta test terfokus.
-2. Gunakan Laravel 13/PHP 8.5 sebagai modular monolith. UI publik, warga, petugas, dan bendahara memakai Blade/Livewire 4; Filament 5 hanya back-office; React tidak digunakan.
-3. Validasi server adalah otoritas. Jalur gagal, tolak, batal, kedaluwarsa, dan rollback berhenti tanpa efek sukses.
-4. Operasi finansial memakai transaction, lock, idempotency key, unique source, audit dalam boundary yang benar, dan ledger append-oriented. Saldo tak pernah diedit langsung.
-5. Permission tindakan, policy, status record, scope `own`, `assigned`, `area`, atau `all`, serta separation of duties diperiksa pada query dan aksi. Menu bukan kontrol keamanan.
-6. UI tiap slice mengikuti Sindangheula Green Ledger, termasuk state loading, empty, error, success, keyboard, WCAG AA, target sentuh, dan responsif 360, 390, 768, serta 1280 px.
-7. WhatsApp hanya membuka `wa.me`; pengguna mengirim sendiri. PWA hanya menyimpan aset dan informasi umum allowlist. Tidak ada transaksi offline.
-8. Bukti, foto, ekspor, dan media sensitif tetap privat. Akses utama wajib melalui route terautentikasi dan terotorisasi yang memeriksa permission atau policy serta scope record attachable. Signed URL berumur pendek hanya pemeriksaan tambahan untuk penggunaan terkendali, tidak pernah menggantikan authorization.
-9. Setiap task memperbarui kontrak hanya bila implementasi memperjelasnya. Perubahan produk, permission, state, atau data contract memerlukan change request.
-10. Saat memulai sebuah wave, jangan mengerjakan slice secara serial. Kunci terlebih dahulu hanya contract shared, lalu dispatch semua lane independen dalam wave secara paralel sesuai tabel gelombang, lane, dan paralelisme. Lane hanya menunggu bila berbagi dependency contract, migration, invariant, policy shared, state machine, atau financial finalization. Jalankan focused test per lane; jalankan full SQLite tepat satu kali setelah seluruh lane wave terintegrasi.
-11. Jika hanya ada satu task atau satu lane yang siap, kerjakan langsung di main session tanpa delegasi subagent. Delegasikan hanya ketika ada beberapa lane independen yang benar-benar dapat berjalan paralel, atau ketika review/spesialisasi tertentu memberi nilai yang tidak tersedia secara proporsional di main session.
-12. Focused test boleh dijalankan oleh owner lane masing-masing. Full SQLite/G2 yang dijalankan tepat satu kali pada akhir integrasi wave wajib dijalankan dan dikendalikan di main session setelah seluruh lane wave terintegrasi; hasilnya menjadi evidence gabungan dan keputusan gate, bukan task delegasi terpisah.
+## 5. Kapabilitas yang tak dijanjikan
 
-## 4. Status dan kesiapan
+Dokumentasi dan acceptance criteria tidak boleh menjanjikan:
 
-Status tracker: `needs_verification`, `ready`, `in_progress`, `review`, `done`, atau `blocked`.
+- bantuan sembako gratis
+- push notification atau notification center sebagai kanal aktif
+- reset kata sandi publik berbasis token atau kanal pengiriman
+- queue database, pemrosesan asinkron, worker, atau retry otomatis
+- klaim production-ready, UAT lulus, atau deployment tervalidasi tanpa bukti baru pada kandidat rilis
 
-Sebuah slice menjadi `ready` hanya jika requirement, aturan bisnis, permission, state, model data, desain, test, dependency, fixture, dan risiko sudah jelas. Dependency dianggap selesai setelah source dan bukti saat ini diperiksa, bukan hanya karena status historis. Satu owner memegang slice aktif. Perubahan masuk `review` sebelum `done`.
+## 6. Gate verifikasi
 
-`done` mensyaratkan acceptance criteria terpenuhi, jalur gagal terbukti, authorization record-level ada, migration aman, UI/UX sesuai, test dan gate relevan lulus, serta tidak ada P0/P1 yang disebabkan perubahan. Status `done` tidak berarti produk sudah dikirim.
+| Gate | Syarat |
+|---|---|
+| Perilaku | Test positif dan negatif untuk aturan yang berubah lulus |
+| Otorisasi | Permission, policy, dan record scope diuji |
+| Finansial | Transaction, lock, idempotensi, ledger, dan jalur gagal diperiksa |
+| UI | Build, responsive, accessibility, dan state yang berubah diperiksa |
+| Engine | Semantik MySQL yang sensitif diuji pada environment disposable sebelum UAT atau production |
+| Rilis | PHP `^8.3`, document root, storage privat, cron atau timezone, Health, rollback, smoke test, monitoring, UAT, dan approval diverifikasi |
 
-## 5. Matriks gate stabil
+## 7. Struktur 36 alur
 
-| Gate | Kapan | Syarat minimum |
-|---|---|---|
-| G1 Fokus task | Setiap task | Test positif, negatif, permission/scope, state, dan regresi yang langsung terdampak lulus. |
-| G2 Integrasi SQLite | Sekali pada akhir setiap gelombang integrasi | Seluruh Pest SQLite `:memory:` lulus, termasuk migration/schema portable yang relevan. |
-| G3 Kualitas kode | Setiap gelombang | Formatter dan static analysis lulus; tidak ada suppression, placeholder, secret, atau kode mati baru. |
-| G4 Frontend | Hanya bila frontend berubah | Vite build lulus; komponen, responsive, accessibility, dan state yang berubah diperiksa. |
-| G5 Dependency | Hanya bila dependency berubah, dan saat release | Composer/frontend audit lulus atau mitigasi berowner tercatat. |
-| G6 Engine MySQL 8.0.30 berdasar dampak | Hanya sebelum UAT/production | Jalankan pada environment disposable untuk semantik sensitif engine: lock/concurrency, transaction, constraint, trigger audit, migration upgrade/rollback/remigrate/no-op, dan kasus lain yang dipilih dari impact review. SQLite bukan bukti MySQL production, sedangkan Laragon hanya membuktikan environment lokal. |
-| G7 Keamanan dan penerimaan | Sebelum release | Permission/IDOR, media privat, QR/publik, ledger, upload, ekspor, browser kritis, accessibility, responsive, dan seluruh FL-01..FL-36 lulus. |
-| G8 Operasi dan rilis | Sebelum production | PHP web/CLI, document root, aset, cron/timezone, queue terbatas, backup/checksum/restore, rollback, smoke test, pemeriksaan laporan awal, pelatihan, dan owner insiden siap. |
+[USER_FLOWS.md](USER_FLOWS.md) mempertahankan FL-01 sampai FL-36. Sebagian flow berfungsi sebagai struktur traceability dan tidak otomatis menambah kapabilitas aktif. FL-15 menjelaskan informasi pada halaman terkait dan WhatsApp manual. FL-36 memvisualisasikan Health baca-saja yang memerlukan `system.maintenance`.
 
-Browser, UAT, backup drill, deploy, dan validasi engine production tidak diwajibkan setiap hari. Frekuensinya mengikuti risiko dan gate di atas.
+## 8. Status
 
-## 6. Kebijakan konfigurasi konservatif
+Status aktif: `needs_verification`.
 
-- Secret tetap di environment. UI untuk konfigurasi teknis non-secret melalui `system.settings.manage` termasuk dalam audit-gap implementation. CMS dan editor permission tetap mengikuti kontrak serta gate masing-masing; jangan menambahkan fitur di luar itu ke tracker ini.
-- Nilai operasional seperti kapasitas, batas kedaluwarsa, ambang privasi, rate limit, dan batas upload hanya ditambahkan saat kontrak serta owner-nya jelas. Gunakan default aman dan jangan sebar hard-code.
-- Queue dimulai dengan `sync`. Database queue one-shot via cron hanya dipakai jika pekerjaan, retry, timeout, monitoring, dan SOP gagal sudah siap. Tidak ada daemon, Redis, Horizon, Supervisor, atau WebSocket.
-- MySQL 8.0.30 lokal Laragon memakai InnoDB dan menjadi engine target. Rupiah memakai integer/bigint, berat memakai decimal maksimal tiga angka, status memakai enum/value object, dan waktu bisnis memakai `Asia/Jakarta`.
-- Paving block hanya tujuan pemanfaatan data agregat plastik. Tidak ada modul produksi.
-
-## 7. Gelombang, lane, dan paralelisme
-
-**Wave adalah batas integrasi, bukan antrean kerja serial.** Pada awal wave, lock hanya contract/schema/policy shared yang benar-benar diperlukan. Sesudah contract stabil, semua lane yang tidak mengubah migration, invariant, state machine, atau file shared yang sama wajib dijalankan paralel. Focused test melekat pada tiap lane; full SQLite dan build relevan dijalankan sekali setelah seluruh lane terintegrasi.
-
-| Wave | Contract shared | Lane paralel | Gate integrasi |
-|---|---|---|---|
-| W1 Fondasi dan akses | Lifecycle akun, session/security, permission matrix, record scope. | **A** verifikasi/reset/sesi; **B** RBAC/policy/Filament admission; **C** shell/dashboard/a11y; **D** audit akses. | Auth, IDOR, session, focused tests; full SQLite sekali. |
-| W2 Nasabah, QR, layanan berbantuan | Nomor nasabah, QR token, region scope, owner/operator assisted service. | **A** nomor+pencarian; **B** kartu/QR issue-rotate-scan; **C** assisted service+bukti; **D** UI identifikasi warga/petugas. | Uniqueness, scope, token invalid, consent, fallback scan; full SQLite sekali. |
-| W3 Sampah dan harga | Waste type/condition/unit, price period, resolver harga, media policy. | **A** master/back-office; **B** katalog/edukasi; **C** history+overlap+resolver; **D** harga publik/UI admin. | Presisi, overlap, history/snapshot, media scope; full SQLite sekali. |
-| W4 Setoran, ledger, koreksi | Finalization action, source key, lock order, audit boundary. | **A** draf/finalisasi/snapshot; **B** ledger/balance/hold; **C** receipt/riwayat/QR publik; **D** koreksi/reversal/notifikasi. | Retry, rollback, saldo negatif, concurrency; full SQLite sekali. |
-| W5 Penjemputan | Pickup state machine, capacity reservation, deposit link. | **A** pengajuan/media; **B** capacity/tanggal alternatif; **C** review/schedule/assignment; **D** tugas lapangan/timbang/timeline. | Capacity race, reject/cancel, finish-after-deposit; full SQLite sekali. |
-| W6 Pencairan | Withdrawal state machine, hold, approve/pay separation. | **A** request+hold; **B** approval; **C** payment+receipt; **D** expiry/cancel+UI status. | SoD, pay idempotency, release hold, audit; full SQLite sekali. |
-| W7 Sembako | Grocery package/redeem state machine, hold, handover evidence. | **A** master/katalog; **B** request/hold/approval; **C** prepare/ready/handover; **D** expiry/cancel/free aid. | No-stock-detail, handover idempotency, free aid zero debit; full SQLite sekali. |
-| W8 Komunikasi, program, statistik | Event contract, public allowlist, privacy threshold, aggregate rule. | **A** notifikasi; **B** WhatsApp/pengumuman; **C** target/estimasi; **D** layanan keliling; **E** statistik. | After-commit, privacy, collision jadwal, aggregate bersih; full SQLite sekali. |
-| W9 Laporan dan audit | Report scope, filter periode, export media policy, audit schema. | **A** report/query; **B** Excel export; **C** audit viewer/retention. | Scope-before-aggregate, formula injection, export IDOR, immutability; full SQLite sekali. |
-| W10 PWA, release, operasi | RC, cache allowlist, scheduler/queue policy, deployment topology. | **A** PWA; **B** scheduler/health; **C** security hardening; **D** backup/deploy; **E** critical E2E/a11y/responsive. | Semua gate rilis bertemu pada satu RC: engine production impact suite, UAT, smoke, monitoring, approval. |
-
-### Aturan paralel
-
-1. Jangan menjalankan lane A lalu B lalu C bila tidak ada dependency nyata; dispatch lane independen bersama-sama.
-2. Consumer lane dapat mulai saat provider **contract** stabil, tanpa menunggu seluruh provider selesai.
-3. Migration tabel sama, policy shared, enum/state machine sama, dan finalisasi finansial tetap serial di bawah satu owner.
-4. UI lane boleh paralel setelah action contract stabil; UI tidak boleh menduplikasi aturan bisnis.
-5. Bila satu lane gagal, hanya lane dependent yang berhenti. Lane independen tetap jalan.
-6. Integration review, full SQLite, dan Vite bila relevan hanya sekali setelah semua lane wave bergabung.
-
-### Log eksekusi aktif
-
-- **W1 — Verifikasi/penolakan warga:** `done` untuk slice. Admin berizin memproses hanya warga `menunggu_verifikasi` melalui action terkunci dan transaksional; verify/reject memeriksa policy/permission, melarang self-action, mencatat pelaku/waktu atau alasan, dan menulis audit append-only dalam transaksi yang sama. Back-office Filament membatasi antrean ke calon warga pending serta memeriksa otorisasi pada aksi.
-  - Focused: `php artisan test tests/Feature/Auth/CitizenVerificationResolutionTest.php tests/Feature/Filament/BackofficePanelTest.php tests/Feature/Filament/CitizenVerificationResourceTest.php` — PASS (15 tests, 105 assertions).
-  - Diagnostics: PHP LSP belum tersedia (instalasi telah ditolak); syntax dan focused tests lulus.
-  - G2 SQLite pada snapshot wave setelah slice kata sandi: 829/830 test lulus; blocker non-slice tetap `Tests\Feature\Notifications\NotificationPersistenceTest::test_scheduled_notification_persists_its_future_state` pada assertion future-state. Tidak ada perubahan notifikasi dalam slice ini.
-- **W1 — Audit akses autentikasi:** `done` untuk slice. Login berhasil, login ditolak, rate-limit, logout, dan idle-expiry mencatat event audit tersanitasi dengan correlation ID; kegagalan login tetap generik dan tidak membuat sesi. Bila audit login berhasil gagal, sesi dibatalkan dan respons tetap generik.
-  - Focused: `php artisan test tests/Feature/Auth/CoreAuthenticationTest.php tests/Feature/Auth/CitizenVerificationResolutionTest.php tests/Feature/Filament/BackofficePanelTest.php tests/Feature/Filament/CitizenVerificationResourceTest.php` — PASS (28 tests, 216 assertions).
-  - Diagnostics: PHP LSP belum tersedia (instalasi telah ditolak); focused tests lulus. Tidak ada perubahan frontend sehingga Vite tidak dijalankan.
-- **W1 — Perubahan kata sandi dan pencabutan sesi:** `done` untuk slice. Kontrak diselaraskan ke dua jalur tanpa reset publik/token: pengguna terautentikasi mengganti kata sandi dari profil dengan verifikasi kata sandi saat ini, sementara admin atau superadmin berizin membantu target lain yang tidak dapat login melalui alur PasswordAssistance, metode verifikasi, dan alasan wajib. Keduanya memakai validation server, policy/permission, lock/transaction, revokasi sesi, dan audit tersanitasi tanpa kata sandi. Bantuan admin/superadmin tersedia pada resource back-office terpisah dengan data minimum; antrean verifikasi warga tetap hanya memuat pending citizen.
-  - Focused: `php artisan test tests/Feature/Auth/ChangePasswordTest.php tests/Feature/Auth/CoreAuthenticationTest.php tests/Feature/Auth/CitizenVerificationResolutionTest.php tests/Feature/Filament/BackofficePanelTest.php tests/Feature/Filament/CitizenVerificationResourceTest.php tests/Feature/Filament/PasswordAssistanceResourceTest.php` — PASS (37 tests, 266 assertions).
-  - Quality: `vendor/bin/pint --test` pada source/test slice — PASS. PHP LSP belum tersedia (instalasi telah ditolak); aset frontend tidak berubah sehingga Vite tidak dijalankan.
-- **W1 — Dashboard awal bendahara:** `done` untuk slice. Route `treasurer.dashboard` menggunakan `auth`, `session.fresh:30`, dan `withdrawal.view`; halaman task-first memakai shell bendahara yang ada serta empty state tanpa query atau data pencairan/ledger/laporan fiktif.
-  - Focused: `php artisan test tests/Feature/Dashboard/RoleDashboardTest.php tests/Feature/OfficerShellTest.php` — PASS (419 tests, 891 assertions).
-  - Diagnostics: PHP LSP belum tersedia (instalasi telah ditolak); tidak ada aset frontend baru sehingga Vite tidak dijalankan.
-- **W1 — SQLite notification fixture:** `fixed`. `NotificationPersistenceTest::test_scheduled_notification_persists_its_future_state` memakai waktu relatif terhadap runtime dan presisi detik SQLite; application persistence tidak diubah.
-  - Focused: `php artisan test --filter="NotificationPersistenceTest::test_scheduled_notification_persists_its_future_state"` — PASS (1 test, 4 assertions).
-  - Root cause: fixture statis sudah kedaluwarsa, lalu precision mismatch microsecond setelah dibuat relatif.
-- **W1 — Scope user eksplisit:** `done` untuk lane. `user.view` wajib disertai `user.view.area` atau `user.view.all` untuk akses pengguna lain; area memakai StaffProfile efektif, service area/RT aktif, dan hanya customer aktif; all memakai seluruh user aktif; tanpa scope fail-closed ke own; query dan policy memakai predicate yang sama; tidak ada semantic `assigned`.
-  - Focused: `php artisan test tests/Feature/Authorization/CoreAuthorizationTest.php tests/Feature/Identity/RolesAndPermissionsTest.php` — PASS (25 tests, 81 assertions).
-  - Quality: `vendor/bin/pint --test` pada source/test lane — PASS; PHP LSP belum tersedia.
-- **W1 — Sesi pengguna terarah:** `done` untuk lane. Filament-only inventory menampilkan metadata aman, memakai scope user eksplisit, dan revokasi satu sesi target melalui opaque HMAC key yang stabil saat hydration, owning-user check, lock/transaction, policy `view` + `revokeSession`, dan audit tersanitasi.
-  - Focused integrated: `php artisan test tests/Feature/Filament/SessionInventoryResourceTest.php tests/Feature/Authorization/CoreAuthorizationTest.php tests/Feature/Identity/RolesAndPermissionsTest.php` — PASS (31 tests, 117 assertions).
-  - Quality: `vendor/bin/pint --test` pada source/test lane — PASS; tidak ada aset frontend baru sehingga Vite tidak dijalankan.
-- **W1 — Integrasi wave:** `done`. Seluruh lane W1 terintegrasi dan gate final SQLite dijalankan tepat satu kali setelah integrasi.
-  - Focused W1: `php artisan test tests/Feature/Auth tests/Feature/Authorization tests/Feature/Dashboard tests/Feature/Filament tests/Feature/Identity tests/Feature/Notifications` — PASS (136 tests, 638 assertions).
-  - G2 SQLite final: `php artisan test --parallel --processes=1` — PASS (843 tests, 2.706 assertions).
-   - G3 quality untuk lane yang berubah — PASS. PHP LSP tidak tersedia karena instalasi sebelumnya ditolak. Tidak ada dependency lockfile atau aset frontend yang berubah.
-- **W2 — Kontrak shared, nomor/pencarian, identitas QR, layanan berbantuan, dan UI identifikasi:** `done`. Kontrak typed untuk nomor `CST-########`, token QR CSPRNG/hash lookup dengan payload kartu terenkripsi, enum region scope, owner/operator layanan berbantuan, consent terpisah, dan bukti privat sudah dikunci. Scope `user.view` wajib hadir bersama `user.view.area`/`user.view.all`; query dan action W2 fail-closed, token invalid/rotated ditolak, owner/operator dicatat terpisah, dan nama wajib dikonfirmasi sebelum identifikasi dipakai.
-  - Lane A+B focused: `php artisan test tests/Unit/Domain/CustomersRegions/W2ContractsTest.php tests/Feature/CustomersRegions/CustomerSearchTest.php tests/Feature/CustomersRegions/CustomerIdentityTest.php` — PASS (11 tests, 43 assertions); final focused gabungan tetap PASS setelah hardening.
-  - Lane C focused: `php artisan test tests/Feature/CustomersRegions/AssistedCustomerServiceTest.php tests/Feature/CustomersRegions/AssistedCustomerServiceSchemaTest.php` — PASS (4 tests, 10 assertions).
-  - Lane D focused: `php artisan test tests/Feature/CustomersRegions/W2IdentificationUiTest.php tests/Feature/CustomersRegions/W2IdentificationRouteTest.php tests/Feature/CustomersRegions/CustomerQrStorageTest.php` — PASS (6 tests, 27 assertions).
-  - Focused W2 final: seluruh test lane di atas — PASS (21 tests, 81 assertions).
-  - G3: `vendor/bin/pint --test` scoped lane — PASS; `vendor/bin/phpstan analyse app/Domain/CustomersRegions app/Domain/Identity/Models/CustomerProfile.php app/Livewire/Citizen/CustomerCard.php app/Livewire/Officer/CustomerIdentification.php routes/web.php --memory-limit=512M` — PASS; PHP syntax checks — PASS. PHP LSP tidak tersedia karena instalasi sebelumnya ditolak.
-  - G4: `npm run build` — PASS. Tidak menjalankan browser/E2E, MySQL 8.0.30 disposable, deployment, atau dependency audit karena tidak diwajibkan gate W2.
-  - G2 SQLite final, tepat satu kali setelah seluruh lane terintegrasi: `php artisan test --parallel --processes=1` — PASS (868 tests, 2.801 assertions). Hardening scope pasca-review diverifikasi dengan focused suite final; G2 tidak diulang sesuai aturan tepat satu kali.
-- **W3 — Lane A master sampah/back-office:** `done`. Resource Filament kategori, satuan, kondisi, dan jenis sampah tersedia pada panel `Data Master`, menggunakan `ManageWasteMaster`, filter relasi aktif untuk pemilihan baru, dan action nonaktif tanpa penghapusan fisik. Policy `waste.view`/`waste.manage` terdaftar eksplisit.
-  - Focused tercakup dalam suite W3 — PASS.
-- **W3 — Lane B katalog/edukasi:** `done`. Halaman Livewire publik `/katalog-sampah` hanya menampilkan jenis, kategori, kondisi, satuan, dan edukasi aktif; media tetap privat dan tidak diserialisasi atau diunduh publik.
-  - Focused tercakup dalam suite W3 — PASS.
-- **W3 — Lane C history harga, overlap, resolver, snapshot:** `done`. Tabel periode harga, interval inklusif-eksklusif, penutupan periode terbuka lama, reject overlap historis, audit create/close, resolver fail-closed, snapshot harga/jenis/kondisi/unit/berat/subtotal/rounding version, dan presisi kg maksimal tiga desimal sudah terintegrasi.
-  - Focused tercakup dalam suite W3 — PASS.
-- **W3 — Lane D harga publik/UI admin:** `done`. Resource Filament harga memakai `price.view`/`price.manage`, immutable secara operasional, konfirmasi harga nol, dan halaman Livewire publik `/harga-sampah` hanya mengekspos harga aktif melalui allowlist query.
-  - Focused W3 final setelah hardening: `php artisan test tests/Feature/PublicShellTest.php tests/Feature/WasteMaster tests/Feature/PublicSite tests/Feature/Filament/BackofficePanelTest.php` — PASS (34 tests, 210 assertions).
-  - G3: Pint scoped, PHPStan scoped, dan PHP syntax — PASS. G4: `npm run build` — PASS. Browser/E2E, MySQL 8.0.30 disposable, deployment, dan dependency audit tidak dijalankan sesuai tracker.
-   - G2 SQLite historis dijalankan tepat satu kali: `php artisan test --parallel --processes=1` — FAIL (878/879 tests, 2.843 assertions). Satu kegagalan berasal dari assertion `PublicShellTest` lama yang mengharapkan empat link mobile; assertion sudah diperbarui dan suite focused pasca-perbaikan PASS. Status code-level W3 ditutup melalui focused re-verification saat ini; kegagalan historis tetap dicatat dan tidak diklaim sebagai pass.
-- **W4 — Kontrak shared finansial:** `done`. Lock order dikunci sebagai idempotency key → deposit/source → ledger account → hold/ledger; rupiah integer, berat kg maksimal tiga desimal, subtotal half-up dari snapshot server, ledger append-only, saldo tersedia dari ledger masuk-keluar-hold aktif, source key unik, audit dalam transaction, dan notifikasi melalui event after-commit. Hold conversion dan reversal diverifikasi ulang agar mengikuti urutan lock yang sama.
-- **W4 — Lane A setoran, finalisasi, dan snapshot:** `done` untuk slice. Draf terikat pada petugas pembuat dan scope nasabah; finalisasi memvalidasi ulang master/harga di dalam transaction, menyimpan snapshot harga/berat/subtotal/rounding, membuat token bukti, satu ledger masuk, audit atomik, dan event notifikasi after-commit. Retry payload sama mengembalikan hasil lama; payload berbeda ditolak; final tidak diedit atau dihapus; snapshot item append-only.
-  - Focused: `php artisan test tests/Feature/Deposits/DepositWaveTest.php` — PASS (10 tests, 38 assertions; suite gabungan setelah lane C/hardening).
-  - PHP syntax lane — PASS. Pint/PHPStan scoped dijalankan setelah integrasi W4; belum ada klaim G2 W4.
-- **W4 — Lane B ledger, balance, dan hold:** `done` untuk slice. Rekening dikunci sebelum perhitungan saldo; saldo tersedia berasal dari agregat ledger masuk-keluar dikurangi hold aktif; nominal wajib positif; hold satu per source key dan retry aman; entry append-only; release/convert mengunci hold dan rekening.
-  - Focused tercakup dalam suite gabungan W4 — PASS. Jalur saldo tidak cukup, duplicate hold, retry, dan append-only teruji.
-- **W4 — Lane C receipt, history, dan QR publik:** `done` untuk slice. Riwayat warga dibatasi `customer_id`; receipt owner-only; QR bukti dibuat dari token opaque server-side; endpoint publik fail-closed untuk token invalid/non-final dan hanya mengekspos nomor, tanggal, berat, nilai, status tanpa saldo/data pribadi.
-  - Focused tercakup dalam suite gabungan W4 — PASS. Owner scope, IDOR, QR privacy, public invalid token, dan QR visual receipt teruji.
-- **W4 — Lane D koreksi, reversal, dan notifikasi:** `done` untuk slice. Koreksi/reversal memerlukan permission khusus, alasan, lock deposit/account/entry, mutasi lawan append-only, status asli tetap dapat ditelusuri, idempotency koreksi actor/scope/payload, audit dalam transaction, dan notification event after-commit. Koreksi yang membuat saldo tersedia negatif ditolak.
-  - Focused tercakup dalam suite gabungan W4 — PASS. Jalur permission, reason, negative balance, reversal duplicate, audit, dan notification-after-commit teruji.
-  - **W4 — Integrasi wave:** `done`. Seluruh lane A–D terintegrasi. Focused final `php artisan test tests/Feature/Deposits/DepositWaveTest.php` — PASS (10 tests, 38 assertions). G3 final: `vendor/bin/pint --test` — PASS; PHPStan scoped — PASS; PHP syntax scoped — PASS. G4: `npm run build` — PASS karena view/Livewire berubah. G2 SQLite final dijalankan tepat satu kali setelah integrasi: `php artisan test --parallel --processes=1` — PASS (889 tests, 2.899 assertions). Tidak menjalankan browser/E2E, MySQL 8.0.30 disposable, deployment, atau dependency audit sesuai tracker.
-- **W5 — Lane A pengajuan dan media:** `done` untuk slice. Pengajuan pickup warga memvalidasi nasabah aktif, RT/hierarki aktif, area pelayanan aktif, tanggal horizon, alamat/catatan, minimal satu jenis/perkiraan, serta 1–2 foto privat JPEG hasil normalisasi maksimal 1 MB melalui `StorePrivateMedia`. Estimasi berat hanya disimpan untuk kapasitas; tidak masuk ledger. Submission memakai idempotency actor/scope/payload, rollback metadata/file, status history, audit, dan owner/area media authorization.
-  - Focused pickup: `php artisan test tests/Feature/Pickups/PickupWaveTest.php tests/Feature/Pickups/PickupRouteTest.php` — PASS (13 tests, 45 assertions). Suite tambahan bersama `tests/Feature/Filament/BackofficePanelTest.php` — PASS (19 tests, 69 assertions).
-- **W5 — Lane B kapasitas dan tanggal alternatif:** `done` untuk slice. Kapasitas harian address/berat dikunci `lockForUpdate` bersama query reservation berstatus reserving; tanggal penuh tidak membuat request dan menawarkan alternatif aktif. Payload conflict ditolak, status/reject/cancel/expiry mengecualikan reservation terminal, dan acceptance/scheduling mengulang pemeriksaan kapasitas di transaction yang sama.
-  - Concurrency contract diuji melalui lock/unique capacity boundary dan failing-full-capacity path; bukti engine production lock semantics tetap mengikuti G6 sebelum UAT/production, tidak diklaim dari SQLite atau MySQL lokal.
-- **W5 — Lane C review, schedule, assignment:** `done` untuk slice. Review menerima atau menolak dengan alasan minimal 10 karakter; schedule mewajibkan petugas aktif, profil area aktif, permission execute, tanggal valid, dan scope record. Filament resource penjemputan serta kapasitas menggunakan permission policy, action server-side, dan assignment scoped.
-  - Focused W5 mencakup permission/record scope, invalid transition, reject terminal, acceptance capacity recheck, dan resource discovery — PASS.
-- **W5 — Lane D tugas lapangan, timbang, setoran, timeline:** `done` untuk slice. Petugas assigned menjalankan `dijadwalkan → menuju_lokasi → dijemput → selesai`; pembatalan warga berhenti sebelum `menuju_lokasi`; expiry terminal idempotent/audited. Penimbangan aktual menjadi input finalisasi `DepositService`, draf/setoran tertaut melalui `pickup_request_id`, ledger memakai berat aktual, retry complete mengembalikan hasil sama, dan status selesai hanya sesudah deposit final commit boundary. Timeline append-only dan notification events memakai after-commit contract.
-  - Focused W5 mencakup actual weight vs estimate, deposit link, retry/idempotency, expiry, cancel boundary, audit, notification dispatch, dan rollback — PASS.
- - **W5 — Integrasi wave:** `done`. Seluruh lane A–D terintegrasi. G3 scoped Pint — PASS; PHPStan scoped — PASS; PHP syntax scoped — PASS. G4 Vite — PASS karena view/Livewire berubah. G2 SQLite historis dijalankan tepat satu kali setelah integrasi W5: `php artisan test --parallel --processes=1` — FAIL (901/902 tests, 2.944 assertions); satu kegagalan berasal dari assertion lama `Tests\Feature\Dashboard\RoleDashboardTest::test_officer_dashboard_renders_a_safe_task_empty_state_without_listing_visible_users` karena copy dashboard petugas sempat berubah. Copy sudah dikembalikan, focused regression PASS, dan focused re-verification saat ini menutup status code-level W5. Kegagalan historis tetap dicatat dan tidak diklaim sebagai pass.
-  - **W6 — Kontrak shared:** `done`. State machine pencairan, nominal rupiah integer positif dengan minimum terkonfigurasi, hold atomik, approval/pay separation, requested-by/approver/payer SoD, area scope, recipient verification server-side, media bukti privat, cancel/reject/expiry, lock/idempotency/rollback/audit/after-commit contracts terintegrasi di domain withdrawal. G2 wave sebelumnya tetap tercatat sebagai historical evidence; focused re-verification saat ini menutup status code-level W6.
-  - **W6 — Lane A:** `done` untuk slice. Migration/model/status enum, request service, customer/area scope, snapshot nominal immutable, atomic hold di bawah lock rekening, idempotency conflict/retry, status history, audit, dan after-commit notification tersedia.
-    - Focused W6 mencakup request positif/negatif, saldo tidak cukup, nominal immutable, duplicate request, rollback boundary, hold tepat satu kali — PASS.
-  - **W6 — Lane B:** `done` untuk slice. Approval/reject beralasan, permission/policy, record scope, requested-by/approver separation, payer assignment aktif berbasis permission dan area, serta invalid transition tersedia di service dan Filament back-office.
-    - Focused W6 mencakup self-approval, separation of duties, permission, area scope, reject/release hold — PASS.
-  - **W6 — Lane C:** `done` untuk slice. Payment terpisah dari approval, payer assignment scoped, verifikasi penerima terhadap nomor nasabah server-side, bukti privat, konversi hold menjadi satu ledger keluar, receipt relation, payment idempotency/retry, audit, rollback file, dan notification-after-commit tersedia.
-    - Focused W6 mencakup payment positif/negatif, invalid recipient, duplicate payment, private proof, IDOR media, saldo keluar setelah payment sah — PASS.
-  - **W6 — Lane D:** `done` untuk slice. Cancel/expiry terminal idempotent, warga hanya dapat membatalkan sebelum approval, pelepasan hold tepat satu kali, timeline append-only, UI status warga dan UI pembayaran bendahara tersedia, receipt owner-only paid-only tersedia; route bukti privat fail-closed.
-    - Focused W6 mencakup cancel/retry, cancel-after-approval denial, expiry/retry, no outgoing ledger on terminal paths, owner/record scope, receipt, dan route UI — PASS.
-   - **W6 — Quality dan integrasi:** `done`. Focused final `php artisan test tests/Feature/Withdrawals/WithdrawalWaveTest.php` — PASS (11 tests, 49 assertions); focused regression gabungan `php artisan test tests/Feature/Deposits/DepositWaveTest.php tests/Feature/Filament/BackofficePanelTest.php tests/Feature/Withdrawals/WithdrawalWaveTest.php` — PASS (27 tests, 111 assertions). G3 scoped Pint — PASS; PHPStan scoped — PASS; PHP syntax scoped — PASS. G4 `npm run build` — PASS; route discovery withdrawal — PASS (6 routes). PHP LSP tidak tersedia karena instalasi sebelumnya ditolak. G2 SQLite historis W6 dijalankan tepat satu kali: `php artisan test --parallel --processes=1` — FAIL (911/912 tests, 2.987 assertions). Failure tunggal berasal dari assertion lama `Tests\Feature\Filament\BackofficePanelTest::test_backoffice_panel_discovers_only_the_regional_resources`; assertion sudah diperbarui, focused regression PASS, dan focused re-verification saat ini menutup status code-level W6. Kegagalan historis tetap dicatat dan tidak diklaim sebagai pass.
-    - **W7 — Kontrak shared:** `done`. State machine sembako, package snapshot immutable, nilai rupiah integer positif, sumber `saldo`/`bantuan_gratis`, no-stock-detail, hold atomik, approval/handover separation of duties, verifikasi penerima, bukti privat, terminal cancel/reject/expiry, lock order ledger, idempotency/retry, rollback, audit append-only atomik, dan notification-after-commit sudah dikunci. W3, W5, dan W6 sudah ditutup pada status code-level; G2 historis tetap tercatat.
-    - **W7 — Lane A master/katalog:** `done`. Migration/model/action/policy/resource paket tersedia; paket aktif memakai periode/status, nilai positif, isi deskriptif, media opsional, nonaktif tanpa penghapusan fisik, dan tidak memiliki stok/kuantitas rinci.
-    - **W7 — Lane B request/hold/approval:** `done`. Request saldo membuat snapshot nilai dan satu hold di bawah lock rekening; saldo kurang, paket nonaktif, snapshot immutable, retry/conflict idempotency, scope, approval/reject beralasan, self-approval, dan release hold rejection teruji.
-    - **W7 — Lane C prepare/ready/handover:** `done`. Prepare/ready mengikuti state machine; handover memverifikasi nomor nasabah, menyimpan bukti privat, mengonversi hold menjadi satu ledger keluar hanya setelah handover sah, mendukung retry idempotent, audit, rollback media, dan SoD.
-    - **W7 — Lane D terminal/free aid/UI:** `done`. Cancel/expiry melepas hold tepat satu kali; bantuan gratis tidak membuat hold/ledger keluar; timeline, notification allowlist, receipt/media owner scope, IDOR, dashboard warga, tugas petugas, form bantuan gratis, dan Filament back-office terintegrasi.
-     - **W7 — Focused dan quality:** `done`. Focused W7 plus regression Filament/notification/dashboard — PASS (39 tests, 146 assertions). G3 scoped Pint — PASS; PHPStan scoped — PASS; PHP syntax scoped — PASS. G4 Vite build — PASS karena Blade/Livewire berubah. G2 SQLite final dijalankan tepat satu kali setelah seluruh W7 terintegrasi — PASS (927 tests, 3.053 assertions). **Catatan snapshot saat W7 ditutup:** W3, W5, dan W6 masih `review`; status aktifnya kini sudah diperbarui menjadi `done` setelah verifikasi ulang.
-      - **W8 — Lane A notifikasi:** `done`. Event `ShouldDispatchAfterCommit`, queued listener bounded retry, dedupe unique, recipient-only notification center, internal-reference gate, allowlisted payload/reference validation, delivery metadata, durable failure/retry record, dan cleanup setelah delivery sukses terintegrasi. Focused: `php artisan test tests/Feature/Notifications --parallel --processes=1` — PASS (25 tests, 71 assertions).
-      - **W8 — Lane B WhatsApp/pengumuman:** `done`. `wa.me` only dengan template/placeholder allowlist, sanitasi konten, audience/period/status scope, audit publish, public query allowlist, dan Livewire public announcement surface terintegrasi. Focused tercakup `tests/Feature/Wave8/Wave8ContractsTest.php` — PASS.
-      - **W8 — Lane C target/estimasi:** `done`. Target create/update/activate/close/cancel memakai period/scope/overlap rule, progres dari transaksi final bersih, dan estimator server-side dengan disclaimer tanpa transaksi/hold/ledger/reservasi. Focused tercakup `tests/Feature/Wave8/Wave8ContractsTest.php` — PASS.
-      - **W8 — Lane D layanan keliling:** `done`. Jadwal, kapasitas, assignment petugas, collision overlap, invalid transition, operation open/close, mobile deposit relation/guard, public schedule, officer Livewire operation, dan record scope terintegrasi. Focused: `php artisan test tests/Feature/Wave8/MobileServiceTest.php --parallel --processes=1` — PASS (2 tests, 3 assertions).
-      - **W8 — Lane E statistik:** `done`. Internal/public clean aggregate, metric/dimension allowlist, scope-before-aggregate, privacy threshold suppression tanpa bypass, public target/statistics surface, dan no-individual public response terintegrasi. Focused tercakup `tests/Feature/Wave8/Wave8ContractsTest.php` — PASS.
-       - **W8 — Quality dan integrasi:** `done`. W8 contract suite `php artisan test tests/Feature/Wave8 --parallel --processes=1` — PASS (10 tests, 23 assertions); notification regression — PASS (25 tests, 71 assertions); deposit regression — PASS (10 tests, 38 assertions); PublicShell — PASS (5 tests, 64 assertions); PublicLanding — PASS (2 tests, 7 assertions). G3 Pint scoped — PASS; PHPStan scoped — PASS; PHP syntax scoped — PASS. G4 Vite build — PASS. Full SQLite/G2 dijalankan tepat satu kali setelah seluruh W8 terintegrasi: `php artisan test --parallel --processes=1` — PASS (937 tests, 3.076 assertions). **Catatan snapshot saat W8 ditutup:** W3/W5/W6 masih `review`; status aktifnya kini sudah diperbarui menjadi `done`; G2 wave lama tidak diulang.
-       - **W9 — Lane A laporan/query:** `done`. Read model setoran memakai scope record sebelum filter, agregasi, pagination, dan ekspor; period half-open `Asia/Jakarta`, status final/dikoreksi, filter/sort/kolom/report type allowlist, dan metrik subject/deposit/weight/value/plastic terpusat.
-         - Focused: `php artisan test tests/Feature/Wave9/Wave9ContractsTest.php --parallel --processes=1` — PASS (8 tests, 18 assertions; mencakup scope-before-aggregate, allowlist, permission, IDOR, metrik).
-       - **W9 — Lane B ekspor/media privat:** `done`. XLSX memakai read model yang sama; formula injection dinetralkan, nama/path server-side, storage private, expiry, owner scope/IDOR, audit request/completion/download, dan no-partial-file cleanup.
-         - Focused: tercakup `tests/Feature/Wave9/Wave9ContractsTest.php` — PASS; PHP syntax scoped — PASS.
-       - **W9 — Lane C audit viewer/retention:** `done`. Viewer memakai query scope + sanitized output; audit model dan trigger append-only; retensi memerlukan `audit.retention.execute`, protected W9 evidence tidak dipurge, serta tindakan retensi dicatat.
-         - Focused: `php artisan test tests/Feature/AuditReconciliation/AuditLogTest.php --parallel --processes=1` — PASS (10 tests, 36 assertions); W9 IDOR/retention/sanitized viewer — PASS pada focused W9.
-       - **W9 — Penyederhanaan laporan:** `done`. Alur pemeriksaan selisih yang kompleks dihapus dari role, menu, resource, service, dan test; laporan bendahara serta halaman Filament back-office memakai preset hari ini, minggu ini, per bulan Januari–Desember, atau tanggal custom, dengan ekspor Excel privat.
-       - **W9 — Integrasi dan quality gate:** `done`. Focused W9 `php artisan test tests/Feature/Wave9/Wave9ContractsTest.php --parallel --processes=1` — PASS; audit regression `php artisan test tests/Feature/AuditReconciliation/AuditLogTest.php --parallel --processes=1` — PASS; Filament discovery regression `php artisan test tests/Feature/Filament/BackofficePanelTest.php --parallel --processes=1` — PASS; migration fresh SQLite, Pint scoped, PHP syntax, dan `npm run build` — PASS. Full suite terakhir — PASS (1120 tests, 1119 passed, 1 skipped, 4725 assertions).
-         - **Verifikasi ulang W3/W5/W6/W9:** suite focused gabungan pada penutupan wave — PASS (89 tests, 461 assertions). Full suite SQLite pada snapshot tersebut — PASS (1124 tests, 1123 passed, 1 skipped, 4714 assertions). Hasil ini menutup status `review` code-level tanpa menghapus catatan G2 historis.
-         - **W10: RC operasi dan rilis:** `in_progress`. W3/W5/W6/W9 sudah `done` untuk code-level; W7/W8 tetap `done`; tidak ada G2 wave lama yang dihapus dari sejarah. Blocker code-level W10 sudah ditangani, tetapi gate release tetap terbuka.
-           - **Lane A PWA:** `review`. Manifest, ikon PWA, dan service worker hanya cache aset `/build/` terversi serta halaman publik allowlist; route privat, autentikasi, Livewire, QR, media, ekspor, finansial, dan seluruh mutasi tetap network-only. Logout guard mencegah sesi lokal tertinggal; submit state-changing diblokir saat offline tanpa background sync, antrean bisnis offline, atau penyimpanan payload. Vhost HTTPS Laragon kini menunjuk ke `public/`; Service Worker terdaftar `activated` pada Chromium dan Firefox dengan certificate bypass test. Sertifikat production yang dipercaya browser tetap wajib sebelum release.
-           - **Lane B scheduler/health:** `review`. Scheduler expiry dan purge berbatas memakai batch, transaksi/lock, idempotent terminal service, retry transaksi terbatas, audit, timezone `Asia/Jakarta`, serta `withoutOverlapping`; queue default `sync`, database queue hanya one-shot bounded bila aktif. Heartbeat scheduler sudah cache-backed dan diperiksa freshness-nya. `/health` publik tetap generik dan no-store, sedangkan `/operations/health` bersifat privat. `operations:smoke` sekarang memeriksa `/health` secara in-process, bukan `/up`. Verifikasi runtime deployment untuk heartbeat dan konfigurasi operasi masih terbuka.
-           - **Lane C security hardening:** `review`. Header keamanan, HSTS bersyarat HTTPS production, no-store autentikasi/privat/media/ekspor/error, limiter terpusat, session hardening, audit redaction path/filename/URL, dan regresi IDOR media/ekspor diterapkan tanpa melemahkan CSRF, policy, record scope, private storage, transaction, idempotency, atau audit.
-           - **Lane D backup/deploy:** `in_progress`. Lifecycle metadata backup database+media kini me-reload row dengan `lockForUpdate` dan menulis status serta audit UUID dalam satu transaction agar duplicate execution aman. Command metadata backup-pair dan hasil restore verification aman, hanya mencatat metadata dan tidak menjalankan dump/restore artefak nyata. Rehearsal backup/restore nyata pada database disposable PASS: dump SQL 132.847 bytes, source/restore identik (1 user, 5 role, 61 tabel, 10 trigger), restore sekitar 4,4 detik lokal, dan media archive/restore PASS. Timing ini bukan komitmen RPO/RTO production; deployment-host, retensi terpisah, backup terenkripsi/provider, dan SOP production tetap terbuka.
-           - **Lane E browser/a11y/responsive:** `in_progress`. Browser smoke 12 route/viewport PASS pada Chromium/Firefox HTTPS dan WebKit HTTP: HTTP 200, tanpa console/request error, tanpa horizontal overflow; keyboard skip-link/focus PASS. Axe memeriksa 12 halaman dan PASS tanpa violation setelah token `text-sky-blue` disesuaikan. Auth smoke HTTPS Chromium + Firefox untuk warga, petugas, dan bendahara PASS: login ke dashboard sesuai role lalu logout. Full technical transaction browser run pada MySQL disposable PASS: 10/10 flow Chromium, 0 browser error, mencakup pickup → approval/schedule → execution/deposit aktual, setoran → receipt/QR publik, pencairan → approval/payer/payment, sembako → approval/prepare/handover, serta koreksi. WebKit HTTPS masih blocked oleh certificate lokal Laragon; cross-browser HTTPS production dan stakeholder UAT tetap terbuka.
-           - **Evidence W10 pada snapshot wave:** `php artisan test tests/Feature/Wave10 --no-ansi` — PASS (120 tests, 119 passed, 1 skipped, 727 assertions); full suite SQLite — PASS (1124 tests, 1123 passed, 1 skipped, 4714 assertions); PHPStan — PASS (0 errors); Pint — PASS; PHP syntax — PASS; `npm run build` — PASS; `npm audit` — PASS (0 vulnerabilities); browser smoke + axe — PASS (12 halaman/viewport, 0 violation); auth role smoke — PASS (6 flow Chromium/Firefox HTTPS); `node tests/browser/transaction-uat.mjs` — PASS (10/10 flow Chromium, 0 browser error). Runtime Laragon MySQL 8.0.30 lulus konektivitas, 36 migration Ran, endpoint `/health`, scheduler list, smoke dengan configuration cache sementara, production-shaped deployment validator, rollback code-compatible validator, security headers, dan exposure probe. Rehearsal MySQL disposable lulus migration/seed, dump-restore DB, media archive-restore, dan verifikasi trigger; semua database, grant, artefak, serta setting binary-log sementara sudah dibersihkan/dikembalikan. Gate release tetap terbuka untuk WebKit HTTPS dengan sertifikat valid, cross-browser HTTPS production, deployment-host, RPO/RTO production, UAT stakeholder, monitoring production, dan approval. Detail technical run dan lembar sign-off ada di [UAT_EVIDENCE.md](UAT_EVIDENCE.md). W10 tetap `in_progress`; tidak ada klaim release atau commit ID.
-           - **Snapshot quality lokal 12 Agustus 2026:** `composer check` — PASS (Pint, PHPStan 0 error, Pest 1.131 test: 1.130 lulus, 1 dilewati, 4.874 asersi); `npm run build` — PASS. Snapshot kode lokal tidak menggantikan pemeriksaan browser/E2E, UAT, deployment, monitoring, atau approval rilis.
-
-
-
-
-
-
-## 8. Dependency dan readiness lintas wave
-
-
-W1 membuka identity dan authorization. W2 serta fondasi media membuka pemilihan nasabah dan file. W3 membuka snapshot harga. W4 membuka sumber transaksi dan ledger. W5 bergantung pada setoran final. W6 dan W7 bergantung pada hold/ledger. W8 memakai transaksi final bersih. W9 bergantung pada seluruh sumber operasional dan otorisasi media. W10 mengintegrasikan semua wave.
-
-Kerja paralel hanya boleh pada slice yang tidak menulis invariant atau migration yang sama. Untuk setiap migration, tetapkan urutan dan rollback sebelum implementasi. Untuk aksi finansial lintas modul, sepakati command, source key, lock order, audit, dan event setelah commit sebelum coding.
-
-Media privat menjadi dependency tersendiri. Sebelum download atau preview dibuka, setiap `attachable_type` harus dipetakan ke policy domain, permission tindakan, dan scope record. Uploader, role umum, ID acak, atau signed URL tidak boleh menjadi bypass.
-
-## 9. Pemeriksaan akhir baseline
-
-Sebelum menyatakan baseline siap UAT:
-
-- cocokkan seluruh requirement AUTH, USR, CST, REG, WST, PRC, DEP, BAL, PUP, WDR, GRC, NOT, WA, ANN, TGT, MOB, EST, QRV, PUB, RPT, AUD, REC, dan PWA dengan implementasi serta test;
-- cocokkan FL-01..FL-36 melalui tujuh rentang pada bagian baseline;
-- pastikan seluruh fitur PRODUCT dan ROADMAP muncul pada W1..W10;
-- pastikan tidak ada fitur dikurangi, dipindah ke masa depan, atau dinyatakan terkirim tanpa bukti penerimaan;
-- periksa semua tautan relatif dan kontrak yang berubah;
-- jalankan gate release yang relevan tepat satu kali pada kandidat rilis yang sama.
-
-Untuk konteks historis, gunakan [changelog](CHANGELOG.md) dan [bukti UAT](UAT_EVIDENCE.md). Jangan memakai snapshot historis sebagai sumber status aktif.
+Catatan historis berada di [CHANGELOG.md](CHANGELOG.md). Template penerimaan berada di [UAT_EVIDENCE.md](UAT_EVIDENCE.md). Tidak ada snapshot historis yang menjadi bukti status aktif atau klaim bahwa defect aplikasi telah diperbaiki.

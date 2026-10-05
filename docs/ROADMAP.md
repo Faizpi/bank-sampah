@@ -1,70 +1,46 @@
 # Roadmap Pengembangan
 
-## Baseline Tunggal
+Roadmap ini mencatat urutan pengembangan dan evaluasi ruang lingkup aktif. Dokumen ini tidak menjanjikan kapabilitas yang belum tersedia dan tidak menyatakan aplikasi siap produksi.
 
-Seluruh fitur yang tercantum pada proposal dan flowchart yang telah disetujui merupakan satu baseline pengembangan. Semua fitur wajib diselesaikan dalam ruang lingkup yang sama.
+## Ruang lingkup aktif
 
-Status baseline: `locked`.
+Ruang lingkup aktif mencakup fungsi inti yang dijelaskan pada [PRODUCT.md](PRODUCT.md), [REQUIREMENTS.md](REQUIREMENTS.md), dan [BUSINESS_RULES.md](BUSINESS_RULES.md). Aturan target yang masih menjadi sasaran produk, hierarki wilayah serta kapasitas layanan keliling, dan validasi penjemputan tetap normatif. Dokumentasi tidak menjadikan defect pada area tersebut sebagai perilaku yang diterima.
 
-Perubahan membutuhkan change request, analisis dampak, persetujuan pengelola, pembaruan dokumen, dan pencatatan di `CHANGELOG.md`.
-
-## Urutan Implementasi Teknis
-
-Urutan berikut adalah urutan pengerjaan, bukan pembagian ruang lingkup.
+## Prioritas pengembangan
 
 ### Fondasi
 
-- Laravel 13, PHP 8.5, Livewire 4, Tailwind CSS 4.1+, Filament 5, Pest 4.
-- MySQL 8.0.30, autentikasi, role/permission, audit, penyimpanan privat, dan design system.
-- Konfigurasi test, formatting, static analysis, dan build aset.
+- Laravel 13 dengan PHP 8.3 atau lebih baru sesuai `composer.json`
+- Blade, Livewire 4, Tailwind CSS 4.1+, Filament 5, dan Pest 4
+- MySQL 8.0.30, autentikasi, role atau permission, audit, media privat, dan design system
 
 ### Akun dan master data
 
-- Registrasi, verifikasi, login, perubahan kata sandi mandiri dari profil, dan perubahan berbantuan langsung oleh admin terverifikasi hanya bagi pengguna yang lupa kata sandi dan tidak dapat login.
-- Warga tanpa smartphone dan kartu QR.
-- Pengguna, role, permission, wilayah.
-- Jenis, kategori, satuan, kondisi, foto, dan harga sampah.
-- Jadwal, pengumuman, dan edukasi kontekstual.
+- Registrasi, verifikasi, login, perubahan kata sandi mandiri, serta bantuan admin bagi pengguna yang tidak dapat login
+- Warga tanpa smartphone dan kartu QR
+- Pengguna, wilayah, jenis sampah, kondisi, satuan, harga, dan edukasi
 
-### Transaksi dan saldo
+### Transaksi dan layanan
 
-- Setoran langsung multi-item.
-- Snapshot harga.
-- Ledger saldo masuk, saldo keluar, dan saldo tertahan.
-- Koreksi, pembalikan, bukti transaksi, dan riwayat koreksi warga.
-- Pencegahan transaksi ganda.
+- Setoran langsung multi-item, snapshot harga, ledger, hold, koreksi, reversal, dan bukti
+- Penjemputan dengan foto wajib, validasi area, kapasitas harian, alternatif tanggal, penimbangan aktual, dan penyelesaian setelah setoran final
+- Pencairan tunai dan penukaran sembako sederhana tanpa stok rinci
+- Estimasi nilai, pengumuman, dan WhatsApp manual
 
-### Layanan warga
+### Program dan pengawasan
 
-- Penjemputan dengan kapasitas harian dan alternatif tanggal.
-- Pencairan tunai.
-- Penukaran sembako sederhana tanpa stok terperinci.
-- Estimasi nilai sebelum setor.
-- Notifikasi, pengingat, dan WhatsApp manual.
+- Jadwal Bank Sampah Keliling pada hierarki desa, dusun, RW, dan RT, dengan validasi benturan serta kapasitas per jadwal
+- Data agregat pengumpulan dan statistik yang tersedia
+- QR verifikasi bukti, laporan yang tersedia, dan audit log
+- Health sebagai satu-satunya administrasi teknis aktif
 
-### Program dan transparansi
+## Di luar ruang lingkup aktif
 
-- Target pengumpulan desa.
-- Bank Sampah Keliling per RT/RW.
-- QR verifikasi bukti.
-- Partisipasi RT/RW.
-- Statistik publik desa.
-- Dashboard warga, tugas petugas hari ini, dan dashboard admin.
+- Bantuan sembako gratis
+- Push notification dan notification center yang dijanjikan sebagai kanal aktif
+- Reset kata sandi publik berbasis token, email, SMS, atau WhatsApp
+- Queue database, worker asinkron, dan retry otomatis
+- WhatsApp gateway otomatis
+- Transfer bank, dompet digital, timbangan digital, Redis, Horizon, WebSocket, aplikasi native, AI klasifikasi foto, dan produksi paving block
 
-### Pengawasan dan peluncuran
-
-- Laporan web dan ekspor Excel.
-- Audit log.
-- Pengujian keamanan, aksesibilitas, responsif, UAT, deployment, dan pelatihan.
-
-## Di Luar Baseline
-
-- WhatsApp gateway otomatis.
-- Transfer bank atau dompet digital.
-- Integrasi timbangan digital.
-- Redis, Horizon, WebSocket, dan worker permanen.
-- Aplikasi native.
-- AI klasifikasi foto.
-- Sistem produksi paving block.
-
-Fitur di luar baseline hanya dapat ditambahkan melalui change request baru setelah sistem yang disetujui selesai dan diterima.
+Penambahan kapabilitas memerlukan change request, analisis dampak, persetujuan pengelola, pembaruan dokumen, dan bukti implementasi.

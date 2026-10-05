@@ -35,12 +35,12 @@
     <div class="mx-auto flex w-full max-w-public items-start gap-3 px-4 py-3 sm:px-5">
         <x-public.icon name="circle-alert" size="size-5" class="mt-0.5 text-deep-green" />
         <div class="min-w-0">
-            <p class="text-label font-bold" x-text="actionMessage ? 'Aksi belum dikirim' : 'Mode offline aktif'"></p>
+            <p class="text-label font-bold" x-text="actionMessage ? 'Aksi belum dikirim' : 'Koneksi terputus'"></p>
             <p x-show="! actionMessage" class="mt-1 text-body-sm leading-5">
-                Informasi publik yang pernah dibuka mungkin tetap tersedia, tetapi formulir dan pembaruan data memerlukan koneksi.
+                Formulir dan pembaruan data memerlukan koneksi. Sambungkan internet untuk melanjutkan.
             </p>
             <p x-show="actionMessage" x-cloak class="mt-1 text-body-sm leading-5">
-                Tidak ada data yang disimpan atau diantrikan. Sambungkan internet, lalu coba lagi.
+                Data belum disimpan. Sambungkan internet, lalu kirim ulang.
             </p>
         </div>
     </div>

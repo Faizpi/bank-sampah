@@ -6,7 +6,7 @@ namespace App\Support;
 
 final class WeightFormatter
 {
-    public static function format(string|int|float|null $value): string
+    public static function format(string|int|float|null $value, bool $fixedTwoDecimals = false): string
     {
         if ($value === null || $value === '') {
             return '—';
@@ -31,7 +31,7 @@ final class WeightFormatter
         }
 
         $whole = number_format((int) $whole, 0, ',', '.');
-        $formattedFraction = rtrim($hundredths, '0');
+        $formattedFraction = $fixedTwoDecimals ? $hundredths : rtrim($hundredths, '0');
 
         return $whole.($formattedFraction === '' ? '' : ','.$formattedFraction);
     }

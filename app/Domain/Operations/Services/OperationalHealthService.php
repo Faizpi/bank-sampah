@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Operations\Services;
 
-use App\Domain\Operations\Enums\BackupRestoreVerificationResult;
-use App\Domain\Operations\Enums\BackupStatus;
-use App\Domain\Operations\Models\BackupLog;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -16,7 +13,6 @@ final readonly class OperationalHealthService
 {
     public function __construct(
         private PrivateStorageBoundaryValidator $privateStorageBoundary,
-        private BackupEligibilityValidator $backupEligibility,
         private OperationalSettingsService $settings,
     ) {}
 
@@ -27,7 +23,6 @@ final readonly class OperationalHealthService
             'private_storage' => $this->privateStorage(),
             'scheduler' => $this->scheduler(),
             'queue' => $this->queue(),
-            'verified_backup' => $this->verifiedBackup(),
         ]);
     }
 
@@ -123,37 +118,6 @@ final readonly class OperationalHealthService
             return OperationalHealthCheck::ok(['mode' => 'database']);
         } catch (Throwable) {
             return OperationalHealthCheck::degraded('queue_unavailable');
-        }
-    }
-
-    private function verifiedBackup(): OperationalHealthCheck
-    {
-        try {
-            $maxAgeHours = $this->settings->values()['backup_max_age_hours'];
-            if ($maxAgeHours < 1) {
-                return OperationalHealthCheck::degraded('backup_recency_configuration_invalid');
-            }
-
-            $now = now();
-            $backup = BackupLog::query()
-                ->where('status', BackupStatus::Succeeded)
-                ->where('retention_until', '>', $now)
-                ->where('restore_verification_result', BackupRestoreVerificationResult::Passed)
-                ->where('restore_tested_at', '>=', $now->copy()->subHours($maxAgeHours))
-                ->orderByDesc('restore_tested_at')
-                ->get()
-                ->first(fn (BackupLog $candidate): bool => $this->backupEligibility->isEligible($candidate, $now));
-
-            if ($backup === null) {
-                return OperationalHealthCheck::degraded('verified_backup_stale_or_missing');
-            }
-
-            return OperationalHealthCheck::ok([
-                'verified_at' => 'recent',
-                'retention' => 'current',
-            ]);
-        } catch (Throwable) {
-            return OperationalHealthCheck::degraded('verified_backup_unavailable');
         }
     }
 

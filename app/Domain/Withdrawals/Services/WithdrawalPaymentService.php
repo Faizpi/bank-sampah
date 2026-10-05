@@ -6,6 +6,8 @@ namespace App\Domain\Withdrawals\Services;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
+use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\StaffServiceArea;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Ledger\Services\LedgerService;
@@ -118,9 +120,19 @@ final readonly class WithdrawalPaymentService
         $this->authorize($actor, 'withdrawal.pay');
 
         return WithdrawalRequest::query()
-            ->with(['customer', 'payer', 'balanceHold'])
+            ->with(['customer', 'payer', 'balanceHold', 'serviceArea'])
             ->where('status', WithdrawalStatus::ReadyForPickup)
-            ->where('payer_id', $actor->id);
+            ->where('payer_id', $actor->id)
+            ->whereNotNull('service_area_id')
+            ->whereHas('serviceArea', static fn (Builder $area): Builder => $area->where('is_active', true))
+            ->whereExists(function ($query) use ($actor): void {
+                $query->selectRaw('1')
+                    ->from('staff_service_areas')
+                    ->whereColumn('staff_service_areas.service_area_id', 'withdrawal_requests.service_area_id')
+                    ->where('staff_service_areas.staff_profile_user_id', $actor->id)
+                    ->where(static fn ($dates) => $dates->whereNull('staff_service_areas.active_from')->orWhereDate('staff_service_areas.active_from', '<=', today()))
+                    ->where(static fn ($dates) => $dates->whereNull('staff_service_areas.active_to')->orWhereDate('staff_service_areas.active_to', '>=', today()));
+            });
     }
 
     public function canDownloadProof(User $actor, Media $media): bool
@@ -140,6 +152,24 @@ final readonly class WithdrawalPaymentService
         if ($withdrawal->payer_id !== $actor->id) {
             throw new AuthorizationException('Pembayaran hanya dapat dilakukan payer yang ditugaskan.');
         }
+        if ($actor->status !== UserStatus::Active || ! $actor->roles()->where('name', 'bendahara')->exists() || ! $this->hasActiveSnapshotAreaAssignment($actor, $withdrawal)) {
+            throw new AuthorizationException('Petugas pembayaran harus bendahara aktif yang masih ditugaskan di area pencairan.');
+        }
+    }
+
+    private function hasActiveSnapshotAreaAssignment(User $actor, WithdrawalRequest $withdrawal): bool
+    {
+        if ($withdrawal->service_area_id === null) {
+            return false;
+        }
+
+        return StaffServiceArea::query()
+            ->where('staff_profile_user_id', $actor->id)
+            ->where('service_area_id', $withdrawal->service_area_id)
+            ->where(static fn ($dates) => $dates->whereNull('active_from')->orWhereDate('active_from', '<=', today()))
+            ->where(static fn ($dates) => $dates->whereNull('active_to')->orWhereDate('active_to', '>=', today()))
+            ->whereHas('serviceArea', static fn (Builder $area): Builder => $area->where('is_active', true))
+            ->exists();
     }
 
     private function authorize(User $actor, string $permission): void

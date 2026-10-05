@@ -23,6 +23,7 @@
     x-data="{ open: @js((bool) $open), invoker: null, focusInitial() { this.$nextTick(() => this.$refs.initialFocus.focus()) }, openModal(invoker = document.activeElement) { this.invoker = invoker instanceof HTMLElement && typeof invoker.focus === 'function' && invoker.isConnected ? invoker : null; this.open = true; this.focusInitial() }, closeModal() { const invoker = this.invoker; this.invoker = null; this.open = false; this.$nextTick(() => { if (invoker instanceof HTMLElement && typeof invoker.focus === 'function' && invoker.isConnected) invoker.focus() }) } }"
     x-init="open ? focusInitial() : null"
     x-show="open"
+    x-cloak
     x-on:open-dialog.window="if ($event.detail?.id === @js($componentId)) openModal($event.detail?.invoker)"
     x-on:keydown.escape.window="closeModal()"
     class="fixed inset-0 z-dialog flex items-end justify-center p-4 md:items-center"

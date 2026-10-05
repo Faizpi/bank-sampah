@@ -41,6 +41,20 @@
     {{-- Withdrawal Form --}}
     <x-ui.panel title="Detail pengambilan" description="Pastikan lokasi dan tanggal mudah diverifikasi petugas.">
         <div class="grid gap-4 md:grid-cols-2">
+            @if ($serviceAreas->count() > 1)
+                <label class="block md:col-span-2">
+                    <span class="text-label font-semibold text-deep-green">Area layanan</span>
+                    <select wire:model.live="serviceAreaId" class="mt-2 block w-full rounded-xl border-border bg-warm-canvas text-body text-deep-green">
+                        <option value="">Pilih area layanan</option>
+                        @foreach ($serviceAreas as $serviceArea)
+                            <option value="{{ $serviceArea->id }}">{{ $serviceArea->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('serviceAreaId')
+                        <p role="alert" class="mt-2 text-body-sm text-terracotta">{{ $message }}</p>
+                    @enderror
+                </label>
+            @endif
             <x-ui.input wire:model.live.debounce.300ms="amount" label="Nominal (rupiah)" name="amount"
                 inputmode="numeric" placeholder="Minimal Rp10.000"
                 :hint="$isAmountOverBalance ? 'Nominal melebihi saldo tersedia.' : 'Nominal final tidak dapat diubah setelah diajukan.'"
@@ -59,8 +73,10 @@
         <p role="alert" class="text-body-sm font-semibold text-terracotta">{{ $message }}</p>
     @enderror
 
-    <x-ui.button type="button" wire:click="submit" wire:loading.attr="disabled" wire:target="submit" :disabled="$isAmountOverBalance">
-        <span wire:loading.remove wire:target="submit">Ajukan Pencairan</span>
-        <span wire:loading wire:target="submit">Memproses...</span>
-    </x-ui.button>
+    <div class="flex justify-end">
+        <x-ui.button type="button" wire:click="submit" wire:loading.attr="disabled" wire:target="submit" :disabled="$isAmountOverBalance">
+            <span wire:loading.remove wire:target="submit">Ajukan Pencairan</span>
+            <span wire:loading wire:target="submit">Memproses...</span>
+        </x-ui.button>
+    </div>
 </section>

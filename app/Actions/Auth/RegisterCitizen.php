@@ -7,6 +7,7 @@ namespace App\Actions\Auth;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
+use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\TermsAcceptanceHistory;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -49,7 +50,13 @@ final readonly class RegisterCitizen
                 'accepted_at' => $acceptedAt,
             ]);
 
-            return $user;
+            $warga = Role::query()->firstOrCreate(
+                ['name' => 'warga'],
+                ['description' => 'Warga terdaftar'],
+            );
+            $user->roles()->attach($warga->id, ['assigned_by' => null, 'reason' => 'Penugasan otomatis saat registrasi warga.']);
+
+            return $user->fresh('roles');
         });
     }
 

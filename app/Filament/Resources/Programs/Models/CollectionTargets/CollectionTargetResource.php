@@ -61,7 +61,7 @@ final class CollectionTargetResource extends Resource
                 DatePicker::make('period_end')->label('Selesai')->required()->after('period_start'),
                 TextInput::make('target_weight_kg')->label('Target berat (kg)')->numeric()->required()->minValue(0.001),
                 Toggle::make('is_public')->label('Tampilkan ke publik'),
-                Repeater::make('scopes')->label('Cakupan target')->schema([
+                Repeater::make('scopes')->label('Wilayah dan jenis yang dihitung')->schema([
                     Select::make('waste_type_id')->label('Jenis')->options(fn (): array => WasteType::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable(),
                     Select::make('waste_category_id')->label('Kategori')->options(fn (): array => WasteCategory::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable(),
                     Select::make('rt_id')->label('RT')->options(fn (): array => Rt::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable(),

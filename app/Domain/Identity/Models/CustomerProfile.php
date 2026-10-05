@@ -40,6 +40,25 @@ final class CustomerProfile extends Model
         return CustomerNumber::fromString((string) $this->customer_number);
     }
 
+    public function serviceRegion(): ?string
+    {
+        $rt = $this->relationLoaded('rt') ? $this->rt : $this->rt()->with('rw.dusun')->first();
+        if (! $rt instanceof Rt) {
+            return null;
+        }
+
+        $rt->loadMissing('rw.dusun');
+        $parts = [
+            $rt->name,
+            $rt->rw?->name,
+            $rt->rw?->dusun?->name,
+        ];
+
+        $region = implode(', ', array_values(array_filter($parts, static fn (?string $part): bool => filled($part))));
+
+        return $region !== '' ? $region : null;
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

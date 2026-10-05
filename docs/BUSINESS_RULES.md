@@ -90,7 +90,7 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-BAL-013:** Penolakan, pembatalan yang sah, atau kedaluwarsa menutup hold sebagai `dilepas` tanpa membuat saldo keluar.
 - **BR-BAL-014:** Koreksi pengurangan yang akan menyebabkan saldo tersedia negatif tidak boleh diselesaikan otomatis; harus mengikuti keputusan resmi yang menjaga ledger tetap valid.
 - **BR-BAL-015:** Reversal mutasi membuat mutasi lawan bernilai sama dan referensi dua arah; mutasi asli tidak diubah.
-- **BR-BAL-016:** Setiap koreksi/reversal menimbulkan audit dan notifikasi warga terkait.
+- **BR-BAL-016:** Setiap koreksi atau reversal menimbulkan audit dan memperbarui riwayat yang dapat dilihat warga terkait.
 
 ## 7. Pembatalan dan kedaluwarsa
 
@@ -101,7 +101,7 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-CAN-005:** Transaksi setoran final dibatalkan melalui reversal/koreksi, bukan status batal biasa atau penghapusan.
 - **BR-EXP-001:** Batas kedaluwarsa pencairan dan sembako dikonfigurasi dalam hari/jam bisnis dan disimpan pada pengajuan saat persetujuan.
 - **BR-EXP-002:** Proses scheduler menandai pengajuan melewati batas sebagai `kedaluwarsa` hanya jika belum dibayar/diserahkan.
-- **BR-EXP-003:** Kedaluwarsa melepas hold atomik dan mengirim notifikasi; tidak membuat saldo keluar.
+- **BR-EXP-003:** Kedaluwarsa melepas hold atomik dan memperbarui status yang terlihat oleh pihak terkait; tidak membuat saldo keluar.
 
 ## 8. Penjemputan dan kapasitas
 
@@ -131,7 +131,6 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 ## 10. Penukaran sembako
 
 - **BR-GRC-001:** Paket aktif memiliki nama, isi deskriptif, nilai rupiah, foto opsional, periode, dan status; sistem tidak mengelola jumlah stok rinci.
-- **BR-GRC-002:** Nilai paket penggunaan saldo berbeda dari bantuan gratis; bantuan gratis tidak membuat hold atau saldo keluar.
 - **BR-GRC-003:** Pengajuan saldo hanya sah bila paket aktif dan saldo cukup; sistem membuat hold sebesar nilai snapshot paket.
 - **BR-GRC-004:** Ketersediaan diperiksa manual sebelum persetujuan dan dicatat sebagai keputusan operasional, bukan mutasi stok.
 - **BR-GRC-005:** Permission `grocery.approve` terpisah dari `grocery.handover`.
@@ -140,12 +139,8 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-GRC-008:** Saldo keluar dibuat setelah paket diserahkan, atomik dengan penutupan hold; penyerahan idempotent.
 - **BR-GRC-009:** Status valid: `menunggu_verifikasi → disetujui → sedang_disiapkan → siap_diambil → selesai`; endpoint `ditolak`, `dibatalkan`, `kedaluwarsa`.
 
-## 11. Notifikasi, pengumuman, dan WhatsApp manual
+## 11. Pengumuman dan WhatsApp manual
 
-- **BR-NOT-001:** Notifikasi dalam aplikasi dibuat dari kejadian domain atau jadwal yang terdefinisi dan memiliki penerima serta referensi.
-- **BR-NOT-002:** Kegagalan notifikasi setelah commit tidak membatalkan transaksi; kegagalan dicatat dan dapat diproses ulang secara terbatas.
-- **BR-NOT-003:** Notifikasi tidak boleh memuat kata sandi, token reset, secret, identitas lengkap, atau detail yang melampaui izin penerima.
-- **BR-NOT-004:** Satu kejadian-penerima-template menghasilkan maksimal satu notifikasi kecuali pengingat berulang memang dikonfigurasi.
 - **BR-ANN-001:** Pengumuman memiliki audiens, periode publikasi, status, dan pelaku publikasi.
 - **BR-ANN-002:** Konten ditampilkan sebagai teks/HTML tersanitasi dan tidak dapat menjalankan script.
 - **BR-ANN-003:** Pengumuman di luar periode atau nonaktif tidak ditampilkan pada kanal sasaran.
@@ -164,11 +159,11 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-TGT-005:** Target aktif dihitung saat data sah berubah; akhir periode menutup target dan menyimpan ringkasan yang dapat direproduksi.
 - **BR-TGT-006:** Publik hanya melihat agregat yang disetujui, bukan kontribusi individu.
 - **BR-MOB-001:** Layanan keliling adalah titik layanan terjadwal per RT/RW, bukan penjemputan individual.
-- **BR-MOB-002:** Jadwal wajib memiliki titik, wilayah, waktu, petugas, jenis diterima, kapasitas, dan status.
-- **BR-MOB-003:** Jadwal tidak boleh berbenturan pada petugas/titik dalam waktu yang sama.
+- **BR-MOB-002:** Jadwal wajib memiliki titik, wilayah yang mengikuti hierarki desa, dusun, RW, dan RT, waktu, petugas, jenis diterima, kapasitas, serta status.
+- **BR-MOB-003:** Jadwal tidak boleh berbenturan pada petugas atau titik dalam waktu yang sama. Kapasitas berlaku pada jadwal dan membatasi penerimaan layanan keliling tersebut.
 - **BR-MOB-004:** Transaksi hanya dapat ditandai sebagai layanan keliling ketika jadwal berstatus dibuka dan petugas berada dalam penugasan.
 - **BR-MOB-005:** Setoran keliling mengikuti seluruh aturan setoran langsung, harga snapshot, ledger, bukti, dan idempotensi.
-- **BR-MOB-006:** Penutupan layanan membuat rekap; perubahan jadwal aktif menghasilkan pengingat.
+- **BR-MOB-006:** Penutupan layanan membuat rekap; perubahan jadwal aktif harus terlihat pada informasi jadwal yang digunakan warga dan petugas.
 
 ## 13. Estimasi dan edukasi
 
@@ -201,11 +196,9 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-RPT-003:** Tampilan web dan Excel untuk filter yang sama menghasilkan angka yang sama.
 - **BR-RPT-004:** Excel menetralkan nilai yang dapat dieksekusi sebagai formula.
 - **BR-RPT-005:** File ekspor bersifat privat, memiliki masa berlaku, dan akses/unduh dicatat.
-- **BR-RPT-006:** Ekspor besar boleh diproses dengan database queue berbatas waktu melalui cron; kegagalan tidak menerbitkan file parsial.
 - **BR-AUD-001:** Audit mencatat pelaku, waktu, aksi, objek, korelasi, serta nilai lama/baru yang relevan dan aman.
-- **BR-AUD-002:** Login, perubahan akses, master harga, transaksi, koreksi, ledger, status, approve, pay, handover, ekspor, dan konfigurasi teknis non-secret melalui UI berizin wajib diaudit.
-- **BR-AUD-003:** Audit append-oriented dan tidak dapat diubah/dihapus melalui fungsi operasional biasa.
-- **BR-AUD-004:** Retensi hanya dijalankan pengelola teknis sesuai kebijakan dan tetap menghasilkan catatan pelaksanaan.
+- **BR-AUD-002:** Login, perubahan akses, master harga, transaksi, koreksi, ledger, status, approve, pay, handover, dan ekspor wajib diaudit.
+- **BR-AUD-003:** Audit append-oriented dan tidak dapat diubah atau dihapus melalui fungsi operasional biasa.
 - **BR-AUD-005:** Password, token, secret, cookie, dan isi file sensitif tidak boleh masuk audit/log.
 - **BR-AUD-006:** Aksi keuangan yang mewajibkan audit harus menyimpan audit dalam transaksi yang sama atau gagal seluruhnya.
 ## 16. PWA, file, dan ruang lingkup

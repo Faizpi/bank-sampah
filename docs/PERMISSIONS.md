@@ -6,7 +6,7 @@
 2. Setiap request memeriksa autentikasi, permission tindakan, scope record, status record, dan separation of duties.
 3. Menyembunyikan menu tidak dianggap sebagai kontrol keamanan. Policy/service tetap menolak akses langsung.
 4. Scope default adalah paling sempit: `own`, `assigned`, `area`, atau `all`; untuk record pengguna, scope harus diberikan secara eksplisit melalui `user.view.area` atau `user.view.all`.
-5. Superadmin adalah superset role `admin`: seluruh permission baseline admin diwariskan, lalu ditambah permission teknis dan rekonsiliasi finansial. `ledger.adjust`, `transaction.correct`, dan `transaction.reverse` hanya tersedia pada baseline superadmin serta tetap diaudit.
+5. Superadmin adalah superset role `admin`: seluruh permission baseline admin diwariskan, lalu ditambah Health, pengelolaan role dan permission, serta rekonsiliasi finansial. `ledger.adjust`, `transaction.correct`, dan `transaction.reverse` hanya tersedia pada baseline superadmin serta tetap diaudit.
 6. Permission sensitif hanya diberikan melalui keputusan pengelola dan dicatat dalam audit log.
 7. Editor role/permission (RoleResource & PermissionResource) tersedia di panel back-office dan dibatasi `role.view`/`role.manage`: mutasi menyimpan metadata `granted_by` dan `reason`, dan role sistem (`warga`, `petugas`, `bendahara`, `admin`, `superadmin`) tidak dapat dihapus. Katalog permission tetap sumber otoritatif.
 
@@ -20,7 +20,7 @@ Kode matriks: `O` own, `A` area, `X` semua record aktif, `—` tidak diberikan s
 | `petugas` | Setoran, penjemputan, layanan keliling, layanan berbantuan, pembayaran/penyerahan bila ditugaskan. | Scope penugasan/area; tidak mengubah harga, role, atau saldo langsung. |
 | `bendahara` | Pembayaran pencairan yang telah disetujui, bukti, kas, dan laporan. | Tidak menyetujui pencairan secara default dan tidak mengoreksi saldo. |
 | `admin` | Operasional, master data, verifikasi, persetujuan, laporan, koreksi bila permission khusus diberikan. | Tidak mengelola konfigurasi teknis berisiko tinggi atau melewati mekanisme ledger. |
-| `superadmin` | Seluruh tanggung jawab dan permission baseline admin, ditambah koreksi/reversal transaksi, penyesuaian saldo, konfigurasi teknis non-secret, role/permission, status sistem, metadata backup/restore, dan retensi teknis. | Tetap mengikuti policy, separation of duties, alasan+bukti koreksi, serta SOP backup/restore. |
+| `superadmin` | Seluruh tanggung jawab dan permission baseline admin, ditambah koreksi atau reversal transaksi, penyesuaian saldo, role atau permission, dan Health. | Tetap mengikuti policy, separation of duties, serta alasan dan bukti koreksi. |
 
 ## 3. Katalog permission granular
 
@@ -83,7 +83,6 @@ Kode matriks: `O` own, `A` area, `X` semua record aktif, `—` tidak diberikan s
 
 | Permission | Arti |
 |---|---|
-| `notification.view` | Melihat notifikasi sendiri. |
 | `announcement.view` / `announcement.manage` / `announcement.publish` | Kelola dan terbitkan pengumuman. |
 | `mobile-service.view` / `mobile-service.manage` / `mobile-service.operate` | Jadwal dan operasi layanan keliling. |
 | `target.view` / `target.manage` / `target.publish` | Kelola target dan publikasi progres. |
@@ -97,11 +96,7 @@ Kode matriks: `O` own, `A` area, `X` semua record aktif, `—` tidak diberikan s
 |---|---|
 | `report.view` / `report.export` | Melihat atau mengekspor laporan dalam scope. |
 | `audit.view` | Menelusuri audit log yang telah disanitasi. |
-| `system.settings.manage` | Mengelola konfigurasi teknis non-secret melalui UI. |
-| `system.maintenance` | Maintenance mode dan pemeriksaan sistem. |
-| `backup.run` / `backup.view` / `backup.restore` | Mengelola metadata, status, dan verifikasi backup/restore. Eksekusi artefak aktual tetap melalui deployment/SOP, bukan UI aplikasi. |
-| `audit.retention.execute` | Menjalankan retensi teknis yang disetujui. |
-| `media.retention.execute` | Mempratinjau dan menghapus foto penjemputan terminal sesuai batas usia dan batch yang disetujui. |
+| `system.maintenance` | Melihat Health privat secara baca-saja. Permission ini tidak membuka halaman atau tindakan teknis lain pada UI aktif. |
 
 ## 4. Matriks role-permission
 
@@ -169,7 +164,6 @@ Permission rekonsiliasi hanya melekat pada baseline `superadmin`; aktor custom t
 
 | Permission | Warga | Petugas | Bendahara | Admin | Superadmin |
 |---|:---:|:---:|:---:|:---:|:---:|
-| `notification.view` | O | O | O | O | O |
 | `announcement.view` | X sesuai audiens | X sesuai audiens | X | X | X |
 | `announcement.manage`, `announcement.publish` | — | — | — | X | X |
 | `mobile-service.view` | X | A | X | X | X |
@@ -183,10 +177,7 @@ Permission rekonsiliasi hanya melekat pada baseline `superadmin`; aktor custom t
 | `report.view` | — | A terbatas | X | X | X |
 | `report.export` | — | — | X | X | X |
 | `audit.view` | — | — | — | X | X |
-| `system.settings.manage`, `system.maintenance` | — | — | — | — | X |
-| `backup.run`, `backup.view`, `backup.restore` | — | — | — | — | X |
-| `audit.retention.execute` | — | — | — | — | X |
-| `media.retention.execute` | — | — | — | — | X |
+| `system.maintenance` | — | — | — | — | X |
 
 ## 5. Separation of duties
 
@@ -207,7 +198,7 @@ Permission rekonsiliasi hanya melekat pada baseline `superadmin`; aktor custom t
 ### Koreksi
 
 1. Pembuat transaksi final tidak boleh mengoreksi transaksi sendiri tanpa permission khusus dan alasan konflik kepentingan yang diaudit.
-2. Superadmin dapat menjalankan alur admin sesuai permission; setelah restore, kebutuhan koreksi data tetap memakai action resmi, separation of duties, dan approval yang berlaku.
+2. Superadmin dapat menjalankan alur admin sesuai permission; kebutuhan koreksi data tetap memakai action resmi, separation of duties, dan approval yang berlaku.
 
 ### 4.1.1 Kontrak scope record pengguna
 

@@ -124,11 +124,16 @@ final class GroceryRedemptionResource extends Resource
             'package' => (string) data_get($record->package_snapshot, 'name', 'Tidak tersedia'),
             'held_amount' => 'Rp '.number_format((int) (data_get($record->balanceHold, 'amount') ?? $record->value_snapshot), 0, ',', '.'),
             'status' => StatusLabel::for($record->status),
-            'customer' => $record->customer?->name ?? 'Tidak tersedia',
-            'requested_by' => $record->requestedBy?->name ?? 'Tidak tersedia',
-            'approver' => $record->approver?->name ?? 'Belum disetujui',
-            'prepared_by' => $record->preparedBy?->name ?? 'Belum mulai disiapkan',
-            'snapshot' => json_encode($record->package_snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ?: 'Tidak tersedia',
+            'customer' => $record->customer->name,
+            'requested_by' => $record->requestedBy->name,
+            'approver' => $record->approver_id === null ? 'Belum disetujui' : $record->approver->name,
+            'prepared_by' => $record->prepared_by_id === null ? 'Belum mulai disiapkan' : $record->preparedBy->name,
+            'snapshot' => implode("\n", [
+                'Kode paket: '.data_get($record->package_snapshot, 'code', 'Tidak tersedia'),
+                'Nama paket: '.data_get($record->package_snapshot, 'name', 'Tidak tersedia'),
+                'Isi paket: '.data_get($record->package_snapshot, 'contents', 'Tidak tersedia'),
+                'Nilai paket: Rp '.number_format((int) data_get($record->package_snapshot, 'value', $record->value_snapshot), 0, ',', '.'),
+            ]),
         ];
     }
 

@@ -47,6 +47,16 @@ it('applies response security headers without an unsafe CSP and limits HSTS to s
     expect($insecureResponse->headers->get('Strict-Transport-Security'))->toBeNull();
 });
 
+it('permits the camera only on authenticated QR-scanning task pages', function (): void {
+    $officer = User::factory()->create();
+    grantWave10SecurityPermissions($officer, 'grocery.prepare');
+
+    $response = $this->actingAs($officer)->get(route('officer.grocery.tasks'));
+
+    $response->assertOk();
+    expect((string) $response->headers->get('Permissions-Policy'))->toContain('camera=(self)');
+});
+
 it('prevents caching for authentication and authenticated private responses', function (): void {
     $loginResponse = $this->get(route('login'));
     $loginResponse->assertOk();

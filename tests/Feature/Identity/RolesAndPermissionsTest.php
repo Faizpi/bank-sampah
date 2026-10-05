@@ -56,6 +56,59 @@ final class RolesAndPermissionsTest extends TestCase
         self::assertTrue(Schema::hasColumns('permission_role', ['permission_id', 'role_id', 'granted_by', 'reason', 'created_at', 'updated_at']));
     }
 
+    public function test_pickup_completion_remediation_migration_does_not_create_missing_catalog_records(): void
+    {
+        $migration = require database_path('migrations/2026_08_19_120000_grant_pickup_complete_to_petugas.php');
+
+        $migration->up();
+
+        self::assertDatabaseMissing('roles', ['name' => 'petugas']);
+        self::assertDatabaseMissing('permissions', ['name' => 'pickup.complete']);
+        self::assertDatabaseCount('permission_role', 0);
+    }
+
+    public function test_pickup_completion_remediation_migration_grants_only_the_missing_petugas_pivot_idempotently(): void
+    {
+        $petugas = Role::factory()->create(['name' => 'petugas']);
+        $customRole = Role::factory()->create(['name' => 'petugas-kustom']);
+        $permission = Permission::factory()->create(['name' => 'pickup.complete']);
+        $customRole->permissions()->attach($permission, [
+            'granted_by' => null,
+            'reason' => 'Custom role permission.',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $migration = require database_path('migrations/2026_08_19_120000_grant_pickup_complete_to_petugas.php');
+
+        $migration->up();
+        $migration->up();
+
+        self::assertDatabaseCount('permission_role', 2);
+        self::assertDatabaseHas('permission_role', [
+            'permission_id' => $permission->id,
+            'role_id' => $petugas->id,
+            'granted_by' => null,
+            'reason' => 'Pemulihan permission baseline petugas untuk finalisasi penjemputan.',
+        ]);
+        self::assertDatabaseHas('permission_role', [
+            'permission_id' => $permission->id,
+            'role_id' => $customRole->id,
+            'reason' => 'Custom role permission.',
+        ]);
+
+        $migration->down();
+
+        self::assertDatabaseMissing('permission_role', [
+            'permission_id' => $permission->id,
+            'role_id' => $petugas->id,
+        ]);
+        self::assertDatabaseHas('permission_role', [
+            'permission_id' => $permission->id,
+            'role_id' => $customRole->id,
+            'reason' => 'Custom role permission.',
+        ]);
+    }
+
     public function test_role_names_are_unique(): void
     {
         Role::factory()->create(['name' => 'warga']);

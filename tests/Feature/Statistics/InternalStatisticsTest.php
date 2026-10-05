@@ -18,11 +18,11 @@ use App\Domain\Programs\Enums\TargetStatus;
 use App\Domain\Programs\Models\CollectionTarget;
 use App\Domain\Programs\Models\TargetScope;
 use App\Domain\Statistics\Services\StatisticsService;
-use App\Livewire\PublicSite\PublicPrograms;
 use App\Domain\WasteMaster\Actions\ManageWasteMaster;
 use App\Domain\WasteMaster\Models\WasteCondition;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
+use App\Livewire\PublicSite\PublicPrograms;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -148,7 +148,7 @@ final class InternalStatisticsTest extends TestCase
         app(StatisticsService::class)->configurePublic($actor, ['total_weight_kg'], ['period'], 2, true);
 
         Livewire::test(PublicPrograms::class)
-            ->assertSee('Cakupan:')
+            ->assertSee('Wilayah dan jenis sampah:')
             ->assertSee('RT Program')
             ->assertSee($type->name)
             ->assertSee('Periode 12 bulan:')
@@ -175,12 +175,11 @@ final class InternalStatisticsTest extends TestCase
         app(StatisticsService::class)->configurePublic($actor, ['total_weight_kg'], ['period', 'rt_id'], 2, true);
 
         Livewire::test(PublicPrograms::class)
-            ->assertSee('Cakupan statistik')
+            ->assertSee('Wilayah statistik')
             ->assertSee('Seluruh desa')
             ->assertSee('RT Satu')
             ->assertSee('RT Dua')
             ->set('rtId', (string) $firstRt->id)
-            ->assertSee('Menampilkan agregat untuk RT terpilih.')
             ->assertSee('2 kg')
             ->set('rtId', (string) $secondRt->id)
             ->assertSee('4 kg');
@@ -188,7 +187,7 @@ final class InternalStatisticsTest extends TestCase
         app(StatisticsService::class)->configurePublic($actor, ['total_weight_kg'], ['period'], 2, true);
 
         Livewire::test(PublicPrograms::class)
-            ->assertDontSee('Cakupan statistik')
+            ->assertDontSee('Wilayah statistik')
             ->assertSee('6 kg');
     }
 

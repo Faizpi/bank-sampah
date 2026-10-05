@@ -47,6 +47,14 @@ final class CitizenShellTest extends TestCase
         self::assertSame(1, substr_count($source, '@vite('));
     }
 
+    public function test_logout_opener_only_opens_confirmation_and_confirmation_submits_logout_form(): void
+    {
+        $html = Blade::render('<x-layouts.citizen title="Beranda">Isi</x-layouts.citizen>');
+
+        self::assertMatchesRegularExpression('/<form (?=[^>]*id="citizen-logout-form")(?=[^>]*method="POST")(?=[^>]*action="[^"]*\/logout")(?=[^>]*x-data(?:="\{\}")?)[^>]*>.*?<button type="button"(?=[^>]*aria-label="Keluar dari akun")(?=[^>]*x-on:click\.prevent="\$dispatch\(\'open-dialog\', \{ id: \'citizen-logout-confirmation\', invoker: \$el \}\)")[^>]*>/s', $html);
+        self::assertMatchesRegularExpression('/<button type="submit" form="citizen-logout-form"[^>]*>Keluar<\/button>/', $html);
+    }
+
     public function test_optional_header_content_is_omitted_when_unsupplied_and_actions_are_supported(): void
     {
         $minimal = Blade::render('<x-layouts.citizen title="Beranda">Isi</x-layouts.citizen>');

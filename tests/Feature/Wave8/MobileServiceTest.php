@@ -15,9 +15,9 @@ use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\MobileServices\Services\MobileDepositGuard;
 use App\Domain\MobileServices\Services\MobileServiceService;
 use App\Domain\WasteMaster\Actions\ManageWasteMaster;
-use App\Livewire\PublicSite\MobileSchedule;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
+use App\Livewire\PublicSite\MobileSchedule;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,6 +46,81 @@ final class MobileServiceTest extends TestCase
         app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
         self::assertTrue(app(MobileServiceService::class)->canOperate($staff, $service->fresh()));
         self::assertFalse(app(MobileServiceService::class)->canOperate(User::factory()->create(), $service->fresh()));
+    }
+
+    public function test_opening_before_the_scheduled_start_is_rejected(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-10 08:59:59', 'Asia/Jakarta'));
+
+        try {
+            $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai RT Awal', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 20, '', [$staff->id], [$type->id]);
+            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
+
+            $this->expectException(ValidationException::class);
+            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    public function test_opening_after_the_scheduled_end_is_rejected(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-10 11:00:01', 'Asia/Jakarta'));
+
+        try {
+            $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai RT Akhir', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 20, '', [$staff->id], [$type->id]);
+            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
+
+            $this->expectException(ValidationException::class);
+            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    public function test_acceptance_before_the_scheduled_start_is_rejected(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-10 08:59:59', 'Asia/Jakarta'));
+
+        try {
+            $service = $this->mobileServiceAt($staff, $type, '2026-08-10 09:00:00', '2026-08-10 11:00:00', MobileServiceStatus::Open);
+
+            self::assertFalse($service->isOpen());
+            self::assertFalse(app(MobileServiceService::class)->canAcceptDeposit($staff, $service, $type->id));
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    public function test_mobile_service_rejects_mismatched_active_rw_and_rt_while_preserving_single_region_modes(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        $rw = $rt->rw()->firstOrFail();
+        $otherRw = Rw::query()->create(['dusun_id' => $rw->dusun_id, 'code' => 'W8-RW-'.uniqid(), 'name' => 'W8 RW lain', 'is_active' => true]);
+        $otherRt = Rt::query()->create(['rw_id' => $otherRw->id, 'code' => 'W8-RT-'.uniqid(), 'name' => 'W8 RT lain', 'is_active' => true]);
+        $service = app(MobileServiceService::class);
+
+        $rwOnly = $service->create($admin, $rw->id, null, 'Balai RW Saja', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 20, '', [$staff->id], [$type->id]);
+        $rtOnly = $service->create($admin, null, $rt->id, 'Balai RT Saja', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 20, '', [$staff->id], [$type->id]);
+
+        self::assertSame($rw->id, $rwOnly->rw_id);
+        self::assertNull($rwOnly->rt_id);
+        self::assertNull($rtOnly->rw_id);
+        self::assertSame($rt->id, $rtOnly->rt_id);
+
+        $this->expectException(ValidationException::class);
+        $service->create($admin, $rw->id, $otherRt->id, 'Balai Wilayah Tidak Cocok', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 20, '', [$staff->id], [$type->id]);
+    }
+
+    public function test_mobile_service_rejects_zero_capacity(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+
+        $this->expectException(ValidationException::class);
+        app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai Kapasitas Nol', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 0, '', [$staff->id], [$type->id]);
     }
 
     public function test_mobile_deposit_link_is_locked_idempotently_and_close_recap_is_reproducible(): void
@@ -122,7 +197,7 @@ final class MobileServiceTest extends TestCase
 
         Livewire::test(MobileSchedule::class)
             ->assertSee('Terjadwal')
-            ->assertSee('Cakupan wilayah')
+            ->assertSee('Wilayah layanan')
             ->assertSee($rt->name)
             ->assertSee('Sampah yang diterima')
             ->assertSee($type->name)

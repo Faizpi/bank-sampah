@@ -10,7 +10,7 @@
     $states = [
         'default' => 'border-border',
         'error' => 'border-terracotta',
-        'success' => 'border-forest-600',
+        'success' => 'border-forest-600/25',
         'disabled' => 'border-border bg-disabled-bg text-text-secondary',
     ];
     $resolvedState = array_key_exists($state, $states) ? $state : 'default';

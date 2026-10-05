@@ -13,6 +13,7 @@ use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
@@ -24,6 +25,8 @@ use App\Domain\Platform\Models\Media;
 use App\Domain\Reports\Enums\ReportExportStatus;
 use App\Domain\Reports\Services\ReportExportService;
 use App\Domain\Reports\Services\ReportQueryService;
+use App\Domain\WasteMaster\Models\WasteCondition;
+use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
@@ -114,7 +117,7 @@ final class Wave9ContractsTest extends TestCase
         self::assertSame(['deposits', 'withdrawals', 'groceries', 'pickups', 'participation'], $contract['report_types']);
         self::assertSame('paid_at', $contract['report_columns']['withdrawals'][1]);
         self::assertSame('handed_over_at', $contract['report_columns']['groceries'][1]);
-        self::assertSame('completed_at', $contract['report_columns']['pickups'][1]);
+        self::assertContains('completed_at', $contract['report_columns']['pickups']);
         self::assertCount(0, app(ReportQueryService::class)->paginate($actor, ['start' => '2026-08-01', 'end' => '2026-08-02'], perPage: 25));
     }
 
@@ -148,7 +151,7 @@ final class Wave9ContractsTest extends TestCase
         self::assertSame($withdrawalAt, $reports->displayRows($actor, 'withdrawals', ['start' => '2026-08-01', 'end' => '2026-08-02'])[0]['date']);
         self::assertSame($groceryAt, $reports->displayRows($actor, 'groceries', ['start' => '2026-08-01', 'end' => '2026-08-02'])[0]['date']);
         self::assertSame($pickupAt, $reports->displayRows($actor, 'pickups', ['start' => '2026-08-01', 'end' => '2026-08-02'])[0]['date']);
-        foreach ([['withdrawals', 'paid_at', $withdrawalAt], ['groceries', 'handed_over_at', $groceryAt], ['pickups', 'completed_at', $pickupAt]] as [$type, $column, $date]) {
+        foreach ([['withdrawals', 'Tanggal Dibayar', $withdrawalAt], ['groceries', 'Tanggal Diserahkan', $groceryAt], ['pickups', 'Tanggal Selesai', $pickupAt]] as [$type, $column, $date]) {
             $export = app(ReportExportService::class)->export($actor, $type, ['start' => '2026-08-01', 'end' => '2026-08-02'], 'csv');
             $content = Storage::disk('media_private')->get((string) $export->path);
             self::assertStringContainsString($column, $content);
@@ -183,9 +186,11 @@ final class Wave9ContractsTest extends TestCase
             [
                 'reference' => 'DEP-W9-ROWS-'.$actor->id,
                 'date' => '2026-08-01 10:00:00',
-                'subject_id' => (string) $actor->id,
+                'subject' => $actor->name,
+                'detail' => '1,00 kg · loket',
                 'status' => 'final',
-                'amount' => 20_000,
+                'value' => 20_000,
+                'value_format' => 'currency',
             ],
         ], $reports->displayRows($actor, 'deposits', ['start' => '2026-08-01', 'end' => '2026-08-02']));
     }
@@ -226,9 +231,12 @@ final class Wave9ContractsTest extends TestCase
         $this->assertThrowsException(fn (): mixed => app(AuditRetentionService::class)->execute($admin, '2026-08-02'), AuthorizationException::class);
     }
 
-    private function seedDeposit(User $owner, int $value, string $occurredAt, string $number = 'DEP-W9-OK'): object
+    private function seedDeposit(User $owner, int $value, string $occurredAt, string $number = 'DEP-W9-OK'): Deposit
     {
-        return Deposit::query()->create(['deposit_number' => $number.'-'.$owner->id, 'customer_id' => $owner->id, 'staff_id' => $owner->id, 'method' => 'loket', 'occurred_at' => $occurredAt, 'status' => 'final', 'total_weight_kg' => '1.000', 'total_value' => $value, 'finalized_at' => $occurredAt]);
+        $deposit = Deposit::query()->create(['deposit_number' => $number.'-'.$owner->id, 'customer_id' => $owner->id, 'staff_id' => $owner->id, 'method' => 'loket', 'occurred_at' => $occurredAt, 'status' => 'final', 'total_weight_kg' => '1.000', 'total_value' => $value, 'finalized_at' => $occurredAt]);
+        DepositItem::query()->create(['deposit_id' => $deposit->id, 'waste_type_id' => WasteType::factory()->create()->id, 'waste_condition_id' => WasteCondition::factory()->create()->id, 'weight_kg' => '1.000', 'price_per_unit' => $value, 'subtotal' => $value]);
+
+        return $deposit;
     }
 
     /** @param \Closure(): mixed $callback */

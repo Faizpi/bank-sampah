@@ -44,8 +44,6 @@ final class RoleDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Halo, Siti Aman!')
             ->assertSee('Belum ada saldo')
-            ->assertSee('Belum ada setoran')
-            ->assertSee('Setoran pertamamu akan muncul di sini.')
             ->assertSee('Navigasi warga')
             ->assertDontSee('Data Warga Lain');
     }
@@ -123,7 +121,6 @@ final class RoleDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Tugas hari ini')
             ->assertSee('Belum ada tugas hari ini')
-            ->assertSee('Saat ada tugas yang ditugaskan kepada Anda, tugas tersebut akan muncul di sini.')
             ->assertSee('Navigasi petugas')
             ->assertDontSee('Identifikasi Warga')
             ->assertDontSee('Tugas Sembako')
@@ -153,7 +150,6 @@ final class RoleDashboardTest extends TestCase
             ->assertSee('Tugas hari ini')
             ->assertSee('Pencairan siap dibayar')
             ->assertSee('Belum ada pencairan siap dibayar')
-            ->assertSee('Pencairan yang disetujui dan siap dibayar akan muncul di sini.')
             ->assertSee('Navigasi bendahara')
             ->assertDontSee('Bayar pencairan')
             ->assertDontSee('Data Warga Lain');

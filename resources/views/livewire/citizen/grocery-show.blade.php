@@ -76,18 +76,22 @@
     @endif
 
     @if ($redemption->status->value === 'selesai')
-        <a href="{{ route('citizen.grocery.receipt', $redemption) }}"
-            class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">
-            <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            Buka Bukti Penyerahan
-        </a>
+        <div class="flex justify-end">
+            <a href="{{ route('citizen.grocery.receipt', $redemption) }}"
+                class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">
+                <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Buka Bukti Penyerahan
+            </a>
+        </div>
     @endif
 
     @if ($redemption->status->value === 'menunggu_verifikasi')
-        <button type="button" wire:click="cancel"
-            wire:confirm="Batalkan pengajuan sembako ini? Dana yang ditahan akan dilepas bila ada."
-            class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
-            Batalkan pengajuan
-        </button>
+        <div class="flex justify-end">
+            <button type="button" wire:click="cancel"
+                wire:confirm="Batalkan pengajuan sembako ini? Dana yang ditahan akan dilepas bila ada."
+                class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
+                Batalkan pengajuan
+            </button>
+        </div>
     @endif
 </section>

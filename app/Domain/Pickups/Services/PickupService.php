@@ -11,7 +11,7 @@ use App\Domain\Deposits\Data\DepositItemInput;
 use App\Domain\Deposits\Services\DepositService;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
-use App\Domain\Identity\Models\StaffProfile;
+use App\Domain\Identity\Models\StaffServiceArea;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Notifications\Data\NotificationPayload;
@@ -223,14 +223,15 @@ final readonly class PickupService
     /** @return list<string> */
     public function alternatives(ServiceArea $area, string $date, int $limit = 3, ?string $estimatedWeight = null): array
     {
-        return $this->findAlternatives($area, $this->businessDate($date), $limit, $estimatedWeight);
+        return $this->findAlternatives($area, CarbonImmutable::createFromFormat('!Y-m-d', $date, 'Asia/Jakarta'), $limit, $estimatedWeight);
     }
 
     /** @return list<string> */
     private function findAlternatives(ServiceArea $area, CarbonImmutable $start, int $limit = 3, ?string $estimatedWeight = null): array
     {
         $alternatives = [];
-        for ($offset = 1; $offset <= 14 && count($alternatives) < $limit; $offset++) {
+        $horizonDays = (int) config('app.pickup_booking_horizon_days', 30);
+        for ($offset = 0; $offset <= $horizonDays && count($alternatives) < $limit; $offset++) {
             $candidate = $start->addDays($offset);
             $capacity = PickupCapacity::query()->where('service_area_id', $area->id)->whereDate('service_date', $candidate->toDateString())->where('is_active', true)->first();
             if ($capacity === null) {
@@ -376,8 +377,7 @@ final readonly class PickupService
                         'attachable_id' => $locked->id,
                     ])->save();
                 }
-                $customer = $locked->customer()->firstOrFail();
-                $deposit = $this->deposits->createDraft($actor, $customer, 'penjemputan', $locked->address);
+                $deposit = $this->deposits->createPickupDraft($actor, $locked);
                 $deposit->forceFill(['pickup_request_id' => $locked->id])->save();
                 $deposit = $this->deposits->finalize($actor, $deposit, 'pickup-'.$locked->id.'-'.$idempotencyKey, array_map(static fn (DepositItemInput $item): array => ['waste_type_id' => $item->wasteTypeId, 'condition_id' => $item->conditionId, 'weight_kg' => $item->weightKg], $normalized));
                 $oldStatus = $locked->status;
@@ -688,15 +688,15 @@ final readonly class PickupService
 
     private function isStaffInArea(User $actor, PickupRequest $pickup): bool
     {
-        $profile = $actor->staffProfile;
-        if (! $profile instanceof StaffProfile || $profile->service_area_id !== $pickup->service_area_id) {
-            return false;
-        }
         $today = today()->toDateString();
 
-        return $profile->serviceArea?->is_active === true
-            && ($profile->active_from === null || $profile->active_from->toDateString() <= $today)
-            && ($profile->active_to === null || $profile->active_to->toDateString() >= $today);
+        return StaffServiceArea::query()
+            ->where('staff_service_areas.staff_profile_user_id', $actor->id)
+            ->where('staff_service_areas.service_area_id', $pickup->service_area_id)
+            ->where(static fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_from')->orWhereDate('staff_service_areas.active_from', '<=', $today))
+            ->where(static fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_to')->orWhereDate('staff_service_areas.active_to', '>=', $today))
+            ->whereHas('serviceArea', static fn (Builder $area): Builder => $area->where('service_areas.is_active', true))
+            ->exists();
     }
 
     /**
@@ -744,7 +744,8 @@ final readonly class PickupService
         } catch (Throwable) {
             $date = false;
         }
-        if (! $date instanceof CarbonImmutable || $date->format('Y-m-d') !== $value || $date->isBefore(today('Asia/Jakarta')) || $date->diffInDays(today('Asia/Jakarta')) > (int) config('app.pickup_booking_horizon_days', 30)) {
+        $today = CarbonImmutable::today('Asia/Jakarta');
+        if (! $date instanceof CarbonImmutable || $date->format('Y-m-d') !== $value || $date->isBefore($today) || $date->isAfter($today->addDays((int) config('app.pickup_booking_horizon_days', 30)))) {
             throw ValidationException::withMessages([$field => 'Tanggal layanan tidak tersedia: pilih hari ini hingga batas horizon pemesanan.']);
         }
 

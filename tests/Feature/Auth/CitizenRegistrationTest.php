@@ -10,6 +10,7 @@ use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
+use App\Domain\Identity\Models\Role;
 use App\Livewire\Auth\RegisterCitizenForm;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -52,6 +53,8 @@ final class CitizenRegistrationTest extends TestCase
         self::assertGuest();
         $this->assertDatabaseHas('customer_profiles', ['user_id' => $user->id, 'rt_id' => $rt->id, 'address' => 'Jalan Melati Nomor 10']);
         $this->assertDatabaseHas('terms_acceptance_histories', ['user_id' => $user->id, 'accepted_version' => 'v1.0', 'accepted_at' => now()]);
+        self::assertSame(['warga'], $user->roles()->pluck('roles.name')->all());
+        self::assertSame(1, Role::query()->where('name', 'warga')->count());
     }
 
     public function test_registration_validates_every_required_field_and_has_no_persistence_side_effect(): void

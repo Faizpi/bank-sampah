@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\In;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -45,7 +46,7 @@ final class DepositHistory extends Component
         abort_unless($actor instanceof User && $permissions->allows($actor, 'deposit.view'), 403);
     }
 
-    /** @return array<string, list<string|Rule>> */
+    /** @return array<string, list<string|In>> */
     protected function rules(): array
     {
         return [

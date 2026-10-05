@@ -18,7 +18,7 @@ Menyediakan layanan bank sampah yang mudah digunakan, transparan, inklusif, dan 
 - Warga sulit melihat saldo dan riwayat.
 - Penjemputan, pencairan, dan penukaran belum memiliki alur terdokumentasi.
 - Perubahan harga dan koreksi transaksi sulit ditelusuri.
-- Laporan dan audit tersedia dengan filter dan ekspor Excel.
+- Laporan operasional perlu tetap dapat ditelusuri tanpa menjanjikan kanal ekspor yang belum aktif.
 - Warga tanpa smartphone berisiko tertinggal dari pelayanan digital.
 
 ## Pengguna
@@ -41,11 +41,11 @@ Membutuhkan daftar pencairan yang telah disetujui, verifikasi penerima, pencatat
 
 ### Admin
 
-Mengelola pengguna, wilayah, harga, transaksi, saldo, penjemputan, pencairan, sembako, jadwal, target, laporan, dan audit.
+Mengelola pengguna, wilayah, harga, transaksi, saldo, penjemputan, pencairan, sembako, jadwal layanan, laporan, dan audit.
 
 ### Superadmin
 
-Mewarisi seluruh akses operasional admin, lalu mengelola konfigurasi teknis, role, permission, backup, dan pemeliharaan. Permission khusus untuk koreksi/penyesuaian saldo tetap diberikan secara eksplisit dan diaudit.
+Mewarisi akses operasional admin serta mengelola role dan permission. Administrasi teknis aktif hanya menampilkan Health baca-saja melalui `system.maintenance`. Permission khusus untuk koreksi atau penyesuaian saldo tetap diberikan secara eksplisit dan diaudit.
 
 ### Pemerintah desa
 
@@ -73,15 +73,15 @@ Membutuhkan laporan agregat untuk evaluasi partisipasi, pengumpulan sampah, dan 
 - Pencairan tunai.
 - Paket dan penukaran sembako sederhana tanpa stok terperinci.
 - Dashboard warga, tugas petugas hari ini, dan dashboard admin.
-- Notifikasi dan pengingat dasar dalam aplikasi.
+- Pengumuman dan informasi status pada halaman terkait.
 - Tombol WhatsApp manual dengan template pesan melalui `wa.me`.
 - Pelayanan berbantuan bagi warga tanpa smartphone.
-- Pengumuman, laporan dasar, ekspor, dan audit log.
+- Pengumuman, laporan dasar, dan audit log.
 
 ### Fitur Program dan Transparansi
 
-- Target pengumpulan desa.
-- Bank Sampah Keliling per RT/RW.
+- Data agregat pengumpulan untuk evaluasi internal.
+- Bank Sampah Keliling dengan jadwal pada wilayah layanan yang mengikuti hierarki desa, dusun, RW, dan RT.
 - Estimasi nilai sebelum setor.
 - QR verifikasi bukti transaksi.
 - Partisipasi RT/RW dan statistik publik desa.

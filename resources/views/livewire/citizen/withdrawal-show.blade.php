@@ -73,18 +73,22 @@
     </x-ui.panel>
 
     @if ($withdrawal->status->value === 'sudah_dibayar')
-        <a href="{{ route('citizen.withdrawal.receipt', $withdrawal) }}"
-            class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">
-            <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h9l3 3v17H6z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
-            Buka Bukti Pencairan
-        </a>
+        <div class="flex justify-end">
+            <a href="{{ route('citizen.withdrawal.receipt', $withdrawal) }}"
+                class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">
+                <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h9l3 3v17H6z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+                Buka Bukti Pencairan
+            </a>
+        </div>
     @endif
 
     @if ($withdrawal->status->value === 'menunggu_verifikasi')
-        <button type="button" wire:click="cancel"
-            wire:confirm="Batalkan pengajuan pencairan ini? Dana yang ditahan akan dilepas."
-            class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
-            Batalkan pengajuan
-        </button>
+        <div class="flex justify-end">
+            <button type="button" wire:click="cancel"
+                wire:confirm="Batalkan pengajuan pencairan ini? Dana yang ditahan akan dilepas."
+                class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
+                Batalkan pengajuan
+            </button>
+        </div>
     @endif
 </section>

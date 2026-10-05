@@ -66,7 +66,7 @@ final class Reconciliation extends Page
         $actor = auth()->user();
         $cash = trim($this->cashTotal) === '' ? null : (int) $this->cashTotal;
         $service->create($actor, CarbonImmutable::parse($this->businessDate, 'Asia/Jakarta'), $cash, $this->notes);
-        session()->flash('reconciliation-success', 'Snapshot rekonsiliasi dibuat. Lengkapi hitungan kas dan pastikan semua item sesuai sebelum diajukan.');
+        session()->flash('reconciliation-success', 'Catatan kondisi rekonsiliasi berhasil dibuat. Lengkapi hitungan kas dan pastikan semua item sesuai sebelum diajukan.');
     }
 
     public function saveCashCount(int $reconciliationId, FinancialReconciliationService $service): void

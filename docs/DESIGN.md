@@ -223,7 +223,7 @@ Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mo
 
 ### Shell warga
 
-- App header: nama halaman, notifikasi, konteks akun.
+- App header: nama halaman dan konteks akun. Jangan menjanjikan notification center atau push notification.
 - Konten utama saldo-first.
 - Bottom navigation maksimal lima: `Beranda`, `Setoran`, `Layanan`, `Riwayat`, `Akun`.
 - Fitur dalam `Layanan`: penjemputan, pencairan, sembako, estimasi, jadwal keliling.
@@ -246,7 +246,7 @@ Filament 5 dengan custom theme. Sidebar dikelompokkan:
 3. **Program:** target, layanan keliling, pengumuman, statistik publik/partisipasi.
 4. **Pengawasan:** laporan/ekspor Excel, rekonsiliasi, ledger/hold, dan audit log sesuai permission.
 5. **Keamanan & Akses:** bantuan kata sandi, sesi pengguna, peran, dan izin sesuai permission.
-6. **Administrasi sistem:** kontrol teknis yang hanya tersedia untuk superadmin sesuai permission.
+6. **Administrasi sistem:** Health baca-saja untuk superadmin dengan `system.maintenance`; tidak ada item teknis aktif lain.
 
 Sidebar menampilkan item sesuai permission. Tabel admin tidak dipaksakan ke layout kartu pada desktop; mobile memakai list/stack atau horizontal region yang diberi label dan fokus terkelola hanya bila tak terhindarkan.
 
@@ -309,7 +309,6 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 - Maksimal lima item; tinggi konten minimum 64 + safe area.
 - Ikon 22–24 px dan label 12–13 px selalu tampil.
 - Active memakai Forest Green, ikon+label+indikator bentuk; tidak hanya warna.
-- Badge notifikasi berupa angka/teks, bukan titik tanpa label.
 
 ### App header
 
@@ -320,7 +319,7 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 ### Bottom sheet dan dialog
 
 - Mobile: sheet dari bawah untuk pemilihan/konfirmasi ringan; desktop: dialog pusat.
-- Trap focus, `aria-modal`, judul/deskripsi, close jelas, Escape, restore focus.
+- Trap focus, `aria-modal`, judul atau deskripsi, tombol tutup yang jelas, Escape, dan pengembalian fokus ke pemicu.
 - Handle visual bukan satu-satunya cara menutup.
 - Aksi utama/destruktif dipisahkan; tidak auto-close saat error.
 
@@ -463,7 +462,7 @@ Untuk setiap komponen/halaman, review wajib memastikan:
 
 - [ ] Token warna/typography/spacing/radius digunakan.
 - [ ] Default, hover, active, focus, disabled, loading tersedia bila relevan.
-- [ ] Empty, error, success tersedia untuk data/asynchronous flow.
+- [ ] Empty, error, dan success tersedia untuk data atau alur request yang relevan.
 - [ ] Target sentuh dan body text memenuhi kontrak aktor.
 - [ ] Status bukan warna saja.
 - [ ] Ikon Lucide SVG dengan label aksesibel.

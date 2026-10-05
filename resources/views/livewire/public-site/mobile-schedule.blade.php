@@ -83,7 +83,7 @@
                                     <dd class="font-semibold text-text-primary">{{ $service->capacity - $service->served_count }} tersisa</dd>
                                 </div>
                                 <div class="grid gap-1">
-                                    <dt class="text-text-secondary">Cakupan wilayah</dt>
+                                    <dt class="text-text-secondary">Wilayah layanan</dt>
                                     <dd class="font-semibold text-text-primary">{{ $service->rt?->name ?? $service->rw?->name ?? 'Wilayah layanan' }}</dd>
                                 </div>
                                 <div class="grid gap-1">

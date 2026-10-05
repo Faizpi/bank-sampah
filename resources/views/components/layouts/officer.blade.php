@@ -88,9 +88,9 @@
         @endisset
         <x-slot:profile>
             @isset($profile){{ $profile }}@endisset
-            <form id="officer-logout-form" method="POST" action="{{ route('logout') }}">
+            <form id="officer-logout-form" method="POST" action="{{ route('logout') }}" x-data>
                 @csrf
-                <button type="submit"
+                <button type="button"
                     aria-label="Keluar dari akun"
                     x-on:click.prevent="$dispatch('open-dialog', { id: 'officer-logout-confirmation', invoker: $el })"
                     class="inline-flex min-h-touch min-w-touch items-center justify-center rounded-xl text-text-secondary transition hover:bg-danger-bg hover:text-terracotta">

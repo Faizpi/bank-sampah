@@ -37,6 +37,8 @@ final class CustomerResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?string $navigationParentItem = 'Direktori';
+
     protected static ?int $navigationSort = 10;
 
     protected static ?string $navigationLabel = 'Nasabah';
@@ -46,11 +48,6 @@ final class CustomerResource extends Resource
     protected static ?string $pluralModelLabel = 'nasabah';
 
     protected static ?string $recordTitleAttribute = 'name';
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return false;
-    }
 
     public static function canViewAny(): bool
     {
@@ -100,9 +97,18 @@ final class CustomerResource extends Resource
                 ViewAction::make()->label('Lihat')->authorize('manageView')->schema([
                     TextInput::make('name')->label('Nama'),
                     TextInput::make('status')->label('Status'),
-                    TextInput::make('customerProfile.customer_number')->label('Nomor nasabah'),
-                    TextInput::make('customerProfile.address')->label('Alamat'),
-                ]),
+                    TextInput::make('customer_number')->label('Nomor nasabah')->placeholder('Belum terbit'),
+                    TextInput::make('service_region')->label('Wilayah layanan')->placeholder('Belum diatur'),
+                ])->fillForm(function (User $record): array {
+                    $record->loadMissing('customerProfile.rt.rw.dusun');
+
+                    return [
+                        'name' => $record->name,
+                        'status' => $record->status->value,
+                        'customer_number' => $record->customerProfile?->customer_number,
+                        'service_region' => $record->customerProfile?->serviceRegion(),
+                    ];
+                }),
                 EditAction::make()->label('Ubah')->authorize('updateCustomer')->using(fn (User $record, array $data): User => app(ManageUsers::class)->updateCustomer(self::actor(), $record, [
                     'name' => $data['name'],
                     'phone' => $data['phone'],
@@ -135,7 +141,7 @@ final class CustomerResource extends Resource
             return User::query()->whereKey([]);
         }
 
-        return app(VisibleUsers::class)->queryFor($actor, ...UserStatus::cases())->whereHas('customerProfile')->with(['customerProfile.rt']);
+        return app(VisibleUsers::class)->queryFor($actor, ...UserStatus::cases())->whereHas('customerProfile')->with(['customerProfile.rt.rw.dusun']);
     }
 
     private static function actor(): User

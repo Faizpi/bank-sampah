@@ -29,6 +29,8 @@ final class WasteCategoryResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
 
+    protected static ?string $navigationParentItem = 'Katalog Sampah';
+
     protected static ?int $navigationSort = 100;
 
     protected static ?string $navigationLabel = 'Kategori Sampah';
@@ -38,11 +40,6 @@ final class WasteCategoryResource extends Resource
     protected static ?string $pluralModelLabel = 'kategori sampah';
 
     protected static ?string $recordTitleAttribute = 'name';
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return false;
-    }
 
     public static function form(Schema $schema): Schema
     {

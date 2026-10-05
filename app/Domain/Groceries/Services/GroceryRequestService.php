@@ -6,10 +6,11 @@ namespace App\Domain\Groceries\Services;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
-use App\Domain\Identity\Queries\VisibleUsers;
+use App\Domain\Groceries\Support\GroceryRedemptionScope;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Ledger\Services\LedgerService;
 use App\Domain\Notifications\Data\NotificationPayload;
@@ -30,7 +31,7 @@ final readonly class GroceryRequestService
         private PermissionChecker $permissions,
         private LedgerService $ledger,
         private AuditLogger $auditLogger,
-        private VisibleUsers $visibleUsers,
+        private GroceryRedemptionScope $scope,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -41,10 +42,11 @@ final readonly class GroceryRequestService
         $this->assertCustomerIsActor($actor, $data['customer_id'] ?? null);
         $this->rejectRemovedSource($data['source_type'] ?? null);
         $customer = $this->customer($actor->id);
+        $area = $this->areaForRequest($customer, $data['service_area_id'] ?? null);
         $packageId = $this->packageId($data['package_id'] ?? null);
-        $payloadHash = $this->payloadHash(['customer_id' => $customer->id, 'package_id' => $packageId]);
+        $payloadHash = $this->payloadHash(['customer_id' => $customer->id, 'rt_id' => $customer->customerProfile?->rt_id, 'service_area_id' => $area->id, 'package_id' => $packageId]);
 
-        return DB::transaction(function () use ($actor, $customer, $packageId, $idempotencyKey, $payloadHash): GroceryRedemption {
+        return DB::transaction(function () use ($actor, $customer, $area, $packageId, $idempotencyKey, $payloadHash): GroceryRedemption {
             $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
             if ($existing !== null) {
                 return GroceryRedemption::query()->findOrFail($existing->result_id);
@@ -60,6 +62,8 @@ final readonly class GroceryRequestService
             $redemption = GroceryRedemption::query()->create([
                 'request_number' => $this->number('GRC'),
                 'customer_id' => $customer->id,
+                'rt_id' => $customer->customerProfile?->rt_id,
+                'service_area_id' => $area->id,
                 'requested_by_id' => $actor->id,
                 'grocery_package_id' => $package->id,
                 'value_snapshot' => $package->value,
@@ -77,6 +81,14 @@ final readonly class GroceryRequestService
         });
     }
 
+    /** @return Builder<ServiceArea> */
+    public function availableAreasFor(User $actor): Builder
+    {
+        $rtId = User::query()->with('customerProfile')->find($actor->getKey())?->customerProfile?->rt_id;
+
+        return ServiceArea::query()->where('is_active', true)->whereHas('rts', static fn ($rts) => $rts->whereKey($rtId ?? 0));
+    }
+
     /** @return Builder<GroceryRedemption> */
     public function visibleFor(User $actor): Builder
     {
@@ -88,8 +100,8 @@ final readonly class GroceryRequestService
 
         return $query->where(function (Builder $scope) use ($actor): void {
             $scope->where('customer_id', $actor->id)->orWhere('requested_by_id', $actor->id)->orWhere('handover_actor_id', $actor->id);
-            if ($this->permissions->allows($actor, 'grocery.view') && $this->permissions->allows($actor, 'user.view.area')) {
-                $scope->orWhereIn('customer_id', $this->visibleUsers->queryFor($actor)->select('users.id'));
+            if ($this->permissions->allows($actor, 'grocery.view')) {
+                $scope->orWhere(fn (Builder $areaScope): Builder => $this->scope->applyTo($areaScope, $actor));
             }
         });
     }
@@ -100,7 +112,7 @@ final readonly class GroceryRequestService
             return $this->permissions->allows($actor, 'grocery.view') || $this->permissions->allows($actor, 'grocery.request') || $this->permissions->allows($actor, 'grocery.handover');
         }
 
-        return $this->permissions->allows($actor, 'grocery.view') && ($this->permissions->allows($actor, 'user.view.all') || $this->visibleUsers->queryFor($actor)->whereKey($redemption->customer_id)->exists());
+        return $this->permissions->allows($actor, 'grocery.view') && $this->scope->canOperate($actor, $redemption);
     }
 
     private function customer(mixed $id): User
@@ -114,6 +126,34 @@ final readonly class GroceryRequestService
         }
 
         return $customer;
+    }
+
+    private function areaForRequest(User $customer, mixed $areaId): ServiceArea
+    {
+        $rtId = $customer->customerProfile?->rt_id;
+        if ($rtId === null) {
+            throw ValidationException::withMessages(['customer_id' => 'Nasabah harus memiliki RT aktif.']);
+        }
+
+        $areas = ServiceArea::query()->where('is_active', true)->whereHas('rts', static fn ($rts) => $rts->whereKey($rtId));
+        if ($areaId === null || $areaId === '') {
+            $matches = $areas->orderBy('id')->get();
+            if ($matches->count() !== 1) {
+                throw ValidationException::withMessages(['service_area_id' => 'Pilih area layanan aktif yang sesuai dengan RT nasabah.']);
+            }
+
+            return $matches->sole();
+        }
+        if ((! is_int($areaId) && (! is_string($areaId) || ! ctype_digit($areaId))) || (int) $areaId < 1) {
+            throw ValidationException::withMessages(['service_area_id' => 'Area layanan tidak valid.']);
+        }
+
+        $area = $areas->whereKey((int) $areaId)->first();
+        if (! $area instanceof ServiceArea) {
+            throw ValidationException::withMessages(['service_area_id' => 'Area layanan harus aktif dan mencakup RT nasabah.']);
+        }
+
+        return $area;
     }
 
     private function assertCustomerIsActor(User $actor, mixed $customerId): void

@@ -8,7 +8,7 @@ use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryRedemption;
-use App\Domain\Identity\Queries\VisibleUsers;
+use App\Domain\Groceries\Support\GroceryRedemptionScope;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Ledger\Services\LedgerService;
 use App\Domain\Notifications\Data\NotificationPayload;
@@ -34,7 +34,7 @@ final readonly class GroceryHandoverService
         private LedgerService $ledger,
         private AuditLogger $auditLogger,
         private StorePrivateMedia $mediaStore,
-        private VisibleUsers $visibleUsers,
+        private GroceryRedemptionScope $scope,
     ) {}
 
     public function handle(User $actor, GroceryRedemption $redemption, string $recipientVerification, string $recipientReference, UploadedFile $proof, string $idempotencyKey): GroceryRedemption
@@ -128,7 +128,7 @@ final readonly class GroceryHandoverService
     {
         $this->authorize($actor);
 
-        return GroceryRedemption::query()->with(['customer', 'package', 'preparedBy'])->where('status', GroceryStatus::ReadyForPickup)->whereIn('customer_id', $this->visibleUsers->queryFor($actor)->select('users.id'));
+        return $this->scope->applyTo(GroceryRedemption::query()->with(['customer', 'package', 'preparedBy'])->where('status', GroceryStatus::ReadyForPickup), $actor);
     }
 
     public function canDownloadProof(User $actor, Media $media): bool
@@ -141,7 +141,7 @@ final readonly class GroceryHandoverService
             return false;
         }
 
-        return ($redemption->customer_id === $actor->id || $redemption->handover_actor_id === $actor->id || ($this->permissions->allows($actor, 'grocery.view') && ($this->permissions->allows($actor, 'user.view.all') || $this->visibleUsers->queryFor($actor)->whereKey($redemption->customer_id)->exists()))) && ($this->permissions->allows($actor, 'grocery.view') || $this->permissions->allows($actor, 'grocery.handover'));
+        return ($redemption->customer_id === $actor->id || $redemption->handover_actor_id === $actor->id || ($this->permissions->allows($actor, 'grocery.view') && $this->scope->canOperate($actor, $redemption))) && ($this->permissions->allows($actor, 'grocery.view') || $this->permissions->allows($actor, 'grocery.handover'));
     }
 
     private function authorize(User $actor): void
@@ -153,8 +153,8 @@ final readonly class GroceryHandoverService
 
     private function assertScope(User $actor, GroceryRedemption $redemption): void
     {
-        if (! ($this->permissions->allows($actor, 'user.view.all') || $this->visibleUsers->queryFor($actor)->whereKey($redemption->customer_id)->exists())) {
-            throw new AuthorizationException('Penukaran berada di luar scope handover Anda.');
+        if (! $this->scope->canOperate($actor, $redemption)) {
+            throw new AuthorizationException('Penukaran berada di luar scope area snapshot Anda.');
         }
     }
 

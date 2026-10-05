@@ -64,7 +64,7 @@
             @endforelse
         </div>
         @if ($deposits->hasPages())
-            <div class="mt-4">{{ $deposits->links() }}</div>
+            <div class="mt-4">{{ $deposits->links('components.ui.pagination') }}</div>
         @endif
     </x-ui.panel>
 
@@ -96,7 +96,7 @@
             @endforelse
         </div>
         @if ($corrections->hasPages())
-            <div class="mt-4">{{ $corrections->links() }}</div>
+            <div class="mt-4">{{ $corrections->links('components.ui.pagination') }}</div>
         @endif
     </x-ui.panel>
 </section>

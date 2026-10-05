@@ -34,7 +34,7 @@
                     <p class="mt-1 rounded-xl border border-border bg-disabled-bg px-4 py-3 text-body text-text-secondary">Alamat dikelola oleh petugas.</p>
                 </div>
             @endif
-            <div class="sm:col-span-2">
+            <div class="flex justify-end sm:col-span-2">
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="updateProfile">
                     <span wire:loading.remove wire:target="updateProfile">Simpan Profil</span>
                     <span wire:loading wire:target="updateProfile">Menyimpan...</span>
@@ -77,10 +77,12 @@
                 :error="$errors->first('password')" />
             <x-ui.input name="password_confirmation" label="Konfirmasi kata sandi baru" type="password"
                 wire:model="password_confirmation" autocomplete="new-password" required />
-            <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="changePassword">
-                <span wire:loading.remove wire:target="changePassword">Simpan Kata Sandi Baru</span>
-                <span wire:loading wire:target="changePassword">Menyimpan...</span>
-            </x-ui.button>
+            <div class="flex justify-end">
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="changePassword">
+                    <span wire:loading.remove wire:target="changePassword">Simpan Kata Sandi Baru</span>
+                    <span wire:loading wire:target="changePassword">Menyimpan...</span>
+                </x-ui.button>
+            </div>
         </form>
     </x-ui.panel>
 </section>

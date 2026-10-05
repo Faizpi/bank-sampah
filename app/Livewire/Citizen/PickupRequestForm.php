@@ -160,7 +160,7 @@ final class PickupRequestForm extends Component
         } catch (PickupCapacityUnavailable $exception) {
             $this->refreshAvailableDates($service, false);
             $alternatives = array_values(array_intersect($exception->alternatives, $this->availableDates));
-            $message = 'Tanggal pilihan baru saja tidak tersedia. Pilih tanggal lain yang tersedia.';
+            $message = 'Tanggal yang Anda pilih baru saja tidak tersedia. Silakan pilih tanggal lain.';
             if ($alternatives !== []) {
                 $message .= ' Alternatif: '.implode(', ', array_map(static fn (string $date): string => CarbonImmutable::parse($date, 'Asia/Jakarta')->locale('id')->translatedFormat('d F Y'), $alternatives)).'.';
             }
@@ -211,7 +211,7 @@ final class PickupRequestForm extends Component
         $actor = auth()->user();
         $area = $service->activeAreaFor($actor, $this->serviceAreaId);
         $estimatedWeight = collect($this->items)->sum(static fn (array $item): float => (float) $item['estimated_weight_kg']);
-        $this->availableDates = $area === null ? [] : $service->alternatives($area, today()->toDateString(), 14, $estimatedWeight > 0 ? number_format($estimatedWeight, 3, '.', '') : null);
+        $this->availableDates = $area === null ? [] : $service->alternatives($area, today('Asia/Jakarta')->toDateString(), 14, $estimatedWeight > 0 ? number_format($estimatedWeight, 3, '.', '') : null);
 
         if ($this->serviceAreaId !== '' && $area === null) {
             $this->addError('serviceAreaId', 'Alamat berada di luar area pelayanan aktif.');

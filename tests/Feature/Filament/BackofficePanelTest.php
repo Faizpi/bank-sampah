@@ -12,6 +12,7 @@ use App\Domain\WasteMaster\Models\WastePrice;
 use App\Filament\Pages\OperationsDashboard;
 use App\Filament\Pages\Reconciliation;
 use App\Filament\Pages\Reports as ReportsPage;
+use App\Filament\Pages\StatisticsDashboard;
 use App\Filament\Pages\TechnicalAuditRetentionPage;
 use App\Filament\Pages\TechnicalBackupsPage;
 use App\Filament\Pages\TechnicalHealthPage;
@@ -88,18 +89,37 @@ final class BackofficePanelTest extends TestCase
         );
 
         $this->actingAs($superadmin->fresh())->get('/backoffice/login')->assertRedirect('/backoffice');
-        self::assertContains(
-            'Kontrol teknis',
-            $this->navigationLabelsForGroup($panel, 'Administrasi sistem'),
-        );
         self::assertSame(
-            ['Kontrol teknis', 'Health', 'Pengaturan', 'Pemeliharaan', 'Cadangan', 'Retensi audit', 'Retensi foto'],
+            ['Kondisi sistem'],
             $this->navigationLabelsForGroup($panel, 'Administrasi sistem', includeChildren: true),
         );
         self::assertContains(
             'Rekonsiliasi',
             $this->navigationLabelsForGroup($panel, 'Pengawasan'),
         );
+    }
+
+    public function test_statistics_dashboard_is_discovered_permission_gated_and_renders_for_authorized_users(): void
+    {
+        self::assertContains(StatisticsDashboard::class, array_values(Filament::getPanel('backoffice')->getPages()));
+
+        $viewer = User::factory()->create();
+        $statisticsViewer = User::factory()->create();
+        $this->grant($viewer, 'backoffice-viewer', 'backoffice.access');
+        $this->grant($statisticsViewer, 'statistics-viewer', 'backoffice.access', 'statistics.internal.view');
+
+        $this->actingAs($viewer->fresh());
+        self::assertFalse(StatisticsDashboard::canAccess());
+        $this->get('/backoffice/statistics-dashboard')->assertForbidden();
+
+        $this->actingAs($statisticsViewer->fresh());
+        self::assertTrue(StatisticsDashboard::canAccess());
+        $response = $this->get('/backoffice/statistics-dashboard');
+
+        $response
+            ->assertOk()
+            ->assertSee('Statistik internal');
+        self::assertSame(1, substr_count($response->getContent(), '<h1'));
     }
 
     public function test_work_queue_links_pending_withdrawals_to_the_existing_status_filter(): void
@@ -120,15 +140,17 @@ final class BackofficePanelTest extends TestCase
         );
     }
 
-    public function test_technical_dashboard_is_discovered_and_permission_gated(): void
+    public function test_only_technical_health_is_discovered_and_permission_gated(): void
     {
-        self::assertContains(OperationsDashboard::class, array_values(Filament::getPanel('backoffice')->getPages()));
-        self::assertContains(TechnicalHealthPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
-        self::assertContains(TechnicalSettingsPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
-        self::assertContains(TechnicalMaintenancePage::class, array_values(Filament::getPanel('backoffice')->getPages()));
-        self::assertContains(TechnicalBackupsPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
-        self::assertContains(TechnicalAuditRetentionPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
-        self::assertContains(TechnicalMediaRetentionPage::class, array_values(Filament::getPanel('backoffice')->getPages()));
+        $pages = array_values(Filament::getPanel('backoffice')->getPages());
+
+        self::assertContains(TechnicalHealthPage::class, $pages);
+        self::assertNotContains(OperationsDashboard::class, $pages);
+        self::assertNotContains(TechnicalSettingsPage::class, $pages);
+        self::assertNotContains(TechnicalMaintenancePage::class, $pages);
+        self::assertNotContains(TechnicalBackupsPage::class, $pages);
+        self::assertNotContains(TechnicalAuditRetentionPage::class, $pages);
+        self::assertNotContains(TechnicalMediaRetentionPage::class, $pages);
 
         $technical = User::factory()->create();
         $viewer = User::factory()->create();
@@ -210,12 +232,18 @@ final class BackofficePanelTest extends TestCase
 
         $this->actingAs($superadmin->fresh());
         $this->get('/backoffice/reconciliation')->assertOk()->assertSee('Rekonsiliasi saldo harian');
-        $this->get('/backoffice/technical-health-page')->assertOk()->assertSee('Health sistem');
-        $this->get('/backoffice/technical-settings-page')->assertOk()->assertSee('Pengaturan teknis');
-        $this->get('/backoffice/technical-maintenance-page')->assertOk()->assertSee('Pemeliharaan aplikasi');
-        $this->get('/backoffice/technical-backups-page')->assertOk()->assertSee('Cadangan dan pemulihan');
-        $this->get('/backoffice/technical-audit-retention-page')->assertOk()->assertSee('Retensi audit');
-        $this->get('/backoffice/technical-media-retention-page')->assertOk()->assertSee('Pembersihan foto penjemputan');
+        $this->get('/backoffice/technical-health-page')->assertOk()->assertSee('Kondisi sistem');
+
+        foreach ([
+            '/backoffice/operations-dashboard',
+            '/backoffice/technical-settings-page',
+            '/backoffice/technical-maintenance-page',
+            '/backoffice/technical-backups-page',
+            '/backoffice/technical-audit-retention-page',
+            '/backoffice/technical-media-retention-page',
+        ] as $uri) {
+            $this->get($uri)->assertNotFound();
+        }
     }
 
     public function test_backoffice_hubs_use_the_shared_light_intro_surface(): void
@@ -232,7 +260,6 @@ final class BackofficePanelTest extends TestCase
             '/backoffice/waste-catalog',
             '/backoffice/reports',
             '/backoffice/work-queue-dashboard',
-            '/backoffice/operations-dashboard',
             '/backoffice/technical-health-page',
         ] as $uri) {
             $this->get($uri)
@@ -287,7 +314,6 @@ final class BackofficePanelTest extends TestCase
             ->assertOk()
             ->assertSee('Verifikasi warga')
             ->assertSee('data-disclosure-chevron')
-            ->assertSee('Panduan pemeriksaan yang aman')
             ->assertDontSee('Pickup hari ini')
             ->assertDontSee('Pencairan menunggu keputusan')
             ->assertDontSee('Setoran perlu ditinjau');
@@ -380,7 +406,7 @@ final class BackofficePanelTest extends TestCase
             $this->navigationLabelsForGroup($panel, 'Keamanan & Akses'),
         );
         self::assertSame(
-            ['Direktori', 'Verifikasi Warga', 'Wilayah', 'Dusun', 'RW', 'RT', 'Katalog Sampah', 'Jenis Sampah', 'Kondisi Sampah', 'Harga Sampah', 'Satuan Sampah', 'Paket Sembako'],
+            ['Direktori', 'Nasabah', 'Pengguna', 'Verifikasi Warga', 'Wilayah', 'Area Pelayanan', 'Dusun', 'RW', 'RT', 'Katalog Sampah', 'Jenis Sampah', 'Kategori Sampah', 'Kondisi Sampah', 'Harga Sampah', 'Satuan Sampah', 'Paket Sembako'],
             $this->navigationLabelsForGroup($panel, 'Data Master', includeChildren: true),
         );
         self::assertSame([], $this->navigationLabelsForGroup($panel, 'Administrasi sistem'));
@@ -436,10 +462,31 @@ final class BackofficePanelTest extends TestCase
 
         self::assertTrue($regionalManager->fresh()->canAccessPanel($panel));
         $this->actingAs($regionalManager->fresh());
-        self::assertSame(['Dusun', 'RT', 'RW', 'Wilayah'], $this->dataMasterNavigationLabels($panel));
+        self::assertSame(['Area Pelayanan', 'Dusun', 'RT', 'RW', 'Wilayah'], $this->dataMasterNavigationLabels($panel));
 
         self::assertTrue($panelUserWithoutRegionalPermission->fresh()->canAccessPanel($panel));
         $this->actingAs($panelUserWithoutRegionalPermission->fresh());
+        self::assertSame([], $this->dataMasterNavigationLabels($panel));
+    }
+
+    public function test_identity_resources_remain_visible_only_to_users_with_existing_permissions(): void
+    {
+        $customerManager = User::factory()->create();
+        $userViewer = User::factory()->create();
+        $panelUserWithoutIdentityPermission = User::factory()->create();
+        $this->grant($customerManager, 'customer-manager', 'backoffice.access', 'customer.view', 'customer.update');
+        $this->grant($userViewer, 'user-viewer', 'backoffice.access', 'user.view');
+        $this->grant($panelUserWithoutIdentityPermission, 'identity-unprivileged', 'backoffice.access');
+
+        $panel = Filament::getPanel('backoffice');
+
+        $this->actingAs($customerManager->fresh());
+        self::assertSame(['Direktori', 'Nasabah'], $this->dataMasterNavigationLabels($panel));
+
+        $this->actingAs($userViewer->fresh());
+        self::assertSame(['Direktori', 'Pengguna', 'Verifikasi Warga'], $this->dataMasterNavigationLabels($panel));
+
+        $this->actingAs($panelUserWithoutIdentityPermission->fresh());
         self::assertSame([], $this->dataMasterNavigationLabels($panel));
     }
 
@@ -453,11 +500,11 @@ final class BackofficePanelTest extends TestCase
         $panel = Filament::getPanel('backoffice');
 
         $this->actingAs($viewer->fresh());
-        self::assertSame(['Jenis Sampah', 'Katalog Sampah', 'Kondisi Sampah', 'Satuan Sampah'], $this->dataMasterNavigationLabels($panel));
+        self::assertSame(['Jenis Sampah', 'Katalog Sampah', 'Kategori Sampah', 'Kondisi Sampah', 'Satuan Sampah'], $this->dataMasterNavigationLabels($panel));
         self::assertFalse($viewer->fresh()->can('create', WasteCategory::class));
 
         $this->actingAs($manager->fresh());
-        self::assertSame(['Jenis Sampah', 'Katalog Sampah', 'Kondisi Sampah', 'Satuan Sampah'], $this->dataMasterNavigationLabels($panel));
+        self::assertSame(['Jenis Sampah', 'Katalog Sampah', 'Kategori Sampah', 'Kondisi Sampah', 'Satuan Sampah'], $this->dataMasterNavigationLabels($panel));
         self::assertTrue($manager->fresh()->can('create', WasteCategory::class));
     }
 

@@ -6,6 +6,7 @@ namespace App\Domain\Identity\Actions;
 
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\CustomersRegions\Models\ServiceArea;
+use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
 use App\Domain\Identity\Queries\VisibleUsers;
@@ -24,14 +25,14 @@ final readonly class ManageStaffProfile
         private AuditLogger $auditLogger,
     ) {}
 
-    /** @param array{service_area_id: int|string, active_from?: string|null, active_to?: string|null} $data */
+    /** @param array{service_areas?: list<array{service_area_id: int|string, active_from?: string|null, active_to?: string|null}>, service_area_id?: int|string, active_from?: string|null, active_to?: string|null} $data */
     public function save(User $actor, User $subject, array $data): User
     {
         Gate::forUser($actor)->authorize('manageUpdate', $subject);
-        $attributes = $this->profileAttributes($data);
+        $assignments = $this->assignmentAttributes($data);
 
-        return DB::transaction(function () use ($actor, $subject, $attributes): User {
-            $locked = $this->visibleUsers->queryFor($actor, ...\App\Domain\Identity\Enums\UserStatus::cases())
+        return DB::transaction(function () use ($actor, $subject, $assignments): User {
+            $locked = $this->visibleUsers->queryFor($actor, ...UserStatus::cases())
                 ->whereKey($subject->getKey())
                 ->with('roles')
                 ->lockForUpdate()
@@ -40,57 +41,76 @@ final readonly class ManageStaffProfile
             if (! $locked instanceof User) {
                 throw new AuthorizationException('Pengguna berada di luar scope Anda.');
             }
-
             if (! $locked->roles->contains(static fn (Role $role): bool => in_array($role->name, ['petugas', 'bendahara'], true))) {
                 throw ValidationException::withMessages(['role' => 'Profil petugas hanya tersedia untuk pengguna dengan role petugas atau bendahara.']);
             }
 
             $profile = $locked->staffProfile()->lockForUpdate()->first();
-            $old = $profile instanceof StaffProfile
-                ? [
-                    'service_area_id' => $profile->service_area_id,
-                    'active_from' => $profile->active_from?->toDateString(),
-                    'active_to' => $profile->active_to?->toDateString(),
-                ]
-                : [];
-
             $profile ??= new StaffProfile(['user_id' => $locked->id, 'staff_number' => $this->staffNumber($locked)]);
-            $profile->forceFill($attributes)->save();
+            $profile->save();
+            $old = $profile->serviceAreas()->lockForUpdate()->get()->map(fn ($assignment): array => [
+                'service_area_id' => $assignment->service_area_id,
+                'active_from' => $assignment->active_from?->toDateString(),
+                'active_to' => $assignment->active_to?->toDateString(),
+            ])->all();
 
-            $this->auditLogger->record(
-                $actor,
-                'identity.staff_profile.'.($old === [] ? 'created' : 'updated'),
-                $locked,
-                $old,
-                ['staff_number' => $profile->staff_number, ...$attributes],
-                $this->correlationId(),
-            );
+            $profile->serviceAreas()->delete();
+            $profile->serviceAreas()->createMany($assignments);
+            $profile->forceFill([
+                'service_area_id' => $assignments[0]['service_area_id'],
+                'active_from' => $assignments[0]['active_from'],
+                'active_to' => $assignments[0]['active_to'],
+            ])->save();
+            $this->auditLogger->record($actor, 'identity.staff_profile.'.($old === [] ? 'created' : 'updated'), $locked, ['assignments' => $old], ['staff_number' => $profile->staff_number, 'assignments' => $assignments], $this->correlationId());
 
-            return $locked->fresh(['staffProfile.serviceArea', 'customerProfile', 'roles']);
+            return $locked->fresh(['staffProfile.serviceAreas.serviceArea', 'customerProfile', 'roles']);
         });
     }
 
     /** @param array<string, mixed> $data
-     *  @return array{service_area_id: int, active_from: string|null, active_to: string|null}
+     * @return list<array{service_area_id: int, active_from: string|null, active_to: string|null}>
      */
-    private function profileAttributes(array $data): array
+    private function assignmentAttributes(array $data): array
     {
-        $serviceAreaId = (int) ($data['service_area_id'] ?? 0);
-        if ($serviceAreaId < 1 || ! ServiceArea::query()->whereKey($serviceAreaId)->where('is_active', true)->exists()) {
-            throw ValidationException::withMessages(['service_area_id' => 'Area pelayanan harus aktif.']);
+        $rows = $data['service_areas'] ?? null;
+        $legacyPayload = ! is_array($rows);
+        if ($legacyPayload) {
+            $rows = isset($data['service_area_id']) ? [[
+                'service_area_id' => $data['service_area_id'],
+                'active_from' => $data['active_from'] ?? null,
+                'active_to' => $data['active_to'] ?? null,
+            ]] : [];
+        }
+        if ($rows === []) {
+            throw ValidationException::withMessages(['service_areas' => 'Minimal satu area pelayanan wajib ditetapkan.']);
         }
 
-        $activeFrom = $this->date($data['active_from'] ?? null, 'active_from');
-        $activeTo = $this->date($data['active_to'] ?? null, 'active_to');
-        if ($activeFrom !== null && $activeTo !== null && $activeTo->lessThan($activeFrom)) {
-            throw ValidationException::withMessages(['active_to' => 'Tanggal akhir aktif tidak boleh lebih awal dari tanggal mulai aktif.']);
+        $assignments = [];
+        $seen = [];
+        foreach ($rows as $index => $row) {
+            if (! is_array($row)) {
+                throw ValidationException::withMessages(["service_areas.{$index}" => 'Penugasan area tidak valid.']);
+            }
+            $areaId = (int) ($row['service_area_id'] ?? 0);
+            $areaField = $legacyPayload ? 'service_area_id' : "service_areas.{$index}.service_area_id";
+            $fromField = $legacyPayload ? 'active_from' : "service_areas.{$index}.active_from";
+            $toField = $legacyPayload ? 'active_to' : "service_areas.{$index}.active_to";
+            if ($areaId < 1 || ! ServiceArea::query()->whereKey($areaId)->where('is_active', true)->exists()) {
+                throw ValidationException::withMessages([$areaField => 'Area pelayanan harus aktif.']);
+            }
+            if (isset($seen[$areaId])) {
+                throw ValidationException::withMessages([$areaField => 'Area pelayanan tidak boleh diulang.']);
+            }
+            $activeFrom = $this->date($row['active_from'] ?? null, $fromField);
+            $activeTo = $this->date($row['active_to'] ?? null, $toField);
+            if ($activeFrom !== null && $activeTo !== null && $activeTo->lessThan($activeFrom)) {
+                throw ValidationException::withMessages([$toField => 'Tanggal akhir aktif tidak boleh lebih awal dari tanggal mulai aktif.']);
+            }
+            $seen[$areaId] = true;
+            $assignments[] = ['service_area_id' => $areaId, 'active_from' => $activeFrom?->toDateString(), 'active_to' => $activeTo?->toDateString()];
         }
 
-        return [
-            'service_area_id' => $serviceAreaId,
-            'active_from' => $activeFrom?->toDateString(),
-            'active_to' => $activeTo?->toDateString(),
-        ];
+        return $assignments;
     }
 
     private function date(mixed $value, string $field): ?CarbonImmutable
@@ -98,7 +118,6 @@ final readonly class ManageStaffProfile
         if ($value === null || $value === '') {
             return null;
         }
-
         try {
             return CarbonImmutable::parse((string) $value)->startOfDay();
         } catch (\Throwable) {

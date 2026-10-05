@@ -7,6 +7,7 @@ namespace App\Domain\Withdrawals\Services;
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\CustomersRegions\Actions\AssistedCustomerService as AssistedCustomerServiceAction;
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Ledger\Services\LedgerService;
@@ -41,6 +42,7 @@ final readonly class WithdrawalRequestService
         $this->authorize($actor, 'withdrawal.request');
         $this->validateIdempotencyKey($idempotencyKey);
         $customer = $this->customerForRequest($data['customer_id'] ?? $actor->id);
+        $area = $this->areaForRequest($customer, $data['service_area_id'] ?? null);
         if ($customer->id !== $actor->id && ! $this->visibleUsers->canView($actor, $customer)) {
             throw new AuthorizationException('Nasabah berada di luar scope tugas Anda.');
         }
@@ -50,13 +52,15 @@ final readonly class WithdrawalRequestService
         $assistedServiceId = $this->assistedServiceId($data['assisted_service_id'] ?? null);
         $payloadHash = $this->payloadHash([
             'customer_id' => $customer->id,
+            'rt_id' => $customer->customerProfile?->rt_id,
+            'service_area_id' => $area->id,
             'amount' => $amount,
             'pickup_location' => $location,
             'pickup_date' => $pickupDate->toDateString(),
             'assisted_service_id' => $assistedServiceId,
         ]);
 
-        return DB::transaction(function () use ($actor, $customer, $amount, $location, $pickupDate, $idempotencyKey, $payloadHash, $assistedServiceId): WithdrawalRequest {
+        return DB::transaction(function () use ($actor, $customer, $area, $amount, $location, $pickupDate, $idempotencyKey, $payloadHash, $assistedServiceId): WithdrawalRequest {
             $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
             if ($existing !== null) {
                 $withdrawal = WithdrawalRequest::query()->findOrFail($existing->result_id);
@@ -72,6 +76,8 @@ final readonly class WithdrawalRequestService
             $withdrawal = WithdrawalRequest::query()->create([
                 'request_number' => $this->number('WDR'),
                 'customer_id' => $customer->id,
+                'rt_id' => $customer->customerProfile?->rt_id,
+                'service_area_id' => $area->id,
                 'requested_by_id' => $actor->id,
                 'amount' => $amount,
                 'status' => WithdrawalStatus::PendingVerification,
@@ -90,6 +96,16 @@ final readonly class WithdrawalRequestService
 
             return $withdrawal->fresh(['balanceHold', 'customer', 'assistedService']);
         });
+    }
+
+    /** @return Builder<ServiceArea> */
+    public function availableAreasFor(User $actor): Builder
+    {
+        $rtId = User::query()->with('customerProfile')->find($actor->getKey())?->customerProfile?->rt_id;
+
+        return ServiceArea::query()
+            ->where('is_active', true)
+            ->whereHas('rts', static fn ($rts) => $rts->whereKey($rtId ?? 0));
     }
 
     /** @return Builder<WithdrawalRequest> */
@@ -129,6 +145,36 @@ final readonly class WithdrawalRequestService
         }
 
         return $customer;
+    }
+
+    private function areaForRequest(User $customer, mixed $areaId): ServiceArea
+    {
+        $rtId = $customer->customerProfile?->rt_id;
+        if ($rtId === null) {
+            throw ValidationException::withMessages(['customer_id' => 'Nasabah harus memiliki RT aktif.']);
+        }
+
+        $areas = ServiceArea::query()
+            ->where('is_active', true)
+            ->whereHas('rts', static fn ($rts) => $rts->whereKey($rtId));
+        if ($areaId === null || $areaId === '') {
+            $matches = $areas->orderBy('id')->get();
+            if ($matches->count() !== 1) {
+                throw ValidationException::withMessages(['service_area_id' => 'Pilih area layanan aktif yang sesuai dengan RT nasabah.']);
+            }
+
+            return $matches->sole();
+        }
+        if ((! is_int($areaId) && (! is_string($areaId) || ! ctype_digit($areaId))) || (int) $areaId < 1) {
+            throw ValidationException::withMessages(['service_area_id' => 'Area layanan tidak valid.']);
+        }
+
+        $area = $areas->whereKey((int) $areaId)->first();
+        if (! $area instanceof ServiceArea) {
+            throw ValidationException::withMessages(['service_area_id' => 'Area layanan harus aktif dan mencakup RT nasabah.']);
+        }
+
+        return $area;
     }
 
     private function authorize(User $actor, string $permission): void

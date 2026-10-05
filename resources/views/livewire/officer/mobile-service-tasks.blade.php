@@ -41,7 +41,7 @@
                         Kapasitas <strong>{{ $service->served_count }}</strong>/{{ $service->capacity }} terpakai.
                     </p>
 
-                    <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+                    <div class="mt-4 flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
                         @if ($service->status === \App\Domain\MobileServices\Enums\MobileServiceStatus::Published)
                             <button wire:click="open({{ $service->id }})"
                                 wire:loading.attr="disabled"

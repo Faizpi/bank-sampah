@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Components;
 
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
@@ -73,39 +74,28 @@ final class DataVisualisationPrimitivesTest extends TestCase
 
     public function test_pagination_has_result_context_current_page_and_semantic_disabled_controls(): void
     {
-        $pages = [
-            ['label' => '1', 'url' => '/transaksi?page=1'],
-            ['label' => '2', 'url' => '/transaksi?page=2', 'current' => true],
-            ['label' => '3', 'url' => '/transaksi?page=3'],
-        ];
-        $html = Blade::render(<<<'BLADE'
-            <x-ui.pagination label="Navigasi halaman transaksi" :current-page="2" :last-page="3" :from="11" :to="20" :total="26" previous-url="/transaksi?page=1" next-url="/transaksi?page=3" :pages="$pages" />
-        BLADE, compact('pages'));
+        $paginator = new LengthAwarePaginator(range(11, 20), 26, 10, 2, [
+            'path' => '/transaksi',
+            'pageName' => 'transaksiPage',
+        ]);
+        $html = Blade::render('<x-ui.pagination :paginator="$paginator" />', compact('paginator'));
 
         self::assertStringContainsString('<nav', $html);
-        self::assertStringContainsString('aria-label="Navigasi halaman transaksi"', $html);
-        self::assertStringContainsString('Menampilkan 11–20 dari 26 hasil', $html);
+        self::assertStringContainsString('aria-label="Navigasi halaman"', $html);
+        self::assertStringNotContainsString('Menampilkan 11–20 dari 26 hasil', $html);
         self::assertStringContainsString('Halaman 2 dari 3', $html);
         self::assertStringContainsString('aria-current="page"', $html);
+        self::assertStringContainsString('wire:click="previousPage(\'transaksiPage\')"', $html);
+        self::assertStringContainsString('wire:click="gotoPage(1, \'transaksiPage\')"', $html);
+        self::assertStringContainsString('wire:click="nextPage(\'transaksiPage\')"', $html);
         self::assertStringContainsString('min-h-touch', $html);
         self::assertStringContainsString('data-page-numbers', $html);
-        self::assertStringContainsString('hidden', $html);
-        self::assertStringContainsString('sm:flex', $html);
 
-        $disabled = Blade::render('<x-ui.pagination :current-page="1" :last-page="1" :from="0" :to="0" :total="0" />');
+        $paginator = new LengthAwarePaginator([], 0, 10, 1, ['path' => '/transaksi']);
+        $disabled = Blade::render('<x-ui.pagination :paginator="$paginator" />', compact('paginator'));
         self::assertSame(2, substr_count($disabled, 'aria-disabled="true"'));
         self::assertSame(2, substr_count($disabled, '<span data-pagination-disabled'));
         self::assertStringNotContainsString('tabindex="0"', $disabled);
-    }
-
-    public function test_pagination_rejects_unsafe_urls_without_rendering_focusable_links(): void
-    {
-        $pages = [['label' => '2', 'url' => 'javascript:alert(1)']];
-        $html = Blade::render('<x-ui.pagination previous-url="javascript:alert(1)" next-url="data:text/html,bad" :pages="$pages" />', compact('pages'));
-
-        self::assertStringNotContainsString('javascript:', $html);
-        self::assertStringNotContainsString('data:text', $html);
-        self::assertStringNotContainsString('<a', $html);
     }
 
     public function test_chart_has_complete_context_approved_palette_and_always_visible_data_alternative(): void
@@ -125,7 +115,7 @@ final class DataVisualisationPrimitivesTest extends TestCase
         self::assertStringContainsString('data-chart-pattern="diagonal"', $html);
         self::assertStringContainsString('data-chart-interactive="false"', $html);
         self::assertStringContainsString('data-bar-baseline="zero"', $html);
-        self::assertStringContainsString('Grafik batang dimulai dari nol.', $html);
+        self::assertStringNotContainsString('Grafik batang dimulai dari nol.', $html);
         self::assertStringContainsString('<table', $html);
         self::assertStringContainsString('Ringkasan data grafik', $html);
         self::assertStringContainsString('1.250 kg', $html);
@@ -142,8 +132,8 @@ final class DataVisualisationPrimitivesTest extends TestCase
         self::assertStringContainsString('data-chart-tone="forest"', $empty);
         self::assertStringContainsString('data-chart-pattern="solid"', $empty);
         self::assertStringNotContainsString('<script>', $empty);
-        self::assertStringContainsString('Belum ada data grafik', $empty);
-        self::assertStringContainsString('Data grafik tidak tersedia', $unavailable);
+        self::assertStringContainsString('Belum ada data', $empty);
+        self::assertStringContainsString('Data tidak tersedia', $unavailable);
         self::assertStringContainsString('role="status"', $unavailable);
     }
 
@@ -204,20 +194,9 @@ final class DataVisualisationPrimitivesTest extends TestCase
             $table = Blade::render('<x-ui.table caption="Aman" :columns="$columns" :rows="$rows" :filters="$filters" />', compact('columns', 'rows', 'filters'));
             self::assertStringNotContainsString('<a ', $table, 'Table accepted '.$url);
 
-            $pages = [['label' => '2', 'url' => $url]];
-            $pagination = Blade::render('<x-ui.pagination :current-page="1" :last-page="2" :next-url="$url" :pages="$pages" />', compact('url', 'pages'));
-            self::assertStringNotContainsString('<a ', $pagination, 'Pagination accepted '.$url);
-
             $qr = Blade::render('<x-ui.qr-display title="QR" context="Aman" fallback-number="1" :image-src="$url" :download-href="$url" :print-href="$url" />', compact('url'));
             self::assertStringNotContainsString('<img ', $qr, 'QR image accepted '.$url);
             self::assertStringNotContainsString('<a ', $qr, 'QR action accepted '.$url);
-        }
-
-        $safeUrls = ['/relatif/path?x=1#bagian', 'relative/path', '?page=2', '#bagian', 'https://example.test/path', 'http://example.test/path'];
-        foreach ($safeUrls as $url) {
-            $pages = [['label' => '2', 'url' => $url]];
-            $html = Blade::render('<x-ui.pagination :current-page="1" :last-page="2" :next-url="$url" :pages="$pages" />', compact('url', 'pages'));
-            self::assertStringContainsString('href="'.e($url).'"', $html, 'Safe URL rejected '.$url);
         }
     }
 
@@ -230,10 +209,6 @@ final class DataVisualisationPrimitivesTest extends TestCase
             $filters = [['label' => 'Filter', 'removeHref' => $url]];
             $table = Blade::render('<x-ui.table caption="Aman" :columns="$columns" :rows="$rows" :filters="$filters" />', compact('columns', 'rows', 'filters'));
             self::assertStringNotContainsString('<a ', $table, 'Table accepted malformed percent URL '.$url);
-
-            $pages = [['label' => '2', 'url' => $url]];
-            $pagination = Blade::render('<x-ui.pagination :current-page="2" :last-page="3" :previous-url="$url" :next-url="$url" :pages="$pages" />', compact('url', 'pages'));
-            self::assertStringNotContainsString('<a ', $pagination, 'Pagination accepted malformed percent URL '.$url);
 
             $qr = Blade::render('<x-ui.qr-display title="QR" context="Aman" fallback-number="1" :image-src="$url" :download-href="$url" :print-href="$url" />', compact('url'));
             self::assertStringNotContainsString('<img ', $qr, 'QR image accepted malformed percent URL '.$url);
@@ -252,41 +227,10 @@ final class DataVisualisationPrimitivesTest extends TestCase
             $table = Blade::render('<x-ui.table caption="Aman" :columns="$columns" :rows="$rows" :filters="$filters" />', compact('columns', 'rows', 'filters'));
             self::assertSame(2, substr_count($table, 'href="'.e($url).'"'));
 
-            $pages = [['label' => '2', 'url' => $url]];
-            $pagination = Blade::render('<x-ui.pagination :current-page="1" :last-page="2" :next-url="$url" :pages="$pages" />', compact('url', 'pages'));
-            self::assertSame(2, substr_count($pagination, 'href="'.e($url).'"'));
-
             $qr = Blade::render('<x-ui.qr-display title="QR" context="Aman" fallback-number="1" :image-src="$url" :download-href="$url" :print-href="$url" />', compact('url'));
             self::assertStringContainsString('src="'.e($url).'"', $qr);
             self::assertSame(2, substr_count($qr, 'href="'.e($url).'"'));
         }
-    }
-
-    public function test_pagination_normalizes_boundaries_ranges_and_current_page_entries(): void
-    {
-        $pages = [
-            ['label' => '0', 'url' => '/page/0', 'current' => true],
-            ['label' => '1', 'url' => '/page/1'],
-            ['label' => '2', 'url' => '/page/2', 'current' => true],
-            ['label' => '9', 'url' => '/page/9', 'current' => true],
-        ];
-        $first = Blade::render('<x-ui.pagination :current-page="0" :last-page="-4" :from="-8" :to="90" :total="-2" previous-url="/prev" next-url="/next" :pages="$pages" />', compact('pages'));
-
-        self::assertStringContainsString('Halaman 1 dari 1', $first);
-        self::assertStringContainsString('Menampilkan 0–0 dari 0 hasil', $first);
-        self::assertSame(2, substr_count($first, 'aria-disabled="true"'));
-        self::assertSame(1, substr_count($first, 'aria-current="page"'));
-        self::assertStringContainsString('>1</span>', $first);
-        self::assertStringNotContainsString('href="/prev"', $first);
-        self::assertStringNotContainsString('href="/next"', $first);
-
-        $last = Blade::render('<x-ui.pagination :current-page="99" :last-page="3" :from="50" :to="10" :total="26" previous-url="/prev" next-url="/next" :pages="$pages" />', compact('pages'));
-        self::assertStringContainsString('Halaman 3 dari 3', $last);
-        self::assertStringContainsString('Menampilkan 10–26 dari 26 hasil', $last);
-        self::assertStringContainsString('href="/prev"', $last);
-        self::assertStringNotContainsString('href="/next"', $last);
-        self::assertSame(1, substr_count($last, 'aria-current="page"'));
-        self::assertStringContainsString('>3</span>', $last);
     }
 
     public function test_chart_empty_and_unavailable_states_keep_semantic_alternative_tables(): void

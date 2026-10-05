@@ -132,6 +132,11 @@ final readonly class TargetProgressService
                 $stats[$target->getKey()]['subjects'][$deposit->customer_id] = true;
                 $stats[$target->getKey()]['deposits']++;
                 foreach ($deposit->items as $item) {
+                    if ($targetScopes->isNotEmpty() && ! $targetScopes->contains(static fn ($scope): bool => ($scope->waste_type_id === null || $scope->waste_type_id === $item->waste_type_id)
+                        && ($scope->waste_category_id === null || $scope->waste_category_id === $item->wasteType?->waste_category_id))) {
+                        continue;
+                    }
+
                     $weight = (float) $item->weight_kg;
                     $stats[$target->getKey()]['weight'] += $weight;
                     if ($item->wasteType?->is_plastic === true) {

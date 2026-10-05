@@ -8,7 +8,7 @@ Sistem dibangun sebagai modular monolith Laravel yang aman untuk Hostinger share
 
 | Lapisan | Teknologi/keputusan |
 |---|---|
-| Runtime | PHP 8.5 untuk web dan CLI |
+| Runtime | PHP 8.3 atau lebih baru untuk web dan CLI, sesuai `composer.json` |
 | Framework | Laravel 13 |
 | UI warga/petugas/publik | Blade + Livewire 4, komponen khusus |
 | Interaksi ringan | Alpine.js bawaan Livewire; tidak dimuat kedua kali |
@@ -18,7 +18,7 @@ Sistem dibangun sebagai modular monolith Laravel yang aman untuk Hostinger share
 | Test | Pest 4 |
 | Build aset | Vite/Tailwind di lokal atau CI |
 | Hosting | Hostinger Web Hosting Premium/Business, hPanel, SSH/SFTP, Composer 2, cron |
-| Queue | `sync` atau `database` yang diproses berkala dan berbatas waktu melalui cron |
+| Queue | `sync`; tidak ada klaim pemrosesan asinkron atau retry otomatis |
 | Zona waktu | `Asia/Jakarta` |
 
 React tidak digunakan. Tidak ada Redis, Horizon, Supervisor, WebSocket, worker permanen, akses root, atau konfigurasi Nginx sendiri.
@@ -41,8 +41,6 @@ flowchart LR
     App --> WA[wa.me: dibuka manual]
     Cron[Hostinger Cron] --> Scheduler[Laravel Scheduler]
     Scheduler --> App
-    Backup[Backup Terpisah] <-- DB
-    Backup <-- Private
 ```
 
 WhatsApp bukan integrasi pengiriman. Aplikasi hanya membentuk tautan dan membuka klien pengguna.
@@ -62,10 +60,10 @@ WhatsApp bukan integrasi pengiriman. Aplikasi hanya membentuk tautan dan membuka
 | Withdrawals | Pengajuan, approve, pay, kedaluwarsa, bukti. | Menggabungkan approve dan pay sebagai satu permission. |
 | Groceries | Paket deskriptif, approve, prepare, handover, bukti. | Mengelola stok rinci. |
 | Programs | Target, layanan keliling, partisipasi wilayah, statistik publik. | Mengelola produksi paving block. |
-| Communications | Notifikasi, pengingat, pengumuman, template `wa.me`. | Menyatakan WhatsApp terkirim otomatis. |
-| Reporting | Laporan web/XLSX dan file ekspor privat. | Melewati scope record. |
+| Communications | Pengumuman, informasi status pada halaman terkait, dan template `wa.me`. | Menyatakan WhatsApp atau push notification terkirim otomatis. |
+| Reporting | Laporan web dan file ekspor privat yang tersedia. | Melewati scope record. |
 | AuditReconciliation | Audit append-oriented dan insiden operasional. | Menghapus audit lewat fungsi operasional. |
-| Platform | Media, setting, scheduler, queue terbatas, health, backup log, PWA. | Memerlukan layanan daemon shared hosting. |
+| Platform | Media, scheduler, Health, dan PWA. | Menambahkan UI teknis selain Health atau memerlukan daemon shared hosting. |
 
 ### 4.2 Struktur kode yang disarankan
 
@@ -123,7 +121,7 @@ flowchart TD
     Domain --> Models
     Models --> DB[(MySQL 8.0.30)]
     Action --> Events[Domain Events after commit]
-    Events --> Notifications[Notification / Export / Reminder]
+    Events --> FollowUp[Informasi status atau pekerjaan lanjutan yang tersedia]
     Action --> Audit[Audit Writer]
     Action --> Storage[Filesystem Abstraction]
 ```
@@ -162,7 +160,7 @@ sequenceDiagram
     UI-->>P: Bukti dan status
 ```
 
-Kegagalan sebelum commit me-rollback seluruh perubahan. Event notifikasi dikirim setelah commit dan tidak menggandakan ledger.
+Kegagalan sebelum commit me-rollback seluruh perubahan. Informasi status nonkritis diperbarui setelah commit dan tidak menggandakan ledger.
 
 ### Hold menjadi saldo keluar
 
@@ -172,7 +170,7 @@ Kegagalan sebelum commit me-rollback seluruh perubahan. Event notifikasi dikirim
 4. Ubah hold `aktif` menjadi `dikonversi`.
 5. Ubah pengajuan menjadi selesai/dibayar.
 6. Simpan audit.
-7. Commit; kemudian kirim notifikasi.
+7. Commit; kemudian perbarui informasi status yang tersedia.
 
 Penolakan/batal/kedaluwarsa mengikuti action berbeda yang hanya melepas hold.
 
@@ -219,31 +217,16 @@ Filament 5 untuk back-office data-dense dan action-first. Admin dan superadmin m
 ## 10. File dan media
 
 - `public/` hanya memuat front controller dan aset build/publik yang aman.
-- Bukti transaksi, foto pickup, bukti pembayaran/penyerahan, ekspor, backup, dan sumber tidak berada pada disk publik.
+- Bukti transaksi, foto pickup, bukti pembayaran atau penyerahan, ekspor, dan source tidak berada pada disk publik.
 - Database menyimpan disk, path/key acak, MIME, ukuran, checksum, owner/reference, visibility, dan timestamp; bukan blob.
 - Akses privat melalui controller/route terotorisasi atau signed temporary URL.
 - Image derivative publik dibuat tanpa metadata sensitif.
-- Backup berada di lokasi terpisah dari akun hosting utama sejauh infrastruktur memungkinkan.
 
 ## 11. Queue, scheduler, dan cron
 
-### Mode awal
+`QUEUE_CONNECTION=sync` adalah kontrak aktif. Dokumentasi tidak menjanjikan pemrosesan asinkron, worker database, atau retry otomatis.
 
-- Default aman: `QUEUE_CONNECTION=sync` untuk pekerjaan ringan.
-- `database` queue boleh dipakai bagi ekspor/notifikasi yang dapat ditunda, hanya jika cron dapat menjalankan worker **berbatas waktu** dan mekanisme retry/monitoring tersedia.
-- Tidak menjalankan `queue:work` permanen, Horizon, Supervisor, daemon, Redis, atau WebSocket.
-
-### Scheduler
-
-Satu cron Hostinger memanggil scheduler pada interval yang didukung. Scheduler mengatur:
-
-- kedaluwarsa pencairan/sembako dan pelepasan hold;
-- pengingat jadwal/perubahan;
-- pemrosesan batch database queue terbatas;
-- pembersihan upload/file ekspor sementara;
-- pemeriksaan backup dan health yang relevan.
-
-Setiap task menggunakan mutex/without-overlapping yang kompatibel, batas waktu, logging tersanitasi, dan idempotensi. Timezone cron Hostinger diverifikasi; bila cron berjalan UTC, jadwal eksplisit dikonversi agar waktu bisnis tetap `Asia/Jakarta`.
+Scheduler hanya dipakai untuk pekerjaan terjadwal yang memang tersedia, seperti kedaluwarsa pengajuan dan pembersihan file sementara. Setiap task memakai pencegahan overlap, batas waktu, logging tersanitasi, dan idempotensi. Timezone cron diverifikasi agar waktu bisnis tetap `Asia/Jakarta`.
 
 ## 12. PWA terbatas
 
@@ -266,7 +249,6 @@ Manifest menyediakan instalasi. Offline tidak berarti transaksi offline.
 | WhatsApp | URL `https://wa.me/<nomor>?text=<encoded>`; pengguna mengirim manual; tidak ada webhook/status kirim. |
 | MySQL 8.0.30 | TLS bila tersedia/diwajibkan, least-privilege credential, koneksi dari aplikasi hosting. |
 | Object storage kompatibel S3 | Opsional jika dipilih; credential melalui environment; private bucket; signed URL. |
-| Email | Driver yang tersedia pada hosting untuk notifikasi yang disetujui; tidak digunakan untuk reset kata sandi atau pengiriman token; failure tidak membocorkan akun; queue sesuai batas. |
 
 Tidak ada API produksi paving block, timbangan digital, payment gateway, atau layanan WhatsApp gateway dalam baseline.
 
@@ -275,7 +257,7 @@ Tidak ada API produksi paving block, timbangan digital, payment gateway, atau la
 - Log terstruktur dengan correlation/request ID, level, module, action, result, dan actor ID bila aman.
 - Password, cookie, token, secret, isi file, identitas lengkap, dan payload finansial sensitif tidak dicatat.
 - Audit log bisnis terpisah dari application log.
-- Health check privat memeriksa aplikasi, database, storage, scheduler heartbeat, queue backlog bila dipakai, dan backup recency tanpa membuka detail publik.
+- Health privat adalah satu-satunya administrasi teknis aktif. `system.maintenance` hanya memberi akses baca ke status aplikasi, database, storage, dan scheduler heartbeat tanpa membuka detail publik atau tindakan lain.
 - Error pengguna memakai incident/reference ID; detail berada pada log.
 - Kapasitas shared hosting dipantau melalui hPanel, ukuran storage, error rate, waktu respons, slow query yang tersedia, dan cron result.
 
@@ -314,9 +296,9 @@ Jika hPanel tidak mendukung pemilihan document root secara langsung, gunakan mek
 3. Migration dan perilaku production-engine diuji pada rehearsal MySQL 8.0.30 disposable yang tercatat sebelum UAT/production; ini release-validation, bukan blocker harian per-IMP, dan hasil SQLite tidak membuktikan MySQL production.
 4. Build Vite selesai di lokal/CI dan manifest tersedia.
 5. Pemeriksaan permission, idempotensi, ledger, file privat, dan statistik publik lulus.
-6. PHP web dan CLI sama-sama terverifikasi 8.5.
+6. PHP web dan CLI sama-sama memenuhi `^8.3` dan menggunakan versi yang selaras.
 7. Scheduler/cron dan zona waktu diverifikasi pascadeploy.
-8. Backup tersedia sebelum migrasi dan rollback telah ditentukan.
+8. Rollback telah ditentukan sebelum migrasi berisiko.
 
 ## 18. Keputusan dan perubahan
 

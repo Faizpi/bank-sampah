@@ -14,6 +14,7 @@ use App\Domain\CustomersRegions\Support\RegionMutationGuard;
 use App\Domain\Identity\Actions\ManageRoles;
 use App\Domain\Identity\Actions\ManageStaffProfile;
 use App\Domain\Identity\Actions\ManageUsers;
+use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
@@ -21,6 +22,7 @@ use App\Domain\Identity\Support\SystemRoles;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Filament\Resources\Identity\Models\Customers\CustomerResource;
 use App\Filament\Resources\Identity\Models\Customers\Pages\ManageCustomers;
+use App\Filament\Resources\Identity\Models\Roles\Pages\ManageRoles as ManageRolesPage;
 use App\Filament\Resources\Identity\Models\Users\Pages\ManageUsers as ManageUsersPage;
 use App\Filament\Resources\Identity\Models\Users\UserResource;
 use App\Models\User;
@@ -36,6 +38,30 @@ use Tests\TestCase;
 final class IdentityManagementResourceTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_internal_user_creation_activates_the_selected_role_account_without_exposing_password(): void
+    {
+        $actor = User::factory()->create();
+        $role = Role::query()->create(['name' => 'petugas']);
+        $this->grant($actor, 'internal-user-creator', 'user.create');
+
+        $created = app(ManageUsers::class)->create($actor->fresh(), [
+            'name' => 'Petugas Internal',
+            'phone' => '6281234567890',
+            'email' => 'petugas@example.test',
+            'password' => 'rahasia-yang-kuat',
+            'password_confirmation' => 'rahasia-yang-kuat',
+            'role_id' => $role->id,
+        ]);
+
+        self::assertSame(UserStatus::Active, $created->status);
+        self::assertTrue(Hash::check('rahasia-yang-kuat', (string) $created->password));
+        self::assertSame([$role->id], $created->roles()->pluck('roles.id')->all());
+        self::assertNull($created->customerProfile);
+        $audit = AuditLog::query()->where('action', 'identity.user.created')->sole();
+        self::assertSame(['status' => UserStatus::Active->value, 'role_id' => $role->id], $audit->new_values);
+        self::assertStringNotContainsString('rahasia-yang-kuat', json_encode($audit->new_values, JSON_THROW_ON_ERROR));
+    }
 
     public function test_user_and_customer_queries_apply_own_area_and_all_scope_before_loading_records(): void
     {
@@ -60,7 +86,7 @@ final class IdentityManagementResourceTest extends TestCase
 
         self::assertSame(
             [$areaCustomer->id, $staff->id],
-            UserResource::getEloquentQuery()->orderBy('id')->pluck('id')->all(),
+            UserResource::getEloquentQuery()->pluck('id')->sort()->values()->all(),
         );
         self::assertTrue(CustomerResource::getEloquentQuery()->whereKey($areaCustomer)->exists());
         self::assertFalse(CustomerResource::getEloquentQuery()->whereKey($outsideCustomer)->exists());
@@ -190,6 +216,149 @@ final class IdentityManagementResourceTest extends TestCase
         self::assertSame('Area PERSISTED-STAFF', $record->staffProfile->serviceArea->name);
     }
 
+    public function test_user_view_action_maps_persisted_context_into_flat_modal_state(): void
+    {
+        $actor = User::factory()->create();
+        $target = User::factory()->create(['phone' => '628123456789', 'email' => 'stored@example.test']);
+        $target->customerProfile()->create(['customer_number' => 'NSB-00000001', 'rt_id' => $this->createRt('VIEW')->id, 'address' => 'Alamat tersimpan']);
+        $target->roles()->attach(Role::factory()->create(['name' => 'petugas']));
+        [$area] = $this->areaWithRt('VIEW-STAFF');
+        $target->staffProfile()->create(['staff_number' => 'STF-00000001', 'service_area_id' => $area->id]);
+        $this->grant($actor, 'view-action-reader', 'user.view', 'user.view.all');
+        $this->actingAs($actor->fresh());
+
+        Livewire::test(ManageUsersPage::class)
+            ->mountTableAction('view', $target->fresh())
+            ->assertTableActionDataSet([
+                'phone' => '628123456789',
+                'email' => 'stored@example.test',
+                'role_label' => 'petugas',
+                'customer_number' => 'NSB-00000001',
+                'staff_number' => 'STF-00000001',
+                'service_area_names' => 'RT VIEW, RW VIEW, Dusun VIEW',
+            ]);
+    }
+
+    public function test_customer_and_resident_user_views_show_the_customer_profile_region_instead_of_free_form_address(): void
+    {
+        $actor = User::factory()->create();
+        $resident = User::factory()->create(['name' => 'Warga Wilayah']);
+        $rt = $this->createRt('REGION-VIEW');
+        $resident->customerProfile()->create([
+            'customer_number' => 'CST-90757568',
+            'rt_id' => $rt->id,
+            'address' => 'Alamat bebas yang tidak boleh ditampilkan sebagai wilayah',
+        ]);
+        $resident->roles()->attach(Role::factory()->create(['name' => 'warga']));
+        $this->grant($actor, 'region-view-reader', 'user.view', 'user.view.all', 'customer.view', 'customer.update');
+        $this->actingAs($actor->fresh());
+
+        $expectedRegion = 'RT REGION-VIEW, RW REGION-VIEW, Dusun REGION-VIEW';
+
+        Livewire::test(ManageCustomers::class)
+            ->mountTableAction('view', $resident->fresh())
+            ->assertTableActionDataSet([
+                'customer_number' => 'CST-90757568',
+                'service_region' => $expectedRegion,
+            ]);
+
+        Livewire::test(ManageUsersPage::class)
+            ->mountTableAction('view', $resident->fresh())
+            ->assertTableActionDataSet([
+                'customer_number' => 'CST-90757568',
+                'service_area_names' => $expectedRegion,
+            ]);
+
+        $resource = file_get_contents(app_path('Filament/Resources/Identity/Models/Customers/CustomerResource.php'));
+        self::assertIsString($resource);
+        self::assertStringContainsString("label('Wilayah layanan')", $resource);
+        self::assertStringNotContainsString("customerProfile.address')->label('Alamat')", $resource);
+    }
+
+    public function test_role_edit_action_preloads_persisted_permissions(): void
+    {
+        $actor = User::factory()->create();
+        $role = Role::factory()->create(['name' => 'editable-role']);
+        $firstPermission = Permission::query()->firstOrCreate(['name' => 'role.permission.first'], ['description' => 'First persisted role permission']);
+        $secondPermission = Permission::query()->firstOrCreate(['name' => 'role.permission.second'], ['description' => 'Second persisted role permission']);
+        $role->permissions()->attach([$firstPermission->id, $secondPermission->id], ['granted_by' => $actor->id, 'reason' => 'Persisted role permissions for edit hydration.']);
+        $this->grant($actor, 'role-editor', 'role.manage');
+        $this->actingAs($actor->fresh());
+
+        Livewire::test(ManageRolesPage::class)
+            ->mountTableAction('edit', $role->fresh())
+            ->assertTableActionDataSet([
+                'permissions' => [$firstPermission->id, $secondPermission->id],
+            ]);
+    }
+
+    public function test_user_create_action_dehydrates_confirmation_for_create_and_rejects_mismatch_at_field_level(): void
+    {
+        $actor = User::factory()->create();
+        $role = Role::factory()->create(['name' => 'petugas']);
+        $this->grant($actor, 'create-action-password-confirmation', 'user.create');
+        $this->actingAs($actor->fresh());
+
+        $created = app(ManageUsers::class)->create($actor->fresh(), [
+            'name' => 'Konfirmasi Cocok',
+            'phone' => '628123456789',
+            'email' => 'cocok@example.test',
+            'password' => 'Password12345',
+            'password_confirmation' => 'Password12345',
+            'role_id' => $role->id,
+        ]);
+        self::assertTrue(Hash::check('Password12345', (string) $created->password));
+        $audit = AuditLog::query()->where('action', 'identity.user.created')->sole();
+        self::assertArrayNotHasKey('password_confirmation', $audit->new_values);
+        self::assertStringNotContainsString('Password12345', json_encode($audit->new_values, JSON_THROW_ON_ERROR));
+
+        try {
+            app(ManageUsers::class)->create($actor->fresh(), [
+                'name' => 'Konfirmasi Salah',
+                'phone' => '628123456780',
+                'email' => 'salah@example.test',
+                'password' => 'Password12345',
+                'password_confirmation' => 'Password54321',
+                'role_id' => $role->id,
+            ]);
+            self::fail('Expected password confirmation validation failure.');
+        } catch (ValidationException $exception) {
+            self::assertArrayHasKey('password', $exception->errors());
+        }
+
+        $this->assertDatabaseMissing('users', ['email' => 'salah@example.test']);
+    }
+
+    public function test_user_create_action_creates_user_and_reports_domain_validation_errors(): void
+    {
+        $actor = User::factory()->create();
+        $role = Role::factory()->create(['name' => 'petugas']);
+        $this->grant($actor, 'create-action-user', 'user.create');
+        $this->actingAs($actor->fresh());
+
+        $created = app(ManageUsers::class)->create($actor->fresh(), [
+            'name' => 'Pengguna Baru',
+            'phone' => '628123456789',
+            'email' => 'baru@example.test',
+            'password' => 'password-kuat-123',
+            'password_confirmation' => 'password-kuat-123',
+            'role_id' => $role->id,
+        ]);
+
+        self::assertSame(UserStatus::Active, $created->status);
+        $this->assertDatabaseHas('users', ['name' => 'Pengguna Baru', 'email' => 'baru@example.test', 'status' => UserStatus::Active->value]);
+
+        $this->expectException(ValidationException::class);
+        app(ManageUsers::class)->create($actor->fresh(), [
+            'name' => 'Tanpa Peran',
+            'phone' => '628123456780',
+            'email' => 'invalid-role@example.test',
+            'password' => 'password-kuat-123',
+            'password_confirmation' => 'password-kuat-123',
+            'role_id' => 999999,
+        ]);
+    }
+
     public function test_filament_role_assignment_accepts_a_single_scalar_role_id(): void
     {
         $actor = User::factory()->create();
@@ -220,9 +389,11 @@ final class IdentityManagementResourceTest extends TestCase
         Livewire::test(ManageUsersPage::class)
             ->assertActionVisible(TestAction::make('manageStaffProfile')->table($target))
             ->callAction(TestAction::make('manageStaffProfile')->table($target), data: [
-                'service_area_id' => $area->id,
-                'active_from' => '2026-01-01',
-                'active_to' => '2026-12-31',
+                'service_areas' => [[
+                    'service_area_id' => $area->id,
+                    'active_from' => '2026-01-01',
+                    'active_to' => '2026-12-31',
+                ]],
             ]);
 
         $profile = $target->fresh(['staffProfile.serviceArea'])->staffProfile;

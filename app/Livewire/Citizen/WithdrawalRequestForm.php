@@ -21,6 +21,8 @@ final class WithdrawalRequestForm extends Component
 
     public string $pickupDate = '';
 
+    public string $serviceAreaId = '';
+
     public string $idempotencyKey = '';
 
     public function mount(): void
@@ -51,12 +53,14 @@ final class WithdrawalRequestForm extends Component
             'amount' => ['required', 'integer', 'min:'.$minimumAmount],
             'pickupLocation' => ['required', 'string', 'min:3', 'max:255'],
             'pickupDate' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'serviceAreaId' => ['nullable', 'integer'],
         ], [
             'amount.required' => 'Isi nominal pencairan.',
             'amount.integer' => 'Nominal harus berupa rupiah tanpa desimal.',
             'amount.min' => 'Nominal pencairan belum memenuhi minimum.',
             'pickupLocation.required' => 'Isi lokasi pengambilan.',
             'pickupDate.required' => 'Pilih tanggal pengambilan.',
+            'serviceAreaId.integer' => 'Area layanan tidak valid.',
         ]);
         /** @var User $actor */
         $actor = auth()->user();
@@ -72,6 +76,7 @@ final class WithdrawalRequestForm extends Component
                 'amount' => $this->amount,
                 'pickup_location' => $this->pickupLocation,
                 'pickup_date' => $this->pickupDate,
+                'service_area_id' => $validated['serviceAreaId'] ?? null,
             ], $this->idempotencyKey);
         } catch (ValidationException $exception) {
             $this->presentRequestErrors($exception);
@@ -83,13 +88,14 @@ final class WithdrawalRequestForm extends Component
         $this->redirectRoute('citizen.withdrawal.show', ['withdrawal' => $withdrawal], navigate: true);
     }
 
-    public function render(): View
+    public function render(WithdrawalService $service): View
     {
         /** @var User $actor */
         $actor = auth()->user();
 
         return view('livewire.citizen.withdrawal-request-form', [
             'availableBalance' => $this->availableBalance($actor),
+            'serviceAreas' => $service->availableAreasFor($actor)->get(),
         ]);
     }
 
@@ -108,6 +114,7 @@ final class WithdrawalRequestForm extends Component
                 'amount', 'balance' => 'amount',
                 'pickup_location' => 'pickupLocation',
                 'pickup_date' => 'pickupDate',
+                'service_area_id' => 'serviceAreaId',
                 default => 'request',
             };
 

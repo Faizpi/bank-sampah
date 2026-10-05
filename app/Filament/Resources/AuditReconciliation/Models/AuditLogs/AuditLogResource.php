@@ -33,11 +33,11 @@ final class AuditLogResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
-    protected static ?string $navigationLabel = 'Audit log';
+    protected static ?string $navigationLabel = 'Riwayat aktivitas';
 
-    protected static ?string $modelLabel = 'audit log';
+    protected static ?string $modelLabel = 'riwayat aktivitas';
 
-    protected static ?string $pluralModelLabel = 'audit log';
+    protected static ?string $pluralModelLabel = 'riwayat aktivitas';
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -65,7 +65,7 @@ final class AuditLogResource extends Resource
                 DatePicker::make('end')->label('Sampai tanggal'),
                 Select::make('action')->label('Tindakan')->options(fn (): array => AuditLog::query()->select('action')->distinct()->orderBy('action')->pluck('action', 'action')->all())->searchable(),
                 Select::make('actor_id')->label('Pelaku')->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())->searchable(),
-                TextInput::make('correlation_id')->label('ID korelasi')->placeholder('UUID korelasi'),
+                TextInput::make('correlation_id')->label('Nomor pelacakan aktivitas')->placeholder('Nomor pelacakan aktivitas'),
             ])->query(static function (Builder $query, array $data): Builder {
                 return $query
                     ->when($data['action'] ?? null, static fn (Builder $query, string $action): Builder => $query->where('action', $action))

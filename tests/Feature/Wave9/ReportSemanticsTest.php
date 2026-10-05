@@ -27,6 +27,7 @@ use App\Livewire\Treasurer\Reports as TreasurerReports;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -143,7 +144,75 @@ final class ReportSemanticsTest extends TestCase
         $reports = app(ReportQueryService::class);
         $period = ['start' => '2026-08-01', 'end' => '2026-08-02'];
         self::assertSame(7_000, $reports->aggregate($actor, $period, 'deposits')['total_value']);
-        self::assertSame(7_000, $reports->displayRows($actor, 'deposits', $period)[0]['amount']);
+        self::assertSame(7_000, $reports->displayRows($actor, 'deposits', $period)[0]['value']);
+    }
+
+    public function test_display_rows_expose_readable_shared_preview_fields_for_every_report_type(): void
+    {
+        $actor = $this->userWith('report.view', 'user.view.all');
+        $customer = User::factory()->create(['name' => 'Nasabah Preview']);
+        $period = ['start' => '2026-08-01', 'end' => '2026-08-02'];
+        $condition = WasteCondition::factory()->create();
+        $wasteType = WasteType::factory()->create();
+        $this->seedDeposit($customer, $actor, 12_500, 'DEP-PREVIEW', '1.250', $wasteType, $condition);
+        $this->seedWithdrawal($customer, $actor, 15_000, 'WDR-PREVIEW');
+        $package = GroceryPackage::query()->create([
+            'code' => 'PKG-PREVIEW',
+            'name' => 'Paket Preview',
+            'contents' => 'Beras dan minyak',
+            'value' => 20_000,
+            'status' => 'aktif',
+        ]);
+        $this->seedGrocery($customer, $actor, $package, 20_000, 'GRC-PREVIEW');
+        [$rt, $area] = $this->pickupRegion();
+        $this->seedPickup($customer, $rt, $area, 'PUP-PREVIEW', '2.500');
+
+        $reports = app(ReportQueryService::class);
+        foreach (['deposits', 'withdrawals', 'groceries', 'pickups', 'participation'] as $reportType) {
+            $row = $reports->displayRows($actor, $reportType, $period)[0];
+
+            self::assertSame(['reference', 'date', 'subject', 'detail', 'status', 'value', 'value_format'], array_keys($row));
+            self::assertSame('Nasabah Preview', $row['subject']);
+            self::assertNotSame((string) $customer->id, $row['subject']);
+            self::assertNotSame('', $row['detail']);
+        }
+
+        self::assertSame('DEP-PREVIEW', $reports->displayRows($actor, 'deposits', $period)[0]['reference']);
+        self::assertSame(12_500, $reports->displayRows($actor, 'deposits', $period)[0]['value']);
+        self::assertSame('currency', $reports->displayRows($actor, 'deposits', $period)[0]['value_format']);
+        self::assertSame(15_000, $reports->displayRows($actor, 'withdrawals', $period)[0]['value']);
+        self::assertSame('currency', $reports->displayRows($actor, 'withdrawals', $period)[0]['value_format']);
+        self::assertSame(20_000, $reports->displayRows($actor, 'groceries', $period)[0]['value']);
+        self::assertSame('currency', $reports->displayRows($actor, 'groceries', $period)[0]['value_format']);
+        self::assertSame('PUP-PREVIEW', $reports->displayRows($actor, 'pickups', $period)[0]['reference']);
+        self::assertSame('Area Semantics · Alamat Semantics', $reports->displayRows($actor, 'pickups', $period)[0]['detail']);
+        self::assertSame('2.500', $reports->displayRows($actor, 'pickups', $period)[0]['value']);
+        self::assertSame('weight', $reports->displayRows($actor, 'pickups', $period)[0]['value_format']);
+        Livewire::actingAs($actor);
+        Livewire::test(TreasurerReports::class, ['surface' => 'backoffice'])
+            ->set('reportType', 'pickups')
+            ->set('period', 'custom')
+            ->set('start', $period['start'])
+            ->set('end', $period['end'])
+            ->call('refreshReport')
+            ->assertSee('2,50 kg');
+        self::assertSame(12_500, $reports->displayRows($actor, 'participation', $period)[0]['value']);
+        self::assertSame('currency', $reports->displayRows($actor, 'participation', $period)[0]['value_format']);
+    }
+
+    public function test_deposit_and_participation_detail_weights_always_use_two_indonesian_decimals(): void
+    {
+        $actor = $this->userWith('report.view', 'user.view.all');
+        $condition = WasteCondition::factory()->create();
+        $wasteType = WasteType::factory()->create();
+        $this->seedDeposit($actor, $actor, 20_000, 'DEP-DETAIL-WEIGHT', '20.000', $wasteType, $condition, 'penjemputan');
+
+        $reports = app(ReportQueryService::class);
+        $period = ['start' => '2026-08-01', 'end' => '2026-08-02'];
+
+        foreach (['deposits', 'participation'] as $reportType) {
+            self::assertSame('20,00 kg · penjemputan', $reports->displayRows($actor, $reportType, $period)[0]['detail']);
+        }
     }
 
     public function test_treasurer_report_uses_the_summary_contract_labels_for_each_type(): void
@@ -153,7 +222,7 @@ final class ReportSemanticsTest extends TestCase
 
         foreach ($contracts as $reportType => $contract) {
             Livewire::actingAs($actor);
-            $component = Livewire::test(TreasurerReports::class)
+            $component = Livewire::test(TreasurerReports::class, ['surface' => 'backoffice'])
                 ->set('reportType', $reportType)
                 ->set('start', '2026-08-01')
                 ->set('end', '2026-08-02')
@@ -195,6 +264,60 @@ final class ReportSemanticsTest extends TestCase
             ->assertDontSee('PDF');
     }
 
+    public function test_report_type_choices_are_limited_by_officer_role_without_an_all_transactions_choice(): void
+    {
+        $treasurer = $this->userWith('report.view');
+        $backoffice = $this->userWith('report.view');
+
+        Livewire::actingAs($treasurer);
+        Livewire::test(TreasurerReports::class)
+            ->assertSet('reportType', 'withdrawals')
+            ->assertSet('reportTypes', [
+                'withdrawals' => 'Pencairan',
+                'groceries' => 'Sembako',
+            ]);
+
+        Livewire::actingAs($backoffice);
+        Livewire::test(TreasurerReports::class, ['surface' => 'backoffice'])
+            ->assertSet('reportType', 'deposits')
+            ->assertSet('reportTypes', [
+                'deposits' => 'Setoran',
+                'withdrawals' => 'Pencairan',
+                'groceries' => 'Sembako',
+                'pickups' => 'Penjemputan',
+                'participation' => 'Partisipasi',
+            ]);
+    }
+
+    public function test_treasurer_rejects_forged_disallowed_report_types_for_refresh_and_export(): void
+    {
+        $actor = $this->userWith('report.view', 'report.export');
+        Livewire::actingAs($actor);
+
+        Livewire::test(TreasurerReports::class)
+            ->set('reportType', 'deposits')
+            ->call('refreshReport')
+            ->assertHasErrors(['reportType']);
+
+        Livewire::test(TreasurerReports::class)
+            ->set('reportType', 'pickups')
+            ->call('export')
+            ->assertHasErrors(['reportType']);
+    }
+
+    public function test_treasurer_cannot_forge_the_backoffice_surface_to_access_restricted_report_types(): void
+    {
+        $actor = $this->userWith('report.view', 'report.export');
+        Livewire::actingAs($actor);
+
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+
+        Livewire::test(TreasurerReports::class)
+            ->set('surface', 'backoffice')
+            ->set('reportType', 'deposits')
+            ->call('refreshReport');
+    }
+
     /** @return array<string, list<array{key: string, label: string, format: string}>> */
     private function summaryContracts(): array
     {
@@ -230,13 +353,13 @@ final class ReportSemanticsTest extends TestCase
         ];
     }
 
-    private function seedDeposit(User $customer, User $staff, int $value, string $number, string $weight, WasteType $wasteType, WasteCondition $condition): Deposit
+    private function seedDeposit(User $customer, User $staff, int $value, string $number, string $weight, WasteType $wasteType, WasteCondition $condition, string $method = 'loket'): Deposit
     {
         $deposit = Deposit::query()->create([
             'deposit_number' => $number,
             'customer_id' => $customer->id,
             'staff_id' => $staff->id,
-            'method' => 'loket',
+            'method' => $method,
             'occurred_at' => '2026-08-01 10:00:00',
             'status' => Deposit::STATUS_FINAL,
             'total_weight_kg' => $weight,

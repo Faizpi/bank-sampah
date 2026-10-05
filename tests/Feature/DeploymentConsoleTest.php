@@ -173,3 +173,27 @@ it('shows confirmation controls only when the selected action is dangerous', fun
         ->and($console)->toContain('confirmation.hidden = confirmationPhrase ===')
         ->and($console)->toContain('confirmationInput.required = confirmationPhrase !==');
 });
+
+it('keeps arbitrary Tinker disabled by default behind the existing deploy token gate', function (): void {
+    $console = file_get_contents(base_path('public/deploy.php'));
+
+    expect($console)->not->toBeFalse()
+        ->and($console)->toContain("deployConsoleEnvironment('DEPLOY_CONSOLE_TINKER_ENABLED') === 'true'")
+        ->and($console)->toContain("'tinker' => [")
+        ->and($console)->toContain("'confirmation' => 'RUN ARBITRARY TINKER CODE'")
+        ->and($console)->toContain('if (! hash_equals($configuredToken, $submittedToken))')
+        ->and(strpos((string) $console, 'if (! hash_equals($configuredToken, $submittedToken))'))->toBeLessThan(strpos((string) $console, '$selectedAction === \'tinker\''));
+});
+
+it('invokes confirmed bounded Tinker source through an Artisan option without repopulating it', function (): void {
+    $console = file_get_contents(base_path('public/deploy.php'));
+
+    expect($console)->not->toBeFalse()
+        ->and($console)->toContain('DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH')
+        ->and($console)->toContain('mb_strlen($tinkerCode) > DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH')
+        ->and($console)->toContain("(string) (\$_POST['confirm_tinker'] ?? '')")
+        ->and($console)->toContain("(string) (\$_POST['tinker_code'] ?? '')")
+        ->and($console)->toContain("\$kernel->call('tinker', ['--execute' => \$tinkerCode])")
+        ->and($console)->not->toContain('name="tinker_code" value=')
+        ->and($console)->not->toContain('<?= escapeDeployConsole($tinkerCode) ?>');
+});

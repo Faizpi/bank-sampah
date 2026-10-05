@@ -35,7 +35,7 @@ final class CitizenVerificationResourceTest extends TestCase
 
         $this->actingAs($authorized);
         self::assertTrue(CitizenVerificationResource::canViewAny());
-        self::assertSame(['Direktori', 'Verifikasi Warga'], $this->dataMasterNavigationLabels($panel));
+        self::assertSame(['Direktori', 'Pengguna', 'Verifikasi Warga'], $this->dataMasterNavigationLabels($panel));
 
         $this->actingAs($unprivileged);
         self::assertFalse(CitizenVerificationResource::canViewAny());

@@ -119,7 +119,7 @@
 
                     <p class="mt-5 text-caption text-text-secondary">
                         Masuk menggunakan alamat email + kata sandi di
-                        <a href="{{ route('filament.backoffice.auth.login') }}" class="inline-flex items-center rounded-md font-bold text-forest-600 underline underline-offset-4 hover:text-forest-700">panel Admin / Backoffice</a>
+                        <a href="{{ route('filament.backoffice.auth.login') }}" class="inline-flex items-center rounded-md font-bold text-forest-600 underline underline-offset-4 hover:text-forest-700">panel admin</a>
                         (admin &amp; superadmin).
                     </p>
                 </div>

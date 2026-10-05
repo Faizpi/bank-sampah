@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Withdrawals;
 
 use App\Domain\CustomersRegions\Actions\AssistedCustomerService;
+use App\Domain\CustomersRegions\Actions\ManageRegions;
 use App\Domain\CustomersRegions\Contracts\AssistedServiceContract;
 use App\Domain\CustomersRegions\Contracts\Consent;
 use App\Domain\CustomersRegions\Contracts\EvidenceReference;
@@ -32,7 +33,13 @@ final class AssistedWithdrawalTest extends TestCase
     {
         $operator = $this->userWith('customer.create-assisted', 'customer.view', 'user.view', 'user.view.all', 'withdrawal.request');
         $owner = User::factory()->create(['name' => 'Warga pencairan berbantuan']);
-        CustomerProfile::factory()->for($owner)->create(['customer_number' => 'CST-ASSISTED-WDR']);
+        $manager = $this->userWith('region.manage');
+        $regions = app(ManageRegions::class);
+        $dusun = $regions->createDusun($manager, 'AW-DS-'.$owner->id, 'Dusun AW');
+        $rw = $regions->createRw($manager, $dusun, 'AW-RW-'.$owner->id, 'RW AW');
+        $rt = $regions->createRt($manager, $rw, 'AW-RT-'.$owner->id, 'RT AW');
+        CustomerProfile::factory()->for($owner)->create(['customer_number' => 'CST-ASSISTED-WDR', 'rt_id' => $rt->id]);
+        $regions->createServiceArea($manager, 'Area AW '.$owner->id, [$rt]);
         $this->credit($owner, 100_000);
         $evidence = Media::query()->create([
             'uuid' => (string) Str::uuid(),

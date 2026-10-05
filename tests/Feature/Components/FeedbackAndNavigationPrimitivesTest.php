@@ -36,17 +36,15 @@ final class FeedbackAndNavigationPrimitivesTest extends TestCase
         BLADE);
 
         self::assertStringContainsString('data-success-receipt', $html);
+        self::assertStringContainsString('DPS-20260815-ABC12345', $html);
+        self::assertStringContainsString('Rp 25.000', $html);
+        self::assertStringContainsString('15 Agustus 2026, 10:30', $html);
         self::assertStringContainsString('data-lucide="circle-check"', $html);
         self::assertStringContainsString('Setoran pickup berhasil', $html);
         self::assertStringContainsString('Status', $html);
         self::assertStringContainsString('Berhasil', $html);
         self::assertStringContainsString('data-status="success"', $html);
         self::assertStringNotContainsString('Nomor bukti', $html);
-        self::assertStringNotContainsString('DPS-20260815-ABC12345', $html);
-        self::assertStringNotContainsString('Nilai', $html);
-        self::assertStringNotContainsString('Rp 25.000', $html);
-        self::assertStringNotContainsString('Waktu', $html);
-        self::assertStringNotContainsString('15 Agustus 2026, 10:30', $html);
     }
 
     public function test_panel_renders_flat_semantic_surface_and_relevant_states(): void
@@ -137,6 +135,7 @@ final class FeedbackAndNavigationPrimitivesTest extends TestCase
             </x-ui.dialog>
         BLADE);
 
+        self::assertMatchesRegularExpression('/<div\s+x-data=.*?\s+x-show="open"\s+x-cloak\s+x-on:open-dialog\.window=/s', $html);
         self::assertStringContainsString('x-trap.inert.noscroll="open"', $html);
         self::assertStringContainsString('role="dialog"', $html);
         self::assertStringContainsString('aria-modal="true"', $html);

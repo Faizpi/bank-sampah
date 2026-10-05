@@ -12,6 +12,7 @@ use App\Domain\Deposits\Services\DepositReviewService;
 use App\Domain\Ledger\Models\LedgerEntry;
 use App\Filament\Resources\Deposits\Models\Deposits\Pages\ManageDeposits;
 use App\Models\User;
+use App\Support\StatusLabel;
 use App\Support\WeightFormatter;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -65,7 +66,7 @@ final class DepositResource extends Resource
                 TextInput::make('total_weight_kg')->label('Berat total (kg)')->formatStateUsing(fn (?string $state): string => WeightFormatter::format($state))->disabled(),
                 TextInput::make('effective_total_value')->label('Nilai akhir')->disabled(),
                 Textarea::make('items')->label('Rincian saat transaksi')->disabled()->rows(8),
-                Textarea::make('ledgerEntries')->label('Riwayat mutasi saldo')->disabled()->rows(5),
+                Textarea::make('ledgerEntries')->label('Riwayat perubahan saldo')->disabled()->rows(5),
                 Textarea::make('media')->label('Bukti')->disabled()->rows(3),
             ])->columns(2),
         ]);
@@ -102,7 +103,7 @@ final class DepositResource extends Resource
                     ->modalCancelActionLabel('Tutup')
                     ->schema([
                         Textarea::make('snapshot')->label('Rincian saat transaksi')->disabled()->rows(8),
-                        Textarea::make('ledger')->label('Mutasi dan saldo akhir')->disabled()->rows(5),
+                        Textarea::make('ledger')->label('Perubahan dan saldo akhir')->disabled()->rows(5),
                         Textarea::make('holds')->label('Dana terkait yang ditahan')->disabled()->rows(4),
                         Textarea::make('evidence')->label('Bukti')->disabled()->rows(3),
                     ])
@@ -157,7 +158,7 @@ final class DepositResource extends Resource
                     ->authorize(fn (Deposit $record): bool => self::correctionService()->canCorrect(self::actor(), $record))
                     ->requiresConfirmation()
                     ->modalHeading(fn (Deposit $record): string => "Koreksi setoran {$record->deposit_number}?")
-                    ->modalDescription('Transaksi asli tetap tersimpan. Sistem menambahkan catatan koreksi dan mutasi penyesuaian baru.')
+                    ->modalDescription('Transaksi asli tetap tersimpan. Sistem menambahkan catatan koreksi dan perubahan saldo penyesuaian baru.')
                     ->modalSubmitActionLabel('Catat koreksi')
                     ->schema([
                         TextInput::make('new_value')->label('Nilai benar')->numeric()->integer()->minValue(0)->required(),
@@ -174,7 +175,7 @@ final class DepositResource extends Resource
                     ->authorize(fn (Deposit $record): bool => self::correctionService()->canReverse(self::actor(), $record))
                     ->requiresConfirmation()
                     ->modalHeading(fn (Deposit $record): string => "Balikkan setoran {$record->deposit_number}?")
-                    ->modalDescription('Sistem menambahkan mutasi pembalik. Transaksi asli tetap tersimpan.')
+                    ->modalDescription('Sistem menambahkan perubahan saldo untuk membalik transaksi sebelumnya. Transaksi asli tetap tersimpan.')
                     ->modalSubmitActionLabel('Balikkan setoran')
                     ->schema([
                         Textarea::make('reason')->label('Alasan dan referensi pemeriksaan')->required()->minLength(10)->maxLength(1000)->rows(4),
@@ -208,28 +209,36 @@ final class DepositResource extends Resource
         $record->loadMissing(['items', 'ledgerEntries', 'media', 'customer.ledgerAccount.holds']);
 
         return [
-            'snapshot' => json_encode($record->items->map(static fn ($item): array => [
-                'type' => $item->waste_type_name,
-                'condition' => $item->condition_name,
-                'weight_kg' => $item->weight_kg,
-                'price_per_unit' => $item->price_per_unit,
-                'subtotal' => $item->subtotal,
-                'price_snapshot' => $item->price_snapshot,
-            ])->values()->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-            'ledger' => json_encode($record->ledgerEntries->map(static fn (LedgerEntry $entry): array => [
-                'entry_number' => $entry->entry_number,
-                'direction' => $entry->direction,
-                'kind' => $entry->kind,
-                'amount' => $entry->amount,
-                'balance_after' => $entry->balance_after,
-                'effective_at' => (string) $entry->effective_at,
-            ])->values()->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-            'holds' => json_encode($record->customer?->ledgerAccount?->holds->map(static fn ($hold): array => [
-                'hold_number' => $hold->hold_number,
-                'amount' => $hold->amount,
-                'status' => $hold->status,
-                'source_key' => $hold->source_key,
-            ])->values()->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
+            'snapshot' => $record->items->map(static fn ($item): string => sprintf(
+                '%s · Kondisi: %s · Berat: %s kg · Harga per kg: Rp %s · Subtotal: Rp %s',
+                $item->waste_type_name,
+                $item->condition_name,
+                WeightFormatter::format($item->weight_kg),
+                number_format((int) $item->price_per_unit, 0, ',', '.'),
+                number_format((int) $item->subtotal, 0, ',', '.'),
+            ))->implode("\n"),
+            'ledger' => $record->ledgerEntries->map(static fn (LedgerEntry $entry): string => sprintf(
+                '%s · %s · %s · Nominal: Rp %s · Saldo setelah: Rp %s · Efektif: %s',
+                $entry->entry_number,
+                $entry->direction === LedgerEntry::DIRECTION_IN ? 'Masuk' : 'Keluar',
+                match ($entry->kind) {
+                    LedgerEntry::KIND_DEPOSIT => 'Setoran',
+                    LedgerEntry::KIND_CORRECTION => 'Koreksi',
+                    LedgerEntry::KIND_REVERSAL => 'Pembalikan',
+                    LedgerEntry::KIND_ADJUSTMENT => 'Penyesuaian',
+                    default => $entry->kind,
+                },
+                number_format((int) $entry->amount, 0, ',', '.'),
+                number_format((int) $entry->balance_after, 0, ',', '.'),
+                $entry->effective_at->format('d M Y H:i'),
+            ))->implode("\n"),
+            'holds' => $record->customer?->ledgerAccount?->holds->map(static fn ($hold): string => sprintf(
+                '%s · Nominal: Rp %s · Status: %s · Referensi: %s',
+                $hold->hold_number,
+                number_format((int) $hold->amount, 0, ',', '.'),
+                StatusLabel::for($hold->status),
+                $hold->source_key,
+            ))->implode("\n") ?? 'Tidak ada dana yang ditahan.',
             'evidence' => $record->media->map(static fn ($media): string => $media->original_name.' ('.$media->mime_type.')')->implode("\n"),
         ];
     }

@@ -8,7 +8,7 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 
 ### FL-01 — Tahapan Pengembangan Aplikasi
 - **Aktor:** tim pengembang, pengelola, petugas, perwakilan warga.
-- **Alur utama:** analisis kebutuhan → perancangan sistem/UI → pengembangan modul → pengujian → pemeriksaan kesesuaian → penerapan → pemeliharaan/evaluasi.
+- **Alur utama:** analisis kebutuhan → perancangan sistem/UI → pengembangan modul → pengujian → pemeriksaan kesesuaian → penerapan → evaluasi.
 - **Keputusan/gagal:** bila belum sesuai, kembali ke analisis; tidak boleh diterapkan.
 - **Hasil:** baseline diterapkan dan terus dievaluasi.
 - **Jejak:** seluruh requirement; [TEST_PLAN.md](TEST_PLAN.md); [ROADMAP.md](ROADMAP.md).
@@ -36,7 +36,7 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 
 ### FL-05 — Arsitektur Sistem Tingkat Tinggi
 - **Aktor:** pengguna, pengelola teknis.
-- **Alur utama:** perangkat → browser/PWA → Blade/Livewire/Alpine/Tailwind → Laravel/PHP → modul domain → MySQL 8.0.30/storage privat → Hostinger terkelola → backup terpisah.
+- **Alur utama:** perangkat → browser/PWA → Blade/Livewire/Alpine/Tailwind → Laravel/PHP → modul domain → MySQL 8.0.30 dan storage privat → hosting terkelola.
 - **Keputusan/gagal:** pekerjaan yang melampaui batas shared hosting tidak mengasumsikan worker permanen; gunakan proses sinkron/cron terbatas.
 - **Hasil:** modular monolith dapat dioperasikan di Hostinger.
 - **Jejak:** NFR-HOST-001, PWA-001; [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -59,8 +59,8 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 
 ### FL-08 — Registrasi dan Verifikasi Akun
 - **Aktor:** warga, admin.
-- **Alur utama:** buka [Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0](TERMS_AND_PRIVACY.md) yang tersedia publik → isi data → centang persetujuan afirmatif → validasi → simpan versi v1.0 dan waktu server → simpan `menunggu_verifikasi` → admin periksa domisili/duplikasi → setujui → aktifkan → notifikasi.
-- **Keputusan/gagal:** persetujuan belum dicentang atau data invalid kembali diperbaiki; penerimaan tidak membuat verifikasi, aktivasi, autentikasi, atau login otomatis; keputusan tolak menyimpan alasan dan mengirim notifikasi tanpa aktivasi.
+- **Alur utama:** buka [Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0](TERMS_AND_PRIVACY.md) yang tersedia publik → isi data → centang persetujuan afirmatif → validasi → simpan versi v1.0 dan waktu server → simpan `menunggu_verifikasi` → admin periksa domisili/duplikasi → setujui → aktifkan.
+- **Keputusan/gagal:** persetujuan belum dicentang atau data invalid kembali diperbaiki; penerimaan tidak membuat verifikasi, aktivasi, autentikasi, atau login otomatis; keputusan tolak menyimpan alasan tanpa aktivasi.
 - **Hasil:** persetujuan admin mengaktifkan akun; penolakan menyimpan alasan, tidak mengaktifkan akun, dan menghasilkan pemberitahuan yang dapat dipahami.
 - **Jejak:** AUTH-001, AUTH-003; BR-AUTH-001–003, BR-AUTH-006.
 
@@ -94,7 +94,7 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 
 ### FL-13 — Koreksi Transaksi Final
 - **Aktor:** admin berizin, warga sebagai pembaca.
-- **Alur utama:** pilih transaksi → alasan+bukti → tampilkan nilai lama → masukkan nilai benar → hitung dampak → konfirmasi → catatan koreksi+mutasi penyesuaian+audit → tampilkan ke warga → notifikasi.
+- **Alur utama:** pilih transaksi → alasan+bukti → tampilkan nilai lama → masukkan nilai benar → hitung dampak → konfirmasi → catatan koreksi+mutasi penyesuaian+audit → tampilkan ke warga.
 - **Keputusan/gagal:** batal konfirmasi berhenti tanpa koreksi/mutasi.
 - **Hasil:** transaksi asli tetap ada dan dampak transparan.
 - **Jejak:** DEP-002, BAL-002, AUD-001; BR-DEP-008–010.
@@ -106,12 +106,12 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 - **Hasil:** harga baru aktif dan transaksi lama tetap memakai snapshot.
 - **Jejak:** PRC-001–002; BR-PRC-001–005.
 
-### FL-15 — Alur Notifikasi dan Pengingat
-- **Aktor:** sistem, warga, petugas, admin.
-- **Alur utama:** event/jadwal → tentukan penerima/template → simpan notifikasi → bila diminta buka WhatsApp manual → tampilkan belum dibaca/pengingat → pengguna membaca.
-- **Keputusan/gagal:** kanal tambahan tidak aktif langsung ke notifikasi aplikasi; gagal membuka WhatsApp tidak mengubah proses.
-- **Hasil:** pemberitahuan tercatat tanpa klaim pesan otomatis.
-- **Jejak:** NOT-001, WA-001; BR-NOT-*, BR-WA-*.
+### FL-15 — Alur Informasi dan WhatsApp Manual
+- **Aktor:** warga, petugas, admin.
+- **Alur utama:** pengguna melihat informasi status atau pengumuman pada halaman terkait → bila perlu memilih **Buka WhatsApp** → aplikasi membuka tautan `wa.me` → pengguna meninjau dan mengirim pesan sendiri.
+- **Keputusan/gagal:** gagal membuka WhatsApp tidak mengubah proses atau status bisnis.
+- **Hasil:** informasi tersedia pada aplikasi tanpa klaim pesan otomatis atau push notification.
+- **Jejak:** WA-001, ANN-001; BR-WA-*, BR-ANN-*.
 
 ## 4. Saldo dan transaksi
 
@@ -152,7 +152,7 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 
 ### FL-21 — Pembatalan dan Pengembalian Saldo
 - **Aktor:** warga, admin, sistem.
-- **Alur utama:** pengajuan aktif → permintaan batal/keputusan tolak → validasi status → simpan alasan/status → bila ada hold lepaskan → audit/notifikasi.
+- **Alur utama:** pengajuan aktif → permintaan batal/keputusan tolak → validasi status → simpan alasan/status → bila ada hold lepaskan → audit.
 - **Keputusan/gagal:** status tidak membolehkan batal berhenti; tanpa hold tidak membuat mutasi palsu.
 - **Hasil:** hold sah dilepas tepat satu kali.
 - **Jejak:** BAL-002, WDR-001, GRC-001; BR-CAN-*.
@@ -187,7 +187,7 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 - **Hasil:** final tidak dihapus atau diedit langsung.
 - **Jejak:** DEP-001–002; BR-DEP-007–010.
 
-## 6. Administrasi dan pemeliharaan
+## 6. Administrasi dan laporan
 
 ### FL-26 — Pembuatan Laporan dan Statistik
 - **Aktor:** admin, superadmin, bendahara/petugas berizin, sistem.
@@ -198,26 +198,19 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 
 ### FL-27 — Audit Log
 - **Aktor:** sistem, admin, pengelola teknis.
-- **Alur utama:** aktivitas penting → identifikasi pelaku/waktu → catat aksi/objek/perubahan → admin menelusuri → retensi teknis bila sah.
-- **Keputusan/gagal:** permintaan perubahan/penghapusan operasional ditolak.
-- **Hasil:** jejak append-oriented tersedia sesuai retensi.
+- **Alur utama:** aktivitas penting → identifikasi pelaku/waktu → catat aksi/objek/perubahan → admin menelusuri.
+- **Keputusan/gagal:** permintaan perubahan atau penghapusan operasional ditolak.
+- **Hasil:** jejak append-oriented tersedia bagi pembaca berizin.
 - **Jejak:** AUD-001; BR-AUD-001–006.
 
-### FL-28 — Backup dan Pemulihan Data
-- **Aktor:** superadmin.
-- **Alur utama:** jadwal → backup database/media → enkripsi+simpan terpisah → verifikasi integritas → retensi → uji restore berkala.
-- **Keputusan/gagal:** backup invalid dicatat dan diulang; restore gagal memperbaiki prosedur lalu mengulang dari backup.
-- **Hasil:** sasaran RPO/RTO dapat dibuktikan.
-- **Jejak:** NFR-OPS-001; [OPERATIONS.md](OPERATIONS.md).
-
-### FL-29 — Penanganan Kesalahan Transaksi
+### FL-28 — Penanganan Kesalahan Transaksi
 - **Aktor:** petugas, admin, sistem.
 - **Alur utama:** deteksi → hentikan pengulangan manual → periksa transaksi/mutasi → gunakan hasil lengkap atau rollback parsial → bila saldo terlanjur berubah buat koreksi → insiden/audit → verifikasi.
 - **Keputusan/gagal:** transaksi lengkap tidak dibuat ulang; koreksi hanya jika saldo benar-benar terdampak.
 - **Hasil:** sistem pulih tanpa efek ganda.
 - **Jejak:** DEP-003, BAL-002.
 
-### FL-30 — Laporan dan Ekspor Excel
+### FL-29 — Laporan dan Ekspor Excel
 - **Aktor:** admin, bendahara, petugas.
 - **Alur utama:** pilih jenis laporan → pilih hari ini, minggu ini, bulan, atau tanggal custom → terapkan filter → lihat ringkasan → unduh Excel.
 - **Keputusan/gagal:** periode atau filter tidak valid ditolak; akses dan scope record tetap diperiksa.
@@ -226,47 +219,54 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 
 ## 7. Program, transparansi, dan inklusi
 
-### FL-31 — Target Pengumpulan Sampah Desa
+### FL-30 — Target Pengumpulan Sampah Desa
 - **Aktor:** admin, sistem, warga/publik.
 - **Alur utama:** buat target → validasi → aktifkan → akumulasi transaksi sah → hitung progres → publikasi → tutup pada akhir periode → ringkasan.
 - **Keputusan/gagal:** target invalid kembali diperbaiki; transaksi draf/dibalik tidak dihitung.
 - **Hasil:** progres agregat bersih dan ringkasan akhir.
 - **Jejak:** TGT-001; BR-TGT-001–006.
 
-### FL-32 — Bank Sampah Keliling per RT/RW
+### FL-31 — Bank Sampah Keliling per RT/RW
 - **Aktor:** admin, petugas, warga.
-- **Alur utama:** buat jadwal → validasi benturan → publikasi/pengingat → buka titik → identifikasi warga → setoran langsung → saldo/bukti → tutup/rekap.
+- **Alur utama:** buat jadwal pada hierarki desa, dusun, RW, dan RT → validasi benturan serta kapasitas jadwal → publikasi → buka titik → identifikasi warga → setoran langsung → saldo/bukti → tutup/rekap.
 - **Keputusan/gagal:** benturan kembali memilih waktu/petugas; jadwal belum dibuka tidak menerima transaksi keliling.
 - **Hasil:** titik layanan terjadwal, bukan penjemputan rumah.
 - **Jejak:** MOB-001, DEP-001; BR-MOB-001–006.
 
-### FL-33 — Estimasi Nilai Sebelum Setor
+### FL-32 — Estimasi Nilai Sebelum Setor
 - **Aktor:** warga, publik.
 - **Alur utama:** pilih jenis → masukkan perkiraan berat → validasi harga → hitung → tampilkan estimasi, edukasi, penafian → selesai tanpa transaksi.
 - **Keputusan/gagal:** input/harga invalid kembali diperbaiki tanpa menampilkan angka menyesatkan.
 - **Hasil:** informasi saja, tanpa ledger atau hold.
 - **Jejak:** EST-001; BR-EST-001–004.
 
-### FL-34 — Pelayanan Warga Tanpa Smartphone
+### FL-33 — Pelayanan Warga Tanpa Smartphone
 - **Aktor:** warga, petugas, admin.
 - **Alur utama:** minta bantuan → penjelasan/persetujuan → cari/buat akun → verifikasi → nomor/kartu QR → layanan atas nama warga → bukti cetak/saldo.
 - **Keputusan/gagal:** tidak setuju berhenti; identitas invalid dikembalikan ke verifikasi, bukan transaksi.
 - **Hasil:** layanan inklusif dengan pelaksana tercatat.
 - **Jejak:** CST-002, AUTH-001; BR-CST-004–006.
 
-### FL-35 — Verifikasi Bukti Transaksi dengan QR
+### FL-34 — Verifikasi Bukti Transaksi dengan QR
 - **Aktor:** warga, pemeriksa, sistem.
 - **Alur utama:** scan → validasi token → ambil data terbatas → periksa final → tampilkan nomor/tanggal/berat/nilai/status.
 - **Keputusan/gagal:** token invalid menampilkan tidak sah; transaksi nonfinal tidak dinyatakan sah.
 - **Hasil:** keaslian diverifikasi tanpa data pribadi.
 - **Jejak:** QRV-001; BR-QRV-001–005.
 
-### FL-36 — Pengaturan Kapasitas Penjemputan Harian
+### FL-35 — Pengaturan Kapasitas Penjemputan Harian
 - **Aktor:** admin, warga, sistem.
-- **Alur utama:** admin tetapkan batas → warga pilih tanggal → hitung pemakaian → bila tersedia reservasi/pengajuan → admin jadwalkan → bila berubah kirim pengingat.
+- **Alur utama:** admin menetapkan batas per tanggal dan area pelayanan → warga memilih tanggal → sistem menghitung pemakaian dari pengajuan yang memesan slot → bila tersedia sistem mereservasi pengajuan secara atomik → admin menjadwalkan petugas.
 - **Keputusan/gagal:** penuh menawarkan tanggal lain; perubahan jadwal tidak mengubah estimasi menjadi nilai saldo.
 - **Hasil:** kapasitas tidak terlampaui dan alternatif transparan.
 - **Jejak:** PUP-001, REG-001; BR-PUP-004–007.
+
+### FL-36 — Health Sistem
+- **Aktor:** superadmin.
+- **Alur utama:** buka administrasi sistem → otorisasi `system.maintenance` → baca status Health yang aman → periksa komponen yang dilaporkan → keluar tanpa mengubah data.
+- **Keputusan/gagal:** pengguna tanpa permission ditolak; komponen bermasalah ditampilkan sebagai status baca-saja tanpa menjalankan tindakan teknis.
+- **Hasil:** superadmin melihat ringkasan Health privat tanpa akses ke halaman teknis lain.
+- **Jejak:** NFR-HOST-001; [PERMISSIONS.md](PERMISSIONS.md); [OPERATIONS.md](OPERATIONS.md).
 
 ## 8. Matriks kelengkapan
 
@@ -277,8 +277,8 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 | Operasional utama | FL-08–FL-15 | 8 |
 | Saldo dan transaksi | FL-16–FL-21 | 6 |
 | Status | FL-22–FL-25 | 4 |
-| Administrasi dan pemeliharaan | FL-26–FL-30 | 5 |
-| Program, transparansi, inklusi | FL-31–FL-36 | 6 |
+| Administrasi dan laporan | FL-26–FL-29 | 4 |
+| Program, transparansi, inklusi, dan Health | FL-30–FL-36 | 7 |
 | **Total** | **FL-01–FL-36** | **36** |
 
 Semua perubahan alur harus memperbarui requirement, aturan bisnis, permission, validasi, test case, dan SOP terkait. Urutan flow tidak membentuk pembagian ruang lingkup fitur.

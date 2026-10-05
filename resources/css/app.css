@@ -300,3 +300,34 @@
         transform: none;
     }
 }
+
+@media print {
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    header,
+    nav,
+    footer,
+    aside,
+    [data-print-hide],
+    [data-print-area] img,
+    [data-print-area] button,
+    [data-print-area] a {
+        display: none !important;
+    }
+
+    [data-print-area] {
+        padding: 0 !important;
+    }
+
+    [data-print-area] *,
+    [data-print-area] *::before,
+    [data-print-area] *::after {
+        background: transparent !important;
+        color: #000 !important;
+        border-color: #cbd5d1 !important;
+        box-shadow: none !important;
+    }
+}

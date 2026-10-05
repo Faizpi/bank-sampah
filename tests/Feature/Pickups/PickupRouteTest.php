@@ -9,7 +9,9 @@ use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
+use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupCapacity;
+use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Pickups\Services\PickupService;
 use App\Domain\WasteMaster\Models\WasteCategory;
 use App\Domain\WasteMaster\Models\WasteCondition;
@@ -41,6 +43,15 @@ final class PickupRouteTest extends TestCase
         $this->actingAs($other)->get(route('citizen.pickup.show', $pickup))->assertNotFound();
     }
 
+    public function test_assigned_officer_with_execute_permission_can_open_the_pickup_task_without_completion_permission(): void
+    {
+        $staff = User::factory()->create();
+        $this->grant($staff, 'pickup.execute', 'pickup.view');
+        $pickup = $this->pickupFor($staff);
+
+        $this->actingAs($staff)->get(route('officer.pickup.task', $pickup))->assertOk();
+    }
+
     public function test_officer_task_route_and_private_media_route_fail_closed_for_unassigned_user(): void
     {
         [$customer, $area, $type] = $this->context();
@@ -49,7 +60,7 @@ final class PickupRouteTest extends TestCase
         $this->capacity($area);
         $pickup = app(PickupService::class)->submit($customer, ['service_area_id' => $area->id, 'address' => 'Alamat warga route test', 'selected_date' => today()->addDay()->toDateString()], [['waste_type_id' => $type->id, 'estimated_quantity' => 1]], [UploadedFile::fake()->image('route.png')], 'w5-route-media-0001');
         $staff = User::factory()->create();
-        $this->grant($staff, 'pickup.execute', 'pickup.view');
+        $this->grant($staff, 'pickup.execute', 'pickup.complete', 'pickup.view');
         $media = $pickup->media()->firstOrFail();
 
         $this->actingAs($staff)->get(route('officer.pickup.task', $pickup))->assertNotFound();
@@ -75,6 +86,23 @@ final class PickupRouteTest extends TestCase
         WasteMasterMutationGuard::run(fn (): array => $type->conditions()->sync([$condition->id]));
 
         return [$customer, $area, $type];
+    }
+
+    private function pickupFor(User $staff): PickupRequest
+    {
+        [$customer, $area] = $this->context();
+
+        return PickupRequest::query()->create([
+            'request_number' => 'PUP-ROUTE-ASSIGNED-'.$staff->id,
+            'customer_id' => $customer->id,
+            'rt_id' => $customer->customerProfile->rt_id,
+            'service_area_id' => $area->id,
+            'address' => 'Alamat pickup petugas yang ditugaskan',
+            'selected_date' => today()->addDay(),
+            'scheduled_date' => today()->addDay(),
+            'status' => PickupStatus::Scheduled,
+            'assigned_staff_id' => $staff->id,
+        ]);
     }
 
     private function capacity(ServiceArea $area): PickupCapacity

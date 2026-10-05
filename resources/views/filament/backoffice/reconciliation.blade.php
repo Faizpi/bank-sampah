@@ -2,7 +2,7 @@
     <section class="backoffice-page-intro" aria-labelledby="reconciliation-title">
         <p class="text-sm font-semibold text-forest-700">Pengawasan keuangan</p>
         <h2 id="reconciliation-title" class="mt-1 text-2xl font-bold text-deep-green">Rekonsiliasi saldo harian</h2>
-        <p class="mt-3 max-w-3xl text-base leading-7 text-text-secondary">Bandingkan catatan transaksi sistem dengan saldo tersedia dan kas pencairan fisik sebelum penutupan hari kerja.</p>
+        <p class="mt-3 max-w-3xl text-base leading-7 text-text-secondary">Bandingkan transaksi, saldo tersedia, dan kas pencairan sebelum penutupan hari kerja.</p>
     </section>
 
     @if (session('reconciliation-success'))
@@ -17,11 +17,11 @@
         <ol class="mt-5 grid gap-5 text-base leading-7 text-primary-950 sm:grid-cols-3">
             <li class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3">
                 <span aria-hidden="true" class="flex size-8 items-center justify-center rounded-sm bg-surface text-sm font-bold text-primary-800">1</span>
-                <div><p class="font-bold">Buat snapshot</p><p class="mt-1 text-sm leading-6">Pilih tanggal bisnis. Isi kas pencairan bila uang fisik sudah dihitung.</p></div>
+                <div><p class="font-bold">Simpan kondisi saldo</p><p class="mt-1 text-sm leading-6">Pilih tanggal bisnis. Isi kas pencairan bila uang fisik sudah dihitung.</p></div>
             </li>
             <li class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3">
                 <span aria-hidden="true" class="flex size-8 items-center justify-center rounded-sm bg-surface text-sm font-bold text-primary-800">2</span>
-                <div><p class="font-bold">Periksa pembanding</p><p class="mt-1 text-sm leading-6">Pastikan setoran, pencairan, sembako, kas, dan saldo tersedia semuanya berstatus sesuai.</p></div>
+                <div><p class="font-bold">Periksa pembanding</p><p class="mt-1 text-sm leading-6">Pastikan setoran, pencairan, penukaran sembako, kas, dan saldo tersedia semuanya sesuai.</p></div>
             </li>
             <li class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3">
                 <span aria-hidden="true" class="flex size-8 items-center justify-center rounded-sm bg-surface text-sm font-bold text-primary-800">3</span>
@@ -33,8 +33,8 @@
     @if ($canCreate)
         <section class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-7" aria-labelledby="snapshot-title">
             <div class="max-w-3xl">
-                <h2 id="snapshot-title" class="text-xl font-bold text-gray-950">Buat snapshot harian</h2>
-                <p class="mt-2 text-base leading-7 text-gray-600">Snapshot menyimpan kondisi saat ini sebagai versi baru. Riwayat sebelumnya tetap utuh dan tidak dapat ditimpa.</p>
+                <h2 id="snapshot-title" class="text-xl font-bold text-gray-950">Simpan kondisi saldo harian</h2>
+                <p class="mt-2 text-base leading-7 text-gray-600">Catatan ini menyimpan kondisi saldo saat dibuat. Riwayat sebelumnya tetap tersimpan dan tidak dapat diubah.</p>
             </div>
 
             <form wire:submit="createSnapshot" class="mt-7 grid max-w-3xl gap-x-6 gap-y-6 sm:grid-cols-2">
@@ -59,7 +59,7 @@
                 </label>
 
                 <div class="sm:col-span-2">
-                    <button type="submit" class="inline-flex min-h-11 items-center rounded-lg bg-primary-700 px-5 text-base font-semibold text-white transition hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" wire:loading.attr="disabled" wire:target="createSnapshot">Buat snapshot</button>
+                    <button type="submit" class="inline-flex min-h-11 items-center rounded-lg bg-primary-700 px-5 text-base font-semibold text-white transition hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" wire:loading.attr="disabled" wire:target="createSnapshot">Simpan kondisi saldo</button>
                 </div>
             </form>
         </section>
@@ -148,7 +148,7 @@
                     @endif
                 </article>
             @empty
-                <div class="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-base leading-7 text-gray-600">Belum ada snapshot. Buat rekonsiliasi untuk menutup pemeriksaan saldo harian.</div>
+                <div class="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-base leading-7 text-gray-600">Belum ada catatan kondisi saldo. Buat pemeriksaan untuk menutup rekonsiliasi hari ini.</div>
             @endforelse
         </div>
     </section>
@@ -159,7 +159,7 @@
                 <a href="{{ \App\Filament\Resources\Deposits\Models\Deposits\DepositResource::getUrl('index') }}" class="inline-flex min-h-12 items-center border-b-2 border-transparent px-1 text-sm font-semibold text-gray-700 hover:border-primary-500 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">Koreksi setoran</a>
             @endif
             @if ($canViewLedger)
-                <a href="{{ \App\Filament\Resources\Ledger\Models\LedgerEntries\LedgerEntryResource::getUrl('index') }}" class="inline-flex min-h-12 items-center border-b-2 border-transparent px-1 text-sm font-semibold text-gray-700 hover:border-primary-500 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">Mutasi saldo</a>
+                <a href="{{ \App\Filament\Resources\Ledger\Models\LedgerEntries\LedgerEntryResource::getUrl('index') }}" class="inline-flex min-h-12 items-center border-b-2 border-transparent px-1 text-sm font-semibold text-gray-700 hover:border-primary-500 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">Perubahan saldo</a>
             @endif
             @if ($canViewHolds)
                 <a href="{{ \App\Filament\Resources\Ledger\Models\BalanceHolds\BalanceHoldResource::getUrl('index') }}" class="inline-flex min-h-12 items-center border-b-2 border-transparent px-1 text-sm font-semibold text-gray-700 hover:border-primary-500 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">Dana ditahan</a>

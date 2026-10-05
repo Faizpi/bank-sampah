@@ -54,6 +54,14 @@ final class OfficerShellTest extends TestCase
         self::assertSame(1, substr_count($source, '@vite('));
     }
 
+    public function test_logout_opener_only_opens_confirmation_and_confirmation_submits_logout_form(): void
+    {
+        $html = Blade::render('<x-layouts.officer title="Tugas">Isi</x-layouts.officer>');
+
+        self::assertMatchesRegularExpression('/<form (?=[^>]*id="officer-logout-form")(?=[^>]*method="POST")(?=[^>]*action="[^"]*\/logout")(?=[^>]*x-data(?:="\{\}")?)[^>]*>.*?<button type="button"(?=[^>]*aria-label="Keluar dari akun")(?=[^>]*x-on:click\.prevent="\$dispatch\(\'open-dialog\', \{ id: \'officer-logout-confirmation\', invoker: \$el \}\)")[^>]*>/s', $html);
+        self::assertMatchesRegularExpression('/<button type="submit" form="officer-logout-form"[^>]*>Keluar<\/button>/', $html);
+    }
+
     public function test_header_preserves_long_page_title_without_visual_truncation(): void
     {
         $title = 'Tugas penjemputan sampah terpilah wilayah Sindangheula bagian selatan hari ini';

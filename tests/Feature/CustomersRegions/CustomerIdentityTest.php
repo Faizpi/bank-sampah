@@ -5,10 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature\CustomersRegions;
 
 use App\Domain\CustomersRegions\Actions\ManageCustomerIdentity;
+use App\Domain\CustomersRegions\Actions\ManageRegions;
 use App\Domain\CustomersRegions\Contracts\QrToken;
+use App\Domain\CustomersRegions\Models\Dusun;
+use App\Domain\CustomersRegions\Models\Rt;
+use App\Domain\CustomersRegions\Models\Rw;
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
+use App\Domain\Identity\Models\StaffProfile;
+use App\Domain\Identity\Models\StaffServiceArea;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -72,6 +79,40 @@ final class CustomerIdentityTest extends TestCase
         } catch (ValidationException $exception) {
             self::assertArrayHasKey('token', $exception->errors());
         }
+    }
+
+    public function test_area_operator_scans_an_active_customer_through_an_effective_rt_assignment(): void
+    {
+        $dusun = Dusun::query()->create(['code' => 'DS-QR', 'name' => 'Dusun QR']);
+        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RW-QR', 'name' => 'RW QR']);
+        $insideRt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-IN', 'name' => 'RT Dalam']);
+        $outsideRt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'RT-OUT', 'name' => 'RT Luar']);
+        $insideArea = ServiceArea::query()->create(['name' => 'Area QR Efektif']);
+        $outsideArea = ServiceArea::query()->create(['name' => 'Area QR Lama']);
+        $regionManager = $this->authorizedActor('region.manage');
+        app(ManageRegions::class)->updateServiceArea($regionManager, $insideArea, $insideArea->name, [$insideRt]);
+        app(ManageRegions::class)->updateServiceArea($regionManager, $outsideArea, $outsideArea->name, [$outsideRt]);
+
+        $actor = $this->authorizedActor('customer.view', 'user.view', 'user.view.area');
+        StaffProfile::factory()->for($actor)->create(['service_area_id' => $outsideArea->id]);
+        StaffServiceArea::query()->create([
+            'staff_profile_user_id' => $actor->id,
+            'service_area_id' => $insideArea->id,
+            'active_from' => today()->subDay(),
+            'active_to' => today()->addDay(),
+        ]);
+        $customer = User::factory()->create(['name' => 'Warga QR Efektif']);
+        $token = QrToken::generate();
+        CustomerProfile::factory()->for($customer)->create([
+            'customer_number' => 'CST-90757568',
+            'rt_id' => $insideRt->id,
+            'qr_token_hash' => $token->hash(),
+        ]);
+
+        $candidate = app(ManageCustomerIdentity::class)->scan($actor->fresh(), $token->value());
+
+        self::assertSame($customer->id, $candidate->userId);
+        self::assertSame('CST-90757568', $candidate->number->value());
     }
 
     public function test_invalid_token_non_customer_and_out_of_scope_scan_are_rejected(): void
