@@ -57,6 +57,11 @@ final readonly class WithdrawalService
         return $this->requests->availableAreasFor($actor);
     }
 
+    public function resolveRequestArea(User $customer, mixed $areaId): ServiceArea
+    {
+        return $this->requests->areaForRequest($customer, $areaId);
+    }
+
     /** @return Builder<WithdrawalRequest> */
     public function visibleFor(User $actor): Builder
     {

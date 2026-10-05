@@ -271,6 +271,12 @@
                                     <x-ui.input name="withdrawalAmount" label="Nominal (rupiah)" wire:model.live.debounce.300ms="withdrawalAmount" inputmode="numeric" placeholder="Minimal Rp10.000" :hint="$withdrawalBalanceInsufficient ? 'Nominal melebihi saldo tersedia warga.' : null" :error="$errors->first('withdrawalAmount')" />
                                     <x-ui.input name="withdrawalDate" label="Tanggal pengambilan" wire:model="withdrawalDate" type="date" :error="$errors->first('withdrawalDate')" />
                                     <x-ui.textarea name="withdrawalLocation" label="Lokasi pengambilan" wire:model="withdrawalLocation" rows="2" class="sm:col-span-2" :error="$errors->first('withdrawalLocation')" />
+                                    @if ($withdrawalServiceAreas->count() > 1)
+                                        <x-ui.select name="withdrawalServiceAreaId" label="Area pengambilan" wire:model="withdrawalServiceAreaId" placeholder="Pilih area layanan" :options="$withdrawalServiceAreas->pluck('name', 'id')->all()" :error="$errors->first('withdrawalServiceAreaId')" />
+                                    @elseif ($withdrawalServiceAreas->count() === 1)
+                                        <p class="text-body-sm text-text-secondary">Area pengambilan: {{ $withdrawalServiceAreas->first()->name }}</p>
+                                    @endif
+                                    @error('withdrawalServiceAreaId')<p role="alert" class="text-body-sm text-terracotta">{{ $message }}</p>@enderror
                                     <label class="sm:col-span-2 flex items-start gap-3 text-body-sm text-text-primary">
                                         <input type="checkbox" wire:model="withdrawalConsent" class="mt-1 size-5 rounded border-border text-forest-600 focus:ring-focus" />
                                         <span>Saya sudah menjelaskan proses pencairan dan warga memberikan persetujuan terpisah.</span>

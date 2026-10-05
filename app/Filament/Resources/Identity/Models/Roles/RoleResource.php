@@ -14,6 +14,7 @@ use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
@@ -59,6 +60,7 @@ final class RoleResource extends Resource
                             ? 'Nama peran sistem tidak dapat diubah.'
                             : null),
                     TextInput::make('description')->label('Deskripsi')->maxLength(255),
+                    Textarea::make('reason')->label('Alasan perubahan izin')->required()->minLength(10)->maxLength(1000)->visibleOn('edit'),
                 ])
                 ->columns(1),
             Section::make('Izin')
@@ -89,7 +91,7 @@ final class RoleResource extends Resource
                     ->fillForm(fn (Role $record): array => [
                         'permissions' => $record->permissions()->pluck('permissions.id')->all(),
                     ])
-                    ->using(fn (Role $record, array $data): Role => tap($record, fn () => app(ManageRolesAction::class)->updateRole(self::actor(), $record, $data['description'] ?? '', array_map('intval', $data['permissions'] ?? [])))),
+                    ->using(fn (Role $record, array $data): Role => tap($record, fn () => app(ManageRolesAction::class)->updateRole(self::actor(), $record, $data['description'] ?? '', array_map('intval', $data['permissions'] ?? []), $data['reason'] ?? 'Perubahan peran melalui pengelolaan akses.'))),
                 DeleteAction::make()
                     ->label('Hapus')
                     ->requiresConfirmation()

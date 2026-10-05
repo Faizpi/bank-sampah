@@ -53,12 +53,6 @@ final class GroceryRequestForm extends Component
             return;
         }
 
-        if ($this->availableBalance($actor) < $package->value) {
-            $this->addError('packageId', 'Saldo tersedia tidak mencukupi untuk paket ini.');
-
-            return;
-        }
-
         try {
             $redemption = $service->request($actor, [
                 'package_id' => $this->packageId,
@@ -99,6 +93,7 @@ final class GroceryRequestForm extends Component
         foreach ($exception->errors() as $field => $messages) {
             $target = match ($field) {
                 'package_id', 'amount', 'balance' => 'packageId',
+                'service_area_id' => 'serviceAreaId',
                 default => 'request',
             };
 

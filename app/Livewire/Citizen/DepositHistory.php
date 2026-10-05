@@ -75,6 +75,7 @@ final class DepositHistory extends Component
 
     public function render(): View
     {
+        abort_unless(app(PermissionChecker::class)->allows(auth()->user(), 'deposit.view'), 403);
         $filters = $this->validate();
 
         /** @var User $actor */

@@ -202,6 +202,19 @@ final class GroceryWaveTest extends TestCase
         Event::assertDispatchedTimes(NotificationRequested::class, 1);
     }
 
+    public function test_form_retry_recovers_an_existing_hold_after_balance_is_consumed(): void
+    {
+        [$customer, $package] = $this->customerAndPackage();
+        $this->grant($customer, ['grocery.package.view', 'grocery.request', 'grocery.view']);
+        $this->credit($customer, $package->value);
+        $created = app(GroceryService::class)->request($customer, ['package_id' => $package->id], 'audit-grocery-replay-001');
+        Livewire::actingAs($customer)->test(GroceryRequestForm::class)
+            ->set('packageId', (string) $package->id)->set('idempotencyKey', 'audit-grocery-replay-001')
+            ->call('submit')->assertHasNoErrors()->assertRedirect(route('citizen.grocery.show', $created));
+        self::assertDatabaseCount('grocery_redemptions', 1);
+        self::assertDatabaseCount('balance_holds', 1);
+    }
+
     public function test_lane_b_rejects_inactive_package_insufficient_balance_and_conflicting_retry_without_effects(): void
     {
         [$customer, $package] = $this->customerAndPackage();

@@ -28,6 +28,10 @@ use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    $this->travelTo(CarbonImmutable::parse('2026-08-15 12:00:00', 'Asia/Jakarta'));
+});
+
 it('records a checksummed database and media backup pair through valid statuses and retention', function (): void {
     $actor = User::factory()->create();
     grantOperationPermission($actor, 'backup.run');

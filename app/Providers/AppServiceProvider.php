@@ -25,6 +25,8 @@ use App\Domain\WasteMaster\Models\WastePrice;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
+use App\Http\Middleware\EnsureSessionIsFresh;
+use App\Http\Middleware\RequirePermission;
 use App\Models\User;
 use App\Policies\AnnouncementPolicy;
 use App\Policies\CollectionTargetPolicy;
@@ -53,6 +55,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AppServiceProvider extends ServiceProvider
@@ -70,6 +73,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Livewire::addPersistentMiddleware([
+            RequirePermission::class,
+            EnsureSessionIsFresh::class,
+        ]);
         Gate::policy(Announcement::class, AnnouncementPolicy::class);
         Gate::policy(CollectionTarget::class, CollectionTargetPolicy::class);
         Gate::policy(MobileServiceModel::class, MobileServicePolicy::class);

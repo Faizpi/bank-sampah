@@ -273,6 +273,9 @@ final readonly class PickupService
                 if ($locked->status !== PickupStatus::PickedUp) {
                     throw ValidationException::withMessages(['status' => 'Penjemputan harus berstatus dijemput sebelum diselesaikan.']);
                 }
+                if ($locked->deposit_id !== null) {
+                    throw ValidationException::withMessages(['status' => 'Hasil timbang sudah dikirim. Tunggu keputusan pemeriksaan setoran.']);
+                }
                 if ($evidence !== null) {
                     $media = $this->mediaStore->handlePhoto($evidence, $actor);
                     $media->forceFill([
@@ -284,11 +287,15 @@ final readonly class PickupService
                 $deposit->forceFill(['pickup_request_id' => $locked->id])->save();
                 $deposit = $this->deposits->finalize($actor, $deposit, 'pickup-'.$locked->id.'-'.$idempotencyKey, array_map(static fn (DepositItemInput $item): array => ['waste_type_id' => $item->wasteTypeId, 'condition_id' => $item->conditionId, 'weight_kg' => $item->weightKg], $normalized));
                 $oldStatus = $locked->status;
-                $locked->forceFill(['status' => PickupStatus::Completed, 'deposit_id' => $deposit->id, 'completed_at' => now()])->save();
-                $this->recordStatus($locked, $actor, $oldStatus, PickupStatus::Completed, 'Penimbangan aktual dan setoran final berhasil.');
-                $this->auditLogger->record($actor, 'pickup.completed', $locked, ['status' => $oldStatus->value], ['status' => PickupStatus::Completed->value, 'deposit_id' => $deposit->id, 'actual_weight_kg' => $deposit->total_weight_kg], $this->correlationId());
+                $next = $deposit->isFinal() ? PickupStatus::Completed : PickupStatus::PickedUp;
+                $locked->forceFill(['status' => $next, 'deposit_id' => $deposit->id, 'completed_at' => $deposit->isFinal() ? now() : null])->save();
+                $reason = $deposit->isFinal() ? 'Penimbangan aktual dan setoran final berhasil.' : 'Hasil timbang menunggu persetujuan setoran; saldo belum bertambah.';
+                $this->recordStatus($locked, $actor, $oldStatus, $next, $reason);
+                $this->auditLogger->record($actor, $deposit->isFinal() ? 'pickup.completed' : 'pickup.deposit_review_requested', $locked, ['status' => $oldStatus->value], ['status' => $next->value, 'deposit_id' => $deposit->id, 'actual_weight_kg' => $deposit->total_weight_kg], $this->correlationId());
                 $key->forceFill(['status' => 'succeeded', 'result_type' => PickupRequest::class, 'result_id' => $locked->id])->save();
-                $this->notifyStatus($locked, 'Penjemputan selesai', 'Penjemputan '.$locked->request_number.' selesai dan setoran telah dibuat.', 'pickup.completed');
+                if ($deposit->isFinal()) {
+                    $this->notifyStatus($locked, 'Penjemputan selesai', 'Penjemputan '.$locked->request_number.' selesai dan setoran telah dibuat.', 'pickup.completed');
+                }
 
                 return $locked->fresh(['items', 'media', 'deposit']);
             });
@@ -297,7 +304,7 @@ final readonly class PickupService
                 $durablePickup = PickupRequest::query()->with('media')->find($pickup->id);
                 $durableMedia = Media::query()->find($media->id);
                 $isCommittedEvidence = $durablePickup instanceof PickupRequest
-                    && $durablePickup->status === PickupStatus::Completed
+                    && in_array($durablePickup->status, [PickupStatus::Completed, PickupStatus::PickedUp], true)
                     && $durablePickup->deposit_id !== null
                     && $durableMedia instanceof Media
                     && $durableMedia->attachable_type === PickupRequest::class
@@ -322,8 +329,14 @@ final readonly class PickupService
 
         return DB::transaction(function () use ($actor, $pickup, $reason): PickupRequest {
             $locked = $this->lockPickup($pickup);
-            if ($locked->status === PickupStatus::EnRoute && $locked->customer_id === $actor->id) {
+            if (in_array($locked->status, [PickupStatus::EnRoute, PickupStatus::PickedUp], true) && $locked->customer_id === $actor->id) {
                 throw new AuthorizationException('Penjemputan tidak dapat dibatalkan setelah petugas menuju lokasi.');
+            }
+            if ($locked->deposit_id !== null) {
+                throw ValidationException::withMessages(['status' => 'Setoran terkait harus diputuskan melalui pemeriksaan setoran.']);
+            }
+            if (in_array($locked->status, [PickupStatus::EnRoute, PickupStatus::PickedUp], true) && mb_strlen(trim((string) $reason)) < 10) {
+                throw ValidationException::withMessages(['cancellation_reason' => 'Alasan kendala minimal 10 karakter.']);
             }
             if (! $locked->status->canTransitionTo(PickupStatus::Cancelled)) {
                 throw ValidationException::withMessages(['status' => 'Status penjemputan tidak dapat dibatalkan.']);

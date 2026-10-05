@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Identity\Actions;
 
+use App\Authorization\AccountAdministration;
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\CustomersRegions\Models\Rt;
@@ -49,6 +50,9 @@ final readonly class ManageUsers
         $role = Role::query()->whereKey($roleId)->first();
         if (! $role instanceof Role) {
             throw ValidationException::withMessages(['role_id' => 'Peran yang dipilih tidak valid.']);
+        }
+        if (! app(AccountAdministration::class)->canAssign($actor, $role)) {
+            throw new AuthorizationException('Peran ini hanya dapat ditetapkan oleh pengelola akses.');
         }
 
         return DB::transaction(function () use ($actor, $attributes, $password, $role): User {

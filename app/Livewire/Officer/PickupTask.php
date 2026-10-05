@@ -249,7 +249,7 @@ final class PickupTask extends Component
             : null;
         $this->evidence = null;
         $this->completionDialogOpen = false;
-        session()->flash('success', 'Penjemputan selesai dan setoran aktual telah dibuat.');
+        session()->flash('success', $deposit?->isPendingReview() ? 'Hasil timbang dikirim untuk pemeriksaan. Saldo belum bertambah.' : 'Penjemputan selesai dan setoran aktual telah dibuat.');
     }
 
     /** @return array<string, list<string|\Closure>> */
@@ -319,7 +319,7 @@ final class PickupTask extends Component
         return view('livewire.officer.pickup-task', [
             'types' => $types,
             'conditionsByType' => $conditionsByType,
-            'canComplete' => $this->pickup->status === PickupStatus::PickedUp,
+            'canComplete' => $this->pickup->status === PickupStatus::PickedUp && $this->pickup->deposit_id === null,
             'pricePreview' => $this->pricePreview($types, $conditions),
         ]);
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Authorization\AccountAdministration;
 use App\Authorization\PermissionChecker;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Queries\VisibleUsers;
@@ -14,6 +15,7 @@ final readonly class UserPolicy
     public function __construct(
         private PermissionChecker $permissions,
         private VisibleUsers $visibleUsers,
+        private AccountAdministration $accounts = new AccountAdministration(new PermissionChecker),
     ) {}
 
     public function viewAny(User $actor): bool
@@ -37,7 +39,7 @@ final readonly class UserPolicy
     {
         return $actor->is($subject)
             ? $this->permissions->allows($actor, 'profile.update')
-            : $this->visibleUsers->canView($actor, $subject) && $this->permissions->allows($actor, 'user.update');
+            : $this->accounts->canManage($actor, $subject) && $this->visibleUsers->canView($actor, $subject) && $this->permissions->allows($actor, 'user.update');
     }
 
     public function manageView(User $actor, User $subject): bool
@@ -49,6 +51,7 @@ final readonly class UserPolicy
     public function manageUpdate(User $actor, User $subject): bool
     {
         return ! $actor->is($subject)
+            && $this->accounts->canManage($actor, $subject)
             && $this->manageView($actor, $subject)
             && $this->permissions->allows($actor, 'user.update');
     }
@@ -56,6 +59,7 @@ final readonly class UserPolicy
     public function updateCustomer(User $actor, User $subject): bool
     {
         return ! $actor->is($subject)
+            && $this->accounts->canManage($actor, $subject)
             && $this->manageView($actor, $subject)
             && $this->permissions->allows($actor, 'customer.update');
     }
@@ -63,6 +67,7 @@ final readonly class UserPolicy
     public function deactivate(User $actor, User $subject): bool
     {
         return ! $actor->is($subject)
+            && $this->accounts->canManage($actor, $subject)
             && $this->visibleUsers->canView($actor, $subject)
             && $this->permissions->allows($actor, 'user.update');
     }
@@ -70,23 +75,25 @@ final readonly class UserPolicy
     public function activate(User $actor, User $subject): bool
     {
         return ! $actor->is($subject)
+            && $this->accounts->canManage($actor, $subject)
             && $this->visibleUsers->canView($actor, $subject, UserStatus::Inactive)
             && $this->permissions->allows($actor, 'user.activate');
     }
 
     public function verify(User $actor, User $subject): bool
     {
-        return ! $actor->is($subject) && $this->permissions->allows($actor, 'user.verify');
+        return ! $actor->is($subject) && $this->accounts->canManage($actor, $subject) && $this->permissions->allows($actor, 'user.verify');
     }
 
     public function reject(User $actor, User $subject): bool
     {
-        return ! $actor->is($subject) && $this->permissions->allows($actor, 'user.reject');
+        return ! $actor->is($subject) && $this->accounts->canManage($actor, $subject) && $this->permissions->allows($actor, 'user.reject');
     }
 
     public function resetPassword(User $actor, User $subject): bool
     {
         return ! $actor->is($subject)
+            && $this->accounts->canManage($actor, $subject)
             && $this->visibleUsers->canView($actor, $subject)
             && $this->permissions->allows($actor, 'user.reset-password');
     }
@@ -94,6 +101,7 @@ final readonly class UserPolicy
     public function revokeSession(User $actor, User $subject): bool
     {
         return ! $actor->is($subject)
+            && $this->accounts->canManage($actor, $subject)
             && $this->visibleUsers->canView($actor, $subject)
             && $this->permissions->allows($actor, 'session.revoke');
     }

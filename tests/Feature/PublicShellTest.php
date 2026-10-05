@@ -46,6 +46,7 @@ final class PublicShellTest extends TestCase
             route('public.mobile-schedule'),
             route('public.announcements'),
             route('public.programs'),
+            route('public.tutorials'),
             route('terms-and-privacy'),
         ];
 
@@ -123,6 +124,7 @@ final class PublicShellTest extends TestCase
             route('public.mobile-schedule'),
             route('public.announcements'),
             route('public.programs'),
+            route('public.tutorials'),
             route('terms-and-privacy'),
             route('login'),
             route('register'),
@@ -141,18 +143,19 @@ final class PublicShellTest extends TestCase
             'Jadwal keliling',
             'Pengumuman',
             'Target dan statistik',
+            'Tutorial penggunaan',
             'Ketentuan dan privasi',
             'Masuk',
             'Daftar',
         ], $labels);
-        self::assertCount(11, $links[0]);
+        self::assertCount(12, $links[0]);
 
         foreach ($links[0] as $link) {
             self::assertStringContainsString('x-on:click="closeModal()"', $link);
             self::assertStringNotContainsString('prevent', $link);
         }
 
-        self::assertSame(11, substr_count($navigation, 'x-on:click="closeModal()"'));
+        self::assertSame(12, substr_count($navigation, 'x-on:click="closeModal()"'));
         self::assertStringNotContainsString('x-data=', $navigation);
         self::assertStringNotContainsString('openModal(', $navigation);
     }

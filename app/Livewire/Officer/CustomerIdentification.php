@@ -68,6 +68,8 @@ final class CustomerIdentification extends Component
 
     public string $withdrawalDate = '';
 
+    public string $withdrawalServiceAreaId = '';
+
     #[Locked]
     public ?int $assistedWithdrawalServiceId = null;
 
@@ -288,7 +290,8 @@ final class CustomerIdentification extends Component
         $this->validate([
             'withdrawalConsent' => ['accepted'],
             'withdrawalEvidence' => ['required_if:assistedWithdrawalServiceId,null', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
-            'withdrawalAmount' => ['required', 'integer', 'min:10000'],
+            'withdrawalAmount' => ['required', 'integer', 'min:'.(int) config('app.withdrawal_minimum_amount', 10000)],
+            'withdrawalServiceAreaId' => ['nullable', 'integer'],
             'withdrawalLocation' => ['required', 'string', 'min:3', 'max:255'],
             'withdrawalDate' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
         ], [
@@ -305,6 +308,14 @@ final class CustomerIdentification extends Component
         /** @var User $actor */
         $actor = auth()->user();
         if ($this->assistedWithdrawalId !== null) {
+            return;
+        }
+
+        try {
+            $area = $withdrawals->resolveRequestArea(User::query()->findOrFail($this->candidate->userId), $this->withdrawalServiceAreaId);
+        } catch (ValidationException $exception) {
+            $this->presentAssistedWithdrawalErrors($exception);
+
             return;
         }
 
@@ -341,6 +352,7 @@ final class CustomerIdentification extends Component
                 'pickup_location' => $this->withdrawalLocation,
                 'pickup_date' => $this->withdrawalDate,
                 'assisted_service_id' => $this->assistedWithdrawalServiceId,
+                'service_area_id' => $area->id,
             ], $this->assistedWithdrawalIdempotencyKey);
         } catch (ValidationException $exception) {
             $this->presentAssistedWithdrawalErrors($exception);
@@ -363,6 +375,7 @@ final class CustomerIdentification extends Component
             'canCreateAssisted' => $permissions->allows($actor, 'customer.create-assisted'),
             'canCreateAssistedWithdrawal' => $permissions->allows($actor, 'customer.create-assisted') && $permissions->allows($actor, 'withdrawal.request'),
             'candidateAvailableBalance' => $this->candidate === null ? null : $this->availableBalanceFor($this->candidate->userId),
+            'withdrawalServiceAreas' => $this->candidate === null ? collect() : app(WithdrawalService::class)->availableAreasFor(User::query()->findOrFail($this->candidate->userId))->get(),
             'mobileServices' => $permissions->allows($actor, 'mobile-service.operate')
                 ? MobileService::query()->whereHas('staff', static fn (Builder $staff): Builder => $staff->whereKey($actor->id))->where('status', MobileServiceStatus::Open)->where('starts_at', '<=', now())->where('ends_at', '>=', now())->orderBy('starts_at')->get()
                 : collect(),
@@ -400,6 +413,7 @@ final class CustomerIdentification extends Component
                 'pickup_location' => 'withdrawalLocation',
                 'pickup_date' => 'withdrawalDate',
                 'assisted_service_id' => 'withdrawalEvidence',
+                'service_area_id' => 'withdrawalServiceAreaId',
                 default => 'withdrawalAmount',
             };
 
@@ -414,6 +428,7 @@ final class CustomerIdentification extends Component
         $this->reset(['candidate', 'confirmed', 'selectedService', 'assistedRecorded', 'assistedServiceId', 'assistedConsent', 'assistedEvidence', 'withdrawalConsent', 'withdrawalEvidence', 'withdrawalAmount', 'withdrawalLocation', 'assistedWithdrawalServiceId', 'assistedWithdrawalId']);
         $this->withdrawalDate = today('Asia/Jakarta')->addDay()->toDateString();
         $this->assistedWithdrawalIdempotencyKey = (string) str()->uuid();
+        $this->withdrawalServiceAreaId = '';
         $this->resetErrorBag(['search', 'token', 'assistedConsent', 'assistedEvidence', 'withdrawalConsent', 'withdrawalEvidence', 'withdrawalAmount', 'withdrawalLocation', 'withdrawalDate']);
     }
 }

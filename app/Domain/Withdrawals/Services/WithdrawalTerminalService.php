@@ -65,6 +65,9 @@ final readonly class WithdrawalTerminalService
             if ($locked->status === $next) {
                 return $locked;
             }
+            if ($next === WithdrawalStatus::Cancelled && $locked->customer_id === $actor->id && $locked->status !== WithdrawalStatus::PendingVerification) {
+                throw new AuthorizationException('Warga hanya dapat membatalkan pengajuan sebelum persetujuan.');
+            }
 
             return $this->finish($locked, $actor, $next, $reason, $event);
         });

@@ -41,6 +41,7 @@
         'truck'         => 'truck',
         'video'         => 'video',
         'play'          => 'play',
+        'search'        => 'search',
         'external-link' => 'external-link',
         'x'             => 'x',
     ];
@@ -159,6 +160,9 @@
             @break
         @case('play')
             <polygon points="6 3 20 12 6 21 6 3"/>
+            @break
+        @case('search')
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
             @break
         @case('external-link')
             <path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>

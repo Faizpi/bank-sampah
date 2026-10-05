@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Providers\Filament;
 
 use App\Filament\Auth\BackofficeLogin;
+use App\Filament\Auth\Responses\BackofficeLoginResponse;
+use App\Http\Middleware\EnsureSessionIsFresh;
+use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -95,13 +98,14 @@ final class BackofficePanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+                EnsureSessionIsFresh::class,
+            ], isPersistent: true);
     }
 
     public function register(): void
     {
         parent::register();
 
-        $this->app->bind(\Filament\Auth\Http\Responses\Contracts\LoginResponse::class, \App\Filament\Auth\Responses\BackofficeLoginResponse::class);
+        $this->app->bind(LoginResponse::class, BackofficeLoginResponse::class);
     }
 }

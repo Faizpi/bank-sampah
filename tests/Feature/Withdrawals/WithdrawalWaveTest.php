@@ -496,6 +496,41 @@ final class WithdrawalWaveTest extends TestCase
         $service->cancel($customer, $approved, 'Warga mencoba membatalkan setelah persetujuan.');
     }
 
+    public function test_citizen_cannot_cancel_using_a_stale_pre_approval_instance(): void
+    {
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request', 'withdrawal.view', 'withdrawal.cancel']);
+        $this->credit($customer, 100000);
+        $admin = User::factory()->create();
+        $this->grant($admin, ['withdrawal.approve', 'withdrawal.view', 'user.view.all']);
+        $service = app(WithdrawalService::class);
+        $pending = $service->request($customer, $this->requestPayload($area) + ['amount' => '40000'], 'audit-stale-request-0001');
+        $service->approve($admin, WithdrawalRequest::findOrFail($pending->id), true);
+        try {
+            $service->cancel($customer, $pending, 'Pembatalan dari objek status lama.');
+            self::fail('Cancellation after approval must be rejected under the lock.');
+        } catch (AuthorizationException) {
+            self::assertSame(WithdrawalStatus::Approved, $pending->fresh()->status);
+            self::assertSame(BalanceHold::STATUS_ACTIVE, $pending->fresh()->balanceHold->status);
+        }
+    }
+
+    public function test_form_retry_returns_the_original_request_after_all_balance_is_held(): void
+    {
+        [$customer, $area] = $this->context();
+        $this->grant($customer, ['withdrawal.request', 'withdrawal.view']);
+        $this->credit($customer, 40000);
+        $payload = $this->requestPayload($area) + ['amount' => '40000'];
+        $created = app(WithdrawalService::class)->request($customer, $payload, 'audit-ui-replay-00001');
+        Livewire::actingAs($customer)->test(WithdrawalRequestForm::class)
+            ->set('idempotencyKey', 'audit-ui-replay-00001')->set('amount', '40000')
+            ->set('pickupLocation', $payload['pickup_location'])->set('pickupDate', $payload['pickup_date'])
+            ->set('serviceAreaId', (string) $area->id)->call('submit')
+            ->assertHasNoErrors()->assertRedirect(route('citizen.withdrawal.show', $created));
+        self::assertSame(1, WithdrawalRequest::query()->count());
+        self::assertSame(1, BalanceHold::query()->count());
+    }
+
     public function test_citizen_withdrawal_page_only_shows_the_cancel_button_while_pending_verification(): void
     {
         [$customer, $area] = $this->context();

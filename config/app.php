@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'test_environment_token' => env('E2E_ENVIRONMENT_TOKEN'),
 
     /*
     |--------------------------------------------------------------------------

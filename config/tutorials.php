@@ -265,14 +265,14 @@ return [
             'id' => 'superadmin-login',
             'role' => 'superadmin',
             'number' => '1',
-            'title' => 'Tutorial Masuk ke Backoffice Panel',
-            'summary' => 'Panduan login ke panel manajemen Backoffice Filament bagi Admin dan Superadmin.',
+            'title' => 'Tutorial Masuk ke Panel Admin',
+            'summary' => 'Panduan login ke panel admin bagi Admin dan Superadmin.',
             'steps' => [
-                'Kunjungi URL `/backoffice/login` pada peramban web.',
+                'Buka halaman Masuk, lalu klik tautan "Akses Panel Admin" di bagian bawah formulir (atau bisa juga akses langsung URL `/backoffice/login`).',
                 'Masukkan username dan password akun Superadmin atau Admin.',
                 'Akses panel administrasi lengkap dengan widget statistik dan navigasi master data.',
             ],
-            'video_url' => env('TUTORIAL_ADMIN_LOGIN_URL', 'https://drive.google.com/drive/folders/placeholder-tutorial-admin-backoffice-login'),
+            'video_url' => env('TUTORIAL_ADMIN_LOGIN_URL', 'https://drive.google.com/drive/folders/placeholder-tutorial-admin-panel-admin-login'),
         ],
         [
             'id' => 'superadmin-verifikasi-warga',
@@ -281,7 +281,7 @@ return [
             'title' => 'Tutorial Memverifikasi Warga Baru',
             'summary' => 'Cara menyetujui atau menolak permohonan pendaftaran warga baru yang masuk.',
             'steps' => [
-                'Buka menu "Warga Menunggu Verifikasi" pada panel Backoffice.',
+                'Buka menu "Warga Menunggu Verifikasi" pada panel admin.',
                 'Periksa kesesuaian identitas warga dan wilayah RT/RW di Desa Sindangheula.',
                 'Klik aksi "Verifikasi" untuk mengaktifkan akun (nomor nasabah CST dan kode QR langsung diterbitkan otomatis).',
                 'Jika data tidak sesuai, masukkan alasan penolakan dan klik "Tolak".',
@@ -295,7 +295,7 @@ return [
             'title' => 'Tutorial Menambah Petugas atau Bendahara Baru',
             'summary' => 'Panduan membuat akun staf pengelola dan memberikan hak akses peran secara tepat.',
             'steps' => [
-                'Buka menu "Manajemen Staf / Pengguna" di Backoffice.',
+                'Buka menu "Manajemen Staf / Pengguna" di panel admin.',
                 'Klik tombol "Tambah Pengguna Baru".',
                 'Isi nama, username, nomor kontak, dan tetapkan kata sandi awal.',
                 'Pilih peran yang sesuai: centang "Petugas" atau "Bendahara".',
@@ -325,7 +325,7 @@ return [
             'title' => 'Tutorial Mengubah & Menetapkan Harga Sampah',
             'summary' => 'Panduan memperbarui tarif harga beli sampah aktif sesuai fluktuasi pasar atau pengepul.',
             'steps' => [
-                'Buka menu "Harga Sampah" pada Backoffice.',
+                'Buka menu "Harga Sampah" pada panel admin.',
                 'Pilih jenis sampah dan kondisi yang ingin disesuaikan harganya.',
                 'Masukkan nominal harga baru per satuan (Rp/kg).',
                 'Tetapkan tanggal mulai berlaku harga dan simpan.',
@@ -340,7 +340,7 @@ return [
             'title' => 'Tutorial Menugaskan Penjemputan ke Petugas',
             'summary' => 'Cara mengalokasikan permintaan jemput sampah warga kepada petugas lapangan yang bertugas.',
             'steps' => [
-                'Buka menu "Penjemputan Sampah" di Backoffice.',
+                'Buka menu "Penjemputan Sampah" di panel admin.',
                 'Pilih permohonan penjemputan warga yang masih berstatus "Menunggu Petugas".',
                 'Pilih nama petugas lapangan yang bertanggung jawab di wilayah RT/RW tersebut.',
                 'Klik "Tugaskan", notifikasi akan langsung terkirim ke portal petugas terkait.',
@@ -354,7 +354,7 @@ return [
             'title' => 'Tutorial Menugaskan Pencairan Saldo kepada Bendahara',
             'summary' => 'Langkah persetujuan awal penarikan saldo nasabah sebelum dieksekusi oleh Bendahara.',
             'steps' => [
-                'Buka menu "Pencairan Saldo" di Backoffice.',
+                'Buka menu "Pencairan Saldo" di panel admin.',
                 'Tinjau permohonan pencairan warga dan verifikasi ketersediaan saldo di buku besar.',
                 'Klik opsi "Setujui & Teruskan ke Bendahara".',
                 'Status berubah menjadi siap dibayar dan otomatis muncul pada antrean portal bendahara.',
@@ -368,7 +368,7 @@ return [
             'title' => 'Tutorial Menambah & Mengelola Katalog Sembako',
             'summary' => 'Cara memasukkan barang sembako baru, mengatur harga poin saldo, dan stok produk.',
             'steps' => [
-                'Buka menu "Katalog Sembako" di Backoffice.',
+                'Buka menu "Katalog Sembako" di panel admin.',
                 'Klik "Tambah Produk Sembako".',
                 'Isi nama barang (misal: Beras Premium 5 Kg, Minyak Goreng 1L), nilai tukar rupiah, dan jumlah stok awal.',
                 'Unggah foto barang agar menarik bagi warga di aplikasi.',
@@ -397,7 +397,7 @@ return [
             'title' => 'Tutorial Manajemen Backup & Log Audit',
             'summary' => 'Cara mengunduh cadangan database dan memeriksa catatan rekam jejak aktivitas sistem.',
             'steps' => [
-                'Buka menu "Sistem & Keamanan" di Backoffice.',
+                'Buka menu "Sistem & Keamanan" di panel admin.',
                 'Pilih "Backup Data" untuk membuat dan mengunduh cadangan arsip database secara aman.',
                 'Buka menu "Audit Log" untuk meninjau riwayat login, transaksi, dan perubahan data penting.',
             ],

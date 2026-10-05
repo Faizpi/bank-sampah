@@ -100,7 +100,7 @@
                             class="min-h-touch w-full rounded-full border border-border bg-surface pl-11 pr-10 text-body-sm text-text-primary placeholder:text-text-secondary/70 focus:border-forest-600 focus:outline-none focus:ring-2 focus:ring-forest-600/30"
                         >
                         <div class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary">
-                            <x-public.icon name="magic-wand" size="size-5" />
+                            <x-public.icon name="search" size="size-5" />
                         </div>
                         <button
                             type="button"
@@ -324,13 +324,6 @@
                             </p>
                         </div>
                         <div class="flex flex-wrap gap-2">
-                            <a
-                                href="{{ route('home') }}#layanan"
-                                class="inline-flex min-h-touch items-center justify-center gap-2 rounded-full border border-forest-600 bg-surface px-5 text-label font-bold text-forest-700 transition hover:bg-success-bg"
-                            >
-                                <x-public.icon name="leaf" size="size-4" />
-                                Pelajari Layanan
-                            </a>
                             <a
                                 href="{{ route('login') }}"
                                 class="inline-flex min-h-touch items-center justify-center gap-2 rounded-full bg-forest-600 px-5 text-label font-bold text-surface shadow-xs transition hover:bg-forest-700"

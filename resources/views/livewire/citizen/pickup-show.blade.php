@@ -21,6 +21,9 @@
 @endphp
 
 <section aria-labelledby="pickup-detail-title" class="grid gap-6">
+    @if ($pickup->deposit?->isPendingReview())
+        <p role="status" class="rounded-xl border border-border bg-warning-bg p-4">Sampah sudah dijemput. Hasil timbang sedang diperiksa; saldo belum bertambah.</p>
+    @endif
     {{-- Page header --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>

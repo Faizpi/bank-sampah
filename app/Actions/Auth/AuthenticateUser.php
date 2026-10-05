@@ -8,6 +8,7 @@ use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Models\User;
 use App\Support\Auth\LoginRateLimiter;
+use App\Support\Auth\SessionAccess;
 use App\Support\Auth\Username;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Session\Session;
@@ -66,12 +67,15 @@ final readonly class AuthenticateUser
         }
 
         try {
-            return DB::transaction(function () use ($user, $correlationId): User {
+            $authenticated = DB::transaction(function () use ($user, $correlationId): User {
                 $user->forceFill(['last_login_at' => now()])->save();
                 $this->auditLogger->record($user, 'access.login.succeeded', $user, [], [], $correlationId);
 
                 return $user;
             });
+            SessionAccess::begin($this->session, $authenticated);
+
+            return $authenticated;
         } catch (\Throwable) {
             $guard->logout();
             $this->session->invalidate();

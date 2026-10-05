@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    $this->travelTo(CarbonImmutable::parse('2026-08-15 12:00:00', 'Asia/Jakarta'));
+});
+
 it('records a backup pair from metadata through the discovered Artisan command', function (): void {
     $actor = User::factory()->create();
     grantBackupCommandPermission($actor, 'backup.run');

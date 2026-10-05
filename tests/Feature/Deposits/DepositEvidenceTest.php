@@ -538,6 +538,23 @@ final class DepositEvidenceTest extends TestCase
         }
     }
 
+    public function test_resumed_draft_preview_uses_the_same_historical_price_as_finalization(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-08-10 10:00', 'Asia/Jakarta'));
+        Storage::fake('media_private');
+        [$staff, $customer, $type, $condition] = $this->pricedContext();
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all', 'price.manage']);
+        $service = app(DepositService::class);
+        $draft = $service->createDraft($staff, $customer);
+        $service->replaceDraftItems($staff, $draft, [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']]);
+        app(ManageWastePricing::class)->createPeriod($staff, $type, $condition, 5000, CarbonImmutable::parse('2026-08-11', 'Asia/Jakarta'), null, (string) Str::uuid());
+        $this->travelTo(CarbonImmutable::parse('2026-08-12 10:00', 'Asia/Jakarta'));
+        Livewire::actingAs($staff)->withQueryParams(['draftId' => $draft->id])->test(DepositForm::class, ['customerId' => $customer->id])
+            ->assertViewHas('pricePreview', fn (array $preview): bool => $preview['total'] === 3000)
+            ->set('evidence', UploadedFile::fake()->image('proof.jpg'))->call('reviewFinalization')->call('finalize')->assertHasNoErrors();
+        self::assertSame(3000, (int) $draft->fresh()->total_value);
+    }
+
     /** @return array{User, User, WasteType, WasteCondition} */
     private function pricedContext(): array
     {

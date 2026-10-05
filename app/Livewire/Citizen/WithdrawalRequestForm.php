@@ -65,12 +65,6 @@ final class WithdrawalRequestForm extends Component
         /** @var User $actor */
         $actor = auth()->user();
 
-        if ((int) $validated['amount'] > $this->availableBalance($actor)) {
-            $this->addError('amount', 'Nominal melebihi saldo tersedia.');
-
-            return;
-        }
-
         try {
             $withdrawal = $service->request($actor, [
                 'amount' => $this->amount,

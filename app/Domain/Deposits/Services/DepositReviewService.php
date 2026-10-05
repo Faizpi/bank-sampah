@@ -13,6 +13,8 @@ use App\Domain\Ledger\Services\LedgerService;
 use App\Domain\Notifications\Data\NotificationPayload;
 use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Notifications\Support\NotificationDedupeKey;
+use App\Domain\Pickups\Enums\PickupStatus;
+use App\Domain\Pickups\Models\PickupRequest;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -71,6 +73,8 @@ final readonly class DepositReviewService
             }
 
             $key = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => $scope, 'key' => $idempotencyKey, 'payload_hash' => $payloadHash, 'status' => 'processing']);
+            // Lock in the same order as pickup completion: pickup, deposit, then ledger.
+            $pickup = $deposit->pickup_request_id === null ? null : PickupRequest::query()->whereKey($deposit->pickup_request_id)->lockForUpdate()->firstOrFail();
             $locked = Deposit::query()->whereKey($deposit->id)->lockForUpdate()->firstOrFail();
             if (! $locked->isPendingReview()) {
                 throw ValidationException::withMessages(['deposit' => 'Setoran tidak lagi menunggu persetujuan.']);
@@ -89,12 +93,20 @@ final readonly class DepositReviewService
                     type: 'deposit.finalized',
                     title: 'Setoran selesai',
                     body: 'Setoran '.$locked->deposit_number.' telah selesai diproses.',
-                    reference: '/setoran/'.$locked->deposit_number,
+                    reference: '/warga/setoran/'.$locked->id,
                     dedupeKey: NotificationDedupeKey::for('deposit.finalized:'.$locked->deposit_number, $locked->customer_id, 'deposit-finalized-v1'),
                 ));
             } else {
                 $locked->forceFill(['status' => Deposit::STATUS_REJECTED, 'reviewed_by' => $actor->id, 'reviewed_at' => $now, 'review_reason' => $reason])->save();
                 $this->auditLogger->record($actor, 'deposit.review_rejected', $locked, ['status' => Deposit::STATUS_PENDING_REVIEW], ['status' => Deposit::STATUS_REJECTED, 'review_reason' => $reason], $this->correlationId());
+            }
+
+            if ($pickup instanceof PickupRequest && $pickup->deposit_id === $locked->id) {
+                $oldStatus = $pickup->status;
+                $next = $approved ? PickupStatus::Completed : PickupStatus::Cancelled;
+                $pickup->forceFill(['status' => $next, 'completed_at' => $approved ? $now : null, 'cancellation_reason' => $approved ? null : 'Setoran ditolak: '.$reason])->save();
+                $pickup->statusHistory()->create(['old_status' => $oldStatus->value, 'new_status' => $next->value, 'actor_id' => $actor->id, 'reason' => $approved ? 'Setoran disetujui dan saldo masuk dicatat.' : 'Setoran ditolak: '.$reason, 'occurred_at' => $now]);
+                $this->auditLogger->record($actor, $approved ? 'pickup.completed' : 'pickup.deposit_rejected', $pickup, ['status' => $oldStatus->value], ['status' => $next->value, 'deposit_id' => $locked->id], $this->correlationId());
             }
 
             $key->forceFill(['status' => 'succeeded', 'result_type' => Deposit::class, 'result_id' => $locked->id])->save();

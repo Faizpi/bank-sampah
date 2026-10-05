@@ -237,6 +237,13 @@ Route::livewire('/notifikasi', NotificationCenter::class)
     ->name('notifications.index');
 
 if (app()->environment('testing')) {
+    Route::get('/_test/environment', function (Request $request): JsonResponse {
+        $token = (string) config('app.test_environment_token');
+        abort_unless(strlen($token) >= 32 && hash_equals($token, (string) $request->header('X-Test-Environment')), 404);
+
+        return response()->json(['environment' => app()->environment(), 'database' => config('database.connections.'.config('database.default').'.database')]);
+    });
+
     Route::get('/_test/visible-users/{user}', function (Request $request, VisibleUsers $visibleUsers, int $user): JsonResponse {
         $visibleUser = $visibleUsers->queryFor($request->user())->findOrFail($user);
 

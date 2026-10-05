@@ -359,7 +359,7 @@ final class DepositForm extends Component
             }
 
             try {
-                $price = app(ResolveWastePrice::class)->resolve($type, (int) $condition->id, now('Asia/Jakarta'));
+                $price = app(ResolveWastePrice::class)->resolve($type, (int) $condition->id, $this->draft?->occurred_at ?? now('Asia/Jakarta'));
                 $snapshot = $price->snapshot()->withWeight($weight);
             } catch (Throwable) {
                 $complete = false;

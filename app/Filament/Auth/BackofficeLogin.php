@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\Auth;
 
+use App\Filament\Auth\Responses\BackofficeLoginResponse;
+use App\Models\User;
+use App\Support\Auth\SessionAccess;
 use App\Support\Auth\Username;
 use Database\Seeders\DeveloperUsersSeeder;
+use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Auth\Pages\Login;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Illuminate\Contracts\Support\Htmlable;
@@ -25,9 +30,9 @@ final class BackofficeLogin extends Login
 
     public function mount(): void
     {
-        if (\Filament\Facades\Filament::auth()->check()) {
-            $user = \Filament\Facades\Filament::auth()->user();
-            if ($user instanceof \App\Models\User && $user->canAccessPanel(\Filament\Facades\Filament::getCurrentOrDefaultPanel())) {
+        if (Filament::auth()->check()) {
+            $user = Filament::auth()->user();
+            if ($user instanceof User && $user->canAccessPanel(Filament::getCurrentOrDefaultPanel())) {
                 $intended = session()->pull('url.intended');
                 if (is_string($intended) && str_starts_with($intended, url('/backoffice')) && ! str_contains($intended, '/backoffice/login')) {
                     $this->redirect($intended);
@@ -35,7 +40,7 @@ final class BackofficeLogin extends Login
                     return;
                 }
 
-                $this->redirect(\Filament\Facades\Filament::getUrl());
+                $this->redirect(Filament::getUrl());
 
                 return;
             }
@@ -44,12 +49,17 @@ final class BackofficeLogin extends Login
         $this->form->fill();
     }
 
-    public function authenticate(): ?\Filament\Auth\Http\Responses\Contracts\LoginResponse
+    public function authenticate(): ?LoginResponse
     {
         $response = parent::authenticate();
 
-        if ($response instanceof \Filament\Auth\Http\Responses\Contracts\LoginResponse) {
-            return new \App\Filament\Auth\Responses\BackofficeLoginResponse;
+        if ($response instanceof LoginResponse) {
+            $actor = Filament::auth()->user();
+            if ($actor instanceof User) {
+                SessionAccess::begin(session(), $actor);
+            }
+
+            return new BackofficeLoginResponse;
         }
 
         return $response;

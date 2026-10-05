@@ -147,7 +147,7 @@ final readonly class WithdrawalRequestService
         return $customer;
     }
 
-    private function areaForRequest(User $customer, mixed $areaId): ServiceArea
+    public function areaForRequest(User $customer, mixed $areaId): ServiceArea
     {
         $rtId = $customer->customerProfile?->rt_id;
         if ($rtId === null) {

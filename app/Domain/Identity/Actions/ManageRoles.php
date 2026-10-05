@@ -7,6 +7,7 @@ namespace App\Domain\Identity\Actions;
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\DatabaseSession;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Queries\VisibleUsers;
@@ -40,6 +41,7 @@ final readonly class ManageRoles
             ]);
 
             $this->syncPermissions($actor, $role, $permissionIds);
+            $this->auditLogger->record($actor, 'identity.role.created', $role, [], ['permission_ids' => $permissionIds], $this->correlationId());
 
             return $role->fresh('permissions');
         });
@@ -48,14 +50,20 @@ final readonly class ManageRoles
     /**
      * @param  list<int>  $permissionIds
      */
-    public function updateRole(User $actor, Role $role, string $description, array $permissionIds): void
+    public function updateRole(User $actor, Role $role, string $description, array $permissionIds, string $reason = 'Perubahan peran melalui pengelolaan akses.'): void
     {
         $this->authorize($actor, 'update', $role);
+        if (mb_strlen(trim($reason)) < 10 || mb_strlen($reason) > 1000) {
+            throw ValidationException::withMessages(['reason' => 'Alasan perubahan harus 10-1000 karakter.']);
+        }
 
-        DB::transaction(function () use ($actor, $role, $description, $permissionIds): void {
+        DB::transaction(function () use ($actor, $role, $description, $permissionIds, $reason): void {
             $lockedRole = Role::query()->lockForUpdate()->findOrFail($role->getKey());
+            $oldPermissions = $lockedRole->permissions()->pluck('permissions.id')->all();
             $lockedRole->forceFill(['description' => $description])->save();
             $this->syncPermissions($actor, $lockedRole, $permissionIds);
+            $this->auditLogger->record($actor, 'identity.role.permissions_updated', $lockedRole, ['permission_ids' => $oldPermissions], ['permission_ids' => $permissionIds, 'reason' => trim($reason)], $this->correlationId());
+            $this->revokeSessions($lockedRole->users()->pluck('users.id')->all());
         });
     }
 
@@ -103,6 +111,7 @@ final readonly class ManageRoles
             }
 
             $locked->roles()->sync($pivot);
+            $this->revokeSessions([$locked->id]);
             $this->auditLogger->record($actor, 'identity.user.roles_assigned', $locked, ['role_ids' => $oldRoleIds], ['role_ids' => $roleIds, 'reason' => $reason], $this->correlationId());
 
             return $locked->fresh('roles');
@@ -119,8 +128,21 @@ final readonly class ManageRoles
             ]);
         }
 
-        $role->permissions()->detach();
-        $role->delete();
+        DB::transaction(function () use ($actor, $role): void {
+            $locked = Role::query()->lockForUpdate()->findOrFail($role->id);
+            $this->auditLogger->record($actor, 'identity.role.deleted', $locked, ['permission_ids' => $locked->permissions()->pluck('permissions.id')->all()], [], $this->correlationId());
+            $this->revokeSessions($locked->users()->pluck('users.id')->all());
+            $locked->permissions()->detach();
+            $locked->users()->detach();
+            $locked->delete();
+        });
+    }
+
+    /** @param list<int> $userIds */
+    private function revokeSessions(array $userIds): void
+    {
+        DatabaseSession::query()->whereIn('user_id', $userIds)->delete();
+        User::query()->whereKey($userIds)->update(['remember_token' => null]);
     }
 
     /**

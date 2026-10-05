@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Authorization\PermissionChecker;
+use App\Domain\Operations\Services\OperationalHealthService;
+use App\Models\User;
 use BackedEnum;
+use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use UnitEnum;
 
-final class TechnicalHealthPage extends OperationsDashboard
+final class TechnicalHealthPage extends Page
 {
     protected static bool $isDiscovered = true;
 
@@ -26,6 +30,16 @@ final class TechnicalHealthPage extends OperationsDashboard
 
     public static function canAccess(): bool
     {
-        return self::hasTechnicalPermission('system.maintenance');
+        $actor = auth()->user();
+
+        return $actor instanceof User && app(PermissionChecker::class)->allows($actor, 'system.maintenance');
+    }
+
+    /** @return array<string, mixed> */
+    protected function getViewData(): array
+    {
+        abort_unless(self::canAccess(), 403);
+
+        return ['health' => app(OperationalHealthService::class)->check()->toArray()];
     }
 }

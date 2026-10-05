@@ -3,23 +3,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { chromium } from '@playwright/test';
+import { verifyIsolatedServer } from './support/isolated-environment.mjs';
 
 const projectDir = process.cwd();
-const laravelEnv = loadDotEnv(path.join(projectDir, '.env'));
-const baseUrl = configuredValue('E2E_BASE_URL', 'APP_URL', 'http://bank-sampah.test').replace(/\/$/, '');
+const { baseUrl, database } = await verifyIsolatedServer(process.env);
 const pwaBaseUrl = (process.env.E2E_PWA_BASE_URL ?? baseUrl.replace(/^http:/, 'https:')).replace(/\/$/, '');
-const database = configuredValue('E2E_DB_DATABASE', 'DB_DATABASE', 'bank_sampah');
 const php = process.env.PHP_BIN ?? 'C:\\Users\\Faiz\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.NTS.8.5_Microsoft.Winget.Source_8wekyb3d8bbwe\\php.exe';
 const fixture = process.env.E2E_FIXTURE ?? `${projectDir}\\final-qc-home-360-footer.png`;
 const devPassword = 'Dev#Sindangheula2026';
 const payerLabel = process.env.E2E_PAYER_LABEL ?? 'Dewi Lestari';
 const customerId = Number(process.env.E2E_CUSTOMER_ID ?? '1');
 const customerNumber = process.env.E2E_CUSTOMER_NUMBER ?? 'CST-00000001';
-const dbHost = configuredValue('E2E_DB_HOST', 'DB_HOST', '127.0.0.1');
-const dbPort = configuredValue('E2E_DB_PORT', 'DB_PORT', '3306');
-const dbUsername = configuredValue('E2E_DB_USERNAME', 'DB_USERNAME', 'root');
-const dbPassword = configuredValue('E2E_DB_PASSWORD', 'DB_PASSWORD', '');
-const appKey = process.env.E2E_APP_KEY ?? process.env.APP_KEY ?? laravelEnv.APP_KEY;
+const dbHost = process.env.E2E_DB_HOST ?? '127.0.0.1';
+const dbPort = process.env.E2E_DB_PORT ?? '3306';
+const dbUsername = process.env.E2E_DB_USERNAME ?? 'root';
+const dbPassword = process.env.E2E_DB_PASSWORD ?? '';
+const appKey = process.env.E2E_APP_KEY;
 const artifactDirectory = process.env.E2E_ARTIFACT_DIR
     ?? path.join(projectDir, 'artifacts', 'uat', new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-'));
 
@@ -33,34 +32,10 @@ const results = [];
 const browserErrors = [];
 let offlineSimulation = false;
 
-function loadDotEnv(filename) {
-    if (!fs.existsSync(filename)) return {};
-
-    return Object.fromEntries(
-        fs.readFileSync(filename, 'utf8')
-            .split(/\r?\n/)
-            .map((line) => line.trim())
-            .filter((line) => line !== '' && !line.startsWith('#'))
-            .map((line) => {
-                const separator = line.indexOf('=');
-                if (separator < 0) return null;
-                const key = line.slice(0, separator).trim();
-                const rawValue = line.slice(separator + 1).trim();
-                const value = rawValue.replace(/^(["'])(.*)\1$/, '$2');
-                return key === '' ? null : [key, value];
-            })
-            .filter((entry) => entry !== null),
-    );
-}
-
-function configuredValue(e2eName, laravelName, fallback) {
-    return process.env[e2eName] ?? process.env[laravelName] ?? laravelEnv[laravelName] ?? fallback;
-}
-
 function testEnv() {
     const env = {
         ...process.env,
-        APP_ENV: 'local',
+        APP_ENV: 'testing',
         DB_CONNECTION: 'mysql',
         DB_HOST: dbHost,
         DB_PORT: dbPort,
@@ -100,9 +75,6 @@ if (!customerServiceAreaId) {
     throw new Error(`Area pelayanan aktif untuk customer ${customerId} tidak ditemukan.`);
 }
 const nextDate = process.env.E2E_NEXT_DATE ?? new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-// Local seed data contains historical capacities. Ensure the live UAT date has
-// a normal operating quota without changing any existing capacity row.
-tinker(`\\App\\Domain\\Pickups\\Models\\PickupCapacity::query()->firstOrCreate(['service_area_id'=>${customerServiceAreaId},'service_date'=>'${nextDate}'],['max_addresses'=>12,'max_weight_kg'=>'80.000','vehicle_label'=>'Kendaraan UAT','is_active'=>true]); echo 'ok';`);
 
 async function waitForLivewire(page) {
     await page.waitForTimeout(1200);

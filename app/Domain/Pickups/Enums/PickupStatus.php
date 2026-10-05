@@ -22,8 +22,8 @@ enum PickupStatus: string
             self::PendingReview => [self::Accepted->value, self::Rejected->value, self::Cancelled->value],
             self::Accepted => [self::Scheduled->value, self::Cancelled->value],
             self::Scheduled => [self::EnRoute->value, self::Cancelled->value],
-            self::EnRoute => [self::PickedUp->value],
-            self::PickedUp => [self::Completed->value],
+            self::EnRoute => [self::PickedUp->value, self::Cancelled->value],
+            self::PickedUp => [self::Completed->value, self::Cancelled->value],
             self::Completed, self::Rejected, self::Cancelled => [],
         };
     }

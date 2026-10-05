@@ -22,11 +22,22 @@ enum Module: string
 
     public function namespace(): string
     {
-        return "App\\Domain\\{$this->value}";
+        return 'App\\Domain\\'.$this->directory();
     }
 
     public function relativePath(): string
     {
-        return "app/Domain/{$this->value}";
+        return 'app/Domain/'.$this->directory();
+    }
+
+    private function directory(): string
+    {
+        return match ($this) {
+            self::IdentityAccess => 'Identity',
+            self::WastePricing => 'WasteMaster',
+            self::Communications => 'Communication',
+            self::Reporting => 'Reports',
+            default => $this->value,
+        };
     }
 }

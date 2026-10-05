@@ -8,6 +8,7 @@ use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\CustomersRegions\Actions\ManageRegions;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Deposits\Services\DepositReviewService;
 use App\Domain\Deposits\Services\DepositService;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Permission;
@@ -687,6 +688,53 @@ final class PickupWaveTest extends TestCase
         $service->cancel($customer, $pickup, 'Tidak jadi');
         self::assertSame(PickupStatus::EnRoute, $pickup->fresh()->status);
         self::assertNull($customer->fresh()->ledgerAccount);
+    }
+
+    public function test_pickup_waits_for_large_deposit_review_and_follows_both_decisions(): void
+    {
+        config()->set('app.deposit_review_threshold', 1000);
+        Storage::fake('media_private');
+        foreach ([true, false] as $approved) {
+            [$customer, $area, $type, $condition] = $this->pricedContext();
+            $admin = User::factory()->create();
+            $staff = User::factory()->create();
+            $this->grant($customer, ['pickup.request']);
+            $this->grant($admin, ['pickup.review', 'pickup.schedule', 'pickup.view', 'user.view.all', 'deposit.approve']);
+            $this->grant($staff, ['pickup.view', 'pickup.execute', 'pickup.complete', 'deposit.create', 'deposit.update-draft', 'deposit.finalize', 'user.view', 'user.view.all']);
+            StaffProfile::query()->create(['user_id' => $staff->id, 'staff_number' => 'STF-REVIEW-'.$staff->id, 'service_area_id' => $area->id, 'active_from' => today()]);
+            $service = app(PickupService::class);
+            $pickup = $service->submit($customer, $this->requestData($customer, $area), [['waste_type_id' => $type->id, 'estimated_weight_kg' => '1.000']], [UploadedFile::fake()->image('request.jpg')], 'audit-review-request-'.$customer->id);
+            $pickup = $service->markPickedUp($staff, $service->begin($staff, $service->schedule($admin, $service->review($admin, $pickup, true), $staff)));
+            $pickup = $service->complete($staff, $pickup, [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], 'audit-review-complete-'.$customer->id, UploadedFile::fake()->image('proof.jpg'));
+            self::assertSame(PickupStatus::PickedUp, $pickup->status);
+            self::assertTrue($pickup->deposit->isPendingReview());
+            self::assertNull($pickup->completed_at);
+            self::assertSame(0, $pickup->deposit->ledgerEntries()->count());
+            $reviews = app(DepositReviewService::class);
+            $method = $approved ? 'approve' : 'reject';
+            $reviews->{$method}($admin, $pickup->deposit, 'Pemeriksaan hasil timbang selesai.', 'audit-review-decision-'.$customer->id);
+            self::assertSame($approved ? PickupStatus::Completed : PickupStatus::Cancelled, $pickup->fresh()->status);
+            self::assertSame($approved ? 1 : 0, $pickup->deposit->ledgerEntries()->count());
+        }
+    }
+
+    public function test_assigned_officer_can_report_failure_after_departure_without_a_deposit(): void
+    {
+        [$customer, $area, $type] = $this->context();
+        Storage::fake('media_private');
+        $admin = User::factory()->create();
+        $staff = User::factory()->create();
+        $this->grant($customer, ['pickup.request', 'pickup.cancel']);
+        $this->grant($admin, ['pickup.review', 'pickup.schedule', 'pickup.view', 'user.view.all']);
+        $this->grant($staff, ['pickup.view', 'pickup.execute', 'pickup.cancel']);
+        StaffProfile::query()->create(['user_id' => $staff->id, 'staff_number' => 'STF-FAILURE-'.$staff->id, 'service_area_id' => $area->id, 'active_from' => today()]);
+        $service = app(PickupService::class);
+        $pickup = $service->submit($customer, $this->requestData($customer, $area), [['waste_type_id' => $type->id, 'estimated_weight_kg' => '1.000']], [UploadedFile::fake()->image('request.jpg')], 'audit-failure-request-001');
+        $pickup = $service->begin($staff, $service->schedule($admin, $service->review($admin, $pickup, true), $staff));
+        $cancelled = $service->cancel($staff, $pickup, 'Alamat tidak dapat diakses petugas.');
+        self::assertSame(PickupStatus::Cancelled, $cancelled->status);
+        self::assertNull($cancelled->deposit_id);
+        self::assertSame(0, Deposit::query()->count());
     }
 
     /** @return array{User, ServiceArea, WasteType, WasteCondition} */

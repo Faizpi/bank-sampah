@@ -21,6 +21,7 @@ use App\Livewire\Officer\CustomerIdentification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -110,6 +111,31 @@ final class AssistedWithdrawalTest extends TestCase
 
         self::assertDatabaseCount('assisted_customer_services', 0);
         self::assertDatabaseCount('withdrawal_requests', 0);
+    }
+
+    public function test_multi_area_assisted_form_validates_area_before_storing_consent(): void
+    {
+        Storage::fake('media_private');
+        $operator = $this->userWith('customer.create-assisted', 'customer.view', 'user.view', 'user.view.all', 'withdrawal.request');
+        $owner = User::factory()->create();
+        $manager = $this->userWith('region.manage');
+        $regions = app(ManageRegions::class);
+        $dusun = $regions->createDusun($manager, 'AW-MULTI-DS', 'Dusun uji');
+        $rw = $regions->createRw($manager, $dusun, 'AW-MULTI-RW', 'RW uji');
+        $rt = $regions->createRt($manager, $rw, 'AW-MULTI-RT', 'RT uji');
+        CustomerProfile::factory()->for($owner)->create(['customer_number' => 'CST-00009998', 'rt_id' => $rt->id]);
+        $regions->createServiceArea($manager, 'Area A', [$rt]);
+        $area = $regions->createServiceArea($manager, 'Area B', [$rt]);
+        $this->credit($owner, 100000);
+        $component = Livewire::actingAs($operator)->test(CustomerIdentification::class)
+            ->set('search', 'CST-00009998')->call('find')->call('confirm')->call('chooseService', 'withdrawal')
+            ->assertSee('Area pengambilan')->set('withdrawalAmount', '40000')->set('withdrawalLocation', 'Balai warga')
+            ->set('withdrawalConsent', true)->set('withdrawalEvidence', UploadedFile::fake()->image('consent.jpg'))
+            ->call('requestAssistedWithdrawal')->assertHasErrors(['withdrawalServiceAreaId']);
+        self::assertDatabaseCount('assisted_customer_services', 0);
+        self::assertDatabaseCount('media', 0);
+        $component->set('withdrawalServiceAreaId', (string) $area->id)->call('requestAssistedWithdrawal')->assertHasNoErrors();
+        self::assertDatabaseHas('withdrawal_requests', ['customer_id' => $owner->id, 'service_area_id' => $area->id]);
     }
 
     private function credit(User $owner, int $amount): void

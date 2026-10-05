@@ -84,7 +84,7 @@
                     Tandai Dijemput
                 </button>
             @endif
-            @if (in_array($pickup->status->value, ['dijadwalkan', 'menuju_lokasi', 'dijemput'], true))
+            @if ($pickup->deposit_id === null && in_array($pickup->status->value, ['dijadwalkan', 'menuju_lokasi', 'dijemput'], true))
                 <button type="button" wire:click="openFailureReport"
                     class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
                     <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
@@ -95,6 +95,9 @@
     </x-ui.panel>
 
     {{-- Actual Weighing --}}
+    @if ($pickup->deposit?->isPendingReview())
+        <p role="status" class="rounded-xl border border-border bg-warning-bg p-4">Hasil timbang menunggu persetujuan. Tidak perlu mengirim ulang; saldo warga belum bertambah.</p>
+    @endif
     @if ($canComplete)
         <x-ui.panel title="Timbang aktual" description="Berat aktual ini menjadi sumber setoran dan saldo." state="success">
             <div class="grid gap-4">
