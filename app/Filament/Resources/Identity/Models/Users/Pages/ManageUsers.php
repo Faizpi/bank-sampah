@@ -10,6 +10,7 @@ use App\Models\User;
 use Filament\Actions\CreateAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ManageRecords;
+use Filament\Support\Enums\Width;
 use Illuminate\Validation\ValidationException;
 
 final class ManageUsers extends ManageRecords
@@ -21,6 +22,7 @@ final class ManageUsers extends ManageRecords
         return [
             CreateAction::make()
                 ->label('Pengguna baru')
+                ->modalWidth(Width::FiveExtraLarge)
                 ->using(function (array $data): User {
                     $actor = auth()->user();
                     if (! $actor instanceof User) {

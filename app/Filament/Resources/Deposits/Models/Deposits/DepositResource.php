@@ -66,7 +66,7 @@ final class DepositResource extends Resource
                 TextInput::make('total_weight_kg')->label('Berat total (kg)')->formatStateUsing(fn (?string $state): string => WeightFormatter::format($state))->disabled(),
                 TextInput::make('effective_total_value')->label('Nilai akhir')->disabled(),
                 Textarea::make('items')->label('Rincian saat transaksi')->disabled()->rows(8),
-                Textarea::make('ledgerEntries')->label('Riwayat mutasi saldo')->disabled()->rows(5),
+                Textarea::make('ledgerEntries')->label('Riwayat perubahan saldo')->disabled()->rows(5),
                 Textarea::make('media')->label('Bukti')->disabled()->rows(3),
             ])->columns(2),
         ]);
@@ -103,7 +103,7 @@ final class DepositResource extends Resource
                     ->modalCancelActionLabel('Tutup')
                     ->schema([
                         Textarea::make('snapshot')->label('Rincian saat transaksi')->disabled()->rows(8),
-                        Textarea::make('ledger')->label('Mutasi dan saldo akhir')->disabled()->rows(5),
+                        Textarea::make('ledger')->label('Perubahan dan saldo akhir')->disabled()->rows(5),
                         Textarea::make('holds')->label('Dana terkait yang ditahan')->disabled()->rows(4),
                         Textarea::make('evidence')->label('Bukti')->disabled()->rows(3),
                     ])
@@ -158,7 +158,7 @@ final class DepositResource extends Resource
                     ->authorize(fn (Deposit $record): bool => self::correctionService()->canCorrect(self::actor(), $record))
                     ->requiresConfirmation()
                     ->modalHeading(fn (Deposit $record): string => "Koreksi setoran {$record->deposit_number}?")
-                    ->modalDescription('Transaksi asli tetap tersimpan. Sistem menambahkan catatan koreksi dan mutasi penyesuaian baru.')
+                    ->modalDescription('Transaksi asli tetap tersimpan. Sistem menambahkan catatan koreksi dan perubahan saldo penyesuaian baru.')
                     ->modalSubmitActionLabel('Catat koreksi')
                     ->schema([
                         TextInput::make('new_value')->label('Nilai benar')->numeric()->integer()->minValue(0)->required(),
@@ -175,7 +175,7 @@ final class DepositResource extends Resource
                     ->authorize(fn (Deposit $record): bool => self::correctionService()->canReverse(self::actor(), $record))
                     ->requiresConfirmation()
                     ->modalHeading(fn (Deposit $record): string => "Balikkan setoran {$record->deposit_number}?")
-                    ->modalDescription('Sistem menambahkan mutasi pembalik. Transaksi asli tetap tersimpan.')
+                    ->modalDescription('Sistem menambahkan perubahan saldo untuk membalik transaksi sebelumnya. Transaksi asli tetap tersimpan.')
                     ->modalSubmitActionLabel('Balikkan setoran')
                     ->schema([
                         Textarea::make('reason')->label('Alasan dan referensi pemeriksaan')->required()->minLength(10)->maxLength(1000)->rows(4),

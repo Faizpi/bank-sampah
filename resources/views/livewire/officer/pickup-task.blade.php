@@ -141,7 +141,7 @@
                     <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                         <div>
                             <h3 class="text-label font-bold text-deep-green">Review nilai setoran</h3>
-                            <p class="text-body-sm text-text-secondary">Harga aktif dan subtotal akan dihitung ulang server saat finalisasi.</p>
+                            <p class="text-body-sm text-text-secondary">Harga aktif dan subtotal akan dihitung ulang server saat penyelesaian.</p>
                         </div>
                         @if ($pricePreview['complete'])
                             <strong class="amount-tabular text-title text-forest-700">Rp {{ number_format($pricePreview['total'], 0, ',', '.') }}</strong>
@@ -163,7 +163,7 @@
 
                 <div class="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
                     <x-ui.button type="button" wire:click="reviewCompletion" wire:loading.attr="disabled" data-photo-picker-action>
-                        <span wire:loading.remove>Review Finalisasi</span>
+                        <span wire:loading.remove>Periksa penyelesaian</span>
                         <span wire:loading>Memeriksa...</span>
                     </x-ui.button>
                 </div>

@@ -24,7 +24,10 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -54,8 +57,19 @@ final class MobileServiceResource extends Resource
     {
         return $schema->components([
             Section::make('Jadwal')->schema([
-                Select::make('rw_id')->label('RW')->options(fn (): array => Rw::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable(),
-                Select::make('rt_id')->label('RT')->options(fn (): array => Rt::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable(),
+                Select::make('rw_id')->label('RW')->helperText('Opsional. Pilih RW untuk membatasi pilihan RT, atau gunakan RW saja sebagai cakupan layanan.')->options(fn (): array => Rw::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable()->live()->afterStateUpdated(fn (Set $set): mixed => $set('rt_id', null)),
+                Select::make('rt_id')->label('RT')->helperText('Opsional. Tanpa RW, semua RT aktif tersedia; dengan RW, hanya RT dalam RW tersebut yang ditampilkan.')->options(function (Get $get): array {
+                    $rwId = $get('rw_id');
+
+                    return Rt::query()
+                        ->with('rw:id,name')
+                        ->where('is_active', true)
+                        ->when(filled($rwId), fn (Builder $query): Builder => $query->where('rw_id', (int) $rwId))
+                        ->orderBy('name')
+                        ->get()
+                        ->mapWithKeys(fn (Rt $rt): array => [$rt->id => filled($rwId) ? $rt->name : "{$rt->name} — {$rt->rw->name}"])
+                        ->all();
+                })->searchable(),
                 TextInput::make('point')->label('Titik layanan')->required()->minLength(3)->maxLength(255),
                 DateTimePicker::make('starts_at')->label('Mulai')->seconds(false)->native(false)->required(),
                 DateTimePicker::make('ends_at')->label('Selesai')->seconds(false)->native(false)->after('starts_at')->required(),
@@ -63,7 +77,7 @@ final class MobileServiceResource extends Resource
                 Select::make('staff_ids')->label('Petugas layanan')->helperText('Pilih petugas aktif yang dapat mengoperasikan layanan keliling.')->multiple()->required()->minItems(1)->searchable()->preload()->options(fn (): array => User::query()->where('status', UserStatus::Active)->whereHas('staffProfile', fn (Builder $query): Builder => $query)->whereHas('roles.permissions', fn (Builder $query): Builder => $query->where('permissions.name', 'mobile-service.operate'))->orderBy('name')->pluck('name', 'id')->all()),
                 Select::make('waste_type_ids')->label('Jenis sampah yang diterima')->helperText('Pilih jenis sampah aktif yang dapat disetor pada layanan ini.')->multiple()->required()->minItems(1)->searchable()->preload()->options(fn (): array => WasteType::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all()),
                 Textarea::make('notes')->label('Catatan')->maxLength(2000)->rows(4)->columnSpanFull(),
-            ])->columns(2),
+            ])->columns(['default' => 1, 'md' => 2]),
         ]);
     }
 
@@ -79,7 +93,7 @@ final class MobileServiceResource extends Resource
             TextColumn::make('served_count')->label('Terlayani'),
             TextColumn::make('status')->label('Status')->badge(),
         ])->recordActions([
-            EditAction::make()->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->fillForm(fn (MobileService $record): array => [
+            EditAction::make()->modalWidth(Width::SevenExtraLarge)->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->fillForm(fn (MobileService $record): array => [
                 'staff_ids' => $record->staff()->pluck('users.id')->all(),
                 'waste_type_ids' => $record->wasteTypes()->pluck('waste_types.id')->all(),
             ])->using(fn (MobileService $record, array $data): MobileService => self::service()->update(self::actor(), $record, isset($data['rw_id']) ? (int) $data['rw_id'] : null, isset($data['rt_id']) ? (int) $data['rt_id'] : null, (string) $data['point'], (string) $data['starts_at'], (string) $data['ends_at'], (int) $data['capacity'], (string) ($data['notes'] ?? ''), array_map('intval', $data['staff_ids'] ?? []), array_map('intval', $data['waste_type_ids'] ?? []))),

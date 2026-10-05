@@ -13,6 +13,7 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -20,6 +21,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 final class RtResource extends Resource
@@ -56,7 +58,13 @@ final class RtResource extends Resource
             IconColumn::make('is_active')->boolean(),
         ])->recordActions([
             EditAction::make()->using(fn (Rt $record, array $data): Rt => tap($record, fn () => app(ManageRegions::class)->updateRt(auth()->user(), $record, Rw::query()->findOrFail($data['rw_id']), $data['code'], $data['name']))),
-            Action::make('activate')->label('Aktifkan kembali')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->requiresConfirmation()->modalHeading(fn (Rt $record): string => "Aktifkan RT {$record->name}?")->modalDescription('RT ini kembali tersedia untuk data wilayah baru. Data historis tetap tersimpan.')->modalSubmitActionLabel('Aktifkan RT')->visible(fn (Rt $record): bool => ! $record->is_active)->action(fn (Rt $record) => app(ManageRegions::class)->activate(auth()->user(), $record)),
+            Action::make('activate')->label('Aktifkan kembali')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->requiresConfirmation()->modalHeading(fn (Rt $record): string => "Aktifkan RT {$record->name}?")->modalDescription('RT ini kembali tersedia untuk data wilayah baru. Data historis tetap tersimpan.')->modalSubmitActionLabel('Aktifkan RT')->visible(fn (Rt $record): bool => ! $record->is_active)->action(function (Rt $record): void {
+                try {
+                    app(ManageRegions::class)->activate(auth()->user(), $record);
+                } catch (ValidationException) {
+                    Notification::make()->title('RT belum dapat diaktifkan')->body('Aktifkan RW dan dusun induk terlebih dahulu, lalu coba kembali.')->danger()->send();
+                }
+            }),
             Action::make('deactivate')->label('Nonaktifkan')->authorize('deactivate')->requiresConfirmation()->modalHeading(fn (Rt $record): string => "Nonaktifkan RT {$record->name}?")->modalDescription('RT ini tidak tersedia untuk data wilayah baru. Data historis tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan RT')->visible(fn (Rt $record): bool => $record->is_active)->action(fn (Rt $record) => app(ManageRegions::class)->deactivate(auth()->user(), $record)),
         ]);
     }

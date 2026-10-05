@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Domain\CustomersRegions\Contracts\QrToken;
 use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
@@ -45,13 +46,13 @@ final class DeveloperUsersSeeder extends Seeder
 {
     public const DEV_PASSWORD = 'Dev#Sindangheula2026';
 
-    /** @var array<string, array{phone: string, email: string, staff: bool, customer: bool}> */
+    /** @var array<string, array{username: string, phone?: string, email?: string, staff: bool, customer: bool}> */
     private const ACCOUNTS = [
-        'warga' => ['phone' => '6281234567801', 'email' => 'warga@sindangheula.dev', 'staff' => false, 'customer' => true],
-        'petugas' => ['phone' => '6281234567802', 'email' => 'petugas@sindangheula.dev', 'staff' => true, 'customer' => false],
-        'bendahara' => ['phone' => '6281234567803', 'email' => 'bendahara@sindangheula.dev', 'staff' => true, 'customer' => false],
-        'admin' => ['phone' => '6281234567804', 'email' => 'admin@sindangheula.dev', 'staff' => false, 'customer' => false],
-        'superadmin' => ['phone' => '6281234567805', 'email' => 'superadmin@sindangheula.dev', 'staff' => false, 'customer' => false],
+        'warga' => ['username' => 'warga', 'phone' => '6281234567801', 'email' => 'warga@sindangheula.dev', 'staff' => false, 'customer' => true],
+        'petugas' => ['username' => 'petugas', 'phone' => '6281234567802', 'email' => 'petugas@sindangheula.dev', 'staff' => true, 'customer' => false],
+        'bendahara' => ['username' => 'bendahara', 'phone' => '6281234567803', 'email' => 'bendahara@sindangheula.dev', 'staff' => true, 'customer' => false],
+        'admin' => ['username' => 'admin', 'phone' => '6281234567804', 'email' => 'admin@sindangheula.dev', 'staff' => false, 'customer' => false],
+        'superadmin' => ['username' => 'superadmin', 'phone' => '6281234567805', 'email' => 'superadmin@sindangheula.dev', 'staff' => false, 'customer' => false],
     ];
 
     /** @var array<string, string> */
@@ -63,20 +64,31 @@ final class DeveloperUsersSeeder extends Seeder
         'superadmin' => 'Agus Setiawan',
     ];
 
+    /** @return array<string, string> role name => username */
+    public static function usernames(): array
+    {
+        return array_map(static fn (array $account): string => $account['username'], self::ACCOUNTS);
+    }
+
+    public static function username(string $role): string
+    {
+        return self::ACCOUNTS[$role]['username'];
+    }
+
     /** @return array<string, string> role name => phone */
     public static function telephones(): array
     {
-        return array_map(static fn (array $account): string => $account['phone'], self::ACCOUNTS);
+        return array_map(static fn (array $account): string => $account['phone'] ?? '', self::ACCOUNTS);
     }
 
     public static function telephone(string $role): string
     {
-        return self::ACCOUNTS[$role]['phone'];
+        return self::ACCOUNTS[$role]['phone'] ?? '';
     }
 
     public static function email(string $role): string
     {
-        return self::ACCOUNTS[$role]['email'];
+        return self::ACCOUNTS[$role]['email'] ?? '';
     }
 
     public static function password(): string
@@ -169,10 +181,11 @@ final class DeveloperUsersSeeder extends Seeder
 
         foreach (self::ACCOUNTS as $roleName => $account) {
             $user = User::query()->updateOrCreate(
-                ['phone' => $account['phone']],
+                ['username' => $account['username']],
                 [
                     'name' => self::DISPLAY_NAMES[$roleName],
-                    'email' => $account['email'],
+                    'phone' => $account['phone'] !== '' ? $account['phone'] : null,
+                    'email' => $account['email'] !== '' ? $account['email'] : null,
                     'email_verified_at' => now(),
                     'password' => $passwordHash,
                     'status' => UserStatus::Active,
@@ -203,6 +216,21 @@ final class DeveloperUsersSeeder extends Seeder
                     'joined_at' => now()->toDateString(),
                 ],
             );
+
+            // The demo identity must ship a working QR card. Seed the token when
+            // the profile has none (fresh seed) or only carries an orphan hash
+            // whose plaintext was never stored. Re-seeding never rotates a token
+            // that is already complete, so existing demo QR stays valid.
+            /** @var CustomerProfile $profile */
+            $profile = CustomerProfile::query()->where('user_id', $user->id)->firstOrFail();
+            if ($profile->qr_token_hash === null || $profile->qr_token_encrypted === null) {
+                $token = QrToken::generate();
+                $profile->forceFill([
+                    'qr_token_hash' => $token->hash(),
+                    'qr_token_encrypted' => $token->value(),
+                    'qr_rotated_at' => now(),
+                ])->save();
+            }
         }
 
         if ($staff) {

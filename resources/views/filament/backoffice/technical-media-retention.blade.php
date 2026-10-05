@@ -9,7 +9,7 @@
             <p class="font-semibold text-gray-950">Pengaman penghapusan</p>
             <ul class="mt-2 list-disc space-y-1 pl-5">
                 <li>Usia foto minimal {{ $mediaRetentionMinimumAgeDays }} hari.</li>
-                <li>Maksimal {{ $mediaRetentionBatchLimit }} foto per eksekusi agar aman di shared hosting.</li>
+                <li>Maksimal {{ $mediaRetentionBatchLimit }} foto per eksekusi agar aman pada layanan hosting dengan sumber daya terbatas.</li>
                 <li>Pratinjau wajib dijalankan ulang setelah 10 menit atau saat batas tanggal berubah.</li>
             </ul>
         </div>
@@ -20,18 +20,24 @@
                 @error('mediaRetentionBefore')<span class="mt-2 block text-sm font-medium text-danger-700">{{ $message }}</span>@enderror
             </label>
             <button wire:click="previewMediaRetention" wire:loading.attr="disabled" type="button" class="min-h-11 rounded-lg border border-gray-300 px-4 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-wait disabled:opacity-60">Pratinjau</button>
-            <button wire:click="executeMediaRetention" wire:loading.attr="disabled" type="button" @disabled($mediaRetentionPreviewBefore === '' || $mediaRetentionCandidates === []) wire:confirm="Hapus foto penjemputan yang tampil pada pratinjau terbaru? File dan catatan medianya akan dihapus permanen dari aplikasi." class="min-h-11 rounded-lg bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50">Hapus batch</button>
+            <button type="button" @disabled($mediaRetentionPreviewBefore === '' || $mediaRetentionCandidates === []) x-on:click="$dispatch('open-dialog', { id: 'media-retention-dialog', invoker: $el })" class="min-h-11 rounded-lg bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50">Hapus batch</button>
         </div>
 
         @if ($mediaRetentionResult !== '')<p class="mt-3 text-sm font-medium text-gray-800" role="status">{{ $mediaRetentionResult }}</p>@endif
     </section>
+
+    <x-ui.dialog id="media-retention-dialog" name="media-retention" title="Hapus batch foto penjemputan" description="File dan catatan media pada pratinjau terbaru akan dihapus permanen." state="error">
+        <p>Pastikan kandidat dan batas tanggal sudah diperiksa sebelum melanjutkan.</p>
+        @error('mediaRetentionBefore')<div role="alert" tabindex="-1" class="mt-4 rounded-lg border border-danger-200 bg-danger-50 p-4 text-sm text-danger-800"><p class="font-semibold">Foto belum dapat dihapus</p><p class="mt-1">{{ $message }}</p><p class="mt-2 font-medium">Tutup dialog, periksa batas tanggal, lalu jalankan pratinjau kembali.</p></div>@enderror
+        <x-slot:actions><x-ui.button type="button" variant="secondary" x-on:click="closeModal()">Kembali</x-ui.button><x-ui.button type="button" variant="danger" wire:click="executeMediaRetention" wire:loading.attr="disabled" wire:target="executeMediaRetention">Hapus batch</x-ui.button></x-slot:actions>
+    </x-ui.dialog>
 
     @if ($mediaRetentionPreviewBefore !== '')
         <section class="mt-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-labelledby="technical-media-preview-title">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <h2 id="technical-media-preview-title" class="text-lg font-semibold text-gray-950">Kandidat batch berikutnya</h2>
-                    <p class="mt-1 text-sm leading-6 text-gray-600">Total seluruh kandidat: {{ number_format($mediaRetentionCandidateCount, 0, ',', '.') }} foto ({{ $mediaRetentionCandidateSize }}). Batch ini memuat {{ count($mediaRetentionCandidates) }} foto.</p>
+                    <p class="mt-1 text-sm leading-6 text-gray-600">{{ number_format($mediaRetentionCandidateCount, 0, ',', '.') }} foto memenuhi batas retensi ({{ $mediaRetentionCandidateSize }}). Eksekusi ini memuat {{ count($mediaRetentionCandidates) }} foto.</p>
                 </div>
                 @if ($mediaRetentionMissingFiles > 0)
                     <span class="inline-flex w-fit rounded-full bg-warning-100 px-3 py-1 text-xs font-semibold text-warning-800">{{ $mediaRetentionMissingFiles }} file sudah tidak ada</span>

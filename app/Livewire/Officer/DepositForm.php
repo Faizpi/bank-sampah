@@ -9,6 +9,7 @@ use App\Domain\Deposits\Data\DepositItemInput;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Deposits\Services\DepositService;
+use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\WasteMaster\Models\WasteCondition;
 use App\Domain\WasteMaster\Models\WasteType;
@@ -86,7 +87,11 @@ final class DepositForm extends Component
         }
 
         $this->customerId = $customerId;
-        $this->mobileServiceId = request()->integer('mobileServiceId') ?: null;
+        $requestedMobileServiceId = request()->integer('mobileServiceId') ?: null;
+        if ($requestedMobileServiceId !== null) {
+            abort_unless($permissions->allows($actor, 'mobile-service.operate'), 404);
+            $this->mobileServiceId = $this->activeAssignedMobileService($actor, $requestedMobileServiceId)->id;
+        }
         $this->assistedServiceId = request()->integer('assistedServiceId') ?: null;
         $this->idempotencyKey = (string) str()->uuid();
     }
@@ -115,6 +120,22 @@ final class DepositForm extends Component
     {
         unset($this->items[$index]);
         $this->items = array_values($this->items);
+        $this->resetValidation('items');
+    }
+
+    public function updatedItems(mixed $value, ?string $key): void
+    {
+        if ($key === null) {
+            return;
+        }
+
+        $field = 'items.'.$key;
+        $rules = $this->itemRules();
+        $ruleKey = preg_replace('/\.\d+\./', '.*.', $field);
+
+        if (is_string($ruleKey) && isset($rules[$ruleKey])) {
+            $this->validateOnly($field, [$field => $rules[$ruleKey]], $this->itemMessages());
+        }
     }
 
     public function clearEvidence(): void
@@ -162,7 +183,7 @@ final class DepositForm extends Component
     public function finalize(DepositService $service): void
     {
         if (! $this->finalizationReviewOpen) {
-            $this->addError('items', 'Tinjau lalu konfirmasi finalisasi sebelum mencatat setoran.');
+            $this->addError('items', 'Tinjau lalu konfirmasi sebelum mencatat setoran.');
 
             return;
         }
@@ -194,7 +215,7 @@ final class DepositForm extends Component
             $this->finalizationReviewOpen = false;
             session()->flash('success', $this->draft->isPendingReview()
                 ? 'Setoran berhasil dicatat dan menunggu persetujuan pemeriksa.'
-                : 'Setoran berhasil difinalisasi.');
+                : 'Setoran berhasil dicatat.');
 
             return;
         }
@@ -203,7 +224,7 @@ final class DepositForm extends Component
         $this->finalizationReviewOpen = false;
         session()->flash('success', $this->draft->isPendingReview()
             ? 'Setoran bernilai tinggi menunggu persetujuan pemeriksa. Saldo belum ditambahkan.'
-            : 'Setoran berhasil difinalisasi.');
+            : 'Setoran berhasil dicatat.');
     }
 
     /** @return array<string, array<int, string>> */
@@ -217,21 +238,78 @@ final class DepositForm extends Component
         ];
     }
 
+    /** @return array<string, string> */
+    private function itemMessages(): array
+    {
+        return [
+            'items.required' => 'Tambahkan minimal satu item setoran.',
+            'items.min' => 'Tambahkan minimal satu item setoran.',
+            'items.*.waste_type_id.required' => 'Jenis sampah wajib dipilih.',
+            'items.*.condition_id.required' => 'Kondisi sampah wajib dipilih.',
+            'items.*.weight_kg.required' => 'Berat wajib diisi.',
+            'items.*.weight_kg.numeric' => 'Berat harus berupa angka.',
+            'items.*.weight_kg.gt' => 'Berat harus lebih dari 0 kg.',
+            'items.*.weight_kg.regex' => 'Berat maksimal tiga angka desimal.',
+        ];
+    }
+
     private function validateItems(): void
     {
-        $this->validate($this->itemRules());
+        $this->validate($this->itemRules(), $this->itemMessages());
     }
 
     public function render(): View
     {
-        $types = WasteType::query()->with('conditions')->where('is_active', true)->whereHas('category', static fn ($query) => $query->where('is_active', true))->orderBy('name')->get();
-        $conditions = WasteCondition::query()->where('is_active', true)->orderBy('sort_order')->get();
+        $customer = User::query()->with('customerProfile')->findOrFail($this->customerId);
+        /** @var User $actor */
+        $actor = auth()->user();
+        $mobileService = $this->mobileServiceId === null
+            ? null
+            : ($this->draft instanceof Deposit
+                ? $this->ownedDraftMobileService($actor, $this->mobileServiceId)
+                : $this->activeAssignedMobileService($actor, $this->mobileServiceId));
+        $mobileService?->loadMissing('wasteTypes');
+        $types = $mobileService === null
+            ? WasteType::query()->with('conditions')->where('is_active', true)->whereHas('category', static fn ($query) => $query->where('is_active', true))->orderBy('name')->get()
+            : $mobileService->wasteTypes->filter(static fn (WasteType $type): bool => $type->is_active && $type->category()->where('is_active', true)->exists())->load('conditions')->sortBy('name')->values();
+        $supportedTypeIds = $types->modelKeys();
+        $conditions = WasteCondition::query()
+            ->where('is_active', true)
+            ->when($mobileService !== null, static fn ($query) => $query->whereHas('wasteTypes', static fn ($typesQuery) => $typesQuery->whereKey($supportedTypeIds)))
+            ->orderBy('sort_order')
+            ->get();
 
         return view('livewire.officer.deposit-form', [
+            'customer' => $customer,
+            'mobileService' => $mobileService,
             'types' => $types,
             'conditions' => $conditions,
             'pricePreview' => $this->pricePreview($types, $conditions),
         ]);
+    }
+
+    private function activeAssignedMobileService(User $actor, int $serviceId): MobileService
+    {
+        $service = MobileService::query()
+            ->whereKey($serviceId)
+            ->whereHas('staff', static fn ($staff) => $staff->whereKey($actor->id))
+            ->where('status', MobileServiceStatus::Open)
+            ->where('starts_at', '<=', now())
+            ->where('ends_at', '>=', now())
+            ->first();
+
+        abort_unless($service instanceof MobileService, 404);
+
+        return $service;
+    }
+
+    private function ownedDraftMobileService(User $actor, int $serviceId): MobileService
+    {
+        abort_unless($this->draft?->staff_id === $actor->id && $this->draft->mobile_service_id === $serviceId, 404);
+        $service = MobileService::query()->whereKey($serviceId)->first();
+        abort_unless($service instanceof MobileService, 404);
+
+        return $service;
     }
 
     /**

@@ -29,12 +29,12 @@
     {{ $attributes->class(['rounded-lg border bg-surface p-4 shadow-xs md:p-6', $states[$resolvedState]]) }}
 >
     @if ($title || $description || isset($actions))
-        <div class="flex items-start justify-between gap-4 border-b border-border pb-4">
+        <div class="flex flex-col items-stretch gap-4 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0">
-                @if ($title)<h2 id="{{ $titleId }}" class="text-title text-deep-green">{{ $title }}</h2>@endif
-                @if ($description)<p id="{{ $descriptionId }}" class="mt-1 text-body-sm text-text-secondary">{{ $description }}</p>@endif
+                @if ($title)<h2 id="{{ $titleId }}" class="break-words text-title text-deep-green">{{ $title }}</h2>@endif
+                @if ($description)<p id="{{ $descriptionId }}" class="mt-1 break-words text-body-sm text-text-secondary">{{ $description }}</p>@endif
             </div>
-            @isset($actions)<div class="flex shrink-0 items-center gap-2">{{ $actions }}</div>@endisset
+            @isset($actions)<div class="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0">{{ $actions }}</div>@endisset
         </div>
     @endif
     <div @class(['text-body', 'pt-4' => $title || $description || isset($actions)])>{{ $slot }}</div>

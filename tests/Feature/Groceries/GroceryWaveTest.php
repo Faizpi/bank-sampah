@@ -135,7 +135,7 @@ final class GroceryWaveTest extends TestCase
         Livewire::actingAs($handoverOfficer)
             ->test(GroceryTasks::class)
             ->assertSee('Tugas sembako')
-            ->assertSee('Serah-terima hanya tersedia bagi petugas dengan izin penyerahan dan memerlukan verifikasi penerima serta bukti privat.')
+            ->assertSee('Verifikasi penerima dan unggah bukti privat sebelum menyerahkan paket.')
             ->assertDontSee('Catat bantuan gratis');
 
         $unauthorized = User::factory()->create(['status' => UserStatus::Active]);

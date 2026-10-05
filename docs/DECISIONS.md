@@ -140,3 +140,12 @@ IMP-019 menetapkan fondasi teknis back-office Filament 5 sesuai ADR ini: instala
 - **Keputusan:** Health baca-saja adalah satu-satunya administrasi teknis aktif pada aplikasi. Secret dan perubahan infrastruktur tetap berada pada environment atau proses deployment.
 - **Konsekuensi:** Permission, navigasi, SOP, test, dan dokumentasi teknis hanya boleh menyebut Health sebagai UI administrasi teknis aktif. Prosedur infrastruktur tidak boleh ditulis sebagai kapabilitas aplikasi.
 - **Referensi:** [PERMISSIONS.md](PERMISSIONS.md), [SECURITY.md](SECURITY.md), [OPERATIONS.md](OPERATIONS.md), [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+
+## ADR-016 — Navigasi warga memisahkan kartu, layanan, dan riwayat
+
+- **Status:** Accepted
+- **Konteks:** Riwayat warga kini mencakup setoran, pencairan, dan penukaran sembako. Menempatkan `Setoran` dan `Riwayat` sebagai dua tujuan bottom navigation yang membuka halaman sama membuat navigasi duplikat, sedangkan mengganti `Kartu Nasabah` menghilangkan akses utama ke identitas dan QR warga.
+- **Keputusan:** Bottom navigation warga menggunakan urutan `Beranda`, `Kartu Nasabah`, `Layanan`, `Riwayat`, `Akun`. `Kartu Nasabah` membuka identitas/QR; `Layanan` menaungi pengajuan dan transaksi aktif; `Riwayat` menaungi arsip `Setoran`, `Pencairan`, dan `Sembako`. Label visual `Kartu Nasabah` boleh ditampilkan sebagai `Kartu` pada viewport sempit tanpa mengubah nama kontrak.
+- **Konsekuensi:** Tidak ada tujuan bottom-nav `Setoran` yang menduplikasi `Riwayat`. Active state mengikuti fungsi halaman: kartu ke `Kartu Nasabah`, arsip dan bukti setoran ke `Riwayat`, pengajuan/detail transaksi aktif ke `Layanan`.
+- **Alternatif ditolak:** mempertahankan `Setoran` dan `Riwayat` dengan destination yang sama, atau menghapus `Kartu Nasabah` dari navigasi utama.
+- **Referensi:** [DESIGN.md](DESIGN.md), [CHANGELOG.md](CHANGELOG.md).

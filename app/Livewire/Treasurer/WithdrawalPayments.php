@@ -13,6 +13,7 @@ use App\Livewire\Concerns\InteractsWithMediaPicker;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -32,7 +33,9 @@ final class WithdrawalPayments extends Component
 
     public string $recipientReference = '';
 
-    public string $scanToken = '';
+    public string $queueSearch = '';
+
+    public string $queueOrder = 'oldest';
 
     public string $idempotencyKey = '';
 
@@ -58,7 +61,7 @@ final class WithdrawalPayments extends Component
         $this->showPaymentReview = false;
         $this->scannerOpen = false;
         $this->resolvedCustomerName = null;
-        $this->reset(['recipientReference', 'scanToken', 'proof']);
+        $this->reset(['recipientReference', 'proof']);
         $this->recipientVerification = 'kartu_nasabah';
         $this->idempotencyKey = (string) str()->uuid();
     }
@@ -214,8 +217,28 @@ final class WithdrawalPayments extends Component
         /** @var User $actor */
         $actor = auth()->user();
 
-        $withdrawals = app(WithdrawalService::class)->payableFor($actor)->latest()->get();
-        $selectedWithdrawal = $withdrawals->firstWhere('id', $this->selectedWithdrawalId);
+        $withdrawals = app(WithdrawalService::class)
+            ->payableFor($actor)
+            ->with('customer.customerProfile')
+            ->when(trim($this->queueSearch) !== '', function (Builder $query): void {
+                $search = '%'.trim($this->queueSearch).'%';
+                $query->where(function (Builder $matches) use ($search): void {
+                    $matches->where('request_number', 'like', $search)
+                        ->orWhereHas('customer', function (Builder $customer) use ($search): void {
+                            $customer->where('name', 'like', $search)
+                                ->orWhereHas('customerProfile', static fn (Builder $profile): Builder => $profile->where('customer_number', 'like', $search));
+                        });
+                });
+            })
+            ->when(
+                $this->queueOrder === 'largest',
+                static fn (Builder $query): Builder => $query->orderByDesc('amount')->orderBy('approved_at')->orderBy('id'),
+                static fn (Builder $query): Builder => $query->orderBy('approved_at')->orderBy('id'),
+            )
+            ->get();
+        $selectedWithdrawal = $this->selectedWithdrawalId === null
+            ? null
+            : app(WithdrawalService::class)->payableFor($actor)->with('customer.customerProfile')->find($this->selectedWithdrawalId);
         $availableBalance = null;
         if ($selectedWithdrawal !== null) {
             $selectedWithdrawal->customer?->loadMissing('ledgerAccount');

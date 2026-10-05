@@ -30,6 +30,7 @@ final class PickupShow extends Component
         $actor = auth()->user();
         $this->pickup = $service->cancel($actor, $this->pickup);
         session()->flash('success', 'Pengajuan penjemputan dibatalkan.');
+        $this->dispatch('close-dialog', id: 'cancel-pickup-dialog');
     }
 
     public function render(): View

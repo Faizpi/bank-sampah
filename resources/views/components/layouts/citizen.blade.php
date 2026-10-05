@@ -24,12 +24,16 @@
 
     @php
         $citizenRoute = request()->route()?->getName() ?? '';
+        $citizenHistoryRoutes = [
+            'citizen.deposit-history',
+            'citizen.withdrawal-history',
+            'citizen.grocery-history',
+        ];
         $citizenActiveNav = match(true) {
             $citizenRoute === 'citizen.dashboard' => 'Beranda',
-            $citizenRoute === 'citizen.deposit-history' => 'Setoran',
-            str_contains($citizenRoute, 'deposit-receipt') => 'Setoran',
-            str_contains($citizenRoute, 'pickup') || str_contains($citizenRoute, 'grocery') || str_contains($citizenRoute, 'withdrawal') || str_contains($citizenRoute, 'estimate') => 'Layanan',
             str_contains($citizenRoute, 'customer-card') => 'Kartu Nasabah',
+            str_contains($citizenRoute, 'deposit-receipt') || in_array($citizenRoute, $citizenHistoryRoutes, true) => 'Riwayat',
+            str_contains($citizenRoute, 'pickup') || str_contains($citizenRoute, 'grocery') || str_contains($citizenRoute, 'withdrawal') || str_contains($citizenRoute, 'estimate') => 'Layanan',
             default => 'Akun',
         };
 
@@ -88,11 +92,11 @@
     {{-- Bottom Navigation --}}
     <x-citizen.navigation
         :destinations="[
-            'Beranda'       => $navPath('citizen.dashboard'),
-            'Setoran'       => $navPath('citizen.deposit-history'),
-            'Layanan'       => $navPath('citizen.pickup.create'),
+            'Beranda'        => $navPath('citizen.dashboard'),
             'Kartu Nasabah' => $navPath('citizen.customer-card'),
-            'Akun'          => $navPath('profile.password'),
+            'Layanan'        => $navPath('citizen.pickup.create'),
+            'Riwayat'        => $navPath('citizen.deposit-history'),
+            'Akun'           => $navPath('profile.password'),
         ]"
         :active="$citizenActiveNav"
     />

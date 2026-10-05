@@ -7,17 +7,16 @@ namespace Tests\Feature\Filament;
 use App\Domain\Communication\Enums\AnnouncementAudience;
 use App\Domain\Communication\Enums\AnnouncementStatus;
 use App\Domain\Communication\Models\Announcement;
+use App\Domain\Communication\Services\AnnouncementService;
 use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
-use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\MobileServices\Services\MobileServiceService;
-use App\Domain\Pickups\Models\PickupCapacity;
 use App\Domain\Programs\Enums\TargetStatus;
 use App\Domain\Programs\Models\CollectionTarget;
 use App\Domain\Programs\Services\TargetProgressService;
@@ -32,13 +31,13 @@ use App\Filament\Resources\Communication\Models\Announcements\AnnouncementResour
 use App\Filament\Resources\Communication\Models\Announcements\Pages\ManageAnnouncements;
 use App\Filament\Resources\MobileServices\Models\MobileServices\MobileServiceResource;
 use App\Filament\Resources\MobileServices\Models\MobileServices\Pages\ManageMobileServices;
-use App\Filament\Resources\Pickups\Models\PickupCapacities\Pages\ManagePickupCapacities;
 use App\Filament\Resources\Programs\Models\CollectionTargets\CollectionTargetResource;
 use App\Filament\Resources\Programs\Models\CollectionTargets\Pages\ManageCollectionTargets;
 use App\Filament\Resources\Statistics\Models\StatisticPublications\Pages\ManageStatisticPublications;
 use App\Filament\Resources\Statistics\Models\StatisticPublications\StatisticPublicationResource;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -72,6 +71,63 @@ final class AdminOperationsResourceTest extends TestCase
         self::assertSame(ManageCollectionTargets::class, CollectionTargetResource::getPages()['index']->getPage());
         self::assertSame(ManageMobileServices::class, MobileServiceResource::getPages()['index']->getPage());
         self::assertSame(ManageStatisticPublications::class, StatisticPublicationResource::getPages()['index']->getPage());
+    }
+
+    public function test_announcement_resource_creates_public_only_and_soft_deletes_with_permission(): void
+    {
+        $admin = $this->userWith('backoffice.access', 'announcement.view', 'announcement.manage');
+        $this->actingAs($admin);
+
+        Livewire::test(ManageAnnouncements::class)
+            ->callAction('create', data: [
+                'title' => 'Layanan untuk seluruh warga',
+                'body' => 'Informasi layanan terbuka untuk publik.',
+                'publish_start' => now()->toDateTimeString(),
+                'publish_end' => null,
+                'priority' => 1,
+            ]);
+
+        $announcement = Announcement::query()->where('title', 'Layanan untuk seluruh warga')->firstOrFail();
+        self::assertSame(AnnouncementAudience::Public, $announcement->audience);
+
+        Livewire::test(ManageAnnouncements::class)
+            ->assertTableActionVisible('delete', $announcement)
+            ->callTableAction('delete', $announcement);
+
+        self::assertSoftDeleted('announcements', ['id' => $announcement->id]);
+        self::assertFalse(app(AnnouncementService::class)->publicQuery()->whereKey($announcement->id)->exists());
+        self::assertDatabaseHas('audit_logs', ['action' => 'announcement.deleted', 'auditable_id' => $announcement->id, 'actor_id' => $admin->id]);
+    }
+
+    public function test_announcement_soft_delete_preserves_historical_rt_pivot(): void
+    {
+        $admin = $this->userWith('announcement.manage');
+        $rt = $this->createRt('ANNOUNCEMENT-HISTORY');
+        $announcement = Announcement::factory()->create(['audience' => AnnouncementAudience::Public, 'created_by' => $admin->id]);
+        $announcement->rts()->attach($rt);
+
+        app(AnnouncementService::class)->delete($admin, $announcement);
+
+        self::assertDatabaseHas('announcement_rt', ['announcement_id' => $announcement->id, 'rt_id' => $rt->id]);
+    }
+
+    public function test_announcement_service_rejects_delete_without_manage_permission(): void
+    {
+        $viewer = $this->userWith('announcement.view');
+        $announcement = Announcement::factory()->create(['audience' => AnnouncementAudience::Public]);
+
+        $this->expectException(AuthorizationException::class);
+        app(AnnouncementService::class)->delete($viewer, $announcement);
+    }
+
+    public function test_announcement_delete_is_hidden_without_manage_permission(): void
+    {
+        $viewer = $this->userWith('backoffice.access', 'announcement.view');
+        $announcement = Announcement::factory()->create(['audience' => AnnouncementAudience::Public]);
+        $this->actingAs($viewer);
+
+        Livewire::test(ManageAnnouncements::class)
+            ->assertTableActionHidden('delete', $announcement);
     }
 
     public function test_announcement_resource_publishes_and_unpublishes_through_audited_service_actions(): void
@@ -126,23 +182,21 @@ final class AdminOperationsResourceTest extends TestCase
         self::assertFalse($viewer->fresh()->can('view', $otherRegion));
     }
 
-    public function test_announcement_edit_action_preloads_persisted_rt_targets(): void
+    public function test_announcement_edit_action_does_not_expose_audience_or_rt_targets(): void
     {
         $admin = $this->userWith('backoffice.access', 'announcement.view', 'announcement.manage');
-        $firstRt = $this->createRt('ANNOUNCEMENT-FIRST');
-        $secondRt = $this->createRt('ANNOUNCEMENT-SECOND');
         $announcement = Announcement::factory()->create([
-            'audience' => AnnouncementAudience::Region,
+            'audience' => AnnouncementAudience::Public,
             'status' => AnnouncementStatus::Draft,
             'created_by' => $admin->id,
         ]);
-        $announcement->rts()->attach([$firstRt->id, $secondRt->id]);
         $this->actingAs($admin);
 
         Livewire::test(ManageAnnouncements::class)
-            ->mountTableAction('edit', $announcement->fresh())
+            ->mountTableAction('edit', $announcement)
             ->assertTableActionDataSet([
-                'rt_ids' => [$firstRt->id, $secondRt->id],
+                'title' => $announcement->title,
+                'body' => $announcement->body,
             ]);
     }
 
@@ -237,6 +291,44 @@ final class AdminOperationsResourceTest extends TestCase
         self::assertDatabaseHas('audit_logs', ['action' => 'target.closed', 'auditable_id' => $target->id, 'actor_id' => $admin->id]);
     }
 
+    public function test_target_resource_shows_validation_error_when_create_is_rejected(): void
+    {
+        $admin = $this->userWith('backoffice.access', 'target.view', 'target.manage');
+        $this->actingAs($admin);
+
+        Livewire::test(ManageCollectionTargets::class)
+            ->callAction('create', data: [
+                'name' => 'Target internal',
+                'purpose' => 'Pengumpulan khusus wilayah',
+                'period_start' => today()->toDateString(),
+                'period_end' => today()->addDays(30)->toDateString(),
+                'target_weight_kg' => '10.000',
+                'is_public' => false,
+                'scopes' => [],
+            ])
+            ->assertNotified('Target tidak dapat dibuat');
+
+        self::assertDatabaseMissing('collection_targets', ['name' => 'Target internal']);
+    }
+
+    public function test_target_resource_shows_overlap_error_and_keeps_target_as_draft(): void
+    {
+        $admin = $this->userWith('backoffice.access', 'target.view', 'target.manage', 'target.publish');
+        $service = app(TargetService::class);
+        $active = $service->create($admin, 'Target aktif', 'Pengumpulan plastik aktif', today()->toDateString(), today()->addDays(30)->toDateString(), '10.000', true, []);
+        $draft = $service->create($admin, 'Target bertabrakan', 'Pengumpulan plastik bertabrakan', today()->addDay()->toDateString(), today()->addDays(20)->toDateString(), '12.000', true, []);
+        $service->activate($admin, $active);
+
+        $this->actingAs($admin);
+        Livewire::test(ManageCollectionTargets::class)
+            ->assertTableActionVisible('activate', $draft)
+            ->callTableAction('activate', $draft)
+            ->assertNotified('Target belum dapat diterbitkan');
+
+        self::assertSame(TargetStatus::Draft, $draft->fresh()->status);
+        self::assertNull($draft->fresh()->published_by);
+    }
+
     public function test_mobile_service_resource_shows_safe_error_and_keeps_draft_when_publish_schedule_collides(): void
     {
         [$admin, $staff, $rt, $type] = $this->mobileContext();
@@ -252,6 +344,65 @@ final class AdminOperationsResourceTest extends TestCase
             ->assertNotified('Layanan belum dapat dipublikasikan');
 
         self::assertSame(MobileServiceStatus::Draft, $draft->fresh()->status);
+    }
+
+    public function test_mobile_service_create_resets_an_incompatible_rt_when_rw_changes(): void
+    {
+        [$admin, $staff, $firstRt, $type] = $this->mobileContext();
+        $secondRt = $this->createRt('RESOURCE-SECOND');
+        $this->actingAs($admin);
+
+        Livewire::test(ManageMobileServices::class)
+            ->mountAction('create')
+            ->setActionData(['rw_id' => $firstRt->rw_id])
+            ->set('mountedActions.0.data.rt_id', $firstRt->id)
+            ->set('mountedActions.0.data.rw_id', $secondRt->rw_id)
+            ->assertActionDataSet(['rw_id' => $secondRt->rw_id, 'rt_id' => null]);
+    }
+
+    public function test_mobile_service_create_supports_rw_only_and_rt_only_regions(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->mobileContext();
+        $this->actingAs($admin);
+        $base = [
+            'point' => 'Balai wilayah',
+            'starts_at' => '2026-08-12 09:00:00',
+            'ends_at' => '2026-08-12 11:00:00',
+            'capacity' => 20,
+            'notes' => '',
+            'staff_ids' => [$staff->id],
+            'waste_type_ids' => [$type->id],
+        ];
+
+        Livewire::test(ManageMobileServices::class)
+            ->callAction('create', data: [...$base, 'rw_id' => $rt->rw_id, 'rt_id' => null]);
+        Livewire::test(ManageMobileServices::class)
+            ->callAction('create', data: [...$base, 'point' => 'Balai RT', 'rw_id' => null, 'rt_id' => $rt->id]);
+
+        self::assertDatabaseHas('mobile_services', ['point' => 'Balai wilayah', 'rw_id' => $rt->rw_id, 'rt_id' => null]);
+        self::assertDatabaseHas('mobile_services', ['point' => 'Balai RT', 'rw_id' => null, 'rt_id' => $rt->id]);
+    }
+
+    public function test_mobile_service_create_reports_hierarchy_validation_failure(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->mobileContext();
+        $this->actingAs($admin);
+
+        Livewire::test(ManageMobileServices::class)
+            ->callAction('create', data: [
+                'rw_id' => null,
+                'rt_id' => $rt->id,
+                'point' => 'Balai gagal disimpan',
+                'starts_at' => '2026-08-12 11:00:00',
+                'ends_at' => '2026-08-12 09:00:00',
+                'capacity' => 20,
+                'notes' => '',
+                'staff_ids' => [$staff->id],
+                'waste_type_ids' => [$type->id],
+            ])
+            ->assertNotified('Layanan belum dapat disimpan');
+
+        self::assertDatabaseMissing('mobile_services', ['point' => 'Balai gagal disimpan']);
     }
 
     public function test_mobile_service_resource_creates_publishes_opens_and_closes_a_schedule(): void
@@ -293,39 +444,6 @@ final class AdminOperationsResourceTest extends TestCase
         } finally {
             CarbonImmutable::setTestNow();
         }
-    }
-
-    public function test_capacity_key_change_deactivates_the_old_record_without_direct_deletion(): void
-    {
-        $admin = $this->userWith('backoffice.access', 'pickup.capacity.manage');
-        $area = ServiceArea::query()->create(['name' => 'Capacity resource area', 'is_active' => true]);
-        $old = PickupCapacity::query()->create([
-            'service_area_id' => $area->id,
-            'service_date' => today()->addDay(),
-            'max_addresses' => 5,
-            'max_weight_kg' => '50.000',
-            'vehicle_label' => 'Lama',
-            'is_active' => true,
-        ]);
-        $this->actingAs($admin);
-
-        Livewire::test(ManagePickupCapacities::class)
-            ->assertCanSeeTableRecords([$old])
-            ->assertTableActionVisible('edit', $old)
-            ->callTableAction('edit', $old, data: [
-                'service_area_id' => $area->id,
-                'service_date' => today()->addDays(2)->toDateString(),
-                'max_addresses' => 7,
-                'max_weight_kg' => '70.000',
-                'vehicle_label' => 'Baru',
-            ]);
-
-        $replacement = PickupCapacity::query()->whereDate('service_date', today()->addDays(2))->firstOrFail();
-        self::assertNotSame($old->id, $replacement->id);
-        self::assertDatabaseHas('pickup_capacities', ['id' => $old->id, 'is_active' => 0]);
-        self::assertDatabaseHas('pickup_capacities', ['id' => $replacement->id, 'is_active' => 1]);
-        self::assertDatabaseHas('audit_logs', ['action' => 'pickup.capacity.replaced', 'auditable_id' => $old->id, 'actor_id' => $admin->id]);
-        self::assertDatabaseHas('audit_logs', ['action' => 'pickup.capacity.updated', 'auditable_id' => $replacement->id, 'actor_id' => $admin->id]);
     }
 
     public function test_public_statistics_resource_configures_allowlisted_publication(): void

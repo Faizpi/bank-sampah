@@ -22,7 +22,7 @@ final class ManageAnnouncements extends ManageRecords
                 /** @var User $actor */
                 $actor = auth()->user();
 
-                return app(AnnouncementService::class)->create($actor, (string) $data['title'], (string) $data['body'], (string) $data['audience'], (string) $data['publish_start'], $data['publish_end'] ?? null, array_map('intval', $data['rt_ids'] ?? []), (int) $data['priority']);
+                return app(AnnouncementService::class)->create($actor, (string) $data['title'], (string) $data['body'], (string) $data['publish_start'], $data['publish_end'] ?? null, (int) $data['priority']);
             }),
         ];
     }

@@ -5,9 +5,8 @@
     $selectedArea = $areas->firstWhere('id', (int) $serviceAreaId);
     $estimatedWeight = collect($items)->sum(static fn (array $item): float => (float) ($item['estimated_weight_kg'] ?? 0));
     $steps = [1 => 'Lokasi', 2 => 'Jenis & foto', 3 => 'Tinjau'];
-    $dateOptions = collect($availableDates)->mapWithKeys(static fn (string $date): array => [
-        $date => \Illuminate\Support\Carbon::parse($date)->translatedFormat('l, d F Y'),
-    ])->all();
+    $preferredDateMin = today('Asia/Jakarta')->toDateString();
+    $preferredDateMax = today('Asia/Jakarta')->addDays((int) config('app.pickup_booking_horizon_days', 30))->toDateString();
     $photoPickerInitialFiles = collect($photos)
         ->map(static fn ($photo): array => [
             'name' => $photo->getClientOriginalName(),
@@ -98,26 +97,29 @@
 
     <form wire:submit="submit" class="grid gap-6">
         @if ($step === 1)
-            <x-ui.panel title="Lokasi dan tanggal layanan" description="Pilih area aktif dan tanggal yang masih tersedia.">
+            <x-ui.panel title="Lokasi dan tanggal layanan" description="Pilih area aktif dan tanggal pilihan penjemputan Anda.">
                 <div class="grid gap-4 md:grid-cols-2">
                     <x-ui.select wire:model.live="serviceAreaId" label="Area pelayanan" name="serviceAreaId" placeholder="Pilih area pelayanan" :options="$areas->pluck('name', 'id')->all()" :error="$errors->first('serviceAreaId')" />
-                    @if ($serviceAreaId !== '' && $dateOptions === [])
-                        <div class="rounded-md border border-border bg-warm-canvas p-4 text-body-sm text-text-secondary">
-                            Belum ada tanggal penjemputan yang tersedia untuk area ini. Pilih area lain atau coba lagi setelah petugas menambahkan kapasitas.
-                        </div>
-                    @else
-                        <x-ui.select wire:model="selectedDate" label="Tanggal tersedia" name="selectedDate" placeholder="Pilih tanggal tersedia" :options="$dateOptions" :error="$errors->first('selectedDate')" />
-                    @endif
+                    <x-ui.input
+                        wire:model="selectedDate"
+                        label="Tanggal pilihan"
+                        name="selectedDate"
+                        type="date"
+                        :min="$preferredDateMin"
+                        :max="$preferredDateMax"
+                        hint="Pilih tanggal mulai hari ini sampai 30 hari ke depan."
+                        :error="$errors->first('selectedDate')"
+                    />
                     <x-ui.textarea wire:model="address" label="Alamat penjemputan" name="address" rows="4" class="md:col-span-2" :error="$errors->first('address')" />
                     <x-ui.textarea wire:model="notes" label="Catatan akses (opsional)" name="notes" rows="3" class="md:col-span-2"
                         hint="Contoh: rumah cat biru, masuk gang sebelah masjid" :error="$errors->first('notes')" />
                 </div>
                 <div class="mt-5 rounded-md bg-info-bg px-4 py-3 text-body-sm text-deep-green">
-                    Setelah dikirim, pengajuan akan diperiksa petugas lalu dijadwalkan sesuai kapasitas area.
+                    Setelah dikirim, pengajuan akan diverifikasi oleh admin, lalu dijadwalkan dan ditugaskan ke petugas lapangan.
                 </div>
             </x-ui.panel>
         @elseif ($step === 2)
-            <x-ui.panel title="Jenis dan perkiraan" description="Isi minimal satu jenis. Berat adalah total per jenis; jumlah wadah tidak mengalikan berat.">
+            <x-ui.panel title="Jenis dan perkiraan" description="Isi minimal satu jenis dan perkiraan beratnya.">
                 <div class="grid gap-3">
                     @foreach ($items as $index => $item)
                         <div wire:key="pickup-item-{{ $index }}" class="grid gap-3 rounded-md border border-border bg-warm-canvas p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
@@ -132,7 +134,7 @@
                                     <button type="button" wire:click="removeItem({{ $index }})" class="inline-flex min-h-touch w-full items-center justify-center rounded-md border-2 border-terracotta px-4 text-label font-bold text-terracotta transition hover:bg-danger-bg">Hapus</button>
                                 </div>
                             @endif
-                            <p class="text-body-sm text-text-secondary md:col-span-4">Isi total berat untuk jenis ini. Jumlah wadah dapat dikosongkan bila tidak diketahui, misalnya 2 kantong atau 1 karung, dan bukan pengali berat.</p>
+                            <p class="text-body-sm text-text-secondary md:col-span-4">Jumlah wadah opsional, misalnya 2 kantong atau 1 karung.</p>
                         </div>
                     @endforeach
                     <button type="button" wire:click="addItem" class="inline-flex min-h-touch items-center gap-2 justify-self-start rounded-md border-2 border-forest-600 px-4 text-label font-bold text-forest-700 transition hover:bg-success-bg">
@@ -142,12 +144,12 @@
                 </div>
             </x-ui.panel>
 
-            <x-ui.panel title="Foto wajib" description="Unggah 1–2 foto JPEG atau PNG. Foto akan dinormalisasi menjadi JPEG maksimal 1 MB per file.">
+            <x-ui.panel title="Foto wajib" description="Unggah 1–2 foto sampah.">
                 <x-ui.media-picker
                     id="pickup-photos"
                     property="photos"
                     label="Foto sampah"
-                    hint="Ambil atau pilih 1–2 foto. Setiap foto dikompres menjadi JPEG maksimal 1 MB sebelum dimasukkan ke formulir."
+                    hint="Ambil atau pilih 1–2 foto sampah."
                     :max="2"
                     :multiple="true"
                     remove-method="removePhoto"
@@ -167,15 +169,15 @@
                     <div><dt class="text-caption text-text-secondary">Perkiraan berat</dt><dd class="mt-1 text-label font-bold text-deep-green">{{ \App\Support\WeightFormatter::format($estimatedWeight) }} kg</dd></div>
                 </dl>
                 <div class="mt-5 border-t border-border pt-4">
-                    <h3 class="text-label font-bold text-deep-green">Yang terjadi setelah dikirim</h3>
+                    <h3 class="text-label font-bold text-deep-green">Setelah dikirim</h3>
                     <ol class="mt-4 grid list-none gap-x-5 gap-y-3 text-body-sm text-text-secondary sm:grid-cols-3">
                         <li class="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-3">
                             <span aria-hidden="true" class="flex size-7 items-center justify-center rounded-sm bg-success-bg text-caption font-bold text-forest-700">1</span>
-                            <p class="pt-0.5 leading-5">Pengajuan diperiksa petugas.</p>
+                            <p class="pt-0.5 leading-5">Pengajuan diverifikasi oleh admin.</p>
                         </li>
                         <li class="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-3">
                             <span aria-hidden="true" class="flex size-7 items-center justify-center rounded-sm bg-success-bg text-caption font-bold text-forest-700">2</span>
-                            <p class="pt-0.5 leading-5">Jadwal dikonfirmasi sesuai kapasitas.</p>
+                            <p class="pt-0.5 leading-5">Jadwal dan petugas ditetapkan oleh admin.</p>
                         </li>
                         <li class="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-3">
                             <span aria-hidden="true" class="flex size-7 items-center justify-center rounded-sm bg-success-bg text-caption font-bold text-forest-700">3</span>

@@ -181,6 +181,111 @@ final class WastePricingTest extends TestCase
         $snapshot->withWeight('1.2345');
     }
 
+    public function test_replace_period_closes_active_and_creates_new_with_audit(): void
+    {
+        [$type, $condition] = $this->activePriceContext();
+        $manager = User::factory()->create();
+        $viewer = User::factory()->create();
+        $this->grant($manager, 'price.manage');
+        $this->grant($viewer, 'price.view');
+
+        $pricing = app(ManageWastePricing::class);
+        $original = $pricing->createPeriod($manager, $type, $condition, 3_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+
+        $replacement = $pricing->replacePeriod($manager, $original, 4_000, CarbonImmutable::parse('2026-08-15', 'Asia/Jakarta'), null, (string) str()->uuid());
+
+        self::assertSame(4_000, $replacement->price);
+        self::assertSame('2026-08-15 00:00:00', $replacement->effectiveFromDate()?->format('Y-m-d H:i:s'));
+        self::assertNull($replacement->effective_to);
+
+        $original = $original->fresh();
+        self::assertNotNull($original);
+        self::assertSame('2026-08-15 00:00:00', $original->effectiveToDate()?->format('Y-m-d H:i:s'));
+
+        $this->assertDatabaseHas('audit_logs', ['action' => 'waste.price.closed', 'auditable_id' => $original->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'waste.price.created', 'auditable_id' => $replacement->id]);
+
+        // Viewer cannot replace
+        $this->expectException(AuthorizationException::class);
+        $pricing->replacePeriod($viewer, $original, 5_000, CarbonImmutable::parse('2026-08-20', 'Asia/Jakarta'), null, (string) str()->uuid());
+    }
+
+    public function test_replace_period_rejects_effective_from_before_or_equal_to_existing(): void
+    {
+        [$type, $condition] = $this->activePriceContext();
+        $manager = User::factory()->create();
+        $this->grant($manager, 'price.manage');
+        $pricing = app(ManageWastePricing::class);
+        $original = $pricing->createPeriod($manager, $type, $condition, 3_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+
+        $this->assertValidationError('effective_from', fn (): WastePrice => $pricing->replacePeriod($manager, $original, 4_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid()));
+        $this->assertValidationError('effective_from', fn (): WastePrice => $pricing->replacePeriod($manager, $original, 4_000, CarbonImmutable::parse('2026-07-15', 'Asia/Jakarta'), null, (string) str()->uuid()));
+    }
+
+    public function test_replace_period_rejects_already_closed_period(): void
+    {
+        [$type, $condition] = $this->activePriceContext();
+        $manager = User::factory()->create();
+        $this->grant($manager, 'price.manage');
+        $pricing = app(ManageWastePricing::class);
+        $original = $pricing->createPeriod($manager, $type, $condition, 3_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+        $pricing->createPeriod($manager, $type, $condition, 3_500, CarbonImmutable::parse('2026-08-10', 'Asia/Jakarta'), null, (string) str()->uuid());
+
+        $this->assertValidationError('effective_from', fn (): WastePrice => $pricing->replacePeriod($manager, $original->fresh(), 4_000, CarbonImmutable::parse('2026-08-15', 'Asia/Jakarta'), null, (string) str()->uuid()));
+    }
+
+    public function test_deactivate_period_closes_active_without_creating_new(): void
+    {
+        [$type, $condition] = $this->activePriceContext();
+        $manager = User::factory()->create();
+        $viewer = User::factory()->create();
+        $this->grant($manager, 'price.manage');
+        $this->grant($viewer, 'price.view');
+
+        $pricing = app(ManageWastePricing::class);
+        $active = $pricing->createPeriod($manager, $type, $condition, 3_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+        $priceCount = WastePrice::query()->count();
+
+        $deactivated = $pricing->deactivatePeriod($manager, $active, CarbonImmutable::parse('2026-09-01', 'Asia/Jakarta'), (string) str()->uuid());
+
+        self::assertSame('2026-09-01 00:00:00', $deactivated->effectiveToDate()?->format('Y-m-d H:i:s'));
+        self::assertSame($priceCount, WastePrice::query()->count());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'waste.price.deactivated', 'auditable_id' => $active->id]);
+
+        // Viewer cannot deactivate
+        $another = $pricing->createPeriod($manager, $type, $condition, 5_000, CarbonImmutable::parse('2026-09-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+        $this->expectException(AuthorizationException::class);
+        $pricing->deactivatePeriod($viewer, $another, CarbonImmutable::parse('2026-09-15', 'Asia/Jakarta'), (string) str()->uuid());
+    }
+
+    public function test_deactivate_is_idempotent_and_returns_fresh_record(): void
+    {
+        [$type, $condition] = $this->activePriceContext();
+        $manager = User::factory()->create();
+        $this->grant($manager, 'price.manage');
+        $pricing = app(ManageWastePricing::class);
+        $active = $pricing->createPeriod($manager, $type, $condition, 3_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+
+        $first = $pricing->deactivatePeriod($manager, $active, CarbonImmutable::parse('2026-09-01', 'Asia/Jakarta'), (string) str()->uuid());
+        $second = $pricing->deactivatePeriod($manager, $first, CarbonImmutable::parse('2026-09-01', 'Asia/Jakarta'), (string) str()->uuid());
+
+        self::assertSame('2026-09-01 00:00:00', $second->effectiveToDate()?->format('Y-m-d H:i:s'));
+        self::assertSame($first->id, $second->id);
+        $this->assertDatabaseCount('waste_prices', 1);
+    }
+
+    public function test_deactivate_rejects_effective_to_before_effective_from(): void
+    {
+        [$type, $condition] = $this->activePriceContext();
+        $manager = User::factory()->create();
+        $this->grant($manager, 'price.manage');
+        $pricing = app(ManageWastePricing::class);
+        $active = $pricing->createPeriod($manager, $type, $condition, 3_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+
+        $this->assertValidationError('effective_to', fn (): WastePrice => $pricing->deactivatePeriod($manager, $active, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), (string) str()->uuid()));
+        $this->assertValidationError('effective_to', fn (): WastePrice => $pricing->deactivatePeriod($manager, $active, CarbonImmutable::parse('2026-07-31', 'Asia/Jakarta'), (string) str()->uuid()));
+    }
+
     /** @return array{WasteType, WasteCondition} */
     private function activePriceContext(): array
     {

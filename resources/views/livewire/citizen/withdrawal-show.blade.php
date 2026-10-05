@@ -84,11 +84,17 @@
 
     @if ($withdrawal->status->value === 'menunggu_verifikasi')
         <div class="flex justify-end">
-            <button type="button" wire:click="cancel"
-                wire:confirm="Batalkan pengajuan pencairan ini? Dana yang ditahan akan dilepas."
+            <button type="button" x-on:click="$dispatch('open-dialog', { id: 'cancel-withdrawal-dialog', invoker: $el })"
                 class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
                 Batalkan pengajuan
             </button>
         </div>
+        <x-ui.dialog id="cancel-withdrawal-dialog" name="cancel-withdrawal" title="Batalkan pengajuan pencairan" description="Dana yang ditahan akan dilepas kembali setelah pembatalan." state="error">
+            <p>Pengajuan pencairan {{ $withdrawal->request_number }} tidak akan diproses lebih lanjut.</p>
+            <x-slot:actions>
+                <x-ui.button type="button" variant="secondary" x-on:click="closeModal()">Kembali</x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="cancel" wire:loading.attr="disabled" wire:target="cancel">Batalkan pengajuan</x-ui.button>
+            </x-slot:actions>
+        </x-ui.dialog>
     @endif
 </section>

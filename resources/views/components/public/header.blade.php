@@ -6,6 +6,15 @@
     $isAnnouncements = request()->routeIs('public.announcements');
     $isPrograms = request()->routeIs('public.programs');
     $isTerms = request()->routeIs('terms-and-privacy');
+    $hasHeroOverlay = $isHome || request()->routeIs(
+        'public.catalog',
+        'public.prices',
+        'public.mobile-schedule',
+        'public.announcements',
+        'public.programs',
+        'public.deposit-verification',
+        'terms-and-privacy',
+    );
     $isExploreActive = $isHome || $isCatalog || $isPrices;
     $isPublicInformationActive = $isSchedule || $isAnnouncements || $isPrograms || $isTerms;
     $isLogin = request()->routeIs('login');
@@ -15,10 +24,13 @@
     $inactiveNavClasses = 'font-semibold text-text-secondary hover:bg-success-bg hover:text-deep-green';
 @endphp
 
-<header @class([
-    'sticky top-0 z-sticky -mb-[4.75rem] px-3 pt-3 sm:px-5' => $isHome,
-    'sticky top-0 z-sticky px-3 pt-3 sm:px-5' => ! $isHome,
-])>
+<header
+    data-public-header="{{ $hasHeroOverlay ? 'overlay' : 'flow' }}"
+    @class([
+        'sticky top-0 z-sticky px-3 pt-3 sm:px-5',
+        '-mb-[4.75rem]' => $hasHeroOverlay,
+    ])
+>
     <div class="public-container flex min-h-16 items-center justify-between gap-3 rounded-full border border-border/90 bg-surface/95 px-3 shadow-sm backdrop-blur sm:px-4">
         <a href="{{ route('home') }}" class="flex min-h-touch shrink-0 items-center gap-2 rounded-md focus-visible:outline-offset-4" aria-label="Bank Sampah Digital Sindangheula, beranda">
             <img src="{{ asset('images/landing/mascot-3.png') }}" alt="" class="size-11 shrink-0 object-contain" aria-hidden="true">

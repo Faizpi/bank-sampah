@@ -146,7 +146,7 @@ final class PickupTask extends Component
     public function complete(PickupService $service): void
     {
         if (! $this->completionDialogOpen) {
-            $this->addError('actualItems', 'Tinjau lalu konfirmasi finalisasi sebelum menyelesaikan tugas.');
+            $this->addError('actualItems', 'Tinjau lalu konfirmasi penyelesaian sebelum menyelesaikan tugas.');
 
             return;
         }

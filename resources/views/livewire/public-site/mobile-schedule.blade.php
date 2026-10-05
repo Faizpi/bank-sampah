@@ -28,7 +28,7 @@
                 id="mobile-schedule-title"
                 eyebrow="Layanan tersedia"
                 title="Jadwal aktif"
-                description="Pilih waktu dan titik layanan yang sesuai. Kapasitas yang tampil adalah sisa layanan pada jadwal tersebut."
+                description="Pilih waktu dan titik layanan yang sesuai. Kapasitas menunjukkan sisa slot warga/transaksi dari total slot pada jadwal tersebut."
             />
 
             @if ($services->isEmpty())
@@ -44,14 +44,15 @@
                     @foreach ($services as $service)
                         @php
                             $status = $service->status->value;
-                            $statusPresentation = match ($status) {
+                            $isFull = $service->isFull();
+                            $statusPresentation = $isFull ? 'closed' : match ($status) {
                                 'dipublikasikan' => 'pending',
                                 'dibuka' => 'success',
                                 'ditutup' => 'closed',
                                 'dibatalkan' => 'cancelled',
                                 default => 'pending',
                             };
-                            $statusLabel = match ($status) {
+                            $statusLabel = $isFull ? 'Penuh' : match ($status) {
                                 'dipublikasikan' => 'Terjadwal',
                                 'dibuka' => 'Dibuka',
                                 'ditutup' => 'Ditutup',
@@ -79,11 +80,11 @@
                                     <dd class="font-semibold text-text-primary">{{ $service->starts_at->format('H:i') }}–{{ $service->ends_at->format('H:i') }}</dd>
                                 </div>
                                 <div class="flex items-center justify-between gap-4">
-                                    <dt class="flex items-center gap-2 text-text-secondary"><x-public.icon name="scale" size="size-4" />Kapasitas</dt>
-                                    <dd class="font-semibold text-text-primary">{{ $service->capacity - $service->served_count }} tersisa</dd>
+                                    <dt class="flex items-center gap-2 text-text-secondary"><x-public.icon name="scale" size="size-4" />Slot warga/transaksi</dt>
+                                    <dd class="font-semibold text-text-primary">{{ $service->remainingCapacity() }}/{{ $service->capacity }} tersisa</dd>
                                 </div>
                                 <div class="grid gap-1">
-                                    <dt class="text-text-secondary">Cakupan wilayah</dt>
+                                    <dt class="text-text-secondary">Wilayah layanan</dt>
                                     <dd class="font-semibold text-text-primary">{{ $service->rt?->name ?? $service->rw?->name ?? 'Wilayah layanan' }}</dd>
                                 </div>
                                 <div class="grid gap-1">

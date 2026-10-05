@@ -108,7 +108,7 @@ final readonly class GroceryTerminalService
     private function notify(GroceryRedemption $redemption, string $type): void
     {
         $label = $type === 'grocery.expired' ? 'kedaluwarsa' : 'dibatalkan';
-        NotificationRequested::dispatch(new NotificationPayload(recipientId: $redemption->customer_id, type: $type, title: 'Status penukaran diperbarui', body: 'Penukaran '.$redemption->request_number.' '.$label.' dan hold saldo dilepas.', reference: '/notifikasi', dedupeKey: NotificationDedupeKey::for($type.':'.$redemption->request_number, $redemption->customer_id, 'grocery-v1')));
+        NotificationRequested::dispatch(new NotificationPayload(recipientId: $redemption->customer_id, type: $type, title: 'Status penukaran diperbarui', body: 'Penukaran '.$redemption->request_number.' '.$label.' dan dana yang ditahan dikembalikan.', reference: '/notifikasi', dedupeKey: NotificationDedupeKey::for($type.':'.$redemption->request_number, $redemption->customer_id, 'grocery-v1')));
     }
 
     private function correlationId(): string

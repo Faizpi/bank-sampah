@@ -68,4 +68,14 @@ final class MobileService extends Model
     {
         return $this->status === MobileServiceStatus::Open && $this->starts_at->lessThanOrEqualTo(now()) && $this->ends_at->greaterThanOrEqualTo(now());
     }
+
+    public function remainingCapacity(): int
+    {
+        return max(0, $this->capacity - $this->served_count);
+    }
+
+    public function isFull(): bool
+    {
+        return $this->remainingCapacity() === 0;
+    }
 }

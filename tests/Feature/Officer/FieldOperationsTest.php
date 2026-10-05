@@ -60,7 +60,7 @@ final class FieldOperationsTest extends TestCase
             ->set('actualItems', [['waste_type_id' => (string) $type->id, 'condition_id' => (string) $condition->id, 'weight_kg' => '1.000']])
             ->call('complete')
             ->assertHasErrors('actualItems')
-            ->assertSee('Tinjau lalu konfirmasi finalisasi sebelum menyelesaikan tugas.')
+            ->assertSee('Tinjau lalu konfirmasi penyelesaian sebelum menyelesaikan tugas.')
             ->call('reviewCompletion')
             ->assertHasErrors('evidence');
 
@@ -128,8 +128,8 @@ final class FieldOperationsTest extends TestCase
         Livewire::test(PickupTask::class, ['pickup' => $pickup])
             ->call('begin')
             ->call('markPickedUp')
-            ->assertSee('Review Finalisasi')
-            ->assertSee('Harga aktif dan subtotal akan dihitung ulang server saat finalisasi.');
+            ->assertSee('Periksa penyelesaian')
+            ->assertSee('Harga aktif dan subtotal akan dihitung ulang server saat penyelesaian.');
 
         $handoverOfficer = $this->userWith('grocery.handover');
         $package = GroceryPackage::query()->create([
@@ -224,11 +224,59 @@ final class FieldOperationsTest extends TestCase
         $this->actingAs($officer);
 
         Livewire::test(MobileServiceTasks::class)
+            ->assertSeeHtml('wire:click="open('.$service->id.')"')
+            ->assertSee('Buka Layanan')
             ->call('open', $service->id)
+            ->assertSee(route('officer.customer-identification', ['mobileServiceId' => $service->id]), false)
+            ->assertSee('Catat Setoran')
             ->call('close', $service->id)
             ->assertHasNoErrors();
 
         self::assertSame(MobileServiceStatus::Closed, $service->fresh()->status);
+    }
+
+    public function test_mobile_service_tasks_disable_future_open_action_and_show_capacity_states(): void
+    {
+        $officer = $this->userWith('mobile-service.operate');
+        $now = CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta');
+        CarbonImmutable::setTestNow($now);
+
+        try {
+            $future = $this->mobileService($officer);
+            $future->forceFill(['point' => 'Jadwal mendatang', 'starts_at' => $now->addHour(), 'ends_at' => $now->addHours(2), 'capacity' => 5, 'served_count' => 2])->save();
+            $full = $this->mobileService($officer, MobileServiceStatus::Open);
+            $full->forceFill(['point' => 'Jadwal penuh', 'capacity' => 1, 'served_count' => 2])->save();
+
+            Livewire::actingAs($officer)
+                ->test(MobileServiceTasks::class)
+                ->assertSee('Dapat dibuka pukul 11:00')
+                ->assertDontSeeHtml('wire:click="open('.$future->id.')"')
+                ->assertSee('Slot warga/transaksi')
+                ->assertSeeHtml('<strong>3</strong>/5 tersisa')
+                ->assertSeeHtml('<strong>0</strong>/1 tersisa')
+                ->assertSee('Penuh')
+                ->assertSee(route('officer.customer-identification', ['mobileServiceId' => $full->id]), false)
+                ->assertSee('Catat Setoran');
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    public function test_mobile_service_tasks_render_open_transition_errors_adjacent_to_the_service(): void
+    {
+        $officer = $this->userWith('mobile-service.operate');
+        $service = $this->mobileService($officer);
+        $service->staff()->detach($officer->id);
+        $service->staff()->attach($officer->id);
+        $service->wasteTypes()->detach();
+
+        Livewire::actingAs($officer)
+            ->test(MobileServiceTasks::class)
+            ->call('open', $service->id)
+            ->assertHasErrors('open.'.$service->id)
+            ->assertSee('Layanan dibuka harus memiliki petugas dan jenis diterima.');
+
+        self::assertSame(MobileServiceStatus::Published, $service->fresh()->status);
     }
 
     public function test_mobile_service_tasks_hide_expired_actionable_services_without_hiding_history(): void

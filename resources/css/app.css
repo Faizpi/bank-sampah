@@ -118,6 +118,8 @@
     --public-gutter-comfortable: 1.25rem;
     --public-section-space: var(--spacing-section-mobile);
     --public-section-space-wide: var(--spacing-section-desktop);
+    --public-hero-overlay-space: 7rem;
+    --public-hero-overlay-space-wide: 8rem;
     --public-media-radius: var(--radius-lg);
     --public-motion-duration: var(--animate-duration-default);
     --public-motion-ease: var(--ease-standard);
@@ -204,6 +206,15 @@
 
 @utility public-canvas {
     background-color: var(--public-canvas);
+}
+
+[data-public-header='overlay'] + [data-public-offline-status] + main > .public-canvas > section:first-child > .public-container,
+[data-public-header='overlay'] + main > .public-canvas > section:first-child > .public-container {
+    padding-top: var(--public-hero-overlay-space);
+
+    @media (width >= 48rem) {
+        padding-top: var(--public-hero-overlay-space-wide);
+    }
 }
 
 @utility public-hero-grid {
@@ -298,5 +309,36 @@
     @media (prefers-reduced-motion: reduce) {
         animation: none;
         transform: none;
+    }
+}
+
+@media print {
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    header,
+    nav,
+    footer,
+    aside,
+    [data-print-hide],
+    [data-print-area] img,
+    [data-print-area] button,
+    [data-print-area] a {
+        display: none !important;
+    }
+
+    [data-print-area] {
+        padding: 0 !important;
+    }
+
+    [data-print-area] *,
+    [data-print-area] *::before,
+    [data-print-area] *::after {
+        background: transparent !important;
+        color: #000 !important;
+        border-color: #cbd5d1 !important;
+        box-shadow: none !important;
     }
 }

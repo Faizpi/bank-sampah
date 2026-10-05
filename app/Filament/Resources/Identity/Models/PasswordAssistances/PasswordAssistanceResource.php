@@ -64,7 +64,9 @@ final class PasswordAssistanceResource extends Resource
             ->recordTitleAttribute('name')
             ->columns([
                 TextColumn::make('name')->label('Nama')->searchable(),
+                TextColumn::make('username')->label('Username')->searchable(),
                 TextColumn::make('status')->label('Status')->badge(),
+                TextColumn::make('phone')->label('Nomor telepon')->placeholder('Tidak tersedia')->toggleable(),
                 TextColumn::make('customerProfile.customer_number')->label('Nomor nasabah')->toggleable(),
             ])
             ->recordActions([
@@ -81,10 +83,14 @@ final class PasswordAssistanceResource extends Resource
                     ->schema([
                         Select::make('verification_method')
                             ->label('Metode verifikasi')
-                            ->options([
-                                'tatap_muka' => 'Tatap muka',
-                                'callback_nomor_terdaftar' => 'Callback nomor terdaftar',
-                            ])
+                            ->options(function (User $record): array {
+                                $options = ['tatap_muka' => 'Tatap muka'];
+                                if (filled($record->phone)) {
+                                    $options['callback_nomor_terdaftar'] = 'Callback nomor terdaftar';
+                                }
+
+                                return $options;
+                            })
                             ->required(),
                         Textarea::make('reason')
                             ->label('Alasan')
@@ -97,7 +103,7 @@ final class PasswordAssistanceResource extends Resource
                             ->password()
                             ->autocomplete('new-password')
                             ->required()
-                            ->minLength(10),
+                            ->minLength(8),
                         TextInput::make('password_confirmation')
                             ->label('Konfirmasi kata sandi baru')
                             ->password()
@@ -131,7 +137,7 @@ final class PasswordAssistanceResource extends Resource
 
         return app(VisibleUsers::class)
             ->queryFor($actor, UserStatus::Active, UserStatus::PendingVerification)
-            ->select(['id', 'name', 'status']);
+            ->select(['id', 'name', 'username', 'phone', 'status']);
     }
 
     private static function actor(): User

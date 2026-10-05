@@ -41,8 +41,8 @@
             <svg data-lucide="{{ $resolvedState === 'empty' ? 'chart-no-axes-column' : 'triangle-alert' }}" viewBox="0 0 24 24" class="mx-auto size-10 text-text-secondary" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                 @if ($resolvedState === 'empty')<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>@else<path d="M21 19H3L12 4l9 15Z"/><path d="M12 9v4m0 3h.01"/>@endif
             </svg>
-            <p class="mt-3 text-label text-deep-green">{{ $resolvedState === 'empty' ? 'Belum ada data grafik' : 'Data grafik tidak tersedia' }}</p>
-            <p class="mt-1 text-body-sm text-text-secondary">{{ $resolvedState === 'empty' ? 'Data akan ditampilkan setelah tersedia.' : 'Gunakan ringkasan atau coba lagi nanti.' }}</p>
+            <p class="mt-3 text-label text-deep-green">{{ $resolvedState === 'empty' ? 'Belum ada data' : 'Data tidak tersedia' }}</p>
+            <p class="mt-1 text-body-sm text-text-secondary">{{ $resolvedState === 'empty' ? 'Data untuk periode ini belum tersedia.' : 'Coba lagi nanti atau gunakan ringkasan data.' }}</p>
         </div>
     @else
         <div class="mt-5" aria-label="Legenda grafik">
@@ -57,7 +57,6 @@
         </div>
 
         <div class="mt-5 border-y border-border py-4" @if ($resolvedType === 'bar') data-bar-baseline="zero" @endif>
-            @if ($resolvedType === 'bar')<p class="text-caption text-text-secondary">Grafik batang dimulai dari nol.</p>@endif
             <div class="mt-3 grid gap-3">
                 @foreach ($normalizedSeries as $item)
                     @foreach ($item['values'] as $point)

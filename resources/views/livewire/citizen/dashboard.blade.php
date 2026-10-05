@@ -179,7 +179,7 @@
             <h1 id="citizen-dashboard-title" class="text-h2 font-bold text-deep-green">
                 Halo, {{ $actorName }}!
             </h1>
-            <p class="text-body-sm text-text-secondary">Kelola pemilahan sampah dan ajukan layanan dengan mudah dari beranda ini.</p>
+            <p class="text-body-sm text-text-secondary">Kelola pemilahan sampah dan ajukan layanan dari sini.</p>
         </div>
         <div class="flex shrink-0 items-center justify-center">
             <x-ui.mascot variant="2" bubble="Yuk pilah sampahmu hari ini!" bubblePosition="top"

@@ -16,6 +16,7 @@ use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -24,6 +25,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 final class WasteTypeResource extends Resource
@@ -58,7 +60,7 @@ final class WasteTypeResource extends Resource
                 TextInput::make('sort_order')->label('Urutan')->numeric()->integer()->minValue(0)->maxValue(9999)->default(0)->required(),
                 Checkbox::make('is_plastic')->label('Kelompok plastik'),
                 Checkbox::make('is_active')->label('Aktif')->default(true),
-                Textarea::make('education_description')->label('Edukasi kontekstual')->maxLength(5000)->rows(5)->columnSpanFull(),
+                Textarea::make('education_description')->label('Penjelasan untuk warga')->maxLength(5000)->rows(5)->columnSpanFull(),
             ])->columns(2),
         ]);
     }
@@ -80,7 +82,13 @@ final class WasteTypeResource extends Resource
                 $unit = WasteUnit::query()->findOrFail($data['waste_unit_id']);
                 app(ManageWasteMaster::class)->updateType(auth()->user(), $record, $category, $unit, $data['code'], $data['name'], $data['education_description'] ?? null, (int) $data['sort_order'], (bool) ($data['is_plastic'] ?? false), (bool) ($data['is_active'] ?? false), array_map('intval', $data['condition_ids'] ?? []));
             })),
-            Action::make('activate')->label('Aktifkan kembali')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->requiresConfirmation()->modalHeading(fn (WasteType $record): string => "Aktifkan jenis {$record->name}?")->modalDescription('Jenis ini kembali tersedia untuk transaksi baru. Kategori dan kondisi yang dipakai harus aktif.')->modalSubmitActionLabel('Aktifkan jenis')->visible(fn (WasteType $record): bool => ! $record->is_active)->action(fn (WasteType $record) => app(ManageWasteMaster::class)->activate(auth()->user(), $record)),
+            Action::make('activate')->label('Aktifkan kembali')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->requiresConfirmation()->modalHeading(fn (WasteType $record): string => "Aktifkan jenis {$record->name}?")->modalDescription('Jenis ini kembali tersedia untuk transaksi baru. Kategori dan kondisi yang dipakai harus aktif.')->modalSubmitActionLabel('Aktifkan jenis')->visible(fn (WasteType $record): bool => ! $record->is_active)->action(function (WasteType $record): void {
+                try {
+                    app(ManageWasteMaster::class)->activate(auth()->user(), $record);
+                } catch (ValidationException) {
+                    Notification::make()->title('Jenis sampah belum dapat diaktifkan')->body('Pastikan kategori, satuan, dan seluruh kondisi penerimaan aktif, lalu coba kembali.')->danger()->send();
+                }
+            }),
             Action::make('deactivate')->label('Nonaktifkan')->authorize('deactivate')->requiresConfirmation()->modalHeading(fn (WasteType $record): string => "Nonaktifkan jenis {$record->name}?")->modalDescription('Jenis ini tidak tersedia untuk transaksi baru. Data transaksi lama tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan jenis')->visible(fn (WasteType $record): bool => $record->is_active)->action(fn (WasteType $record) => app(ManageWasteMaster::class)->deactivate(auth()->user(), $record)),
         ]);
     }

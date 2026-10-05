@@ -14,9 +14,6 @@ use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Deposits\Models\Deposit;
-use App\Domain\Groceries\Enums\GroceryStatus;
-use App\Domain\Groceries\Models\GroceryPackage;
-use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\Role;
@@ -26,7 +23,6 @@ use App\Domain\Ledger\Services\LedgerService;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Enums\PickupStatus;
-use App\Domain\Pickups\Models\PickupCapacity;
 use App\Domain\Pickups\Models\PickupItem;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Pickups\Models\StatusHistory;
@@ -96,7 +92,8 @@ final class LocalDataSeeder extends Seeder
 
             $this->seedDeposits($customers, $staff, $master['types'], $master['conditions'], $prices, $mobileServices, $pickups, $ledger, $now);
             $this->seedWithdrawals($admin, $customers, $staff, $ledger, $now);
-            $this->seedGroceries($admin, $customers, $staff, $ledger, $now);
+            // Paket sembako dan penukaran tidak lagi dibuat oleh seeder demo;
+            // data sembako historical di production tidak pernah dihapus oleh seeder.
             $this->seedPrograms($admin, $regions['rts'], $master, $now);
             $this->seedAnnouncements($admin, $regions['rts'], $now);
             $this->seedStatisticPublication($admin);
@@ -289,14 +286,18 @@ final class LocalDataSeeder extends Seeder
             );
             $user->roles()->syncWithoutDetaching([$role->id => ['assigned_by' => $user->id, 'reason' => 'Data awal Sindangheula']]);
             $profile = CustomerProfile::query()->firstOrNew(['user_id' => $user->id]);
-            $token = $profile->qr_token_hash === null ? QrToken::generate() : null;
+            // Regenerate when either half of the token pair is missing: a hash
+            // without its stored plaintext can never be rendered again, so the
+            // whole pair is replaced. Complete pairs survive re-seeding.
+            $needsToken = $profile->qr_token_hash === null || $profile->qr_token_encrypted === null;
+            $token = $needsToken ? QrToken::generate() : null;
             $profile->forceFill([
                 'customer_number' => $profile->customer_number ?? 'CST-'.str_pad((string) $number, 8, '0', STR_PAD_LEFT),
                 'rt_id' => $rts[$index % count($rts)]->id,
                 'address' => $addresses[$index % count($addresses)].', '.$rts[$index % count($rts)]->name.', Desa Sindangheula',
                 'joined_at' => $now->subDays(29 - ($index % 30))->toDateString(),
-                'qr_token_hash' => $profile->qr_token_hash ?? $token?->hash(),
-                'qr_token_encrypted' => $profile->qr_token_encrypted ?? $token?->value(),
+                'qr_token_hash' => $needsToken ? $token?->hash() : $profile->qr_token_hash,
+                'qr_token_encrypted' => $needsToken ? $token?->value() : $profile->qr_token_encrypted,
                 'qr_rotated_at' => $profile->qr_rotated_at ?? now(),
             ])->save();
             $customers[] = $user;
@@ -414,11 +415,12 @@ final class LocalDataSeeder extends Seeder
             ['number' => $this->fixtureId('MOB', $now, 6), 'start' => $now->addDays(28)->setTime(8, 0), 'end' => $now->addDays(28)->setTime(13, 0), 'status' => MobileServiceStatus::Published, 'point' => 'Lapangan Desa Sindangheula'],
         ];
         foreach ($definitions as $index => $definition) {
-            $service = MobileService::query()->firstOrCreate(
+            $rt = $regions['rts'][$index % count($regions['rts'])];
+            $service = MobileService::query()->updateOrCreate(
                 ['service_number' => $definition['number']],
                 [
-                    'rw_id' => $regions['rws'][$index % count($regions['rws'])]->id,
-                    'rt_id' => $regions['rts'][$index % count($regions['rts'])]->id,
+                    'rw_id' => $rt->rw_id,
+                    'rt_id' => $rt->id,
                     'point' => $definition['point'],
                     'starts_at' => $definition['start'],
                     'ends_at' => $definition['end'],
@@ -501,15 +503,6 @@ final class LocalDataSeeder extends Seeder
                 StatusHistory::query()->create(['subject_type' => PickupRequest::class, 'subject_id' => $pickup->id, 'old_status' => null, 'new_status' => $status->value, 'actor_id' => $staff[$areaIndex % 4]->id, 'reason' => 'Status awal layanan penjemputan.', 'occurred_at' => $pickup->completed_at ?? $pickup->created_at ?? $now]);
             }
             $pickups[] = $pickup;
-        }
-
-        foreach ($regions['areas'] as $area) {
-            foreach (range(0, 30) as $dayOffset) {
-                PickupCapacity::query()->updateOrCreate(
-                    ['service_area_id' => $area->id, 'service_date' => $now->addDays($dayOffset)->startOfDay()],
-                    ['max_addresses' => 12, 'max_weight_kg' => '80.000', 'vehicle_label' => 'Kendaraan Layanan '.$area->name, 'is_active' => true],
-                );
-            }
         }
 
         return $pickups;
@@ -654,103 +647,6 @@ final class LocalDataSeeder extends Seeder
                 ])->save();
                 StatusHistory::query()->create(['subject_type' => WithdrawalRequest::class, 'subject_id' => $withdrawal->id, 'old_status' => WithdrawalStatus::ReadyForPickup->value, 'new_status' => WithdrawalStatus::Paid->value, 'actor_id' => $staff[3]->id, 'reason' => 'Pencairan dibayarkan oleh bendahara multi-area.', 'occurred_at' => $now->subHour()]);
             }
-        }
-    }
-
-    /** @param list<User> $customers
-     * @param  list<User>  $staff
-     */
-    private function seedGroceries(User $admin, array $customers, array $staff, LedgerService $ledger, CarbonImmutable $now): void
-    {
-        $packages = [
-            ['code' => $this->fixtureId('PKT', $now, 1), 'name' => 'Paket Hemat Harian', 'contents' => "Beras 2 kg\nMinyak goreng 1 liter\nGula pasir 500 gram", 'value' => 8_000],
-            ['code' => $this->fixtureId('PKT', $now, 2), 'name' => 'Paket Keluarga', 'contents' => "Beras 3 kg\nMinyak goreng 1 liter\nGula pasir 1 kg\nMi instan 5 bungkus", 'value' => 15_000],
-            ['code' => $this->fixtureId('PKT', $now, 3), 'name' => 'Paket Lengkap', 'contents' => "Beras 5 kg\nMinyak goreng 2 liter\nGula pasir 1 kg\nTelur ayam 10 butir\nSarden 2 kaleng", 'value' => 22_000],
-        ];
-        $packageModels = [];
-        foreach ($packages as $packageData) {
-            $packageModels[] = GroceryPackage::query()->firstOrCreate(
-                ['code' => $packageData['code']],
-                $packageData + ['active_from' => $now->subDays(30)->toDateString(), 'active_until' => null, 'status' => 'aktif'],
-            );
-        }
-
-        $usedCustomerIds = [];
-        foreach ([GroceryStatus::PendingVerification, GroceryStatus::Approved, GroceryStatus::Preparing, GroceryStatus::ReadyForPickup, GroceryStatus::Completed] as $index => $targetStatus) {
-            $package = $packageModels[$index % count($packageModels)];
-            $eligibleCustomers = array_values(array_filter($customers, static fn (User $candidate): bool => ($candidate->ledgerAccount()->first()?->availableBalance() ?? 0) >= $package->value));
-            if ($eligibleCustomers === []) {
-                continue;
-            }
-            $customer = collect($eligibleCustomers)->first(fn (User $candidate): bool => ! in_array($candidate->id, $usedCustomerIds, true)) ?? $eligibleCustomers[0];
-            $usedCustomerIds[] = $customer->id;
-            $number = $index + 1;
-            $profile = $customer->customerProfile()->firstOrFail();
-            $rt = $profile->rt()->firstOrFail();
-            $area = $rt->serviceAreas()->where('is_active', true)->firstOrFail();
-            $redemption = GroceryRedemption::query()->firstOrCreate(
-                ['request_number' => $this->fixtureId('GRC', $now, $number)],
-                [
-                    'customer_id' => $customer->id,
-                    'rt_id' => $rt->id,
-                    'service_area_id' => $area->id,
-                    'requested_by_id' => $customer->id,
-                    'grocery_package_id' => $package->id,
-                    'value_snapshot' => $package->value,
-                    'package_snapshot' => ['code' => $package->code, 'name' => $package->name, 'contents' => $package->contents, 'value' => $package->value],
-                    'status' => GroceryStatus::PendingVerification,
-                ],
-            );
-            if ($redemption->balance_hold_id === null) {
-                $hold = $ledger->createHold($customer, $redemption, (int) $redemption->value_snapshot, 'grocery:'.$redemption->id.':hold');
-                $redemption->forceFill(['balance_hold_id' => $hold->id])->save();
-            }
-            if (! StatusHistory::query()->where('subject_type', GroceryRedemption::class)->where('subject_id', $redemption->id)->exists()) {
-                StatusHistory::query()->create(['subject_type' => GroceryRedemption::class, 'subject_id' => $redemption->id, 'old_status' => null, 'new_status' => GroceryStatus::PendingVerification->value, 'actor_id' => $customer->id, 'reason' => 'Warga mengajukan penukaran dari saldo.', 'occurred_at' => $now->subDays(4 - $index)]);
-            }
-            if ($targetStatus === GroceryStatus::PendingVerification || $redemption->status !== GroceryStatus::PendingVerification) {
-                continue;
-            }
-
-            $redemption->forceFill([
-                'status' => GroceryStatus::Approved,
-                'approver_id' => $admin->id,
-                'approved_at' => $now->subDay(),
-                'availability_note' => 'Isi paket tersedia untuk disiapkan.',
-                'expires_at' => $now->addDays(7),
-            ])->save();
-            $redemption->statusHistory()->create(['old_status' => GroceryStatus::PendingVerification->value, 'new_status' => GroceryStatus::Approved->value, 'actor_id' => $admin->id, 'reason' => 'Ketersediaan paket dikonfirmasi.', 'occurred_at' => $now->subHours(20)]);
-
-            if ($targetStatus === GroceryStatus::Approved) {
-                continue;
-            }
-
-            // Only officers with a current two-area assignment prepare operational grocery fixtures.
-            $staffMember = $staff[$index % 2];
-            $redemption->forceFill(['status' => GroceryStatus::Preparing, 'prepared_by_id' => $staffMember->id, 'prepared_at' => $now->subHours(12)])->save();
-            $redemption->statusHistory()->create(['old_status' => GroceryStatus::Approved->value, 'new_status' => GroceryStatus::Preparing->value, 'actor_id' => $staffMember->id, 'reason' => 'Petugas berizin mulai menyiapkan paket.', 'occurred_at' => $now->subHours(12)]);
-
-            if ($targetStatus === GroceryStatus::Preparing) {
-                continue;
-            }
-
-            $redemption->forceFill(['status' => GroceryStatus::ReadyForPickup, 'ready_at' => $now->subHours(2)])->save();
-            $redemption->statusHistory()->create(['old_status' => GroceryStatus::Preparing->value, 'new_status' => GroceryStatus::ReadyForPickup->value, 'actor_id' => $staffMember->id, 'reason' => 'Paket siap diserahkan kepada warga.', 'occurred_at' => $now->subHours(2)]);
-
-            if ($targetStatus !== GroceryStatus::Completed) {
-                continue;
-            }
-
-            $entry = $ledger->convertHold($redemption->balanceHold()->firstOrFail(), 'grocery:'.$redemption->id.':handover');
-            $redemption->forceFill([
-                'status' => GroceryStatus::Completed,
-                'handover_actor_id' => $staffMember->id,
-                'handed_over_at' => $now->subHour(),
-                'recipient_verification' => 'Kartu nasabah dan identitas cocok.',
-                'recipient_reference' => $profile->customer_number,
-                'receipt_ledger_entry_id' => $entry->id,
-            ])->save();
-            $redemption->statusHistory()->create(['old_status' => GroceryStatus::ReadyForPickup->value, 'new_status' => GroceryStatus::Completed->value, 'actor_id' => $staffMember->id, 'reason' => 'Paket diserahkan oleh petugas berizin.', 'occurred_at' => $now->subHour()]);
         }
     }
 

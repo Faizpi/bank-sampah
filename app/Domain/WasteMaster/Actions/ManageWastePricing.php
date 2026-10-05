@@ -111,6 +111,80 @@ final readonly class ManageWastePricing
         });
     }
 
+    public function replacePeriod(
+        User $actor,
+        WastePrice $current,
+        int $price,
+        CarbonImmutable $effectiveFrom,
+        ?CarbonImmutable $effectiveTo,
+        string $correlationId,
+        bool $zeroPriceConfirmed = false,
+    ): WastePrice {
+        $this->authorize($actor);
+
+        return DB::transaction(function () use ($actor, $current, $price, $effectiveFrom, $effectiveTo, $correlationId, $zeroPriceConfirmed): WastePrice {
+            /** @var WastePrice|null $locked */
+            $locked = WastePrice::query()->whereKey($current->id)->lockForUpdate()->first();
+
+            if ($locked === null) {
+                throw ValidationException::withMessages(['price' => 'Periode harga tidak ditemukan.']);
+            }
+
+            if ($locked->effective_to !== null || $effectiveFrom <= $locked->effective_from) {
+                throw ValidationException::withMessages(['effective_from' => 'Harga hanya dapat diubah melalui periode baru setelah periode aktif dimulai.']);
+            }
+
+            return $this->createPeriod(
+                $actor,
+                $locked->wasteType,
+                $locked->condition,
+                $price,
+                $effectiveFrom,
+                $effectiveTo,
+                $correlationId,
+                $zeroPriceConfirmed,
+            )->fresh(['wasteType.unit', 'condition']) ?? throw ValidationException::withMessages(['price' => 'Harga baru gagal dimuat.']);
+        });
+    }
+
+    public function deactivatePeriod(
+        User $actor,
+        WastePrice $current,
+        CarbonImmutable $effectiveTo,
+        string $correlationId,
+    ): WastePrice {
+        $this->authorize($actor);
+
+        return DB::transaction(function () use ($actor, $current, $effectiveTo, $correlationId): WastePrice {
+            /** @var WastePrice|null $locked */
+            $locked = WastePrice::query()->whereKey($current->id)->lockForUpdate()->first();
+
+            if ($locked === null) {
+                throw ValidationException::withMessages(['price' => 'Periode harga tidak ditemukan.']);
+            }
+
+            if ($locked->effective_to !== null) {
+                return $locked->fresh(['wasteType.unit', 'condition']) ?? $locked;
+            }
+
+            if ($effectiveTo <= $locked->effective_from) {
+                throw ValidationException::withMessages(['effective_to' => 'Waktu nonaktif harus sesudah periode harga dimulai.']);
+            }
+
+            WasteMasterMutationGuard::run(fn (): int => WastePrice::query()->whereKey($locked->id)->update(['effective_to' => $effectiveTo]));
+            $this->auditLogger->record(
+                $actor,
+                'waste.price.deactivated',
+                $locked,
+                ['effective_to' => null],
+                ['effective_to' => $effectiveTo->toIso8601String()],
+                $this->normalizedCorrelationId($correlationId),
+            );
+
+            return $locked->fresh(['wasteType.unit', 'condition']) ?? $locked;
+        });
+    }
+
     private function overlaps(WastePrice $period, CarbonImmutable $from, ?CarbonImmutable $to): bool
     {
         return ($to === null || $period->effective_from < $to)

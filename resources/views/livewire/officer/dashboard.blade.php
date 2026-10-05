@@ -6,23 +6,32 @@
     @if ($priorityTask)
         <section class="mb-4 rounded-lg border border-sky-blue/40 bg-info-bg p-5 shadow-xs" aria-labelledby="priority-task-title">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+                <div class="min-w-0">
                     <p class="text-caption font-semibold text-sky-blue">Fokus sekarang</p>
-                    <h2 id="priority-task-title" class="mt-1 text-h2 font-bold text-deep-green">{{ $priorityTask['label'] }}</h2>
-                    <p class="mt-1 text-body-sm text-text-secondary">{{ $priorityTask['description'] }}</p>
+                    <h2 id="priority-task-title" class="mt-1 break-words text-h2 font-bold text-deep-green">{{ $priorityTask['label'] }}</h2>
+                    <p class="mt-1 break-words text-body-sm text-text-secondary">{{ $priorityTask['description'] }}</p>
                     @if ($priorityTask['status'])<p class="mt-2 text-caption font-semibold text-sky-blue">Status: {{ \App\Support\StatusLabel::for($priorityTask['status']) }}</p>@endif
                 </div>
                 @if ($priorityTask['href'])
-                    <a href="{{ $priorityTask['href'] }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md border border-sky-blue bg-surface px-5 text-label font-bold text-sky-blue transition hover:bg-surface/70">
+                    <a href="{{ $priorityTask['href'] }}" class="inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-md border border-sky-blue bg-surface px-5 text-label font-bold text-sky-blue transition hover:bg-surface/70 sm:w-auto sm:shrink-0">
                         Buka tugas
                         <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </a>
                 @endif
             </div>
         </section>
+    @else
+        <section class="mb-4 rounded-lg border border-border bg-surface p-5 shadow-xs" aria-labelledby="priority-task-empty-title">
+            <p class="text-caption font-semibold text-text-secondary">Fokus sekarang</p>
+            <h2 id="priority-task-empty-title" class="mt-1 text-title font-bold text-deep-green">Tidak ada tugas yang perlu segera ditangani</h2>
+            <p class="mt-2 text-body-sm text-text-secondary">Antrean yang ditugaskan kepada Anda sedang kosong. Anda dapat memulai setoran saat warga datang.</p>
+            @if ($canIdentifyCustomers)
+                <a href="{{ $identificationHref }}" class="mt-4 inline-flex min-h-touch w-full items-center justify-center rounded-md bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700 sm:w-auto">Mulai setoran warga</a>
+            @endif
+        </section>
     @endif
 
-    <x-ui.panel title="Antrean hari ini" description="Hanya tugas yang ditugaskan kepada Anda yang ditampilkan.">
+    <x-ui.panel title="Antrean hari ini" description="{{ $todayPickups->count() }} tugas hari ini yang ditugaskan kepada Anda.">
         @if ($todayPickups->isEmpty())
             <x-ui.empty-state
                 title="Belum ada tugas hari ini"
@@ -31,15 +40,15 @@
             <div class="grid gap-3">
                 @foreach ($todayPickups as $pickup)
                     @if ($canOperatePickups)
-                    <a href="{{ route('officer.pickup.task', $pickup) }}" class="flex min-h-[72px] items-center justify-between gap-3 rounded-xl border border-border bg-warm-canvas p-4 transition hover:border-forest-600 hover:shadow-xs">
+                    <a href="{{ route('officer.pickup.task', $pickup) }}" class="flex min-h-[72px] flex-col items-start gap-3 rounded-xl border border-border bg-warm-canvas p-4 transition hover:border-forest-600 hover:shadow-xs sm:flex-row sm:items-center sm:justify-between">
                     @else
-                    <div class="flex min-h-[72px] items-center justify-between gap-3 rounded-xl border border-border bg-warm-canvas p-4">
+                    <div class="flex min-h-[72px] flex-col items-start gap-3 rounded-xl border border-border bg-warm-canvas p-4 sm:flex-row sm:items-center sm:justify-between">
                     @endif
                         <span class="min-w-0">
-                            <span class="block text-label font-bold text-deep-green">{{ $pickup->request_number }}</span>
-                            <span class="mt-1 block truncate text-body-sm text-text-secondary">{{ $pickup->customer?->name ?? 'Nasabah' }} · {{ $pickup->address }}</span>
+                            <span class="block break-words text-label font-bold text-deep-green">{{ $pickup->request_number }}</span>
+                            <span class="mt-1 block break-words text-body-sm text-text-secondary">{{ $pickup->customer?->name ?? 'Nasabah' }} · {{ $pickup->address }}</span>
                         </span>
-                        <span class="shrink-0 rounded-full border border-info-bg bg-info-bg px-3 py-1 text-caption font-semibold text-sky-blue">{{ ucwords(str_replace('_', ' ', $pickup->status->value)) }}</span>
+                        <span class="max-w-full shrink-0 self-start rounded-full border border-info-bg bg-info-bg px-3 py-1 text-caption font-semibold text-sky-blue sm:self-auto">{{ ucwords(str_replace('_', ' ', $pickup->status->value)) }}</span>
                     @if ($canOperatePickups)
                     </a>
                     @else
@@ -54,13 +63,13 @@
 <div class="grid gap-6">
     <section aria-labelledby="officer-dashboard-title" class="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div class="min-w-0">
                 <div class="flex items-center gap-2">
                     <img src="{{ asset('images/landing/mascot-3.png') }}" alt="" class="size-7 object-contain" aria-hidden="true">
                     <span class="text-caption font-semibold text-forest-600 uppercase tracking-wide">Petugas Bank Sampah</span>
                 </div>
-                <h2 id="officer-dashboard-title" class="mt-2 text-h2 font-bold text-deep-green">Siap menjalankan tugas?</h2>
-                <p class="mt-1.5 text-body-sm text-text-secondary">Pantau tugas yang ditugaskan kepada Anda, lalu lanjutkan setoran atau layanan keliling.</p>
+                <h2 id="officer-dashboard-title" class="mt-2 text-pretty text-h2 font-bold text-deep-green">Siap menjalankan tugas?</h2>
+                <p class="mt-1.5 text-pretty text-body-sm text-text-secondary">Pantau tugas yang ditugaskan kepada Anda, lalu lanjutkan setoran atau layanan keliling.</p>
             </div>
             <x-ui.mascot variant="11" bubble="Siap membantu warga!" bubblePosition="top" class="h-24 w-auto shrink-0 sm:h-28" animate />
         </div>

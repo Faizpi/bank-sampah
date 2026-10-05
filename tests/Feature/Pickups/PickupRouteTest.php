@@ -10,7 +10,6 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Pickups\Enums\PickupStatus;
-use App\Domain\Pickups\Models\PickupCapacity;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Pickups\Services\PickupService;
 use App\Domain\WasteMaster\Models\WasteCategory;
@@ -32,7 +31,6 @@ final class PickupRouteTest extends TestCase
         [$customer, $area, $type] = $this->context();
         $this->actingAs($customer)->get(route('citizen.pickup.create'))->assertForbidden();
         $this->grant($customer, 'pickup.request', 'pickup.view');
-        $this->capacity($area);
 
         $this->actingAs($customer)->get(route('citizen.pickup.create'))->assertOk()->assertSee('Ajukan penjemputan');
         $pickup = app(PickupService::class)->submit($customer, ['service_area_id' => $area->id, 'address' => 'Alamat warga route test', 'selected_date' => today()->addDay()->toDateString()], [['waste_type_id' => $type->id, 'estimated_quantity' => 1]], [UploadedFile::fake()->image('route.png')], 'w5-route-owner-0001');
@@ -57,7 +55,6 @@ final class PickupRouteTest extends TestCase
         [$customer, $area, $type] = $this->context();
         $customer->forceFill(['status' => UserStatus::Active])->save();
         $this->grant($customer, 'pickup.request', 'pickup.view');
-        $this->capacity($area);
         $pickup = app(PickupService::class)->submit($customer, ['service_area_id' => $area->id, 'address' => 'Alamat warga route test', 'selected_date' => today()->addDay()->toDateString()], [['waste_type_id' => $type->id, 'estimated_quantity' => 1]], [UploadedFile::fake()->image('route.png')], 'w5-route-media-0001');
         $staff = User::factory()->create();
         $this->grant($staff, 'pickup.execute', 'pickup.complete', 'pickup.view');
@@ -103,11 +100,6 @@ final class PickupRouteTest extends TestCase
             'status' => PickupStatus::Scheduled,
             'assigned_staff_id' => $staff->id,
         ]);
-    }
-
-    private function capacity(ServiceArea $area): PickupCapacity
-    {
-        return PickupCapacity::query()->create(['service_area_id' => $area->id, 'service_date' => today()->addDay(), 'max_addresses' => 3, 'max_weight_kg' => '10.000', 'is_active' => true]);
     }
 
     private function grant(User $user, string ...$permissions): void

@@ -25,6 +25,7 @@
     x-show="open"
     x-cloak
     x-on:open-dialog.window="if ($event.detail?.id === @js($componentId)) openModal($event.detail?.invoker)"
+    x-on:close-dialog.window="if ($event.detail?.id === @js($componentId)) closeModal()"
     x-on:keydown.escape.window="closeModal()"
     class="fixed inset-0 z-dialog flex items-end justify-center p-4 md:items-center"
     {{ $attributes }}

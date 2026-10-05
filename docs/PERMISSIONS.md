@@ -65,9 +65,8 @@ Kode matriks: `O` own, `A` area, `X` semua record aktif, `—` tidak diberikan s
 
 | Permission | Arti |
 |---|---|
-| `pickup.view` / `pickup.request` / `pickup.review` / `pickup.schedule` | Pengajuan dan pengelolaan penjemputan. |
+| `pickup.view` / `pickup.request` / `pickup.review` / `pickup.schedule` | Pengajuan dan pengelolaan penjemputan. Warga hanya bisa request, admin yang review dan schedule. Petugas eksekusi tugas yang sudah ditugaskan. |
 | `pickup.execute` / `pickup.complete` / `pickup.cancel` | Menjalankan, menyelesaikan, atau membatalkan sesuai status. |
-| `pickup.capacity.manage` | Mengatur kapasitas harian. |
 | `withdrawal.request` / `withdrawal.view` | Membuat/melihat pencairan. |
 | `withdrawal.approve` | Menyetujui/menolak pencairan; terpisah dari pembayaran. |
 | `withdrawal.pay` | Memverifikasi penerima, membayar, dan mengunggah bukti. |
@@ -144,10 +143,9 @@ Permission rekonsiliasi hanya melekat pada baseline `superadmin`; aktor custom t
 |---|:---:|:---:|:---:|:---:|:---:|
 | `pickup.view` | O | A | — | X | X |
 | `pickup.request` | O | A berbantuan | — | X berbantuan | X berbantuan |
-| `pickup.review`, `pickup.schedule` | — | A bila ditunjuk | — | X | X |
+| `pickup.review`, `pickup.schedule` | — | — | — | X | X |
 | `pickup.execute`, `pickup.complete` | — | A | — | X | X |
 | `pickup.cancel` | O sesuai status | A | — | X | X |
-| `pickup.capacity.manage` | — | — | — | X | X |
 | `withdrawal.request`, `withdrawal.view` | O | A berbantuan | A | X | X |
 | `withdrawal.approve` | — | — | — | X | X |
 | `withdrawal.pay` | — | A bila ditugaskan | X | A bila ditugaskan | X |

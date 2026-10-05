@@ -73,26 +73,26 @@ final readonly class WithdrawalDecisionService
         $this->authorize($actor, 'withdrawal.approve');
         $this->assertApprovalScope($actor, $withdrawal);
         if ($withdrawal->status !== WithdrawalStatus::Approved) {
-            throw ValidationException::withMessages(['status' => 'Payer hanya dapat ditetapkan pada pencairan yang disetujui.']);
+            throw ValidationException::withMessages(['status' => 'Petugas pembayaran hanya dapat ditetapkan untuk pencairan yang sudah disetujui.']);
         }
         if ($withdrawal->approver_id === $payer->id) {
             throw new AuthorizationException('Separation of duties memerlukan payer berbeda dari approver.');
         }
         if (! $this->isEligiblePayer($payer, $withdrawal)) {
-            throw ValidationException::withMessages(['payer_id' => 'Payer aktif dengan permission dan area yang sesuai wajib dipilih.']);
+            throw ValidationException::withMessages(['payer_id' => 'Pilih bendahara aktif yang memiliki izin dan penugasan area yang sesuai.']);
         }
 
         return DB::transaction(function () use ($actor, $withdrawal, $payer): WithdrawalRequest {
             $locked = $this->lockWithdrawal($withdrawal);
             if (! $this->isEligiblePayer($payer, $locked)) {
-                throw ValidationException::withMessages(['payer_id' => 'Payer aktif dengan permission dan area yang sesuai wajib dipilih.']);
+                throw ValidationException::withMessages(['payer_id' => 'Pilih bendahara aktif yang memiliki izin dan penugasan area yang sesuai.']);
             }
             $this->assertTransition($locked, WithdrawalStatus::ReadyForPickup);
             $old = $locked->status;
             $locked->forceFill(['status' => WithdrawalStatus::ReadyForPickup, 'payer_id' => $payer->id])->save();
             $locked->statusHistory()->create(['old_status' => $old->value, 'new_status' => WithdrawalStatus::ReadyForPickup->value, 'actor_id' => $actor->id, 'reason' => 'Payer ditetapkan.', 'occurred_at' => now()]);
             $this->auditLogger->record($actor, 'withdrawal.payer.assigned', $locked, ['status' => $old->value], ['status' => WithdrawalStatus::ReadyForPickup->value, 'payer_id' => $payer->id], $this->correlationId());
-            $this->notify($locked, 'Pencairan siap diambil', 'Payer telah ditetapkan untuk '.$locked->request_number.'.', 'withdrawal.ready');
+            $this->notify($locked, 'Pencairan siap diambil', 'Bendahara pembayaran telah ditetapkan untuk pengajuan '.$locked->request_number.'.', 'withdrawal.ready');
 
             return $locked->fresh(['balanceHold', 'customer', 'payer']);
         });

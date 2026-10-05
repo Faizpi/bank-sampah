@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Wave8;
 
-use App\Domain\Communication\Enums\AnnouncementAudience;
 use App\Domain\Communication\Enums\AnnouncementStatus;
 use App\Domain\Communication\Services\AnnouncementService;
 use App\Domain\Identity\Models\Permission;
@@ -69,7 +68,7 @@ final class Wave8ContractsTest extends TestCase
     {
         $admin = $this->userWith('announcement.manage', 'announcement.publish');
         $service = app(AnnouncementService::class);
-        $announcement = $service->create($admin, 'Pengumuman aman', '<script>alert(1)</script><p>Isi aman</p>', AnnouncementAudience::Public->value, now()->subMinute()->toIso8601String(), now()->addHour()->toIso8601String());
+        $announcement = $service->create($admin, 'Pengumuman aman', '<script>alert(1)</script><p>Isi aman</p>', now()->subMinute()->toIso8601String(), now()->addHour()->toIso8601String());
         self::assertStringNotContainsString('<script', $announcement->body);
         $published = $service->publish($admin, $announcement);
         self::assertSame(AnnouncementStatus::Published, $published->status);

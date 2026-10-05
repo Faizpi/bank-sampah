@@ -111,12 +111,7 @@ final readonly class ScheduledOperationsService
                     PickupStatus::Accepted->value,
                     PickupStatus::Scheduled->value,
                 ])
-                ->where(static function (Builder $query) use ($now): void {
-                    $query->whereDate('scheduled_date', '<', $now->toDateString())
-                        ->orWhere(static function (Builder $query) use ($now): void {
-                            $query->whereNull('scheduled_date')->whereDate('selected_date', '<', $now->toDateString());
-                        });
-                }),
+                ->whereDate('scheduled_date', '<', $now->toDateString()),
         );
 
         $expired = 0;
@@ -291,7 +286,8 @@ final readonly class ScheduledOperationsService
     private function isExpiredPickup(PickupRequest $pickup, CarbonInterface $now): bool
     {
         return ! $pickup->isTerminal()
-            && ($pickup->scheduled_date ?? $pickup->selected_date)->isBefore($now->copy()->startOfDay());
+            && $pickup->scheduled_date !== null
+            && $pickup->scheduled_date->isBefore($now->copy()->startOfDay());
     }
 
     private function isExpiredExport(ReportExport $export, CarbonInterface $now): bool

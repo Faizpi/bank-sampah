@@ -3,8 +3,7 @@
         <div class="relative isolate overflow-hidden border-b border-border bg-warm-canvas p-6 sm:p-8 text-deep-green">
             <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div class="w-full min-w-0 max-w-lg">
-                    <span class="inline-flex rounded-full border border-forest-600 bg-success-bg px-3 py-1 text-xs font-semibold text-forest-700">Pendaftaran Akun Baru</span>
-                    <h1 id="registration-title" class="mt-2 text-pretty text-h2 font-extrabold text-deep-green lg:text-h1">Daftar sebagai Warga Bank Sampah</h1>
+                    <h1 id="registration-title" class="text-pretty text-h2 font-extrabold text-deep-green lg:text-h1">Daftar sebagai Warga Bank Sampah</h1>
                     <p class="mt-2 text-body-sm text-text-secondary">Data pendaftaran akan diperiksa admin. Akun dapat digunakan untuk masuk setelah verifikasi selesai.</p>
                 </div>
                 <div class="flex items-center justify-between gap-4 md:flex-col md:items-end">
@@ -42,6 +41,7 @@
                     @php
                         $errorFieldLabels = [
                             'name' => 'Nama lengkap',
+                            'username' => 'Username',
                             'phone' => 'Nomor telepon',
                             'password' => 'Kata sandi',
                             'password_confirmation' => 'Konfirmasi kata sandi',
@@ -78,8 +78,9 @@
                         </div>
                         <div class="grid gap-5 md:grid-cols-2">
                             <x-ui.input name="name" label="Nama lengkap" wire:model.blur="name" autocomplete="name" required :error="$errors->first('name')" />
-                            <x-ui.input name="phone" label="Nomor telepon" type="tel" wire:model.blur="phone" autocomplete="tel" inputmode="tel" hint="Gunakan nomor Indonesia yang aktif." required :error="$errors->first('phone')" />
+                            <x-ui.input name="phone" label="Nomor telepon (opsional)" type="tel" wire:model.blur="phone" autocomplete="tel" inputmode="tel" hint="Boleh dikosongkan. Gunakan nomor Indonesia yang aktif." :error="$errors->first('phone')" />
                         </div>
+                        <x-ui.input name="username" label="Username" wire:model.blur="username" autocomplete="username" inputmode="text" hint="Digunakan untuk masuk. Huruf kecil, angka, titik, garis bawah, atau tanda hubung tanpa spasi." required :error="$errors->first('username')" />
                     </section>
 
                     <section class="space-y-4" aria-labelledby="registration-security-title">
@@ -108,7 +109,7 @@
                                         <x-public.icon name="eye-off" size="size-5" x-show="showPassword" />
                                     </button>
                                 </div>
-                                <p id="password-hint" class="text-caption text-text-secondary">Minimal 10 karakter.</p>
+                                <p id="password-hint" class="text-caption text-text-secondary">Minimal 8 karakter.</p>
                                 @error('password')
                                     <p id="password-error" class="flex items-start gap-2 break-words text-body-sm font-semibold text-terracotta"><x-public.icon name="circle-alert" size="size-4" class="mt-0.5 shrink-0" />{{ $message }}</p>
                                 @enderror
@@ -172,7 +173,7 @@
                         <div class="space-y-2">
                             <div class="flex items-start gap-3 rounded-xl border border-border bg-warm-canvas p-4">
                                 <input id="terms_accepted" name="terms_accepted" type="checkbox" wire:model="terms_accepted" value="1" class="mt-1 size-5 shrink-0 rounded border-forest-600 text-forest-600 focus:ring-focus" aria-invalid="{{ $errors->has('terms_accepted') ? 'true' : 'false' }}" @if ($errors->has('terms_accepted')) aria-describedby="terms_accepted-error" @endif>
-                                <label for="terms_accepted" class="text-body-sm text-text-primary leading-relaxed">Saya telah membaca dan menyetujui <a class="font-bold text-forest-600 underline underline-offset-4 hover:text-forest-700" href="{{ route('terms-and-privacy') }}" target="_blank" rel="noopener noreferrer">Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0 <span class="sr-only">(terbuka di tab baru)</span></a>.</label>
+                                <label for="terms_accepted" class="text-body-sm text-text-primary leading-relaxed">Saya menyetujui <a class="font-bold text-forest-600 underline underline-offset-4 hover:text-forest-700" href="{{ route('terms-and-privacy') }}" target="_blank" rel="noopener noreferrer">ketentuan operasional dan kebijakan privasi <span class="sr-only">(terbuka di tab baru)</span></a>.</label>
                             </div>
                             @error('terms_accepted')
                                 <p id="terms_accepted-error" class="flex items-start gap-2 break-words text-body-sm font-semibold text-terracotta"><x-public.icon name="circle-alert" size="size-4" class="mt-0.5 shrink-0" />Persetujuan terhadap Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0 wajib diberikan.</p>

@@ -8,6 +8,7 @@ use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Deposits\Services\DepositService;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
@@ -15,6 +16,7 @@ use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\MobileServices\Services\MobileDepositGuard;
 use App\Domain\MobileServices\Services\MobileServiceService;
 use App\Domain\WasteMaster\Actions\ManageWasteMaster;
+use App\Domain\WasteMaster\Actions\ManageWastePricing;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Livewire\PublicSite\MobileSchedule;
@@ -158,6 +160,70 @@ final class MobileServiceTest extends TestCase
         }
     }
 
+    public function test_normal_mobile_draft_finalization_consumes_exactly_one_transaction_slot_on_retry(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta'));
+
+        try {
+            $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize']);
+            $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai Slot Transaksi', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 1, '', [$staff->id], [$type->id]);
+            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
+            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+            $customer = User::factory()->create();
+            $customer->customerProfile()->create(['rt_id' => $rt->id, 'address' => 'Alamat warga layanan keliling']);
+            $condition = $type->conditions()->firstOrFail();
+            $manager = $this->userWith('price.manage');
+            app(ManageWastePricing::class)->createPeriod($manager, $type, $condition, 3_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+            $deposits = app(DepositService::class);
+            $draft = $deposits->createDraft($staff->fresh(), $customer->fresh(), 'keliling', null, $service->fresh());
+            $items = [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']];
+
+            $final = $deposits->finalize($staff->fresh(), $draft, 'mobile-finalize-slot-key-0001', $items);
+            $retry = $deposits->finalize($staff->fresh(), $draft, 'mobile-finalize-slot-key-0001', $items);
+
+            self::assertSame($final->id, $retry->id);
+            self::assertSame(1, $service->fresh()->served_count);
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    public function test_attached_mobile_draft_finalization_does_not_consume_a_second_transaction_slot(): void
+    {
+        [$admin, $staff, $rt, $type] = $this->context();
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-10 10:00:00', 'Asia/Jakarta'));
+
+        try {
+            $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize']);
+            $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai Draf Terlampir', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 1, '', [$staff->id], [$type->id]);
+            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
+            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+            $customer = User::factory()->create();
+            $customer->customerProfile()->create(['rt_id' => $rt->id, 'address' => 'Alamat warga layanan keliling']);
+            $condition = $type->conditions()->firstOrFail();
+            $manager = $this->userWith('price.manage');
+            app(ManageWastePricing::class)->createPeriod($manager, $type, $condition, 3_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+            $draft = Deposit::query()->create([
+                'deposit_number' => 'DEP-MOBILE-ATTACHED-001',
+                'customer_id' => $customer->id,
+                'staff_id' => $staff->id,
+                'method' => 'keliling',
+                'occurred_at' => now(),
+                'status' => Deposit::STATUS_DRAFT,
+            ]);
+            $guard = app(MobileDepositGuard::class);
+            $guard->attach($staff->fresh(), $draft, $service->fresh(), [$type]);
+            $items = [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']];
+
+            app(DepositService::class)->finalize($staff->fresh(), $draft->fresh(), 'mobile-attached-finalize-key-01', $items);
+
+            self::assertSame(1, $service->fresh()->served_count);
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
     public function test_public_query_excludes_expired_or_terminal_services_at_the_time_boundary(): void
     {
         [$admin, $staff, $rt, $type] = $this->context();
@@ -194,10 +260,14 @@ final class MobileServiceTest extends TestCase
         [$admin, $staff, $rt, $type] = $this->context();
         $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai RT Terbuka', now()->addHour()->toDateTimeString(), now()->addHours(2)->toDateTimeString(), 20, 'Bawa sampah yang sudah dipilah.', [$staff->id], [$type->id]);
         app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
+        $service->forceFill(['served_count' => 21])->save();
 
         Livewire::test(MobileSchedule::class)
-            ->assertSee('Terjadwal')
-            ->assertSee('Cakupan wilayah')
+            ->assertSee('Penuh')
+            ->assertSee('Slot warga/transaksi')
+            ->assertSee('0/20 tersisa')
+            ->assertDontSee('-1/20 tersisa')
+            ->assertSee('Wilayah layanan')
             ->assertSee($rt->name)
             ->assertSee('Sampah yang diterima')
             ->assertSee($type->name)

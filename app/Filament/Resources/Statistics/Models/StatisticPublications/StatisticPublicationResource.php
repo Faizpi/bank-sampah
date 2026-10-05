@@ -49,7 +49,7 @@ final class StatisticPublicationResource extends Resource
                 TextInput::make('publication_key')->label('Kunci publikasi')->disabled()->dehydrated(false),
                 CheckboxList::make('metrics')->label('Metrik')->options(self::metrics())->required()->minItems(1),
                 CheckboxList::make('dimensions')->label('Dimensi')->options(['period' => 'Periode', 'rt_id' => 'RT'])->required()->minItems(1),
-                TextInput::make('privacy_threshold')->label('Ambang privasi subjek')->numeric()->integer()->minValue(2)->maxValue(1000)->required(),
+                TextInput::make('privacy_threshold')->label('Batas minimum jumlah warga')->numeric()->integer()->minValue(2)->maxValue(1000)->required(),
                 Toggle::make('is_active')->label('Aktif'),
             ])->columns(2),
         ]);

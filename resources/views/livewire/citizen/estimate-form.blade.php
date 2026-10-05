@@ -8,7 +8,7 @@
             <p class="text-label font-semibold text-forest-600">Kalkulator Informasi</p>
             <h1 id="estimate-title" class="mt-2 text-h1 font-bold text-deep-green">Perkirakan nilai setoran.</h1>
             <p class="mt-3 text-body text-text-secondary">
-                Hasil hanya panduan. Tidak ada transaksi, saldo, dana ditahan, reservasi harga, atau jaminan nilai akhir yang dibuat.
+                Hasil hanya panduan. Estimasi tidak membuat transaksi, menahan saldo, atau menjamin nilai akhir.
             </p>
         </div>
         <x-ui.mascot variant="7" bubble="Berapa kira-kira nilainya?" class="h-28 w-auto shrink-0" />

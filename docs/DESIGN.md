@@ -225,8 +225,11 @@ Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mo
 
 - App header: nama halaman dan konteks akun. Jangan menjanjikan notification center atau push notification.
 - Konten utama saldo-first.
-- Bottom navigation maksimal lima: `Beranda`, `Setoran`, `Layanan`, `Riwayat`, `Akun`.
-- Fitur dalam `Layanan`: penjemputan, pencairan, sembako, estimasi, jadwal keliling.
+- Bottom navigation menggunakan tepat lima tujuan: `Beranda`, `Kartu Nasabah`, `Layanan`, `Riwayat`, `Akun`. Label visual `Kartu Nasabah` boleh dipendekkan menjadi `Kartu` agar muat pada mobile, tetapi tujuan dan active state tetap memakai nama kontrak `Kartu Nasabah`.
+- `Kartu Nasabah` membuka identitas dan QR nasabah. Jangan menggantinya dengan tautan riwayat atau setoran.
+- `Layanan` menjadi tujuan pengajuan dan transaksi aktif: penjemputan, pencairan, sembako, estimasi, dan jadwal keliling.
+- `Riwayat` menjadi satu-satunya pintu arsip transaksi warga. Halaman ini menyediakan tab `Setoran`, `Pencairan`, dan `Sembako`; jangan menambahkan tujuan bottom-nav `Setoran` yang mengarah ke halaman sama karena akan menduplikasi `Riwayat`.
+- Detail atau bukti setoran mengaktifkan `Riwayat`; halaman Kartu Nasabah mengaktifkan `Kartu Nasabah`; halaman pengajuan/detail layanan aktif mengaktifkan `Layanan`.
 - Bottom nav fixed dengan safe-area padding; konten memiliki bottom padding cukup.
 
 ### Shell petugas/bendahara

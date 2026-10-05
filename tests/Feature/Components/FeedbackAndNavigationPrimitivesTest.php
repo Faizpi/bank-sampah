@@ -198,8 +198,9 @@ final class FeedbackAndNavigationPrimitivesTest extends TestCase
         self::assertSame(4, substr_count($html, 'x-on:click="closeModal()"'));
         self::assertSame(2, substr_count($html, 'x-ref="initialFocus"'));
         self::assertStringContainsString('x-on:open-dialog.window=', $html);
+        self::assertStringContainsString('x-on:close-dialog.window=', $html);
         self::assertStringContainsString('x-on:open-bottom-sheet.window=', $html);
-        self::assertSame(2, substr_count($html, '$event.detail?.id ==='));
+        self::assertSame(3, substr_count($html, '$event.detail?.id ==='));
         self::assertSame(2, substr_count($html, 'openModal($event.detail?.invoker)'));
     }
 

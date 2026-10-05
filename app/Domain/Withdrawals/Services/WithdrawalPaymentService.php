@@ -153,7 +153,7 @@ final readonly class WithdrawalPaymentService
             throw new AuthorizationException('Pembayaran hanya dapat dilakukan payer yang ditugaskan.');
         }
         if ($actor->status !== UserStatus::Active || ! $actor->roles()->where('name', 'bendahara')->exists() || ! $this->hasActiveSnapshotAreaAssignment($actor, $withdrawal)) {
-            throw new AuthorizationException('Payer harus bendahara aktif dengan penugasan area pencairan yang masih berlaku.');
+            throw new AuthorizationException('Petugas pembayaran harus bendahara aktif yang masih ditugaskan di area pencairan.');
         }
     }
 

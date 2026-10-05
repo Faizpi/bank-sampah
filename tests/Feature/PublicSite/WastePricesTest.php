@@ -66,6 +66,63 @@ final class WastePricesTest extends TestCase
         self::assertFalse($manager->can('delete', $price));
     }
 
+    public function test_public_prices_reflect_replaced_price_immediately(): void
+    {
+        $category = WasteCategory::factory()->create(['name' => 'Plastik']);
+        $unit = WasteUnit::factory()->weight()->create(['code' => 'KG', 'symbol' => 'kg']);
+        $condition = WasteCondition::factory()->create(['name' => 'Bersih']);
+        $type = WasteType::factory()->for($category, 'category')->for($unit, 'unit')->create(['name' => 'Botol PET']);
+        WasteMasterMutationGuard::run(fn (): array => $type->conditions()->sync([$condition->id]));
+        $manager = User::factory()->create();
+        $this->grant($manager, 'price.manage');
+        $pricing = app(ManageWastePricing::class);
+        $original = $pricing->createPeriod($manager, $type, $condition, 3_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+
+        // Replace the active price with a new one effective 2026-08-15
+        $pricing->replacePeriod($manager, $original, 4_000, CarbonImmutable::parse('2026-08-15', 'Asia/Jakarta'), null, (string) str()->uuid());
+
+        // At 2026-08-16 the public page shows only the new price.
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-16', 'Asia/Jakarta'));
+
+        try {
+            $response = $this->get(route('public.prices'));
+
+            $response->assertOk()
+                ->assertSee('Botol PET')
+                ->assertSee('Rp4.000')
+                ->assertDontSee('Rp3.000');
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    public function test_public_prices_hide_deactivated_price(): void
+    {
+        $category = WasteCategory::factory()->create(['name' => 'Plastik']);
+        $unit = WasteUnit::factory()->weight()->create(['code' => 'KG', 'symbol' => 'kg']);
+        $condition = WasteCondition::factory()->create(['name' => 'Bersih']);
+        $type = WasteType::factory()->for($category, 'category')->for($unit, 'unit')->create(['name' => 'Botol PET']);
+        WasteMasterMutationGuard::run(fn (): array => $type->conditions()->sync([$condition->id]));
+        $manager = User::factory()->create();
+        $this->grant($manager, 'price.manage');
+        $pricing = app(ManageWastePricing::class);
+        $active = $pricing->createPeriod($manager, $type, $condition, 3_000, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
+
+        $pricing->deactivatePeriod($manager, $active, CarbonImmutable::parse('2026-08-05', 'Asia/Jakarta'), (string) str()->uuid());
+
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-10', 'Asia/Jakarta'));
+
+        try {
+            $response = $this->get(route('public.prices'));
+
+            $response->assertOk()
+                ->assertDontSee('Botol PET')
+                ->assertDontSee('Rp3.000');
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
     private function grant(User $user, string $permissionName): void
     {
         $role = Role::query()->create(['name' => "{$permissionName}-role-{$user->id}", 'description' => 'Price role']);

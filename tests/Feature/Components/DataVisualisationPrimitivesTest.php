@@ -82,7 +82,7 @@ final class DataVisualisationPrimitivesTest extends TestCase
 
         self::assertStringContainsString('<nav', $html);
         self::assertStringContainsString('aria-label="Navigasi halaman"', $html);
-        self::assertStringContainsString('Menampilkan 11–20 dari 26 hasil', $html);
+        self::assertStringNotContainsString('Menampilkan 11–20 dari 26 hasil', $html);
         self::assertStringContainsString('Halaman 2 dari 3', $html);
         self::assertStringContainsString('aria-current="page"', $html);
         self::assertStringContainsString('wire:click="previousPage(\'transaksiPage\')"', $html);
@@ -115,7 +115,7 @@ final class DataVisualisationPrimitivesTest extends TestCase
         self::assertStringContainsString('data-chart-pattern="diagonal"', $html);
         self::assertStringContainsString('data-chart-interactive="false"', $html);
         self::assertStringContainsString('data-bar-baseline="zero"', $html);
-        self::assertStringContainsString('Grafik batang dimulai dari nol.', $html);
+        self::assertStringNotContainsString('Grafik batang dimulai dari nol.', $html);
         self::assertStringContainsString('<table', $html);
         self::assertStringContainsString('Ringkasan data grafik', $html);
         self::assertStringContainsString('1.250 kg', $html);
@@ -132,8 +132,8 @@ final class DataVisualisationPrimitivesTest extends TestCase
         self::assertStringContainsString('data-chart-tone="forest"', $empty);
         self::assertStringContainsString('data-chart-pattern="solid"', $empty);
         self::assertStringNotContainsString('<script>', $empty);
-        self::assertStringContainsString('Belum ada data grafik', $empty);
-        self::assertStringContainsString('Data grafik tidak tersedia', $unavailable);
+        self::assertStringContainsString('Belum ada data', $empty);
+        self::assertStringContainsString('Data tidak tersedia', $unavailable);
         self::assertStringContainsString('role="status"', $unavailable);
     }
 

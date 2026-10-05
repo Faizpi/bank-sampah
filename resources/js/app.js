@@ -603,6 +603,20 @@ document.addEventListener('click', (event) => {
     }
 });
 
+// Bound on window (not document) to respect the PWA contract that reserves
+// document-level click listeners for the two navigation handles only.
+window.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const printButton = target?.closest('[data-print-button]');
+
+    if (printButton === null) {
+        return;
+    }
+
+    event.preventDefault();
+    window.print();
+});
+
 document.addEventListener('public:offline-action-blocked', (event) => {
     if (!(event instanceof CustomEvent)) {
         return;

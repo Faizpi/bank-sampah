@@ -15,11 +15,13 @@ use App\Livewire\Citizen\Dashboard as CitizenDashboard;
 use App\Livewire\Citizen\DepositHistory;
 use App\Livewire\Citizen\DepositReceipt;
 use App\Livewire\Citizen\EstimateForm;
+use App\Livewire\Citizen\GroceryHistory;
 use App\Livewire\Citizen\GroceryReceipt;
 use App\Livewire\Citizen\GroceryRequestForm;
 use App\Livewire\Citizen\GroceryShow;
 use App\Livewire\Citizen\PickupRequestForm;
 use App\Livewire\Citizen\PickupShow;
+use App\Livewire\Citizen\WithdrawalHistory;
 use App\Livewire\Citizen\WithdrawalReceipt;
 use App\Livewire\Citizen\WithdrawalRequestForm;
 use App\Livewire\Citizen\WithdrawalShow;
@@ -110,6 +112,10 @@ Route::livewire('/warga/penjemputan/{pickup}', PickupShow::class)
     ->whereNumber('pickup')
     ->name('citizen.pickup.show');
 
+Route::livewire('/warga/riwayat-pencairan', WithdrawalHistory::class)
+    ->middleware(['auth', 'session.fresh:30', 'permission:withdrawal.view'])
+    ->name('citizen.withdrawal-history');
+
 Route::livewire('/warga/pencairan/ajukan', WithdrawalRequestForm::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:withdrawal.request', 'throttle:financial'])
     ->name('citizen.withdrawal.create');
@@ -128,6 +134,10 @@ Route::livewire('/petugas/penjemputan/{pickup}', PickupTask::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:pickup.execute', 'throttle:financial'])
     ->whereNumber('pickup')
     ->name('officer.pickup.task');
+
+Route::livewire('/warga/riwayat-sembako', GroceryHistory::class)
+    ->middleware(['auth', 'session.fresh:30', 'permission:grocery.view'])
+    ->name('citizen.grocery-history');
 
 Route::livewire('/warga/sembako/ajukan', GroceryRequestForm::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:grocery.request', 'throttle:financial'])

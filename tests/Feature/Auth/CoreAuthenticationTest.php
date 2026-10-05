@@ -30,13 +30,14 @@ final class CoreAuthenticationTest extends TestCase
     {
         parent::setUp();
 
-        RateLimiter::clear(LoginRateLimiter::key('6281234567890', '127.0.0.1'));
+        RateLimiter::clear(LoginRateLimiter::key('siti', '127.0.0.1'));
     }
 
-    public function test_active_user_can_login_with_normalized_phone_and_session_is_regenerated(): void
+    public function test_active_user_can_login_with_username_and_session_is_regenerated(): void
     {
         CarbonImmutable::setTestNow('2026-07-31 10:15:00');
         $user = User::factory()->create([
+            'username' => 'siti',
             'phone' => '6281234567890',
             'password' => Hash::make('rahasia-yang-kuat'),
             'status' => UserStatus::Active,
@@ -45,7 +46,7 @@ final class CoreAuthenticationTest extends TestCase
         $oldSessionId = session()->getId();
 
         Livewire::test(LoginForm::class)
-            ->set('phone', '0812-3456-7890')
+            ->set('username', 'siti')
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
             ->assertHasNoErrors();
@@ -87,10 +88,10 @@ final class CoreAuthenticationTest extends TestCase
             ]);
 
             Livewire::test(LoginForm::class)
-                ->set('phone', $user->phone)
+                ->set('username', $user->username)
                 ->set('password', $password)
                 ->call('login')
-                ->assertHasErrors(['phone' => 'Kredensial tidak valid atau akun tidak dapat digunakan.'])
+                ->assertHasErrors(['username' => 'Kredensial tidak valid atau akun tidak dapat digunakan.'])
                 ->assertDispatched('login-invalid');
 
             $this->assertGuest();
@@ -106,13 +107,13 @@ final class CoreAuthenticationTest extends TestCase
         }
     }
 
-    public function test_unknown_phone_uses_the_same_generic_failure_without_creating_a_session(): void
+    public function test_unknown_username_uses_the_same_generic_failure_without_creating_a_session(): void
     {
         Livewire::test(LoginForm::class)
-            ->set('phone', '0812 3456 7890')
+            ->set('username', 'nonexistentuser')
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
-            ->assertHasErrors(['phone' => 'Kredensial tidak valid atau akun tidak dapat digunakan.']);
+            ->assertHasErrors(['username' => 'Kredensial tidak valid atau akun tidak dapat digunakan.']);
 
         $this->assertGuest();
         $audit = AuditLog::query()->sole();
@@ -120,23 +121,22 @@ final class CoreAuthenticationTest extends TestCase
         self::assertSame('access.login.rejected', $audit->getAttribute('action'));
         self::assertSame('system', $audit->getAttribute('actor_type'));
         self::assertSame(['reason' => 'invalid_credentials'], $audit->getAttribute('new_values'));
-        self::assertStringNotContainsString('6281234567890', json_encode($audit->getAttribute('new_values'), JSON_THROW_ON_ERROR));
     }
 
     public function test_rate_limited_login_is_audited_without_creating_a_session(): void
     {
-        $phone = '6281234567890';
+        $username = 'siti';
         $ip = request()->ip() ?? 'unknown';
 
         for ($attempt = 0; $attempt < LoginRateLimiter::MAX_ATTEMPTS; $attempt++) {
-            RateLimiter::hit(LoginRateLimiter::key($phone, $ip), 60);
+            RateLimiter::hit(LoginRateLimiter::key($username, $ip), 60);
         }
 
         Livewire::test(LoginForm::class)
-            ->set('phone', '0812-3456-7890')
+            ->set('username', 'siti')
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
-            ->assertHasErrors(['phone' => 'Kredensial tidak valid atau akun tidak dapat digunakan.']);
+            ->assertHasErrors(['username' => 'Kredensial tidak valid atau akun tidak dapat digunakan.']);
 
         $this->assertGuest();
         $audit = AuditLog::query()->sole();
@@ -145,28 +145,29 @@ final class CoreAuthenticationTest extends TestCase
         self::assertSame(['reason' => 'rate_limited'], $audit->getAttribute('new_values'));
     }
 
-    public function test_successful_login_does_not_clear_a_below_limit_counter_for_the_same_normalized_phone_and_ip(): void
+    public function test_successful_login_does_not_clear_a_below_limit_counter_for_the_same_username_and_ip(): void
     {
         $user = User::factory()->create([
+            'username' => 'siti',
             'phone' => '6281234567890',
             'password' => Hash::make('rahasia-yang-kuat'),
             'status' => UserStatus::Active,
         ]);
         $ip = request()->ip() ?? 'unknown';
-        $key = LoginRateLimiter::key($user->phone, $ip);
+        $key = LoginRateLimiter::key($user->username, $ip);
 
         for ($attempt = 0; $attempt < LoginRateLimiter::MAX_ATTEMPTS - 1; $attempt++) {
             Livewire::test(LoginForm::class)
-                ->set('phone', '0812-3456-7890')
+                ->set('username', $user->username)
                 ->set('password', 'kata-sandi-salah')
                 ->call('login')
-                ->assertHasErrors(['phone' => 'Kredensial tidak valid atau akun tidak dapat digunakan.']);
+                ->assertHasErrors(['username' => 'Kredensial tidak valid atau akun tidak dapat digunakan.']);
 
             $this->assertGuest();
         }
 
         Livewire::test(LoginForm::class)
-            ->set('phone', '0812-3456-7890')
+            ->set('username', $user->username)
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
             ->assertHasNoErrors();
@@ -221,7 +222,7 @@ final class CoreAuthenticationTest extends TestCase
         session()->put('url.intended', $intendedUrl);
 
         Livewire::test(LoginForm::class)
-            ->set('phone', $user->phone)
+            ->set('username', $user->username)
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
             ->assertHasNoErrors()
@@ -238,7 +239,7 @@ final class CoreAuthenticationTest extends TestCase
         $this->grant($user, 'bendahara', 'user.view');
 
         Livewire::test(LoginForm::class)
-            ->set('phone', $user->phone)
+            ->set('username', $user->username)
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
             ->assertHasNoErrors()
@@ -254,7 +255,7 @@ final class CoreAuthenticationTest extends TestCase
         ]);
 
         Livewire::test(LoginForm::class)
-            ->set('phone', $user->phone)
+            ->set('username', $user->username)
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
             ->assertHasNoErrors()
@@ -275,7 +276,7 @@ final class CoreAuthenticationTest extends TestCase
         session()->put('url.intended', $intendedUrl);
 
         Livewire::test(LoginForm::class)
-            ->set('phone', $user->phone)
+            ->set('username', $user->username)
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
             ->assertHasNoErrors()
@@ -293,7 +294,7 @@ final class CoreAuthenticationTest extends TestCase
         $this->grant($user, 'bendahara', 'withdrawal.view');
 
         Livewire::test(LoginForm::class)
-            ->set('phone', $user->phone)
+            ->set('username', $user->username)
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
             ->assertHasNoErrors()
@@ -328,7 +329,7 @@ final class CoreAuthenticationTest extends TestCase
         session()->put('url.intended', $hostileUrl);
 
         Livewire::test(LoginForm::class)
-            ->set('phone', $user->phone)
+            ->set('username', $user->username)
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
             ->assertHasNoErrors()
@@ -348,7 +349,7 @@ final class CoreAuthenticationTest extends TestCase
         session()->put('url.intended', url('/auth-test-malformed-intended').'\\invalid');
 
         Livewire::test(LoginForm::class)
-            ->set('phone', $user->phone)
+            ->set('username', $user->username)
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
             ->assertHasNoErrors()
@@ -421,7 +422,8 @@ final class CoreAuthenticationTest extends TestCase
             ->assertSeeHtml('wire:submit="login"')
             ->assertSeeHtml('x-data="{ showPassword: false }"')
             ->assertSeeHtml('x-bind:aria-label="showPassword ? \'Sembunyikan kata sandi\' : \'Tampilkan kata sandi\'"')
-            ->assertSee('Akses Akun Layanan')
+            ->assertDontSee('Akses Akun Layanan')
+            ->assertSee('Masuk ke Layanan Bank Sampah')
             ->assertSee('layanan sesuai peran Anda')
             ->assertSee('Halo! Yuk masuk')
             ->assertSee('Petugas')
@@ -432,12 +434,12 @@ final class CoreAuthenticationTest extends TestCase
     public function test_login_error_summary_links_to_invalid_fields_and_focuses_after_livewire_validation(): void
     {
         Livewire::test(LoginForm::class)
-            ->set('phone', '')
+            ->set('username', '')
             ->set('password', '')
             ->call('login')
-            ->assertHasErrors(['phone', 'password'])
+            ->assertHasErrors(['username', 'password'])
             ->assertSeeHtml('id="login-errors"')
-            ->assertSeeHtml('href="#phone"')
+            ->assertSeeHtml('href="#username"')
             ->assertSeeHtml('href="#password"')
             ->assertSeeHtml('tabindex="-1"')
             ->assertSeeHtml('x-on:login-invalid.window="$nextTick(() => $el.focus())"')

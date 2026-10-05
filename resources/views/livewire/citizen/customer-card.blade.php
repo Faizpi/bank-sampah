@@ -3,17 +3,16 @@
 
 <section aria-labelledby="customer-card-title" class="space-y-5">
     {{-- Page header --}}
-    <div class="flex flex-col gap-5 rounded-2xl border border-border bg-surface p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div class="space-y-2">
+    <div class="flex items-center gap-4 rounded-2xl border border-border bg-surface p-5 shadow-xs sm:gap-6 sm:p-6">
+        <div class="min-w-0 flex-1 space-y-2">
             <p class="text-label font-semibold text-forest-700">Identitas warga</p>
             <h1 id="customer-card-title" class="text-h2 font-bold text-deep-green sm:text-h1">Kartu Digital Nasabah</h1>
             <p class="max-w-xl text-body text-text-secondary">
-                Tunjukkan QR ini kepada petugas saat transaksi setoran atau penjemputan. QR aman &amp; tidak memuat informasi pribadi peka.
+                Tunjukkan QR ini kepada petugas saat setoran atau penjemputan.
             </p>
         </div>
-        <div class="hidden shrink-0 items-center justify-center sm:flex">
-            <x-ui.mascot variant="5" bubble="Tunjukkan QR ini ke petugas ya!" bubblePosition="top"
-                class="h-28 w-auto sm:h-32" />
+        <div class="flex shrink-0 items-center justify-center">
+            <x-ui.mascot variant="5" class="h-16 w-auto sm:h-24 md:h-28" />
         </div>
     </div>
 
@@ -75,7 +74,7 @@
             </article>
 
             <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p class="text-body-sm text-text-secondary">Format horizontal 85,6 × 54 mm, siap diunduh sebagai PNG untuk dicetak.</p>
+                <p class="text-body-sm text-text-secondary">Simpan sebagai PNG untuk dicetak.</p>
                 <div class="flex gap-2">
                     <button type="button" data-customer-card-download class="inline-flex min-h-touch flex-1 items-center justify-center gap-2 rounded-md border border-forest-600 bg-surface px-3 text-label font-bold text-forest-700 transition hover:bg-success-bg active:translate-y-px">
                         <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 21h14"/></svg>

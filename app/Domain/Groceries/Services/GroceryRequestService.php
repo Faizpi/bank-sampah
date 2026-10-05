@@ -84,9 +84,9 @@ final readonly class GroceryRequestService
     /** @return Builder<ServiceArea> */
     public function availableAreasFor(User $actor): Builder
     {
-        $rtId = $this->customer($actor->id)->customerProfile?->rt_id;
+        $rtId = User::query()->with('customerProfile')->find($actor->getKey())?->customerProfile?->rt_id;
 
-        return ServiceArea::query()->where('is_active', true)->whereHas('rts', static fn ($rts) => $rts->whereKey($rtId));
+        return ServiceArea::query()->where('is_active', true)->whereHas('rts', static fn ($rts) => $rts->whereKey($rtId ?? 0));
     }
 
     /** @return Builder<GroceryRedemption> */

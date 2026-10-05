@@ -8,7 +8,6 @@ use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Filament\Auth\BackofficeLogin;
 use App\Models\User;
-use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -27,7 +26,7 @@ final class BackofficeLoginFormTest extends TestCase
             ->assertOk()
             ->assertSee('Panel pengelolaan bank sampah')
             ->assertSee('Masuk dengan akun Anda')
-            ->assertSee('Kembali ke landing page')
+            ->assertSee('Kembali ke halaman utama')
             ->assertSee(route('home'), false);
     }
 
@@ -39,19 +38,19 @@ final class BackofficeLoginFormTest extends TestCase
         );
     }
 
-    public function test_demo_fill_populates_the_email_and_password_fields_for_admin_and_superadmin(): void
+    public function test_demo_fill_populates_the_username_and_password_fields_for_admin_and_superadmin(): void
     {
         Livewire::test(BackofficeLogin::class)
             ->call('fillDemo', 'admin')
             ->assertFormSet([
-                'email' => 'admin@sindangheula.dev',
+                'username' => 'admin',
                 'password' => 'Dev#Sindangheula2026',
             ]);
 
         Livewire::test(BackofficeLogin::class)
             ->call('fillDemo', 'superadmin')
             ->assertFormSet([
-                'email' => 'superadmin@sindangheula.dev',
+                'username' => 'superadmin',
                 'password' => 'Dev#Sindangheula2026',
             ]);
     }
@@ -63,14 +62,14 @@ final class BackofficeLoginFormTest extends TestCase
             ->assertFormSet([]);
     }
 
-    public function test_staff_logs_in_via_the_backoffice_form_with_email_and_password(): void
+    public function test_staff_logs_in_via_the_backoffice_form_with_normalized_username_and_password(): void
     {
-        $staff = User::factory()->withEmail()->create(['password' => Hash::make(self::PASSWORD)]);
+        $staff = User::factory()->create(['username' => 'admin.desa', 'password' => Hash::make(self::PASSWORD)]);
         $this->grant($staff, 'admin', 'backoffice.access');
 
-        Livewire::test(Login::class)
+        Livewire::test(BackofficeLogin::class)
             ->fillForm([
-                'email' => $staff->email,
+                'username' => '  ADMIN.DESA  ',
                 'password' => self::PASSWORD,
             ])
             ->call('authenticate')
@@ -81,49 +80,47 @@ final class BackofficeLoginFormTest extends TestCase
 
     public function test_backoffice_login_form_rejects_an_incorrect_password(): void
     {
-        $staff = User::factory()->withEmail()->create(['password' => Hash::make(self::PASSWORD)]);
+        $staff = User::factory()->create(['username' => 'admin.desa', 'password' => Hash::make(self::PASSWORD)]);
         $this->grant($staff, 'admin', 'backoffice.access');
 
-        Livewire::test(Login::class)
+        Livewire::test(BackofficeLogin::class)
             ->fillForm([
-                'email' => $staff->email,
+                'username' => $staff->username,
                 'password' => 'salah-sekali',
             ])
             ->call('authenticate')
-            ->assertHasFormErrors(['email']);
+            ->assertHasFormErrors(['username']);
 
         self::assertNull(Filament::auth()->id());
     }
 
-    public function test_phone_only_account_without_an_email_cannot_log_in_to_the_backoffice(): void
+    public function test_email_cannot_replace_username_as_the_backoffice_credential(): void
     {
-        // Citizens are identified by phone and have a null email; the backoffice is
-        // deliberately email-based, so a phone-only account has no credential to use.
-        $phoneOnly = User::factory()->create(['password' => Hash::make(self::PASSWORD)]);
-        $this->grant($phoneOnly, 'admin', 'backoffice.access');
+        $user = User::factory()->withEmail()->create(['username' => 'admin.desa', 'password' => Hash::make(self::PASSWORD)]);
+        $this->grant($user, 'admin', 'backoffice.access');
 
-        Livewire::test(Login::class)
+        Livewire::test(BackofficeLogin::class)
             ->fillForm([
-                'email' => 'tidak.ada@contoh.test',
+                'username' => (string) $user->email,
                 'password' => self::PASSWORD,
             ])
             ->call('authenticate')
-            ->assertHasFormErrors(['email']);
+            ->assertHasFormErrors(['username']);
 
         self::assertNull(Filament::auth()->id());
     }
 
     public function test_backoffice_login_form_denies_a_user_without_backoffice_access_permission(): void
     {
-        $withoutAccess = User::factory()->withEmail()->create(['password' => Hash::make(self::PASSWORD)]);
+        $withoutAccess = User::factory()->create(['username' => 'tanpa.akses', 'password' => Hash::make(self::PASSWORD)]);
 
-        Livewire::test(Login::class)
+        Livewire::test(BackofficeLogin::class)
             ->fillForm([
-                'email' => $withoutAccess->email,
+                'username' => $withoutAccess->username,
                 'password' => self::PASSWORD,
             ])
             ->call('authenticate')
-            ->assertHasFormErrors(['email']);
+            ->assertHasFormErrors(['username']);
 
         self::assertNull(Filament::auth()->id());
     }

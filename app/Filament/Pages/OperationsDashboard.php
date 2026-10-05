@@ -124,10 +124,28 @@ class OperationsDashboard extends Page
 
     public function saveSettings(): void
     {
-        app(OperationalSettingsService::class)->update($this->actor(), [
-            'queue_backlog_threshold' => $this->settings['queue_backlog_threshold'] ?? 0,
-            'backup_max_age_hours' => $this->settings['backup_max_age_hours'] ?? 0,
-        ]);
+        try {
+            app(OperationalSettingsService::class)->update($this->actor(), [
+                'queue_backlog_threshold' => $this->settings['queue_backlog_threshold'] ?? 0,
+                'backup_max_age_hours' => $this->settings['backup_max_age_hours'] ?? 0,
+            ]);
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->first() ?? 'Pengaturan tidak valid.';
+            $fieldErrors = [];
+
+            foreach (['queue_backlog_threshold', 'backup_max_age_hours'] as $key) {
+                if ($this->invalidSettingValue($this->settings[$key] ?? null)) {
+                    $fieldErrors['settings.'.$key] = $message;
+                }
+            }
+
+            if ($fieldErrors === []) {
+                throw $exception;
+            }
+
+            throw ValidationException::withMessages($fieldErrors);
+        }
+
         $this->settings = app(OperationalSettingsService::class)->values();
     }
 
@@ -136,9 +154,16 @@ class OperationsDashboard extends Page
         if (trim($this->maintenanceReason) === '') {
             throw ValidationException::withMessages(['maintenanceReason' => 'Alasan perubahan wajib diisi.']);
         }
-        app(OperationalSettingsService::class)->setMaintenance($this->actor(), ! $this->maintenanceEnabled, $this->maintenanceReason);
+        try {
+            app(OperationalSettingsService::class)->setMaintenance($this->actor(), ! $this->maintenanceEnabled, $this->maintenanceReason);
+        } catch (ValidationException $exception) {
+            throw ValidationException::withMessages([
+                'maintenanceReason' => collect($exception->errors())->flatten()->first() ?? 'Alasan perubahan tidak valid.',
+            ]);
+        }
         $this->maintenanceEnabled = app()->maintenanceMode()->active();
         $this->maintenanceReason = '';
+        $this->dispatch('close-dialog', id: 'maintenance-dialog');
     }
 
     public function previewRetention(): void
@@ -169,6 +194,7 @@ class OperationsDashboard extends Page
         $this->retentionResult = sprintf('Retensi selesai. Baris audit dihapus: %d.', $count);
         $this->retentionPreviewBefore = '';
         $this->retentionPreviewedAt = '';
+        $this->dispatch('close-dialog', id: 'audit-retention-dialog');
     }
 
     public function previewMediaRetention(): void
@@ -218,6 +244,7 @@ class OperationsDashboard extends Page
         $this->mediaRetentionCandidateSize = '0 B';
         $this->mediaRetentionMissingFiles = 0;
         $this->mediaRetentionCandidates = [];
+        $this->dispatch('close-dialog', id: 'media-retention-dialog');
     }
 
     public function recordBackupMetadata(): void
@@ -225,8 +252,8 @@ class OperationsDashboard extends Page
         $backup = app(BackupLifecycleService::class)->request(new BackupRequest(
             actor: $this->actor(),
             artifacts: new BackupArtifactPair(
-                database: new BackupArtifact($this->backupDatabaseAlias, $this->backupDatabaseSha256, $this->positiveInteger($this->backupDatabaseSizeBytes, 'Ukuran basis data')),
-                media: new BackupArtifact($this->backupMediaAlias, $this->backupMediaSha256, $this->positiveInteger($this->backupMediaSizeBytes, 'Ukuran media')),
+                database: new BackupArtifact($this->backupDatabaseAlias, $this->backupDatabaseSha256, $this->positiveInteger($this->backupDatabaseSizeBytes, 'Ukuran basis data', 'backupDatabaseSizeBytes')),
+                media: new BackupArtifact($this->backupMediaAlias, $this->backupMediaSha256, $this->positiveInteger($this->backupMediaSizeBytes, 'Ukuran media', 'backupMediaSizeBytes')),
             ),
             retentionUntil: $this->parseRetentionUntil(),
             operatorKey: $this->backupOperatorKey,
@@ -235,6 +262,7 @@ class OperationsDashboard extends Page
 
         session()->flash('operations_notice', 'Metadata cadangan tercatat. Penyalinan basis data dan media tetap dijalankan melalui prosedur penerapan. ID: '.$backup->getKey());
         $this->resetBackupFields();
+        $this->dispatch('close-dialog', id: 'backup-metadata-dialog');
     }
 
     public function recordRestoreVerification(): void
@@ -262,6 +290,7 @@ class OperationsDashboard extends Page
         $this->restoreTargetAlias = '';
         $this->restoreEvidenceReference = '';
         $this->restoreResult = '';
+        $this->dispatch('close-dialog', id: 'restore-verification-dialog');
     }
 
     /** @return array<string, mixed> */
@@ -296,6 +325,15 @@ class OperationsDashboard extends Page
         ];
     }
 
+    private function invalidSettingValue(mixed $value): bool
+    {
+        if (! is_int($value) && (! is_string($value) || ! ctype_digit($value))) {
+            return true;
+        }
+
+        return (int) $value < 1 || (int) $value > 8_760;
+    }
+
     private function parseRetentionUntil(): CarbonImmutable
     {
         try {
@@ -311,10 +349,10 @@ class OperationsDashboard extends Page
         return $value;
     }
 
-    private function positiveInteger(string $value, string $label): int
+    private function positiveInteger(string $value, string $label, string $property): int
     {
         if (! ctype_digit($value) || (int) $value < 1) {
-            throw ValidationException::withMessages(['backup' => $label.' harus bilangan bulat positif.']);
+            throw ValidationException::withMessages([$property => $label.' harus bilangan bulat positif.']);
         }
 
         return (int) $value;

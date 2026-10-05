@@ -4,14 +4,14 @@
 ])
 
 @php
-    $labels = ['Beranda', 'Setoran', 'Layanan', 'Kartu Nasabah', 'Akun'];
+    $labels = ['Beranda', 'Kartu Nasabah', 'Layanan', 'Riwayat', 'Akun'];
 
     if (array_keys($destinations) !== $labels) {
-        throw new InvalidArgumentException('Citizen navigation destinations must contain exactly: Beranda, Setoran, Layanan, Kartu Nasabah, Akun.');
+        throw new InvalidArgumentException('Citizen navigation destinations must contain exactly: Beranda, Kartu Nasabah, Layanan, Riwayat, Akun.');
     }
 
     if (! in_array($active, $labels, true)) {
-        throw new InvalidArgumentException('Citizen navigation active item must be one of: Beranda, Setoran, Layanan, Kartu Nasabah, Akun.');
+        throw new InvalidArgumentException('Citizen navigation active item must be one of: Beranda, Kartu Nasabah, Layanan, Riwayat, Akun.');
     }
 
     foreach ($destinations as $label => $destination) {
@@ -34,9 +34,9 @@
 
     $icons = [
         'Beranda' => 'home',
-        'Setoran' => 'wallet-cards',
-        'Layanan' => 'grid-2x2',
         'Kartu Nasabah' => 'scan-line',
+        'Layanan' => 'grid-2x2',
+        'Riwayat' => 'history',
         'Akun' => 'user-round',
     ];
 

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class PublicShellTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_home_renders_the_public_shell_landmarks_and_metadata_once(): void
     {
         $response = $this->get(route('home'));
@@ -26,7 +29,8 @@ final class PublicShellTest extends TestCase
         self::assertSame(1, substr_count($html, '<main'));
         self::assertSame(1, substr_count($html, '<footer'));
         self::assertSame(1, substr_count($html, '<h1'));
-        self::assertStringContainsString('sticky top-0 z-sticky -mb-[4.75rem] px-3 pt-3', $html);
+        self::assertStringContainsString('data-public-header="overlay"', $html);
+        self::assertStringContainsString('class="sticky top-0 z-sticky px-3 pt-3 sm:px-5 -mb-[4.75rem]"', $html);
         self::assertStringNotContainsString('Transparansi untuk setiap setoran', $html);
     }
 
@@ -153,6 +157,73 @@ final class PublicShellTest extends TestCase
         self::assertStringNotContainsString('openModal(', $navigation);
     }
 
+    public function test_shared_header_overlays_public_hero_routes_with_the_established_capsule_shape(): void
+    {
+        foreach ([
+            'home',
+            'public.catalog',
+            'public.prices',
+            'public.mobile-schedule',
+            'public.announcements',
+            'public.programs',
+            'terms-and-privacy',
+        ] as $routeName) {
+            $html = $this->get(route($routeName))->assertOk()->getContent();
+
+            self::assertStringContainsString('data-public-header="overlay"', $html, $routeName);
+            self::assertMatchesRegularExpression(
+                '/<header\b[^>]*data-public-header="overlay"[^>]*>\s*<div class="[^"]*\brounded-full\b[^"]*"/s',
+                $html,
+                $routeName,
+            );
+        }
+    }
+
+    public function test_auth_routes_keep_the_header_in_flow_and_remove_decorative_heading_capsules(): void
+    {
+        $loginHtml = $this->get(route('login'))->assertOk()->getContent();
+        $registerHtml = $this->get(route('register'))->assertOk()->getContent();
+        $homeHtml = $this->get(route('home'))->assertOk()->getContent();
+
+        self::assertStringContainsString('data-public-header="flow"', $loginHtml);
+        self::assertStringContainsString('data-public-header="flow"', $registerHtml);
+        self::assertStringNotContainsString('-mb-[4.75rem]', $loginHtml);
+        self::assertStringNotContainsString('-mb-[4.75rem]', $registerHtml);
+        self::assertStringNotContainsString('Akses Akun Layanan', $loginHtml);
+        self::assertStringNotContainsString('Pendaftaran Akun Baru', $registerHtml);
+        self::assertStringNotContainsString('Bergabung Sekarang', $homeHtml);
+    }
+
+    public function test_requested_ui_copy_and_confirmation_contracts_are_rendered_without_native_confirmations(): void
+    {
+        $register = $this->get(route('register'))->assertOk()->getContent();
+        $landing = $this->get(route('home'))->assertOk()->getContent();
+
+        self::assertMatchesRegularExpression('/Saya menyetujui\s+<a[^>]+>ketentuan operasional dan kebijakan privasi/s', $register);
+        self::assertStringContainsString('(terbuka di tab baru)', $register);
+        self::assertStringNotContainsString('Saya telah membaca dan menyetujui', $register);
+        self::assertStringContainsString('md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,.85fr)]', $landing);
+        self::assertStringContainsString('md:grid-cols-[minmax(0,1fr)_auto]', $landing);
+        self::assertStringContainsString('pt-28', $landing);
+        self::assertStringContainsString('sm:pt-32', $landing);
+        self::assertStringContainsString('md:pt-36', $landing);
+        self::assertStringContainsString('lg:flex-row lg:justify-between', $landing);
+        self::assertStringNotContainsString('md:max-lg:grid-cols-1', $landing);
+
+        $resourcePath = resource_path('views');
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($resourcePath));
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $contents = file_get_contents($file->getPathname());
+            self::assertIsString($contents);
+            self::assertStringNotContainsString('wire:confirm', $contents, $file->getPathname());
+            self::assertStringNotContainsString('window.confirm(', $contents, $file->getPathname());
+        }
+    }
+
     public function test_public_shell_preserves_current_landing_sections_and_account_destinations(): void
     {
         $response = $this->get(route('home'));
@@ -165,7 +236,7 @@ final class PublicShellTest extends TestCase
             ->assertSee('Nilai terjaga.')
             ->assertSee('Desa bergerak bersama.')
             ->assertSee('Akses Akun Saya')
-            ->assertSee('Masuk Ke Sistem')
+            ->assertSee('Masuk ke akun')
             ->assertSee('mascot-6.png');
 
         $response

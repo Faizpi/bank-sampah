@@ -3,9 +3,8 @@
         <div class="relative isolate overflow-hidden border-b border-border bg-warm-canvas p-6 sm:p-8 text-deep-green">
             <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div class="w-full min-w-0 max-w-lg">
-                    <span class="inline-flex rounded-full border border-forest-600 bg-success-bg px-3 py-1 text-xs font-semibold text-forest-700">Akses Akun Layanan</span>
-                    <h1 id="login-title" class="mt-2 text-pretty text-h2 font-extrabold text-deep-green lg:text-h1">Masuk ke Layanan Bank Sampah</h1>
-                    <p class="mt-2 text-body-sm text-text-secondary">Gunakan nomor telepon terdaftar dan kata sandi untuk membuka layanan sesuai peran Anda.</p>
+                    <h1 id="login-title" class="text-pretty text-h2 font-extrabold text-deep-green lg:text-h1">Masuk ke Layanan Bank Sampah</h1>
+                    <p class="mt-2 text-body-sm text-text-secondary">Gunakan username dan kata sandi untuk membuka layanan sesuai peran Anda.</p>
                 </div>
                 <div class="flex items-center justify-between gap-4 md:flex-col md:items-end">
                     <x-ui.mascot variant="2" bubble="Halo! Yuk masuk" bubblePosition="top" class="h-28 w-auto filter drop-shadow-lg" />
@@ -29,7 +28,7 @@
             @if ($errors->any())
                 @php
                     $errorFieldLabels = [
-                        'phone' => 'Nomor telepon',
+                        'username' => 'Username',
                         'password' => 'Kata sandi',
                     ];
                 @endphp
@@ -54,7 +53,7 @@
             @endif
 
             <form class="mx-auto mt-4 max-w-form space-y-5" wire:submit="login" wire:loading.attr="aria-busy" wire:target="login" @if ($errors->any()) aria-describedby="login-errors" @endif>
-                <x-ui.input name="phone" label="Nomor telepon" type="tel" wire:model.blur="phone" autocomplete="username" inputmode="tel" required :error="$errors->first('phone')" />
+                <x-ui.input name="username" label="Username" type="text" wire:model.blur="username" autocomplete="username" inputmode="text" required :error="$errors->first('username')" />
 
                 <div class="space-y-2" x-data="{ showPassword: false }">
                     <label for="password" class="block text-label font-semibold text-text-primary">Kata sandi</label>
@@ -109,21 +108,19 @@
                                 >
                                     <span class="min-w-0">
                                         <span class="block text-label font-bold text-deep-green">{{ $account['label'] }}</span>
-                                        <span class="block truncate text-body-sm text-text-secondary">{{ $account['phone'] }}</span>
+                                        <span class="block truncate text-body-sm text-text-secondary">{{ $account['username'] }}</span>
                                     </span>
                                     <x-public.icon name="arrow-right" size="size-4" class="shrink-0 text-forest-600 transition duration-200 group-hover:translate-x-1" />
                                 </button>
                             </li>
                         @endforeach
                     </ul>
-
-                    <p class="mt-5 text-caption text-text-secondary">
-                        Masuk menggunakan alamat email + kata sandi di
-                        <a href="{{ route('filament.backoffice.auth.login') }}" class="inline-flex items-center rounded-md font-bold text-forest-600 underline underline-offset-4 hover:text-forest-700">panel Admin / Backoffice</a>
-                        (admin &amp; superadmin).
-                    </p>
                 </div>
             @endif
+
+            <p class="mx-auto mt-6 max-w-form text-center text-caption text-text-secondary">
+                <a href="{{ route('filament.backoffice.auth.login') }}" class="inline-flex items-center rounded-md font-bold text-forest-600 underline underline-offset-4 hover:text-forest-700">Akses Panel Admin</a>
+            </p>
         </div>
     </section>
 </div>

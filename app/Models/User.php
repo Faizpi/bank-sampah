@@ -18,12 +18,14 @@ use App\Domain\Identity\Models\TermsAcceptanceHistory;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
+use App\Support\Auth\Username;
 use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -41,7 +43,7 @@ use Illuminate\Notifications\Notifiable;
  * @property CarbonImmutable|null $terms_accepted_at
  * @property CarbonImmutable|null $deleted_at
  */
-#[Fillable(['name', 'phone', 'email', 'password'])]
+#[Fillable(['name', 'username', 'phone', 'email', 'password'])]
 #[Hidden(['password', 'remember_token', 'phone', 'email', 'terms_version', 'terms_accepted_at'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -65,6 +67,17 @@ class User extends Authenticatable implements FilamentUser
             'deleted_at' => 'immutable_datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Canonicalize username to lowercase on every write so that the
+     * unique index naturally prevents duplicate canonical usernames.
+     */
+    protected function username(): Attribute
+    {
+        return Attribute::make(
+            set: static fn (?string $value): ?string => $value === null || $value === '' ? null : Username::normalize($value),
+        );
     }
 
     /** @return BelongsToMany<Role, $this> */

@@ -42,7 +42,7 @@
                             class="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-label font-semibold text-deep-green transition duration-150 hover:border-forest-600 hover:bg-success-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                             <x-filament::icon icon="heroicon-m-arrow-left" class="size-4 shrink-0 text-forest-600" />
-                            Kembali ke landing page
+                            Kembali ke halaman utama
                         </a>
                     </div>
 

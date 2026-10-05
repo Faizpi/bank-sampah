@@ -37,4 +37,9 @@ final readonly class AnnouncementPolicy
     {
         return $this->permissions->allows($actor, 'announcement.publish');
     }
+
+    public function delete(User $actor, Announcement $announcement): bool
+    {
+        return $this->permissions->allows($actor, 'announcement.manage');
+    }
 }

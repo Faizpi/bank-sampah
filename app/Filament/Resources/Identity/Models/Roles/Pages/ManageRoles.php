@@ -9,6 +9,7 @@ use App\Domain\Identity\Models\Role;
 use App\Filament\Resources\Identity\Models\Roles\RoleResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
+use Filament\Support\Enums\Width;
 
 final class ManageRoles extends ManageRecords
 {
@@ -19,6 +20,7 @@ final class ManageRoles extends ManageRecords
         return [
             CreateAction::make()
                 ->label('Peran baru')
+                ->modalWidth(Width::SevenExtraLarge)
                 ->using(fn (array $data): Role => app(ManageRolesAction::class)->createRole(
                     auth()->user(),
                     $data['name'],

@@ -217,7 +217,7 @@ final class IdentitySchemaTest extends TestCase
 
     public function test_identity_index_inventory_is_intentional(): void
     {
-        $this->assertIndexInventory('users', [['email'], ['phone'], ['status']]);
+        $this->assertIndexInventory('users', [['email'], ['username'], ['phone'], ['status']]);
         $this->assertIndexInventory('customer_profiles', [['customer_number'], ['rt_id'], ['joined_at'], ['qr_token_hash']]);
         $this->assertIndexInventory('staff_profiles', [['staff_number'], ['service_area_id', 'active_to']]);
         // Both session user indexes are intentional: baseline user-only lookup plus composite activity lookup.

@@ -60,10 +60,7 @@
 @endphp
 
 <nav aria-label="{{ $label }}" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div aria-live="polite">
-        <p class="text-body-sm text-text-primary">Menampilkan {{ $normalizedFrom }}–{{ $normalizedTo }} dari {{ $normalizedTotal }} hasil</p>
-        <p class="text-caption text-text-secondary">Halaman {{ $normalizedCurrentPage }} dari {{ $normalizedLastPage }}</p>
-    </div>
+    <p aria-live="polite" class="text-caption text-text-secondary">Halaman {{ $normalizedCurrentPage }} dari {{ $normalizedLastPage }}</p>
     <div class="flex items-center justify-end gap-2 self-end sm:self-auto">
         @if ($previous)
             <button type="button" wire:click="previousPage('{{ $pageName }}')" rel="prev" class="inline-flex min-h-touch items-center justify-center rounded-md border border-border bg-surface px-4 text-label text-deep-green hover:border-forest-600 hover:bg-success-bg">Sebelumnya</button>

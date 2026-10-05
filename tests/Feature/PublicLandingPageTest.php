@@ -14,15 +14,9 @@ final class PublicLandingPageTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Bank Sampah Digital')
-            ->assertSee('Sampah tercatat.')
-            ->assertSee('Nilai terjaga.')
-            ->assertSee('Desa bergerak bersama.')
-            ->assertSee('Bank Sampah Sindangheula mendampingi warga di setiap langkah: memilih, memahami, dan mengelola sampah secara bertanggung jawab.')
             ->assertSee('Akses Akun Saya')
             ->assertSee('Masuk')
             ->assertSee('href="'.route('login').'"', escape: false)
-            ->assertSee('mascot-6.png')
             ->assertDontSee('Contoh ilustratif. Nilai aktual mengikuti jenis, berat, dan harga saat transaksi.')
             ->assertDontSee('Rp18.500');
     }

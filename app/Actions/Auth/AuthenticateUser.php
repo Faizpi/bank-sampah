@@ -8,7 +8,7 @@ use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Models\User;
 use App\Support\Auth\LoginRateLimiter;
-use App\Support\Auth\PhoneNumber;
+use App\Support\Auth\Username;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Http\Request;
@@ -27,14 +27,14 @@ final readonly class AuthenticateUser
         private AuditLogger $auditLogger,
     ) {}
 
-    public function handle(string $phone, string $password, Request $request): User
+    public function handle(string $username, string $password, Request $request): User
     {
-        $normalizedPhone = PhoneNumber::normalize($phone);
+        $normalizedUsername = Username::normalize($username);
         $ip = $request->ip() ?? 'unknown';
         $correlationId = $this->correlationId($request);
 
         try {
-            $this->limiter->ensureAllowed($normalizedPhone, $ip);
+            $this->limiter->ensureAllowed($normalizedUsername, $ip);
         } catch (ValidationException $exception) {
             $this->recordRejectedAttempt($request, $correlationId, 'rate_limited');
 
@@ -44,14 +44,14 @@ final readonly class AuthenticateUser
         $guard = $this->auth->guard();
 
         if (! $guard->attempt([
-            'phone' => $normalizedPhone,
+            'username' => $normalizedUsername,
             'password' => $password,
             'status' => UserStatus::Active->value,
         ])) {
-            $this->limiter->recordFailure($normalizedPhone, $ip);
+            $this->limiter->recordFailure($normalizedUsername, $ip);
             $this->recordRejectedAttempt($request, $correlationId, 'invalid_credentials');
 
-            throw ValidationException::withMessages(['phone' => self::FAILURE_MESSAGE]);
+            throw ValidationException::withMessages(['username' => self::FAILURE_MESSAGE]);
         }
 
         $this->session->regenerate();
@@ -62,7 +62,7 @@ final readonly class AuthenticateUser
             $this->session->invalidate();
             $this->session->regenerateToken();
 
-            throw ValidationException::withMessages(['phone' => self::FAILURE_MESSAGE]);
+            throw ValidationException::withMessages(['username' => self::FAILURE_MESSAGE]);
         }
 
         try {
@@ -77,7 +77,7 @@ final readonly class AuthenticateUser
             $this->session->invalidate();
             $this->session->regenerateToken();
 
-            throw ValidationException::withMessages(['phone' => self::FAILURE_MESSAGE]);
+            throw ValidationException::withMessages(['username' => self::FAILURE_MESSAGE]);
         }
     }
 

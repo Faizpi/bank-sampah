@@ -29,7 +29,8 @@ final class WithdrawalShow extends Component
         /** @var User $actor */
         $actor = auth()->user();
         $this->withdrawal = $service->cancel($actor, $this->withdrawal, 'Warga membatalkan pengajuan sebelum pembayaran.');
-        session()->flash('success', 'Pengajuan pencairan dibatalkan dan hold dilepas.');
+        session()->flash('success', 'Pengajuan pencairan dibatalkan dan dana yang ditahan dikembalikan.');
+        $this->dispatch('close-dialog', id: 'cancel-withdrawal-dialog');
     }
 
     public function render(): View

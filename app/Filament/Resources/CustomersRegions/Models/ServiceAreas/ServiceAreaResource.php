@@ -13,6 +13,7 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -20,6 +21,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 final class ServiceAreaResource extends Resource
@@ -54,7 +56,13 @@ final class ServiceAreaResource extends Resource
             IconColumn::make('is_active')->boolean(),
         ])->recordActions([
             EditAction::make()->using(fn (ServiceArea $record, array $data): ServiceArea => tap($record, fn () => app(ManageRegions::class)->updateServiceArea(auth()->user(), $record, $data['name'], Rt::query()->findMany($data['rts'] ?? [])->all()))),
-            Action::make('activate')->label('Aktifkan kembali')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->requiresConfirmation()->modalHeading(fn (ServiceArea $record): string => "Aktifkan area {$record->name}?")->modalDescription('Area ini kembali tersedia untuk penjadwalan layanan. RT yang terhubung harus aktif.')->modalSubmitActionLabel('Aktifkan area')->visible(fn (ServiceArea $record): bool => ! $record->is_active)->action(fn (ServiceArea $record) => app(ManageRegions::class)->activate(auth()->user(), $record)),
+            Action::make('activate')->label('Aktifkan kembali')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->requiresConfirmation()->modalHeading(fn (ServiceArea $record): string => "Aktifkan area {$record->name}?")->modalDescription('Area ini kembali tersedia untuk penjadwalan layanan. RT yang terhubung harus aktif.')->modalSubmitActionLabel('Aktifkan area')->visible(fn (ServiceArea $record): bool => ! $record->is_active)->action(function (ServiceArea $record): void {
+                try {
+                    app(ManageRegions::class)->activate(auth()->user(), $record);
+                } catch (ValidationException) {
+                    Notification::make()->title('Area pelayanan belum dapat diaktifkan')->body('Pastikan seluruh RT beserta RW dan dusun induknya aktif, lalu coba kembali.')->danger()->send();
+                }
+            }),
             Action::make('deactivate')->label('Nonaktifkan')->authorize('deactivate')->requiresConfirmation()->modalHeading(fn (ServiceArea $record): string => "Nonaktifkan area {$record->name}?")->modalDescription('Area ini tidak tersedia untuk penjadwalan baru. Data historis tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan area')->visible(fn (ServiceArea $record): bool => $record->is_active)->action(fn (ServiceArea $record) => app(ManageRegions::class)->deactivate(auth()->user(), $record)),
         ]);
     }

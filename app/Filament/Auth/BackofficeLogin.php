@@ -4,26 +4,27 @@ declare(strict_types=1);
 
 namespace App\Filament\Auth;
 
+use App\Support\Auth\Username;
 use Database\Seeders\DeveloperUsersSeeder;
 use Filament\Auth\Pages\Login;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Component;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Validation\ValidationException;
+use SensitiveParameter;
 
 /**
  * Branded back-office login for the `backoffice` panel.
  *
- * Keeps the exact Filament authentication flow (email + password) by extending
- * {@see Login} and overriding only the rendered view. No vendor file is edited.
- *
- * Demo quick-fill buttons (admin / superadmin) are rendered by the view only in
- * non-production environments; the account list is guarded here and stays empty
- * in production so nothing runtime leaks.
+ * Uses username authentication (same as the public login) by overriding the
+ * Filament login form and credential extraction.
  */
 final class BackofficeLogin extends Login
 {
     protected string $view = 'filament.backoffice.auth.login';
 
     /**
-     * Auto-fill the email/password form state for a demo role.
+     * Auto-fill the username/password form state for a demo role.
      *
      * No-op in production and for unknown roles so credentials never leak.
      */
@@ -38,8 +39,36 @@ final class BackofficeLogin extends Login
         }
 
         $this->form->fill([
-            'email' => DeveloperUsersSeeder::email($role),
+            'username' => DeveloperUsersSeeder::username($role),
             'password' => DeveloperUsersSeeder::password(),
+        ]);
+    }
+
+    protected function getEmailFormComponent(): Component
+    {
+        return TextInput::make('username')
+            ->label('Username')
+            ->required()
+            ->autocomplete('username')
+            ->autofocus();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function getCredentialsFromFormData(#[SensitiveParameter] array $data): array
+    {
+        return [
+            'username' => Username::normalize(is_string($data['username'] ?? null) ? $data['username'] : ''),
+            'password' => $data['password'] ?? '',
+        ];
+    }
+
+    protected function throwFailureValidationException(): never
+    {
+        throw ValidationException::withMessages([
+            'data.username' => __('filament-panels::auth/pages/login.messages.failed'),
         ]);
     }
 

@@ -141,8 +141,10 @@ final class W2IdentificationUiTest extends TestCase
         $this->grant($other, 'customer.view', 'user.view', 'mobile-service.operate');
 
         $component = Livewire::actingAs($assigned)
+            ->withQueryParams(['mobileServiceId' => $service->id])
             ->test(CustomerIdentification::class)
-            ->assertSee('Pilih konteks setoran')
+            ->assertSet('mobileServiceId', $service->id)
+            ->assertSeeInOrder(['Pilih konteks setoran', 'Pindai dengan kamera', 'Cari dengan nomor nasabah'])
             ->assertSee($service->point)
             ->set('mobileServiceId', $service->id)
             ->set('search', 'CST-24681357')

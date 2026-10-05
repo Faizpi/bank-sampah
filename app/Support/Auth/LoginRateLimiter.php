@@ -15,20 +15,20 @@ final class LoginRateLimiter
 
     private const FAILURE_MESSAGE = 'Kredensial tidak valid atau akun tidak dapat digunakan.';
 
-    public function ensureAllowed(string $phone, string $ip): void
+    public function ensureAllowed(string $username, string $ip): void
     {
-        if (RateLimiter::tooManyAttempts(self::key($phone, $ip), self::MAX_ATTEMPTS)) {
-            throw ValidationException::withMessages(['phone' => self::FAILURE_MESSAGE]);
+        if (RateLimiter::tooManyAttempts(self::key($username, $ip), self::MAX_ATTEMPTS)) {
+            throw ValidationException::withMessages(['username' => self::FAILURE_MESSAGE]);
         }
     }
 
-    public function recordFailure(string $phone, string $ip): void
+    public function recordFailure(string $username, string $ip): void
     {
-        RateLimiter::hit(self::key($phone, $ip), self::DECAY_SECONDS);
+        RateLimiter::hit(self::key($username, $ip), self::DECAY_SECONDS);
     }
 
-    public static function key(string $phone, string $ip): string
+    public static function key(string $username, string $ip): string
     {
-        return 'login:'.hash('sha256', PhoneNumber::normalize($phone).'|'.$ip);
+        return 'login:'.hash('sha256', Username::normalize($username).'|'.$ip);
     }
 }

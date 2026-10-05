@@ -11,12 +11,13 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $this->call(RolesAndPermissionsSeeder::class);
-        $this->call(InitialAdminSeeder::class);
-
-        if (DeveloperUsersSeeder::canSeedDemoData()) {
+        if (config('app.demo_mode') && DeveloperUsersSeeder::canSeedDemoData()) {
             $this->call(DeveloperUsersSeeder::class);
             $this->call(LocalDataSeeder::class);
+
+            return;
         }
+
+        $this->call(ProductionBootstrapSeeder::class);
     }
 }

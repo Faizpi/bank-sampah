@@ -278,7 +278,7 @@ final readonly class DepositService
                 }
                 $token = QrToken::generate();
                 if ($locked->mobile_service_id !== null) {
-                    $this->mobileDepositGuard->attach($actor, $locked, MobileService::query()->findOrFail($locked->mobile_service_id), $locked->items->map(fn ($item): WasteType => WasteType::query()->findOrFail($item->waste_type_id))->all());
+                    $this->mobileDepositGuard->attachForFinalization($actor, $locked, MobileService::query()->findOrFail($locked->mobile_service_id), $locked->items->map(fn ($item): WasteType => WasteType::query()->findOrFail($item->waste_type_id))->all());
                 }
                 $requiresReview = $this->requiresReview($total);
                 $locked->forceFill([

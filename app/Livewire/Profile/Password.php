@@ -46,7 +46,7 @@ final class Password extends Component
 
         $actor->loadMissing('customerProfile.rt.rw.dusun');
         $this->name = $actor->name;
-        $this->phone = (string) $actor->phone;
+        $this->phone = (string) ($actor->phone ?? '');
         $this->address = $actor->customerProfile === null ? '' : (string) $actor->customerProfile->address;
         $this->region = $this->regionLabel($actor);
         $this->rt = $actor->customerProfile === null || $actor->customerProfile->rt === null
@@ -72,7 +72,7 @@ final class Password extends Component
             $updated = $updateSelfServiceProfile->handle($actor, $data);
 
             $this->name = $updated->name;
-            $this->phone = (string) $updated->phone;
+            $this->phone = (string) ($updated->phone ?? '');
             $this->address = (string) $updated->customerProfile?->address;
             $this->profileChanged = true;
         } catch (ValidationException $exception) {

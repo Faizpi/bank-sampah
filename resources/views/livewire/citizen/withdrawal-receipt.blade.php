@@ -1,7 +1,7 @@
 <x-slot:title>Bukti pencairan</x-slot:title>
 <x-slot:context>Riwayat warga</x-slot:context>
 
-<section aria-labelledby="withdrawal-receipt-title" class="grid gap-6">
+<section aria-labelledby="withdrawal-receipt-title" class="grid gap-6" data-print-area>
     <div>
         <p class="text-label text-forest-600">Bukti {{ $withdrawal->request_number }}</p>
         <h1 id="withdrawal-receipt-title" class="mt-2 text-h1 text-deep-green">Pencairan berhasil</h1>
@@ -27,17 +27,11 @@
         </dl>
     </x-ui.panel>
 
-    @if ($withdrawal->proofMedia)
-        <x-ui.panel title="Bukti pembayaran" description="Dokumen ini hanya tersedia melalui akses akun Anda.">
-            @if (str_starts_with($withdrawal->proofMedia->mime_type, 'image/'))
-                <a href="{{ route('withdrawal.proof', $withdrawal->proofMedia) }}" class="block overflow-hidden rounded-lg border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
-                    <img src="{{ route('withdrawal.proof', $withdrawal->proofMedia) }}" alt="Bukti pembayaran pencairan {{ $withdrawal->request_number }}" class="max-h-96 w-full object-contain" />
-                </a>
-            @endif
-
-            <div class="mt-4 flex justify-end">
-                <a href="{{ route('withdrawal.proof', $withdrawal->proofMedia) }}" class="min-h-touch inline-flex items-center justify-center rounded-md border border-forest-600 px-5 text-label text-forest-700">Unduh bukti pembayaran</a>
-            </div>
-        </x-ui.panel>
-    @endif
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-print-hide>
+        <p class="text-caption text-text-secondary">Butuh arsip? Cetak bukti ini atau simpan sebagai PDF dari dialog cetak.</p>
+        <button type="button" data-print-button class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">
+            <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>
+            Cetak bukti
+        </button>
+    </div>
 </section>

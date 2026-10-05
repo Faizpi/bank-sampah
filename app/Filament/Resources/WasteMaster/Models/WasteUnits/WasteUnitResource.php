@@ -53,7 +53,7 @@ final class WasteUnitResource extends Resource
                     WasteUnit::CLASSIFICATION_WEIGHT => 'Berat fisik',
                     WasteUnit::CLASSIFICATION_NON_WEIGHT => 'Non-berat',
                 ])->live(),
-                TextInput::make('conversion_factor_to_kg')->label('Faktor ke kg')->numeric()->minValue(0.000001)->visible(fn ($get): bool => $get('classification') === WasteUnit::CLASSIFICATION_WEIGHT)->helperText('Kosongkan untuk kilogram atau satuan yang belum memiliki konversi.'),
+                TextInput::make('conversion_factor_to_kg')->label('Faktor ke kg')->numeric()->minValue(0.000001)->visible(fn ($get): bool => $get('classification') === WasteUnit::CLASSIFICATION_WEIGHT)->helperText('Kosongkan jika satuannya kilogram atau belum memiliki nilai konversi.'),
             ])->columns(2),
         ]);
     }

@@ -96,11 +96,17 @@
 
     @if (in_array($pickup->status->value, ['menunggu_pemeriksaan', 'diterima', 'dijadwalkan'], true))
         <div class="flex justify-end">
-            <button type="button" wire:click="cancel"
-                wire:confirm="Batalkan pengajuan penjemputan ini?"
+            <button type="button" x-on:click="$dispatch('open-dialog', { id: 'cancel-pickup-dialog', invoker: $el })"
                 class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
                 Batalkan Pengajuan
             </button>
         </div>
+        <x-ui.dialog id="cancel-pickup-dialog" name="cancel-pickup" title="Batalkan pengajuan penjemputan" description="Jadwal dan proses penjemputan untuk pengajuan ini akan dihentikan." state="error">
+            <p>Pengajuan {{ $pickup->request_number }} tidak akan diproses lebih lanjut.</p>
+            <x-slot:actions>
+                <x-ui.button type="button" variant="secondary" x-on:click="closeModal()">Kembali</x-ui.button>
+                <x-ui.button type="button" variant="danger" wire:click="cancel" wire:loading.attr="disabled" wire:target="cancel">Batalkan pengajuan</x-ui.button>
+            </x-slot:actions>
+        </x-ui.dialog>
     @endif
 </section>

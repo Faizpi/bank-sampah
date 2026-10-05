@@ -83,7 +83,7 @@ final readonly class ChangePassword
         string $correlationId,
     ): User {
         $reason = trim($reason);
-        $this->validateDirectRequest($verificationMethod, $reason, $password, $passwordConfirmation);
+        $this->validateDirectRequest($verificationMethod, $reason, $password, $passwordConfirmation, $subject);
 
         return DB::transaction(function () use ($actor, $subject, $verificationMethod, $reason, $password, $correlationId): User {
             /** @var User $lockedSubject */
@@ -115,7 +115,7 @@ final readonly class ChangePassword
         });
     }
 
-    private function validateDirectRequest(string $verificationMethod, string $reason, string $password, string $passwordConfirmation): void
+    private function validateDirectRequest(string $verificationMethod, string $reason, string $password, string $passwordConfirmation, User $subject): void
     {
         Validator::make([
             'verification_method' => $verificationMethod,
@@ -127,6 +127,12 @@ final readonly class ChangePassword
             'reason' => ['required', 'string', 'min:10', 'max:1000', 'regex:/\S/u'],
             'password' => $this->passwordRules(),
         ])->validate();
+
+        if ($verificationMethod === 'callback_nomor_terdaftar' && trim((string) $subject->phone) === '') {
+            throw ValidationException::withMessages([
+                'verification_method' => 'Metode verifikasi callback hanya tersedia untuk pengguna dengan nomor telepon terdaftar.',
+            ]);
+        }
     }
 
     private function validatePassword(string $password, string $passwordConfirmation): void
@@ -142,7 +148,7 @@ final readonly class ChangePassword
     /** @return list<string|Password> */
     private function passwordRules(): array
     {
-        return ['required', 'string', Password::min(10)->uncompromised(), 'confirmed'];
+        return ['required', 'string', Password::min(8), 'confirmed'];
     }
 
     private function sanitizedReason(string $reason): string

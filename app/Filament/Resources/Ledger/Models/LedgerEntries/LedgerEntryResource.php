@@ -34,11 +34,11 @@ final class LedgerEntryResource extends Resource
 
     protected static ?int $navigationSort = 20;
 
-    protected static ?string $navigationLabel = 'Mutasi saldo';
+    protected static ?string $navigationLabel = 'Perubahan saldo';
 
-    protected static ?string $modelLabel = 'mutasi saldo';
+    protected static ?string $modelLabel = 'perubahan saldo';
 
-    protected static ?string $pluralModelLabel = 'mutasi saldo';
+    protected static ?string $pluralModelLabel = 'perubahan saldo';
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -57,8 +57,8 @@ final class LedgerEntryResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Textarea::make('entry_number')->label('Nomor mutasi')->disabled(),
-            Textarea::make('source_key')->label('Sumber idempotensi')->disabled(),
+            Textarea::make('entry_number')->label('Nomor perubahan saldo')->disabled(),
+            Textarea::make('source_key')->label('Kode pencegah pencatatan ganda')->disabled(),
         ]);
     }
 
@@ -102,7 +102,7 @@ final class LedgerEntryResource extends Resource
                         Select::make('owner_id')->label('Nasabah')->options(fn (): array => User::query()->where('status', 'aktif')->orderBy('name')->pluck('name', 'id')->all())->searchable()->required(),
                         TextInput::make('delta')->label('Dampak saldo (Rp)')->numeric()->integer()->rule('not_in:0')->required(),
                         Textarea::make('reason')->label('Alasan')->minLength(10)->maxLength(1000)->required(),
-                        TextInput::make('idempotency_key')->label('Kunci pencegah duplikasi')->default(fn (): string => 'ledger-adjust-'.str()->uuid())->required(),
+                        TextInput::make('idempotency_key')->label('Kunci transaksi unik')->default(fn (): string => 'ledger-adjust-'.str()->uuid())->required(),
                     ])
                     ->action(function (array $data): void {
                         app(LedgerService::class)->adjust(self::actor(), User::query()->findOrFail((int) $data['owner_id']), (int) $data['delta'], (string) $data['reason'], (string) $data['idempotency_key']);
@@ -111,14 +111,14 @@ final class LedgerEntryResource extends Resource
             ])
             ->recordActions([
                 Action::make('inspect')
-                    ->label('Lihat mutasi')
+                    ->label('Lihat perubahan saldo')
                     ->icon(Heroicon::OutlinedEye)
-                    ->modalHeading('Lihat mutasi saldo')
+                    ->modalHeading('Lihat perubahan saldo')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Tutup')
                     ->schema([
                         Textarea::make('source')->label('Sumber transaksi')->disabled()->rows(4),
-                        Textarea::make('relationship')->label('Mutasi terkait')->disabled()->rows(3),
+                        Textarea::make('relationship')->label('Perubahan saldo terkait')->disabled()->rows(3),
                     ])
                     ->fillForm(fn (LedgerEntry $record): array => [
                         'source' => sprintf(
@@ -128,7 +128,7 @@ final class LedgerEntryResource extends Resource
                             $record->source_key,
                         ),
                         'relationship' => sprintf(
-                            'Mutasi terkait: %s\nSaldo setelah mutasi: Rp %s',
+                            'Perubahan saldo terkait: %s\nSaldo setelah mutasi: Rp %s',
                             $record->related_entry_id ?? 'Tidak ada',
                             number_format((int) $record->balance_after, 0, ',', '.'),
                         ),

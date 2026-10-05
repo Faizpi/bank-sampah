@@ -81,6 +81,12 @@ final class CustomerIdentification extends Component
         /** @var User|null $actor */
         $actor = auth()->user();
         abort_unless($actor instanceof User && $permissions->allows($actor, 'customer.view'), 403);
+        $requestedMobileServiceId = request()->integer('mobileServiceId');
+        $this->mobileServiceId = $requestedMobileServiceId > 0 ? $requestedMobileServiceId : null;
+        if ($this->mobileServiceId !== null && ! $this->identificationMobileService($actor) instanceof MobileService) {
+            $this->mobileServiceId = null;
+            $this->addError('mobileServiceId', 'Layanan keliling tidak aktif atau tidak ditugaskan kepada Anda. Pilih konteks lain.');
+        }
         $this->withdrawalDate = today('Asia/Jakarta')->addDay()->toDateString();
         $this->assistedWithdrawalIdempotencyKey = (string) str()->uuid();
     }
@@ -148,6 +154,16 @@ final class CustomerIdentification extends Component
 
     public function updatedMobileServiceId(): void
     {
+        $this->resetValidation('mobileServiceId');
+        if ($this->mobileServiceId !== null) {
+            /** @var User $actor */
+            $actor = auth()->user();
+            if (! $this->identificationMobileService($actor) instanceof MobileService) {
+                $this->mobileServiceId = null;
+                $this->addError('mobileServiceId', 'Layanan keliling tidak aktif atau tidak ditugaskan kepada Anda. Pilih konteks lain.');
+            }
+        }
+
         $this->resetCandidate();
     }
 
@@ -175,7 +191,7 @@ final class CustomerIdentification extends Component
         return $this->confirmMediaPickerUpload(
             'assistedEvidence',
             ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
-            ['assistedEvidence.required' => 'Bukti privat wajib diunggah.'],
+            ['assistedEvidence.required' => 'Bukti persetujuan wajib diunggah dan hanya dapat dilihat oleh pihak berwenang.'],
         );
     }
 
@@ -190,7 +206,7 @@ final class CustomerIdentification extends Component
         return $this->confirmMediaPickerUpload(
             'withdrawalEvidence',
             ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
-            ['withdrawalEvidence.required' => 'Bukti privat wajib diunggah.'],
+            ['withdrawalEvidence.required' => 'Bukti persetujuan wajib diunggah dan hanya dapat dilihat oleh pihak berwenang.'],
         );
     }
 
@@ -211,7 +227,7 @@ final class CustomerIdentification extends Component
             'assistedEvidence' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
         ], [
             'assistedConsent.accepted' => 'Persetujuan warga wajib dicatat.',
-            'assistedEvidence.required' => 'Bukti privat wajib diunggah.',
+            'assistedEvidence.required' => 'Bukti persetujuan wajib diunggah dan hanya dapat dilihat oleh pihak berwenang.',
         ]);
 
         /** @var User $actor */
@@ -242,7 +258,7 @@ final class CustomerIdentification extends Component
 
         $this->assistedRecorded = true;
         $this->selectedService = 'assisted';
-        session()->flash('success', 'Layanan berbantuan tercatat dengan persetujuan dan bukti privat.');
+        session()->flash('success', 'Layanan berbantuan tercatat dengan persetujuan dan bukti yang hanya dapat dilihat oleh pihak berwenang.');
     }
 
     public function handoff(AssistedCustomerServiceAction $service): void
@@ -277,7 +293,7 @@ final class CustomerIdentification extends Component
             'withdrawalDate' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
         ], [
             'withdrawalConsent.accepted' => 'Persetujuan warga wajib dicatat.',
-            'withdrawalEvidence.required_if' => 'Bukti privat wajib diunggah.',
+            'withdrawalEvidence.required_if' => 'Bukti persetujuan wajib diunggah dan hanya dapat dilihat oleh pihak berwenang.',
         ]);
 
         if ((int) $this->withdrawalAmount > $this->availableBalanceFor($this->candidate->userId)) {
@@ -335,7 +351,7 @@ final class CustomerIdentification extends Component
         $this->assistedWithdrawalId = $withdrawal->id;
         $this->selectedService = 'withdrawal';
         $this->withdrawalEvidence = null;
-        session()->flash('success', 'Pencairan berbantuan berhasil diajukan dengan consent dan bukti privat.');
+        session()->flash('success', 'Pencairan berbantuan berhasil diajukan dengan persetujuan dan bukti yang hanya dapat dilihat oleh pihak berwenang.');
     }
 
     public function render(PermissionChecker $permissions): View

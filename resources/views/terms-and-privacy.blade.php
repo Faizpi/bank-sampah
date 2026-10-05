@@ -30,9 +30,9 @@
                         <section aria-labelledby="terms-registration">
                             <h2 id="terms-registration" class="text-h2 text-deep-green">Pendaftaran dan penerimaan ketentuan</h2>
                             <ol class="mt-3 list-decimal space-y-2 pl-5">
-                                <li>Pendaftar wajib menyatakan persetujuan afirmatif terhadap Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0 saat mendaftar.</li>
-                                <li>Sistem menyimpan versi yang efektif dan waktu persetujuan yang dicatat server, serta mempertahankan riwayat penerimaan per pengguna dan versi.</li>
-                                <li>Penerimaan ketentuan bukan verifikasi domisili atau duplikasi, bukan aktivasi akun, bukan autentikasi, dan bukan login otomatis.</li>
+                                <li>Pendaftar wajib menyetujui Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0 saat membuat akun.</li>
+                                <li>Sistem menyimpan versi ketentuan, waktu persetujuan, serta riwayat persetujuan setiap pengguna.</li>
+                                <li>Menyetujui ketentuan tidak memverifikasi domisili, mencegah duplikasi akun, mengaktifkan akun, atau memasukkan Anda secara otomatis.</li>
                                 <li>Setelah pendaftaran valid, akun tetap berstatus menunggu verifikasi. Hanya keputusan verifikasi admin yang dapat mengaktifkan akun.</li>
                             </ol>
                         </section>
@@ -42,7 +42,7 @@
                         </section>
                         <section aria-labelledby="privacy-access">
                             <h2 id="privacy-access" class="text-h2 text-deep-green">Akses dan keterbukaan terbatas</h2>
-                            <p class="mt-3">Akses data diberikan menurut peran dan cakupan record. Halaman publik tidak membuka nama, alamat, telepon, saldo, foto privat, atau riwayat individu warga.</p>
+                            <p class="mt-3">Akses data ditentukan oleh peran dan data yang boleh diakses. Halaman publik tidak membuka nama, alamat, telepon, saldo, foto privat, atau riwayat individu warga.</p>
                         </section>
                         <section aria-labelledby="terms-changes">
                             <h2 id="terms-changes" class="text-h2 text-deep-green">Perubahan dokumen</h2>

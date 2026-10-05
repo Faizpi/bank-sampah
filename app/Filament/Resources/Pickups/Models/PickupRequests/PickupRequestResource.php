@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Pickups\Models\PickupRequests;
 
 use App\Domain\Pickups\Enums\PickupStatus;
-use App\Domain\Pickups\Exceptions\PickupCapacityUnavailable;
-use App\Domain\Pickups\Models\PickupCapacity;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Pickups\Services\PickupService;
 use App\Filament\Resources\Pickups\Models\PickupRequests\Pages\ManagePickupRequests;
@@ -21,7 +19,6 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -105,7 +102,6 @@ final class PickupRequestResource extends Resource
                     ->schema([
                         TextInput::make('customer')->label('Nasabah')->disabled(),
                         TextInput::make('area')->label('Area pelayanan')->disabled(),
-                        TextInput::make('capacity')->label('Kapasitas hari tersebut')->disabled(),
                         TextInput::make('status')->label('Status')->disabled(),
                         Textarea::make('items')->label('Jenis dan perkiraan')->disabled()->rows(5),
                         Textarea::make('notes')->label('Catatan akses')->disabled()->rows(3),
@@ -119,14 +115,8 @@ final class PickupRequestResource extends Resource
                     ->color('success')
                     ->visible(fn (PickupRequest $record): bool => $record->status->value === 'menunggu_pemeriksaan')
                     ->authorize('review')
-                    ->action(function (PickupRequest $record): ?PickupRequest {
-                        try {
-                            return app(PickupService::class)->review(self::actor(), $record, true);
-                        } catch (PickupCapacityUnavailable $exception) {
-                            self::notifyCapacityUnavailable($exception);
-
-                            return null;
-                        }
+                    ->action(function (PickupRequest $record): PickupRequest {
+                        return app(PickupService::class)->review(self::actor(), $record, true);
                     }),
                 Action::make('reject')
                     ->label('Tolak')
@@ -143,16 +133,10 @@ final class PickupRequestResource extends Resource
                     ->authorize('schedule')
                     ->schema([
                         Select::make('assigned_staff_id')->label('Petugas penjemputan')->helperText('Hanya petugas aktif pada area penjemputan ini yang dapat dipilih.')->options(fn (PickupRequest $record): array => User::query()->where('users.status', 'aktif')->whereHas('roles', fn (Builder $roles): Builder => $roles->where('roles.name', 'petugas'))->whereHas('staffProfile.serviceAreas', fn (Builder $assignment): Builder => $assignment->where('staff_service_areas.service_area_id', $record->service_area_id)->where(fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_from')->orWhereDate('staff_service_areas.active_from', '<=', today()))->where(fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_to')->orWhereDate('staff_service_areas.active_to', '>=', today()))->whereHas('serviceArea', fn (Builder $area): Builder => $area->where('service_areas.is_active', true)))->orderBy('users.name')->pluck('users.name', 'users.id')->all())->required(),
-                        DatePicker::make('scheduled_date')->label('Tanggal jadwal')->helperText('Pilih hari ini hingga batas horizon penjemputan, sesuai kapasitas aktif.')->minDate(today('Asia/Jakarta'))->maxDate(today('Asia/Jakarta')->addDays((int) config('app.pickup_booking_horizon_days', 30)))->required(),
+                        DatePicker::make('scheduled_date')->label('Tanggal jadwal')->helperText('Pilih tanggal mulai hari ini sampai batas waktu pemesanan.')->minDate(today('Asia/Jakarta'))->maxDate(today('Asia/Jakarta')->addDays((int) config('app.pickup_booking_horizon_days', 30)))->required(),
                     ])
-                    ->action(function (PickupRequest $record, array $data): ?PickupRequest {
-                        try {
-                            return app(PickupService::class)->schedule(self::actor(), $record, User::query()->findOrFail((int) $data['assigned_staff_id']), (string) $data['scheduled_date']);
-                        } catch (PickupCapacityUnavailable $exception) {
-                            self::notifyCapacityUnavailable($exception);
-
-                            return null;
-                        }
+                    ->action(function (PickupRequest $record, array $data): PickupRequest {
+                        return app(PickupService::class)->schedule(self::actor(), $record, User::query()->findOrFail((int) $data['assigned_staff_id']), (string) $data['scheduled_date']);
                     }),
             ]);
     }
@@ -178,12 +162,10 @@ final class PickupRequestResource extends Resource
     private static function inspectionData(PickupRequest $record): array
     {
         $record->loadMissing(['customer', 'serviceArea', 'items.wasteType', 'media', 'statusHistory']);
-        $capacity = PickupCapacity::query()->where('service_area_id', $record->service_area_id)->whereDate('service_date', ($record->scheduled_date ?? $record->selected_date)->toDateString())->where('is_active', true)->first();
 
         return [
             'customer' => data_get($record->customer, 'name', 'Nasabah'),
             'area' => data_get($record->serviceArea, 'name', 'Area tidak tersedia'),
-            'capacity' => $capacity === null ? 'Belum ada konfigurasi kapasitas.' : sprintf('%s alamat · %s kg', $capacity->max_addresses ?? 'tanpa batas alamat', WeightFormatter::format($capacity->max_weight_kg)),
             'status' => StatusLabel::for($record->status),
             'items' => $record->items->map(static fn ($item): string => sprintf('%s · %s kg · %s', data_get($item->wasteType, 'name', 'Jenis tidak tersedia'), WeightFormatter::format($item->estimated_weight_kg), $item->estimated_quantity === null ? 'jumlah —' : 'jumlah '.$item->estimated_quantity))->implode("\n"),
             'notes' => $record->notes ?? 'Tidak ada catatan akses.',
@@ -220,23 +202,6 @@ final class PickupRequestResource extends Resource
         })->implode('');
 
         return new HtmlString('<div class="flex flex-wrap gap-3">'.$thumbnails.'</div>');
-    }
-
-    private static function notifyCapacityUnavailable(PickupCapacityUnavailable $exception): void
-    {
-        $body = $exception->getMessage();
-        if ($exception->alternatives !== []) {
-            $body .= ' Alternatif: '.implode(', ', array_map(
-                static fn (string $date): string => CarbonImmutable::createFromFormat('!Y-m-d', $date, 'Asia/Jakarta')->locale('id')->translatedFormat('d F Y'),
-                $exception->alternatives,
-            )).'.';
-        }
-
-        Notification::make()
-            ->title('Kapasitas penjemputan tidak tersedia')
-            ->body($body)
-            ->danger()
-            ->send();
     }
 
     private static function actor(): User

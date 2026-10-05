@@ -260,8 +260,14 @@ final class ReportSemanticsTest extends TestCase
             ->assertSet('end', '2026-02-05');
 
         $component->assertSee('Unduh Excel')
+            ->assertSee('Memuat hasil laporan sesuai filter...')
             ->assertDontSee('CSV')
             ->assertDontSee('PDF');
+
+        $view = file_get_contents(resource_path('views/livewire/treasurer/reports.blade.php'));
+        self::assertIsString($view);
+        self::assertStringContainsString("@error('export')", $view);
+        self::assertStringContainsString('wire:loading.remove wire:target="refreshReport,setPeriod"', $view);
     }
 
     public function test_report_type_choices_are_limited_by_officer_role_without_an_all_transactions_choice(): void

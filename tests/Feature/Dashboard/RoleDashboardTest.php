@@ -8,6 +8,8 @@ use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
+use App\Domain\MobileServices\Enums\MobileServiceStatus;
+use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Http\Middleware\EnsureSessionIsFresh;
@@ -44,8 +46,6 @@ final class RoleDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Halo, Siti Aman!')
             ->assertSee('Belum ada saldo')
-            ->assertSee('Belum ada setoran')
-            ->assertSee('Setoran pertamamu akan muncul di sini.')
             ->assertSee('Navigasi warga')
             ->assertDontSee('Data Warga Lain');
     }
@@ -123,13 +123,61 @@ final class RoleDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Tugas hari ini')
             ->assertSee('Belum ada tugas hari ini')
-            ->assertSee('Saat ada tugas yang ditugaskan kepada Anda, tugas tersebut akan muncul di sini.')
             ->assertSee('Navigasi petugas')
             ->assertDontSee('Identifikasi Warga')
             ->assertDontSee('Tugas Sembako')
             ->assertDontSee('Jadwal Keliling')
             ->assertDontSee('Profil Akun')
             ->assertDontSee('Data Warga Lain');
+    }
+
+    public function test_officer_dashboard_promotes_an_open_assigned_mobile_service_to_focus_now(): void
+    {
+        $officer = User::factory()->create();
+        $otherOfficer = User::factory()->create();
+        $this->grant($officer, 'petugas', 'user.view', 'mobile-service.view', 'mobile-service.operate');
+        $this->grant($otherOfficer, 'petugas-lain', 'user.view', 'mobile-service.view', 'mobile-service.operate');
+
+        $assignedService = MobileService::query()->create([
+            'service_number' => 'MS-FOCUS-001',
+            'point' => 'Balai RW 02',
+            'starts_at' => now()->subMinutes(15),
+            'ends_at' => now()->addHour(),
+            'status' => MobileServiceStatus::Open,
+            'capacity' => 20,
+            'served_count' => 0,
+            'created_by' => $officer->id,
+        ]);
+        $assignedService->staff()->attach($officer);
+        $otherService = MobileService::query()->create([
+            'service_number' => 'MS-HIDDEN-002',
+            'point' => 'Data Wilayah Lain',
+            'starts_at' => now()->subMinutes(15),
+            'ends_at' => now()->addHour(),
+            'status' => MobileServiceStatus::Open,
+            'capacity' => 20,
+            'served_count' => 0,
+            'created_by' => $otherOfficer->id,
+        ]);
+        $otherService->staff()->attach($otherOfficer);
+
+        $this->actingAs($officer->fresh())
+            ->get(route('officer.dashboard'))
+            ->assertOk()
+            ->assertSee('Fokus sekarang')
+            ->assertSee('Layani titik keliling sekarang')
+            ->assertSee('Balai RW 02')
+            ->assertDontSee('Data Wilayah Lain');
+    }
+
+    public function test_officer_dashboard_rows_wrap_long_mobile_content_instead_of_truncating_it(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/officer/dashboard.blade.php'));
+
+        self::assertIsString($view);
+        self::assertStringContainsString('flex-col items-start gap-3', $view);
+        self::assertStringContainsString('break-words text-body-sm text-text-secondary', $view);
+        self::assertStringNotContainsString('block truncate text-body-sm', $view);
     }
 
     public function test_officer_dashboard_denies_an_authenticated_actor_without_user_view_permission(): void
@@ -153,7 +201,7 @@ final class RoleDashboardTest extends TestCase
             ->assertSee('Tugas hari ini')
             ->assertSee('Pencairan siap dibayar')
             ->assertSee('Belum ada pencairan siap dibayar')
-            ->assertSee('Pencairan yang disetujui dan siap dibayar akan muncul di sini.')
+            ->assertSee('Tidak ada pembayaran yang memerlukan tindakan Anda saat ini')
             ->assertSee('Navigasi bendahara')
             ->assertDontSee('Bayar pencairan')
             ->assertDontSee('Data Warga Lain');
@@ -162,6 +210,18 @@ final class RoleDashboardTest extends TestCase
         self::assertIsString($source);
         self::assertStringNotContainsString('::query(', $source);
         self::assertStringNotContainsString('DB::', $source);
+    }
+
+    public function test_treasurer_dashboard_places_payment_action_before_its_informational_total(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/treasurer/dashboard.blade.php'));
+
+        self::assertIsString($view);
+        $actionPosition = strpos($view, 'Mulai pembayaran');
+        $totalPosition = strpos($view, 'Total nominal dalam');
+        self::assertNotFalse($actionPosition);
+        self::assertNotFalse($totalPosition);
+        self::assertLessThan($totalPosition, $actionPosition);
     }
 
     public function test_treasurer_dashboard_denies_an_authenticated_actor_without_withdrawal_view_permission(): void

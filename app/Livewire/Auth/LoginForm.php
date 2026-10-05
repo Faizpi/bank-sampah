@@ -6,7 +6,7 @@ namespace App\Livewire\Auth;
 
 use App\Actions\Auth\AuthenticateUser;
 use App\Support\Auth\AuthenticatedUserRedirector;
-use App\Support\Auth\PhoneNumber;
+use App\Support\Auth\Username;
 use Database\Seeders\DeveloperUsersSeeder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\ValidationException;
@@ -16,12 +16,12 @@ use Livewire\Component;
 #[Layout('layouts.public')]
 final class LoginForm extends Component
 {
-    public string $phone = '';
+    public string $username = '';
 
     public string $password = '';
 
     /**
-     * @var array<string, array{label: string, phone: string}>|null
+     * @var array<string, array{label: string, username: string}>|null
      */
     public ?array $demoAccounts = null;
 
@@ -41,15 +41,15 @@ final class LoginForm extends Component
         $this->demoAccounts = [
             'warga' => [
                 'label' => 'Warga',
-                'phone' => DeveloperUsersSeeder::telephone('warga'),
+                'username' => DeveloperUsersSeeder::username('warga'),
             ],
             'petugas' => [
                 'label' => 'Petugas',
-                'phone' => DeveloperUsersSeeder::telephone('petugas'),
+                'username' => DeveloperUsersSeeder::username('petugas'),
             ],
             'bendahara' => [
                 'label' => 'Bendahara',
-                'phone' => DeveloperUsersSeeder::telephone('bendahara'),
+                'username' => DeveloperUsersSeeder::username('bendahara'),
             ],
         ];
     }
@@ -64,17 +64,17 @@ final class LoginForm extends Component
             return;
         }
 
-        $this->phone = $this->demoAccounts[$role]['phone'];
+        $this->username = $this->demoAccounts[$role]['username'];
         $this->password = DeveloperUsersSeeder::password();
     }
 
     public function login(AuthenticateUser $authenticateUser): void
     {
-        $this->phone = PhoneNumber::normalize($this->phone);
+        $this->username = Username::normalize($this->username);
 
         try {
             $validated = $this->validate();
-            $user = $authenticateUser->handle($validated['phone'], $validated['password'], request());
+            $user = $authenticateUser->handle($validated['username'], $validated['password'], request());
             $redirector = app(AuthenticatedUserRedirector::class);
             $intendedUrl = $redirector->authorizedIntendedUrl(app('redirect')->getIntendedUrl(), request(), $user);
 
@@ -97,7 +97,7 @@ final class LoginForm extends Component
     protected function rules(): array
     {
         return [
-            'phone' => ['required', 'string', 'regex:/^62[0-9]{8,16}$/'],
+            'username' => ['required', 'string', 'min:3', 'max:60', 'regex:/^[a-z0-9._-]+$/'],
             'password' => ['required', 'string'],
         ];
     }

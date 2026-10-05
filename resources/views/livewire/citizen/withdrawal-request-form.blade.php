@@ -64,7 +64,7 @@
                 :error="$errors->first('pickupDate')" />
             <x-ui.textarea wire:model="pickupLocation" label="Lokasi pengambilan" name="pickupLocation"
                 rows="3" class="md:col-span-2"
-                hint="Contoh: Rumah Ibu Siti, RT 03 RW 01"
+                hint="Contoh: Kantor Desa Sindangheula, RT 03 RW 01"
                 :error="$errors->first('pickupLocation')" />
         </div>
     </x-ui.panel>

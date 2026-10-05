@@ -2,6 +2,7 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 
 @source '../../../../app/Filament/**/*.php';
+@source '../../../../app/Providers/Filament/BackofficePanelProvider.php';
 @source '../../../../resources/views/filament/**/*.blade.php';
 @source '../../../../resources/views/components/ui/**/*.blade.php';
 @source '../../../../resources/views/livewire/treasurer/**/*.blade.php';

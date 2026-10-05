@@ -18,9 +18,9 @@ final class TechnicalHealthPage extends OperationsDashboard
 
     protected static ?int $navigationSort = 10;
 
-    protected static ?string $navigationLabel = 'Health';
+    protected static ?string $navigationLabel = 'Kondisi sistem';
 
-    protected static ?string $title = 'Health sistem';
+    protected static ?string $title = 'Kondisi sistem';
 
     protected string $view = 'filament.backoffice.technical-health';
 

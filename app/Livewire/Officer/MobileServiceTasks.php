@@ -10,6 +10,7 @@ use App\Domain\MobileServices\Services\MobileServiceService;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -22,7 +23,17 @@ final class MobileServiceTasks extends Component
     {
         $actor = $this->actor();
         $service = $this->assignedService($actor, $serviceId, true);
-        $services->transition($actor, $service, MobileServiceStatus::Open);
+
+        try {
+            $services->transition($actor, $service, MobileServiceStatus::Open);
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->first();
+            $this->addError('open.'.$serviceId, is_string($message) ? $message : 'Layanan belum dapat dibuka.');
+
+            return;
+        }
+
+        $this->resetErrorBag('open.'.$serviceId);
         session()->flash('success', 'Layanan keliling dibuka.');
     }
 

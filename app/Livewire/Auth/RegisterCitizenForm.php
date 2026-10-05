@@ -6,7 +6,7 @@ namespace App\Livewire\Auth;
 
 use App\Actions\Auth\RegisterCitizen;
 use App\Domain\CustomersRegions\Models\Rt;
-use App\Support\Auth\PhoneNumber;
+use App\Support\Auth\Username;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +17,8 @@ use Livewire\Component;
 final class RegisterCitizenForm extends Component
 {
     public string $name = '';
+
+    public string $username = '';
 
     public string $phone = '';
 
@@ -34,7 +36,8 @@ final class RegisterCitizenForm extends Component
 
     public function register(RegisterCitizen $registerCitizen): void
     {
-        $this->phone = PhoneNumber::normalize($this->phone);
+        $this->username = Username::normalize($this->username);
+        $this->phone = (trim($this->phone) === '') ? '' : $this->normalizeOptionalPhone($this->phone);
         $this->name = preg_replace('/\s+/u', ' ', trim($this->name)) ?? trim($this->name);
         $this->address = trim($this->address);
 
@@ -59,17 +62,24 @@ final class RegisterCitizenForm extends Component
     {
         return [
             'name' => ['required', 'string', 'min:2', 'max:120', 'regex:/\S/u', 'not_regex:/[\p{Cc}]/u'],
-            'phone' => [
-                'required',
-                'string',
-                'regex:/^62[0-9]{8,16}$/',
-                Rule::unique('users', 'phone'),
-            ],
-            'password' => ['required', 'string', 'min:10', 'confirmed'],
+            'username' => ['required', 'string', 'min:3', 'max:60', 'regex:/^[a-z0-9._-]+$/', Rule::unique('users', 'username')],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'phone' => ['nullable', 'string', 'regex:/^62[0-9]{8,16}$/', Rule::unique('users', 'phone')],
             'rt_id' => ['required', 'integer', Rule::exists('rt', 'id')],
             'address' => ['required', 'string', 'min:5', 'max:500', 'regex:/\S/u', 'not_regex:/[\p{Cc}]/u'],
             'terms_accepted' => ['accepted'],
         ];
+    }
+
+    private function normalizeOptionalPhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        if ($digits === '') {
+            return '';
+        }
+
+        return str_starts_with($digits, '0') ? '62'.substr($digits, 1) : $digits;
     }
 
     public function render(): View

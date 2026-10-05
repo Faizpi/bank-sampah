@@ -19,6 +19,7 @@ use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -65,7 +66,7 @@ final class RoleResource extends Resource
                     CheckboxList::make('permissions')
                         ->label('Izin')
                         ->options(fn (): array => Permission::query()->orderBy('name')->pluck('name', 'id')->all())
-                        ->columns(3)
+                        ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
                         ->columnSpanFull(),
                 ]),
         ]);
@@ -84,6 +85,7 @@ final class RoleResource extends Resource
             ->recordActions([
                 EditAction::make()
                     ->label('Ubah')
+                    ->modalWidth(Width::SevenExtraLarge)
                     ->fillForm(fn (Role $record): array => [
                         'permissions' => $record->permissions()->pluck('permissions.id')->all(),
                     ])

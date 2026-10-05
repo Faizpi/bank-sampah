@@ -104,7 +104,7 @@ final class DepositEvidenceTest extends TestCase
             ->assertHasNoErrors()
             ->assertSet('draft.id', $draft->id)
             ->assertSet('draft.status', Deposit::STATUS_FINAL)
-            ->assertSee('Setoran berhasil difinalisasi.')
+            ->assertSee('Setoran berhasil dicatat.')
             ->assertSee('Berhasil')
             ->assertSee($draft->fresh()->deposit_number)
             ->assertSee('Nilai')
@@ -223,6 +223,66 @@ final class DepositEvidenceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         app(DepositService::class)->createDraft($staff->fresh(), $customer->fresh(), 'langsung', null, $mobileService->fresh());
+    }
+
+    public function test_mobile_deposit_form_does_not_leak_another_officers_service_context(): void
+    {
+        [$owner, $customer, $type] = $this->context();
+        $otherOfficer = User::factory()->create();
+        $this->grant($owner, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view']);
+        $this->grant($otherOfficer, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view', 'user.view.all']);
+        $mobileService = $this->mobileService($owner, $type);
+
+        Livewire::actingAs($otherOfficer)
+            ->withQueryParams(['mobileServiceId' => $mobileService->id])
+            ->test(DepositForm::class, ['customerId' => $customer->id])
+            ->assertNotFound();
+    }
+
+    public function test_mobile_deposit_form_rejects_invalid_and_inactive_service_contexts(): void
+    {
+        [$staff, $customer, $type] = $this->context();
+        $this->grant($staff, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view', 'user.view.all']);
+
+        Livewire::actingAs($staff)
+            ->withQueryParams(['mobileServiceId' => 999999])
+            ->test(DepositForm::class, ['customerId' => $customer->id])
+            ->assertNotFound();
+
+        $mobileService = $this->mobileService($staff, $type);
+        $mobileService->forceFill(['status' => MobileServiceStatus::Closed])->save();
+
+        Livewire::actingAs($staff)
+            ->withQueryParams(['mobileServiceId' => $mobileService->id])
+            ->test(DepositForm::class, ['customerId' => $customer->id])
+            ->assertNotFound();
+    }
+
+    public function test_mobile_deposit_form_shows_context_and_only_supported_waste_types(): void
+    {
+        [$staff, $customer, $supportedType, $condition] = $this->context();
+        WasteMasterMutationGuard::run(static fn (): bool => $supportedType->category->forceFill(['is_active' => true])->save());
+        $unsupportedType = WasteType::factory()
+            ->for($supportedType->category, 'category')
+            ->for($supportedType->unit, 'unit')
+            ->create(['name' => 'Jenis Tidak Didukung', 'is_active' => true]);
+        WasteMasterMutationGuard::run(static fn (): array => $unsupportedType->conditions()->sync([$condition->id]));
+        $this->grant($staff, ['deposit.create', 'mobile-service.operate', 'customer.view', 'user.view']);
+        $mobileService = $this->mobileService($staff, $supportedType);
+
+        Livewire::actingAs($staff)
+            ->withQueryParams(['mobileServiceId' => $mobileService->id])
+            ->test(DepositForm::class, ['customerId' => $customer->id])
+            ->assertSee('Konteks setoran')
+            ->assertSee($customer->name)
+            ->assertSee($mobileService->point)
+            ->call('addItem')
+            ->assertSee($supportedType->name)
+            ->assertDontSee($unsupportedType->name)
+            ->set('items', [['waste_type_id' => '', 'condition_id' => '', 'weight_kg' => 'not-a-weight']])
+            ->call('reviewFinalization')
+            ->assertHasErrors(['items.0.waste_type_id', 'items.0.condition_id', 'items.0.weight_kg'])
+            ->assertSee('Jenis sampah wajib dipilih.');
     }
 
     public function test_deposit_form_requires_evidence_and_clears_it_after_successful_finalization(): void

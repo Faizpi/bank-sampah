@@ -253,7 +253,7 @@ final class WithdrawalWaveTest extends TestCase
 
         Livewire::actingAs($petugas)
             ->test(WithdrawalPayments::class)
-            ->assertSee('Pembayaran hanya untuk Bendahara atau petugas yang ditugaskan.');
+            ->assertSee('Pembayaran hanya dapat dilakukan oleh bendahara atau petugas yang ditugaskan.');
 
         $this->expectException(AuthorizationException::class);
         $service->pay($petugas, $withdrawal, 'kartu_nasabah', (string) $customer->customerProfile?->customer_number, UploadedFile::fake()->image('unassigned.png'), 'w6-role-boundary-payment-0001');
@@ -273,11 +273,15 @@ final class WithdrawalWaveTest extends TestCase
         Livewire::actingAs($payer)
             ->test(WithdrawalPayments::class)
             ->call('select', $withdrawal->id)
-            ->assertSee('Kartu dan nomor nasabah berbeda')
+            ->assertDontSee('Kartu dan nomor nasabah berbeda')
             ->assertSee('Kartu nasabah adalah media identitas fisik atau digital.')
             ->assertSee('Pindai QR kartu nasabah')
             ->assertSee('Ambil dari kamera')
             ->assertSee('Pilih dari galeri')
+            ->assertSee('Cari antrean')
+            ->assertSee('Paling lama menunggu')
+            ->assertSee('Nominal terbesar')
+            ->assertSeeHtml('wire:model.live.debounce.300ms="queueSearch"')
             ->assertSeeHtml('data-photo-picker-max="1"')
             ->assertSeeHtml('accept="image/*"')
             ->assertDontSeeHtml('application/pdf')
@@ -324,6 +328,18 @@ final class WithdrawalWaveTest extends TestCase
             ->assertSee($occurredAt);
     }
 
+    public function test_payment_view_keeps_mobile_content_and_actions_fluid(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/treasurer/withdrawal-payments.blade.php'));
+
+        self::assertIsString($view);
+        self::assertStringContainsString('flex flex-col items-stretch gap-4 sm:flex-row', $view);
+        self::assertStringContainsString('min-h-touch w-full items-center justify-center', $view);
+        self::assertStringContainsString('Saldo warga saat ini', $view);
+        self::assertStringContainsString('Dicek saat pembayaran', $view);
+        self::assertStringNotContainsString('Saldo tersedia sebelum bayar', $view);
+    }
+
     public function test_payment_card_scan_uses_camera_with_manual_fallback_and_cleanup(): void
     {
         $view = file_get_contents(resource_path('views/livewire/treasurer/withdrawal-payments.blade.php'));
@@ -333,7 +349,9 @@ final class WithdrawalWaveTest extends TestCase
         self::assertStringContainsString('navigator.mediaDevices?.getUserMedia', $view);
         self::assertStringContainsString('$wire.scanCustomerCard(rawValue)', $view);
         self::assertStringContainsString('stream?.getTracks().forEach((track) => track.stop())', $view);
-        self::assertStringContainsString('wire:model="scanToken"', $view);
+        self::assertStringContainsString('Gunakan nomor nasabah', $view);
+        self::assertStringContainsString("\$wire.set('recipientVerification', 'nomor_nasabah')", $view);
+        self::assertStringNotContainsString('wire:model="scanToken"', $view);
         self::assertStringContainsString('$wire.closeScanner()', $view);
     }
 
@@ -497,7 +515,9 @@ final class WithdrawalWaveTest extends TestCase
 
         Livewire::actingAs($customer)
             ->test(WithdrawalShow::class, ['withdrawal' => $secondPending])
-            ->assertSee('Batalkan pengajuan');
+            ->assertSee('Batalkan pengajuan')
+            ->call('cancel')
+            ->assertDispatched('close-dialog', id: 'cancel-withdrawal-dialog');
     }
 
     public function test_lane_d_cancel_and_expiry_release_hold_once_and_never_create_balance_out(): void
@@ -540,15 +560,14 @@ final class WithdrawalWaveTest extends TestCase
         $this->actingAs($other)->get(route('citizen.withdrawal.show', $paid))->assertNotFound();
         $this->actingAs($other)->get(route('withdrawal.proof', $paid->proofMedia))->assertNotFound();
         $this->actingAs($customer)->get(route('citizen.withdrawal.show', $paid))->assertOk()->assertSee($paid->request_number);
-        $proofUrl = route('withdrawal.proof', $paid->proofMedia);
         $this->actingAs($customer)->get(route('citizen.withdrawal.receipt', $paid))
             ->assertOk()
             ->assertSee('Pencairan berhasil')
             ->assertSee($paid->request_number)
             ->assertSee('Rp25.000')
             ->assertSee('Berhasil')
-            ->assertSeeHtml('<img src="'.$proofUrl.'" alt="Bukti pembayaran pencairan '.$paid->request_number.'" class="max-h-96 w-full object-contain" />')
-            ->assertSeeHtml('href="'.$proofUrl.'"')
+            ->assertSee('Cetak bukti')
+            ->assertDontSee(route('withdrawal.proof', $paid->proofMedia), false)
             ->assertDontSee('storage/')
             ->assertDontSee('Nomor bukti');
         $this->actingAs($customer)->get(route('withdrawal.proof', $paid->proofMedia))->assertOk();
@@ -580,7 +599,7 @@ final class WithdrawalWaveTest extends TestCase
         $this->actingAs($customer)->get(route('citizen.withdrawal.receipt', $paid))
             ->assertOk()
             ->assertDontSee('<img', false)
-            ->assertSeeHtml('href="'.route('withdrawal.proof', $proofMedia).'"');
+            ->assertDontSee(route('withdrawal.proof', $proofMedia), false);
     }
 
     public function test_paid_withdrawal_detail_exposes_the_receipt_action(): void

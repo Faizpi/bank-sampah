@@ -74,7 +74,8 @@ final class CustomerResource extends Resource
         return $schema->components([
             Section::make('Profil nasabah')->schema([
                 TextInput::make('name')->label('Nama')->required()->minLength(2)->maxLength(120),
-                TextInput::make('phone')->label('Nomor telepon')->required()->regex('/^62[0-9]{8,16}$/')->maxLength(20),
+                TextInput::make('username')->label('Username')->required()->minLength(3)->maxLength(60)->regex('/^[a-z0-9._-]+$/')->unique(table: 'users', column: 'username', ignoreRecord: true),
+                TextInput::make('phone')->label('Nomor telepon (opsional)')->nullable()->regex('/^62[0-9]{8,16}$/')->maxLength(20),
                 TextInput::make('email')->label('Email')->email()->nullable(),
                 Select::make('rt_id')->label('RT')->options(fn (): array => Rt::query()->where('is_active', true)->whereHas('rw', fn (Builder $rw): Builder => $rw->where('is_active', true)->whereHas('dusun', fn (Builder $dusun): Builder => $dusun->where('is_active', true)))->orderBy('name')->pluck('name', 'id')->all())->searchable()->preload()->required(),
                 Textarea::make('address')->label('Alamat')->required()->minLength(5)->maxLength(500)->rows(3),

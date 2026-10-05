@@ -47,6 +47,7 @@ final class IdentityManagementResourceTest extends TestCase
 
         $created = app(ManageUsers::class)->create($actor->fresh(), [
             'name' => 'Petugas Internal',
+            'username' => 'petugas.internal',
             'phone' => '6281234567890',
             'email' => 'petugas@example.test',
             'password' => 'rahasia-yang-kuat',
@@ -301,6 +302,7 @@ final class IdentityManagementResourceTest extends TestCase
 
         $created = app(ManageUsers::class)->create($actor->fresh(), [
             'name' => 'Konfirmasi Cocok',
+            'username' => 'konfirmasi.cocok',
             'phone' => '628123456789',
             'email' => 'cocok@example.test',
             'password' => 'Password12345',
@@ -315,6 +317,7 @@ final class IdentityManagementResourceTest extends TestCase
         try {
             app(ManageUsers::class)->create($actor->fresh(), [
                 'name' => 'Konfirmasi Salah',
+                'username' => 'konfirmasi.salah',
                 'phone' => '628123456780',
                 'email' => 'salah@example.test',
                 'password' => 'Password12345',
@@ -338,6 +341,7 @@ final class IdentityManagementResourceTest extends TestCase
 
         $created = app(ManageUsers::class)->create($actor->fresh(), [
             'name' => 'Pengguna Baru',
+            'username' => 'pengguna.baru',
             'phone' => '628123456789',
             'email' => 'baru@example.test',
             'password' => 'password-kuat-123',
@@ -351,6 +355,7 @@ final class IdentityManagementResourceTest extends TestCase
         $this->expectException(ValidationException::class);
         app(ManageUsers::class)->create($actor->fresh(), [
             'name' => 'Tanpa Peran',
+            'username' => 'tanpa.peran',
             'phone' => '628123456780',
             'email' => 'invalid-role@example.test',
             'password' => 'password-kuat-123',
@@ -485,6 +490,7 @@ final class IdentityManagementResourceTest extends TestCase
 
         app(ManageUsers::class)->update($actor->fresh(), $target->fresh(), [
             'name' => $target->name,
+            'username' => $target->username,
             'phone' => $target->phone,
             'email' => $target->email,
             'password' => 'kata-sandi-baru-yang-kuat',
@@ -510,6 +516,7 @@ final class IdentityManagementResourceTest extends TestCase
 
         $created = app(ManageUsers::class)->createCustomer($actor->fresh(), [
             'name' => 'Nasabah Area',
+            'username' => 'nasabah.area',
             'phone' => '628123456789',
             'email' => null,
             'rt_id' => $allowedRt->id,
@@ -520,6 +527,7 @@ final class IdentityManagementResourceTest extends TestCase
         $this->expectException(AuthorizationException::class);
         app(ManageUsers::class)->createCustomer($actor->fresh(), [
             'name' => 'Nasabah Luar Area',
+            'username' => 'nasabah.luar.area',
             'phone' => '628123456780',
             'email' => null,
             'rt_id' => $outsideRt->id,
@@ -545,6 +553,7 @@ final class IdentityManagementResourceTest extends TestCase
         $this->expectException(AuthorizationException::class);
         app(ManageUsers::class)->updateCustomer($actor->fresh(), $customer->fresh(), [
             'name' => $customer->name,
+            'username' => $customer->username,
             'phone' => $customer->phone,
             'email' => $customer->email,
             'rt_id' => $outsideRt->id,

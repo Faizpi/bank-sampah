@@ -14,6 +14,7 @@ Dokumen ini mencatat perubahan kontrak ruang lingkup. Entri bukan bukti rilis, U
 - FL-36 memvisualisasikan Health baca-saja dengan permission `system.maintenance`
 - Aturan target, hierarki wilayah serta kapasitas layanan keliling, dan validasi penjemputan tetap normatif
 - Bukti UAT historis dan klaim kesiapan production dihapus dari status aktif
+- Navigasi warga dipertegas menjadi `Beranda`, `Kartu Nasabah`, `Layanan`, `Riwayat`, `Akun`; `Riwayat` menaungi setoran, pencairan, dan sembako tanpa menduplikasi tujuan `Setoran`
 
 ### Preserved
 

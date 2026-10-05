@@ -25,6 +25,8 @@ final class DepositHistory extends Component
 
     public string $status = '';
 
+    public string $method = '';
+
     public string $dateFrom = '';
 
     public string $dateUntil = '';
@@ -37,6 +39,13 @@ final class DepositHistory extends Component
         Deposit::STATUS_REJECTED,
         Deposit::STATUS_CORRECTED,
         Deposit::STATUS_REVERSED,
+    ];
+
+    /** @var array<string, string> */
+    public array $methods = [
+        'langsung' => 'Setor langsung',
+        'penjemputan' => 'Penjemputan',
+        'keliling' => 'Bank Sampah Keliling',
     ];
 
     public function mount(PermissionChecker $permissions): void
@@ -52,6 +61,7 @@ final class DepositHistory extends Component
         return [
             'transactionNumber' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'string', Rule::in($this->statuses)],
+            'method' => ['nullable', 'string', Rule::in(array_keys($this->methods))],
             'dateFrom' => ['nullable', 'date'],
             'dateUntil' => ['nullable', 'date', 'after_or_equal:dateFrom'],
         ];
@@ -74,6 +84,7 @@ final class DepositHistory extends Component
             ->where('customer_id', $actor->id)
             ->when($filters['transactionNumber'], static fn (Builder $query, string $number) => $query->where('deposit_number', 'like', "%{$number}%"))
             ->when($filters['status'], static fn (Builder $query, string $status) => $query->where('status', $status))
+            ->when($filters['method'], static fn (Builder $query, string $method) => $query->where('method', $method))
             ->when($filters['dateFrom'], static fn (Builder $query, string $date) => $query->whereDate('occurred_at', '>=', $date))
             ->when($filters['dateUntil'], static fn (Builder $query, string $date) => $query->whereDate('occurred_at', '<=', $date))
             ->latest('occurred_at')

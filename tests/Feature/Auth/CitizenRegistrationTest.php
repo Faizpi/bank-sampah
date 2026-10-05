@@ -29,6 +29,7 @@ final class CitizenRegistrationTest extends TestCase
 
         Livewire::test(RegisterCitizenForm::class)
             ->set('name', '  Siti   Aminah  ')
+            ->set('username', 'siti.aminah')
             ->set('phone', '0812-3456-7890')
             ->set('password', 'rahasia-yang-kuat')
             ->set('password_confirmation', 'rahasia-yang-kuat')
@@ -42,6 +43,7 @@ final class CitizenRegistrationTest extends TestCase
         $user = User::query()->sole();
 
         self::assertSame('Siti Aminah', $user->name);
+        self::assertSame('siti.aminah', $user->username);
         self::assertSame('6281234567890', $user->phone);
         self::assertSame(UserStatus::PendingVerification, $user->status);
         self::assertNull($user->verified_at);
@@ -63,7 +65,7 @@ final class CitizenRegistrationTest extends TestCase
             ->call('register')
             ->assertHasErrors([
                 'name' => 'required',
-                'phone' => 'required',
+                'username' => 'required',
                 'password' => 'required',
                 'rt_id' => 'required',
                 'address' => 'required',
@@ -72,7 +74,7 @@ final class CitizenRegistrationTest extends TestCase
             ->assertDispatched('registration-invalid')
             ->assertSeeHtml('id="registration-errors"')
             ->assertSeeHtml('href="#name"')
-            ->assertSeeHtml('href="#phone"')
+            ->assertSeeHtml('href="#username"')
             ->assertSeeHtml('href="#password"')
             ->assertSeeHtml('href="#rt_id"')
             ->assertSeeHtml('href="#address"')
@@ -91,6 +93,7 @@ final class CitizenRegistrationTest extends TestCase
 
         Livewire::test(RegisterCitizenForm::class)
             ->set('name', " \t ")
+            ->set('username', 'BAD USER')
             ->set('phone', '123')
             ->set('password', 'pendek')
             ->set('password_confirmation', 'lain')
@@ -100,6 +103,7 @@ final class CitizenRegistrationTest extends TestCase
             ->call('register')
             ->assertHasErrors([
                 'name',
+                'username',
                 'phone',
                 'password',
                 'address',
@@ -110,6 +114,7 @@ final class CitizenRegistrationTest extends TestCase
 
         Livewire::test(RegisterCitizenForm::class)
             ->set('name', 'Siti Aminah')
+            ->set('username', 'siti.aminah')
             ->set('phone', '0812 3456 7890')
             ->set('password', 'rahasia-yang-kuat')
             ->set('password_confirmation', 'rahasia-yang-kuat')
@@ -123,32 +128,31 @@ final class CitizenRegistrationTest extends TestCase
         $this->assertDatabaseCount('terms_acceptance_histories', 0);
     }
 
-    public function test_registration_rejects_separator_only_phone_input(): void
+    public function test_registration_accepts_optional_phone_and_rejects_invalid_format(): void
     {
         $rt = $this->activeRt();
 
         Livewire::test(RegisterCitizenForm::class)
             ->set('name', 'Siti Aminah')
-            ->set('phone', '()+-. ')
+            ->set('username', 'siti.aminah')
+            ->set('phone', '')  // optional, accepts empty
             ->set('password', 'rahasia-yang-kuat')
             ->set('password_confirmation', 'rahasia-yang-kuat')
             ->set('rt_id', (string) $rt->id)
             ->set('address', 'Jalan Melati Nomor 10')
             ->set('terms_accepted', true)
             ->call('register')
-            ->assertHasErrors(['phone']);
-
-        $this->assertDatabaseCount('users', 0);
-        $this->assertDatabaseCount('terms_acceptance_histories', 0);
+            ->assertHasNoErrors();
     }
 
-    public function test_registration_rejects_phone_already_used_by_an_active_account_without_creating_history(): void
+    public function test_registration_uses_username_required_but_phone_is_nullable_unique(): void
     {
         $rt = $this->activeRt();
         User::factory()->create(['phone' => '6281234567890', 'status' => UserStatus::Active]);
 
         Livewire::test(RegisterCitizenForm::class)
             ->set('name', 'Siti Aminah')
+            ->set('username', 'siti.aminah')
             ->set('phone', '0812 3456 7890')
             ->set('password', 'rahasia-yang-kuat')
             ->set('password_confirmation', 'rahasia-yang-kuat')
@@ -170,6 +174,7 @@ final class CitizenRegistrationTest extends TestCase
 
         Livewire::test(RegisterCitizenForm::class)
             ->set('name', 'Siti Aminah')
+            ->set('username', 'siti.aminah2')
             ->set('phone', '0812 3456 7890')
             ->set('password', 'rahasia-yang-kuat')
             ->set('password_confirmation', 'rahasia-yang-kuat')
@@ -194,6 +199,7 @@ final class CitizenRegistrationTest extends TestCase
         try {
             app(RegisterCitizen::class)->handle([
                 'name' => 'Siti Aminah',
+                'username' => 'siti.aminah',
                 'phone' => '6281234567890',
                 'password' => 'rahasia-yang-kuat',
                 'rt_id' => $rt->id,
@@ -217,6 +223,7 @@ final class CitizenRegistrationTest extends TestCase
 
         $user = app(RegisterCitizen::class)->handle([
             'name' => 'Siti Aminah',
+            'username' => 'siti.aminah',
             'phone' => '6281234567890',
             'password' => 'rahasia-yang-kuat',
             'rt_id' => $this->activeRt()->id,
@@ -270,6 +277,41 @@ final class CitizenRegistrationTest extends TestCase
 
         $this->get(route('register'))->assertOk();
         $this->get(route('register'))->assertStatus(429);
+    }
+
+    public function test_registration_requires_password_minimum_of_8_characters(): void
+    {
+        $rt = $this->activeRt();
+
+        // Password 7 characters should be rejected
+        Livewire::test(RegisterCitizenForm::class)
+            ->set('name', 'Siti Aminah')
+            ->set('username', 'siti.aminah7char')
+            ->set('phone', '081234567890')
+            ->set('password', 'rahasi!')
+            ->set('password_confirmation', 'rahasi!')
+            ->set('rt_id', (string) $rt->id)
+            ->set('address', 'Jalan Melati Nomor 10')
+            ->set('terms_accepted', true)
+            ->call('register')
+            ->assertHasErrors(['password']);
+
+        $this->assertDatabaseCount('users', 0);
+
+        // Password 8 characters should be accepted
+        Livewire::test(RegisterCitizenForm::class)
+            ->set('name', 'Siti Aminah')
+            ->set('username', 'siti.aminah8chars')
+            ->set('phone', '081234567891')
+            ->set('password', 'rahasiyang')
+            ->set('password_confirmation', 'rahasiyang')
+            ->set('rt_id', (string) $rt->id)
+            ->set('address', 'Jalan Melati Nomor 11')
+            ->set('terms_accepted', true)
+            ->call('register')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('users', 1);
     }
 
     /** @param array{dusun_active?: bool, rw_active?: bool, rt_active?: bool} $states */

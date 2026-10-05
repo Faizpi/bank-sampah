@@ -9,7 +9,6 @@ use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Communication\Enums\AnnouncementAudience;
 use App\Domain\Communication\Enums\AnnouncementStatus;
 use App\Domain\Communication\Models\Announcement;
-use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -23,40 +22,36 @@ final readonly class AnnouncementService
 {
     public function __construct(private PermissionChecker $permissions, private AuditLogger $auditLogger) {}
 
-    /** @param list<int> $rtIds */
-    public function create(User $actor, string $title, string $body, string $audience, string $startsAt, ?string $endsAt, array $rtIds = [], int $priority = 0): Announcement
+    public function create(User $actor, string $title, string $body, string $startsAt, ?string $endsAt, int $priority = 0): Announcement
     {
         $this->authorize($actor, 'announcement.manage');
-        $clean = $this->validate($title, $body, $audience, $startsAt, $endsAt, $rtIds, $priority);
+        $clean = $this->validate($title, $body, $startsAt, $endsAt, $priority);
 
-        return DB::transaction(function () use ($actor, $clean, $rtIds): Announcement {
+        return DB::transaction(function () use ($actor, $clean): Announcement {
             $announcement = new Announcement;
             $announcement->forceFill(array_merge($clean, [
                 'announcement_number' => 'ANN-'.strtoupper(Str::random(18)),
                 'created_by' => $actor->id,
                 'status' => AnnouncementStatus::Draft,
             ]))->save();
-            $announcement->rts()->sync($rtIds);
             $this->auditLogger->record($actor, 'announcement.created', $announcement, [], $this->auditValues($announcement), $this->correlationId());
 
             return $announcement->fresh('rts');
         });
     }
 
-    /** @param list<int> $rtIds */
-    public function update(User $actor, Announcement $announcement, string $title, string $body, string $audience, string $startsAt, ?string $endsAt, array $rtIds = [], int $priority = 0): Announcement
+    public function update(User $actor, Announcement $announcement, string $title, string $body, string $startsAt, ?string $endsAt, int $priority = 0): Announcement
     {
         $this->authorize($actor, 'announcement.manage');
-        $clean = $this->validate($title, $body, $audience, $startsAt, $endsAt, $rtIds, $priority);
+        $clean = $this->validate($title, $body, $startsAt, $endsAt, $priority);
 
-        return DB::transaction(function () use ($actor, $announcement, $clean, $rtIds): Announcement {
+        return DB::transaction(function () use ($actor, $announcement, $clean): Announcement {
             $locked = Announcement::query()->whereKey($announcement->id)->lockForUpdate()->firstOrFail();
             if (! in_array($locked->status, [AnnouncementStatus::Draft, AnnouncementStatus::Inactive], true)) {
                 throw ValidationException::withMessages(['announcement' => 'Pengumuman terbit harus dinonaktifkan sebelum diubah.']);
             }
             $old = $this->auditValues($locked);
             $locked->forceFill($clean)->save();
-            $locked->rts()->sync($rtIds);
             $this->auditLogger->record($actor, 'announcement.updated', $locked, $old, $this->auditValues($locked), $this->correlationId());
 
             return $locked->fresh('rts');
@@ -93,6 +88,18 @@ final readonly class AnnouncementService
             $this->auditLogger->record($actor, 'announcement.unpublished', $locked, ['status' => AnnouncementStatus::Published->value], ['status' => AnnouncementStatus::Inactive->value], $this->correlationId());
 
             return $locked->fresh('rts');
+        });
+    }
+
+    public function delete(User $actor, Announcement $announcement): void
+    {
+        $this->authorize($actor, 'announcement.manage');
+
+        DB::transaction(function () use ($actor, $announcement): void {
+            $locked = Announcement::query()->whereKey($announcement->id)->lockForUpdate()->firstOrFail();
+            $old = $this->auditValues($locked);
+            $this->auditLogger->record($actor, 'announcement.deleted', $locked, $old, [], $this->correlationId());
+            $locked->delete();
         });
     }
 
@@ -137,15 +144,13 @@ final readonly class AnnouncementService
         return Announcement::query()->select(['id', 'announcement_number', 'title', 'body', 'publish_start', 'publish_end', 'priority'])->where('audience', AnnouncementAudience::Public)->where('status', AnnouncementStatus::Published)->where('publish_start', '<=', now())->where(static fn (Builder $query): Builder => $query->whereNull('publish_end')->orWhere('publish_end', '>', now()))->orderByDesc('priority')->orderByDesc('publish_start');
     }
 
-    /** @param list<int> $rtIds
-     * @return array{title: string, body: string, audience: string, publish_start: CarbonImmutable, publish_end: CarbonImmutable|null, priority: int}
-     */
-    private function validate(string $title, string $body, string $audience, string $startsAt, ?string $endsAt, array $rtIds, int $priority): array
+    /** @return array{title: string, body: string, audience: string, publish_start: CarbonImmutable, publish_end: CarbonImmutable|null, priority: int} */
+    private function validate(string $title, string $body, string $startsAt, ?string $endsAt, int $priority): array
     {
         $title = trim($title);
         $body = trim($body);
-        if (mb_strlen($title) < 3 || mb_strlen($title) > 160 || mb_strlen($body) < 3 || mb_strlen($body) > 10000 || ! in_array($audience, array_column(AnnouncementAudience::cases(), 'value'), true) || $priority < 0 || $priority > 1000) {
-            throw ValidationException::withMessages(['announcement' => 'Isi, audiens, periode, atau prioritas pengumuman tidak valid.']);
+        if (mb_strlen($title) < 3 || mb_strlen($title) > 160 || mb_strlen($body) < 3 || mb_strlen($body) > 10000 || $priority < 0 || $priority > 1000) {
+            throw ValidationException::withMessages(['announcement' => 'Isi, periode, atau prioritas pengumuman tidak valid.']);
         }
         $clean = preg_replace('/<([a-z][a-z0-9]*)\b[^>]*>/i', '<$1>', strip_tags($body, '<p><br><strong><em><ul><ol><li>')) ?? '';
         $start = CarbonImmutable::parse($startsAt, 'Asia/Jakarta');
@@ -153,17 +158,8 @@ final readonly class AnnouncementService
         if ($end !== null && $start >= $end) {
             throw ValidationException::withMessages(['publish_end' => 'Periode pengumuman harus berurutan.']);
         }
-        if ($audience !== AnnouncementAudience::Region->value && $rtIds !== []) {
-            throw ValidationException::withMessages(['rt_ids' => 'RT hanya dapat dipakai untuk audiens wilayah.']);
-        }
-        if ($audience === AnnouncementAudience::Region->value && $rtIds === []) {
-            throw ValidationException::withMessages(['rt_ids' => 'Audiens wilayah memerlukan minimal satu RT.']);
-        }
-        if ($rtIds !== [] && Rt::query()->whereIn('id', $rtIds)->where('is_active', true)->count() !== count(array_unique($rtIds))) {
-            throw ValidationException::withMessages(['rt_ids' => 'Wilayah pengumuman harus aktif.']);
-        }
 
-        return ['title' => $title, 'body' => $clean, 'audience' => $audience, 'publish_start' => $start, 'publish_end' => $end, 'priority' => $priority];
+        return ['title' => $title, 'body' => $clean, 'audience' => AnnouncementAudience::Public->value, 'publish_start' => $start, 'publish_end' => $end, 'priority' => $priority];
     }
 
     private function authorize(User $actor, string $permission): void

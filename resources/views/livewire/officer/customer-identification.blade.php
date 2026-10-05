@@ -36,8 +36,22 @@
         />
     </x-ui.panel>
 
+    @if ($mobileServices->isNotEmpty())
+        <x-ui.panel title="Pilih konteks setoran" description="Tentukan setoran langsung atau layanan keliling aktif sebelum memindai dan mencari warga.">
+            <x-ui.select name="mobileServiceId" label="Metode setoran" wire:model.live="mobileServiceId" :error="$errors->first('mobileServiceId')">
+                <option value="">Setoran langsung</option>
+                @foreach ($mobileServices as $mobileService)
+                    <option value="{{ $mobileService->id }}">Keliling · {{ $mobileService->point }} · {{ $mobileService->starts_at->format('d M H:i') }}</option>
+                @endforeach
+            </x-ui.select>
+            @error('mobileServiceId')
+                <p role="alert" class="mt-2 text-body-sm font-semibold text-terracotta">{{ $message }}</p>
+            @enderror
+        </x-ui.panel>
+    @endif
+
     @if ($scannerOpen)
-        <x-ui.panel title="Pindai QR nasabah" description="Arahkan kamera ke QR kartu nasabah. QR hanya berisi token acak; nama tetap harus dikonfirmasi." state="success">
+        <x-ui.panel title="Pindai QR nasabah" description="Arahkan kamera ke QR kartu nasabah. QR hanya digunakan untuk mengenali kartu nasabah; nama tetap harus dikonfirmasi." state="success">
             <div
                 x-data="{
                     stream: null,
@@ -110,24 +124,13 @@
             </div>
         </x-ui.panel>
     @else
-        <x-ui.panel title="Pindai dengan kamera" description="Gunakan kamera perangkat untuk membaca QR kartu nasabah. Token tidak ditampilkan di layar.">
+        <x-ui.panel title="Pindai dengan kamera" description="Gunakan kamera perangkat untuk membaca QR kartu nasabah. Kodenya tidak ditampilkan di layar.">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p class="text-body-sm text-text-secondary">Jika kamera tidak tersedia atau izin ditolak, gunakan nomor atau nama warga di bawah.</p>
+                <p class="text-body-sm text-text-secondary">Jika kamera tidak tersedia atau izinnya ditolak, cari warga menggunakan nomor atau nama di bawah.</p>
                 <div class="flex flex-col items-end">
                     <x-ui.button type="button" wire:click="openScanner">Buka Pemindai QR</x-ui.button>
                 </div>
             </div>
-        </x-ui.panel>
-    @endif
-
-    @if ($mobileServices->isNotEmpty())
-        <x-ui.panel title="Pilih konteks setoran" description="Pilih layanan keliling aktif sebelum memindai QR atau mencari nomor warga. Pilih setoran langsung untuk memakai cakupan area tugas biasa.">
-            <x-ui.select name="mobileServiceId" label="Metode setoran" wire:model.live="mobileServiceId">
-                <option value="">Setoran langsung</option>
-                @foreach ($mobileServices as $mobileService)
-                    <option value="{{ $mobileService->id }}">Keliling · {{ $mobileService->point }} · {{ $mobileService->starts_at->format('d M H:i') }}</option>
-                @endforeach
-            </x-ui.select>
         </x-ui.panel>
     @endif
 
@@ -143,7 +146,7 @@
                 :error="$errors->first('search')"
             />
             <p id="identification-help" class="text-body-sm text-text-secondary">
-                Data warga hanya tampil dalam cakupan tugas Anda.
+                Data warga hanya tampil dalam wilayah dan layanan yang menjadi tanggung jawab Anda.
             </p>
             <div class="flex flex-col items-end">
                 <x-ui.button type="submit" wire:loading.attr="disabled">
@@ -195,7 +198,7 @@
                             <p class="text-label font-bold text-deep-green">Layanan berbantuan</p>
                             <p class="mt-1 text-body-sm text-text-secondary">Catat layanan atas nama warga setelah persetujuan terpisah. Kata sandi tidak pernah diminta.</p>
                             @if ($assistedRecorded)
-                                <p role="status" class="mt-3 text-body-sm font-semibold text-forest-700">Layanan berbantuan tercatat dengan persetujuan dan bukti privat.</p>
+                                <p role="status" class="mt-3 text-body-sm font-semibold text-forest-700">Layanan berbantuan tercatat dengan persetujuan dan bukti yang hanya dapat dilihat oleh pihak berwenang.</p>
                                 @if ($assistedServiceId)
                                     <div class="mt-3 flex flex-col items-end">
                                         <button type="button" wire:click="handoff" wire:loading.attr="disabled" class="inline-flex min-h-touch items-center rounded-xl border-2 border-forest-600 px-5 text-label font-bold text-forest-700 transition hover:bg-success-bg">Serahkan Bukti dan Saldo</button>

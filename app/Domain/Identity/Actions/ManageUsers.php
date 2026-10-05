@@ -22,6 +22,7 @@ use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
 use App\Support\Auth\PhoneNumber;
+use App\Support\Auth\Username;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,7 @@ final readonly class ManageUsers
         private AuditLogger $auditLogger,
     ) {}
 
-    /** @param array{name: string, phone: string, email?: string|null, password: string, password_confirmation: string, role_id: int|string} $data */
+    /** @param array{name: string, username: string, phone?: string|null, email?: string|null, password: string, password_confirmation: string, role_id: int|string} $data */
     public function create(User $actor, array $data): User
     {
         Gate::forUser($actor)->authorize('create', User::class);
@@ -64,7 +65,7 @@ final readonly class ManageUsers
         });
     }
 
-    /** @param array{name: string, phone: string, email?: string|null} $data */
+    /** @param array{name: string, username: string, phone?: string|null, email?: string|null, rt_id?: int, address?: string} $data */
     public function createCustomer(User $actor, array $data): User
     {
         if (! $this->permissions->allows($actor, 'customer.create-assisted') && ! $this->permissions->allows($actor, 'user.create')) {
@@ -90,7 +91,7 @@ final readonly class ManageUsers
         });
     }
 
-    /** @param array{name: string, phone: string, email?: string|null} $data */
+    /** @param array{name: string, username: string, phone?: string|null, email?: string|null} $data */
     public function update(User $actor, User $subject, array $data): User
     {
         Gate::forUser($actor)->authorize('update', $subject);
@@ -106,7 +107,7 @@ final readonly class ManageUsers
         });
     }
 
-    /** @param array{name: string, phone: string, email?: string|null, rt_id?: int, address?: string} $data */
+    /** @param array{name: string, username: string, phone?: string|null, email?: string|null, rt_id?: int, address?: string} $data */
     public function updateCustomer(User $actor, User $subject, array $data): User
     {
         Gate::forUser($actor)->authorize('updateCustomer', $subject);
@@ -241,22 +242,31 @@ final readonly class ManageUsers
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array{name: string, phone: string, email?: string|null}
+     * @return array{name: string, username: string, phone: string|null, email?: string|null}
      */
     private function userAttributes(array $data): array
     {
         $name = trim((string) ($data['name'] ?? ''));
-        $phone = PhoneNumber::normalize((string) ($data['phone'] ?? ''));
+        $username = Username::normalize((string) ($data['username'] ?? ''));
+        $phone = isset($data['phone']) && is_string($data['phone']) && trim($data['phone']) !== ''
+            ? PhoneNumber::normalize($data['phone'])
+            : null;
         $email = isset($data['email']) ? trim((string) $data['email']) : null;
 
-        if (mb_strlen($name) < 2 || mb_strlen($name) > 120 || ! preg_match('/^62[0-9]{8,16}$/', $phone)) {
-            throw ValidationException::withMessages(['user' => 'Nama atau nomor telepon pengguna tidak valid.']);
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 120) {
+            throw ValidationException::withMessages(['user' => 'Nama pengguna tidak valid.']);
+        }
+        if (! Username::isValid($username)) {
+            throw ValidationException::withMessages(['user' => 'Username tidak valid. Gunakan huruf kecil, angka, titik, garis bawah, atau tanda hubung tanpa spasi.']);
+        }
+        if ($phone !== null && ! preg_match('/^62[0-9]{8,16}$/', $phone)) {
+            throw ValidationException::withMessages(['user' => 'Nomor telepon pengguna tidak valid.']);
         }
         if ($email !== null && $email !== '' && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw ValidationException::withMessages(['email' => 'Email pengguna tidak valid.']);
         }
 
-        return ['name' => $name, 'phone' => $phone, 'email' => $email === '' ? null : $email];
+        return ['name' => $name, 'username' => $username, 'phone' => $phone, 'email' => $email === '' ? null : $email];
     }
 
     /** @param array<string, mixed> $data */
@@ -264,8 +274,8 @@ final readonly class ManageUsers
     {
         $password = $data['password'] ?? null;
         $confirmation = $data['password_confirmation'] ?? null;
-        if (! is_string($password) || mb_strlen($password) < 10 || $password !== $confirmation) {
-            throw ValidationException::withMessages(['password' => 'Kata sandi minimal 10 karakter dan harus sama dengan konfirmasi.']);
+        if (! is_string($password) || mb_strlen($password) < 8 || $password !== $confirmation) {
+            throw ValidationException::withMessages(['password' => 'Kata sandi minimal 8 karakter dan harus sama dengan konfirmasi.']);
         }
 
         return $password;

@@ -25,7 +25,7 @@
                 href="{{ $item['href'] ?? '#' }}"
                 @if ($active) aria-current="page" @endif
                 @class([
-                    'inline-flex min-h-touch flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-caption transition duration-180 focus-visible:ring-2 focus-visible:ring-focus',
+                    'inline-flex min-h-touch min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-caption transition duration-180 focus-visible:ring-2 focus-visible:ring-focus sm:px-2',
                     'font-semibold text-forest-600' => $active,
                     'text-text-secondary hover:text-deep-green active:text-forest-600' => ! $active,
                 ])
@@ -46,7 +46,7 @@
                     </svg>
                     @if (! empty($item['badge']))<span aria-label="{{ $item['badge'] }} notifikasi" class="absolute -right-3 -top-2 min-w-5 rounded-sm bg-terracotta px-1 text-center text-caption text-white">{{ $item['badge'] }}</span>@endif
                 </span>
-                <span class="block w-full text-center leading-tight">{{ $item['label'] ?? '' }}</span>
+                <span class="block w-full break-words text-center leading-tight">{{ $item['label'] ?? '' }}</span>
             </a>
         @endforeach
     </div>

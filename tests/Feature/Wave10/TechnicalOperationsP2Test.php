@@ -7,6 +7,7 @@ use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\AuditReconciliation\Services\AuditRetentionService;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
+use App\Domain\Operations\Enums\BackupStatus;
 use App\Domain\Operations\Services\BackupArtifact;
 use App\Domain\Operations\Services\BackupArtifactPair;
 use App\Domain\Operations\Services\BackupLifecycleService;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -47,6 +49,41 @@ it('updates only allowlisted non-secret settings and audits the sanitized values
         ]);
 });
 
+it('maps each invalid technical setting only to its matching manual field', function (): void {
+    $actor = operationsP2User('system.settings.manage');
+    auth()->login($actor);
+    $page = app(OperationsDashboard::class);
+    $page->settings = [
+        'queue_backlog_threshold' => 0,
+        'backup_max_age_hours' => 48,
+    ];
+
+    try {
+        $page->saveSettings();
+        test()->fail('Expected invalid settings validation.');
+    } catch (ValidationException $exception) {
+        expect($exception->errors())
+            ->toHaveKey('settings.queue_backlog_threshold')
+            ->not->toHaveKey('settings.backup_max_age_hours')
+            ->and($exception->errors()['settings.queue_backlog_threshold'])
+            ->toBe(['Nilai pengaturan berada di luar batas.']);
+    }
+});
+
+it('maps technical dashboard backup validation errors to the manual field properties', function (): void {
+    $page = app(OperationsDashboard::class);
+    $method = new ReflectionMethod($page, 'positiveInteger');
+
+    try {
+        $method->invoke($page, '0', 'Ukuran basis data', 'backupDatabaseSizeBytes');
+        test()->fail('Expected invalid backup size validation.');
+    } catch (ReflectionException $exception) {
+        throw $exception;
+    } catch (ValidationException $exception) {
+        expect($exception->errors())->toHaveKey('backupDatabaseSizeBytes');
+    }
+});
+
 it('rejects secret-like or unknown settings without mutation or audit', function (): void {
     $actor = operationsP2User('system.settings.manage');
     $service = app(OperationalSettingsService::class);
@@ -69,6 +106,27 @@ it('exposes the technical dashboard only to users with a settled technical permi
     expect(OperationsDashboard::canAccess())->toBeFalse();
 });
 
+it('closes maintenance dialog only after a successful operation', function (): void {
+    $actor = operationsP2User('system.maintenance');
+
+    Livewire::actingAs($actor)
+        ->test(OperationsDashboard::class)
+        ->set('maintenanceReason', 'Pemeliharaan terjadwal untuk pembaruan aplikasi.')
+        ->call('toggleMaintenance')
+        ->assertDispatched('close-dialog', id: 'maintenance-dialog');
+});
+
+it('does not close maintenance dialog when validation fails', function (): void {
+    $actor = operationsP2User('system.maintenance');
+
+    Livewire::actingAs($actor)
+        ->test(OperationsDashboard::class)
+        ->set('maintenanceReason', '')
+        ->call('toggleMaintenance')
+        ->assertHasErrors('maintenanceReason')
+        ->assertNotDispatched('close-dialog');
+});
+
 it('fails closed for settings and maintenance without their technical permissions', function (): void {
     $actor = User::factory()->create();
 
@@ -76,6 +134,84 @@ it('fails closed for settings and maintenance without their technical permission
         ->toThrow(AuthorizationException::class);
     expect(fn () => app(OperationalSettingsService::class)->setMaintenance($actor, true, 'Scheduled migration'))
         ->toThrow(AuthorizationException::class);
+});
+
+it('dispatches close only after successful audit retention and keeps stale errors in the dialog', function (): void {
+    $actor = operationsP2User('audit.retention.execute');
+    $cutoff = now()->subDay()->toDateString();
+
+    Livewire::actingAs($actor)
+        ->test(OperationsDashboard::class)
+        ->set('retentionBefore', $cutoff)
+        ->call('executeRetention')
+        ->assertHasErrors('retentionBefore')
+        ->assertNotDispatched('close-dialog')
+        ->call('previewRetention')
+        ->call('executeRetention')
+        ->assertDispatched('close-dialog', id: 'audit-retention-dialog');
+});
+
+it('dispatches close only after successful media retention and keeps stale errors in the dialog', function (): void {
+    $actor = operationsP2User('media.retention.execute');
+    $cutoff = now()->subDays(180)->toDateString();
+
+    Livewire::actingAs($actor)
+        ->test(OperationsDashboard::class)
+        ->set('mediaRetentionBefore', $cutoff)
+        ->call('executeMediaRetention')
+        ->assertHasErrors('mediaRetentionBefore')
+        ->assertNotDispatched('close-dialog')
+        ->call('previewMediaRetention')
+        ->call('executeMediaRetention')
+        ->assertDispatched('close-dialog', id: 'media-retention-dialog');
+});
+
+it('dispatches close only after valid backup metadata is recorded', function (): void {
+    $actor = operationsP2User('backup.run');
+    $component = Livewire::actingAs($actor)->test(OperationsDashboard::class)
+        ->set('backupDatabaseAlias', 'db-2026-08-23')
+        ->set('backupMediaAlias', 'media-2026-08-23')
+        ->set('backupDatabaseSha256', str_repeat('a', 64))
+        ->set('backupMediaSha256', str_repeat('b', 64))
+        ->set('backupDatabaseSizeBytes', '0')
+        ->set('backupMediaSizeBytes', '200')
+        ->set('backupRetentionUntil', now()->addDay()->toDateTimeLocalString())
+        ->set('backupOperatorKey', 'operations-p2-modal-key');
+
+    $component->call('recordBackupMetadata')
+        ->assertHasErrors('backupDatabaseSizeBytes')
+        ->assertNotDispatched('close-dialog')
+        ->set('backupDatabaseSizeBytes', '100')
+        ->call('recordBackupMetadata')
+        ->assertDispatched('close-dialog', id: 'backup-metadata-dialog');
+});
+
+it('keeps invalid restore verification visible and dispatches close after success', function (): void {
+    $actor = operationsP2User('backup.run', 'backup.restore');
+    $backup = app(BackupLifecycleService::class)->request(new BackupRequest(
+        actor: $actor,
+        artifacts: new BackupArtifactPair(
+            database: new BackupArtifact('db-restore', str_repeat('c', 64), 100),
+            media: new BackupArtifact('media-restore', str_repeat('d', 64), 200),
+        ),
+        retentionUntil: CarbonImmutable::now()->addDay(),
+        operatorKey: 'operations-p2-restore-key',
+        correlationId: (string) Str::uuid(),
+    ));
+    $backup->forceFill(['status' => BackupStatus::Succeeded])->save();
+
+    Livewire::actingAs($actor)
+        ->test(OperationsDashboard::class)
+        ->set('restoreBackupId', (string) $backup->id)
+        ->set('restoreTargetAlias', 'verify-2026-08-23-modal')
+        ->set('restoreEvidenceReference', str_repeat('e', 43))
+        ->set('restoreResult', '')
+        ->call('recordRestoreVerification')
+        ->assertHasErrors('restoreResult')
+        ->assertNotDispatched('close-dialog')
+        ->set('restoreResult', 'passed')
+        ->call('recordRestoreVerification')
+        ->assertDispatched('close-dialog', id: 'restore-verification-dialog');
 });
 
 it('records backup metadata without claiming a real dump and exposes only safe metadata', function (): void {

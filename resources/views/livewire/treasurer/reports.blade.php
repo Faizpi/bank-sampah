@@ -4,13 +4,13 @@
 
 <section class="space-y-6" aria-labelledby="reports-title">
     {{-- Page Header --}}
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+    <div class="flex items-center gap-4 rounded-2xl border border-border bg-surface p-5 shadow-xs sm:gap-6 sm:p-6">
+        <div class="min-w-0 flex-1">
             <p class="text-label font-semibold text-forest-600">Laporan transaksi</p>
             <h1 id="reports-title" class="mt-1 text-h1 font-bold text-deep-green">Laporan {{ $reportTypes[$reportType] ?? 'Tidak diizinkan' }}</h1>
             <p class="mt-2 text-body text-text-secondary">Pilih periode, lihat ringkasan, lalu unduh Excel.</p>
         </div>
-        <x-ui.mascot variant="5" class="hidden h-20 w-auto sm:block" />
+        <div class="flex shrink-0 items-center justify-center"><x-ui.mascot variant="5" class="h-16 w-auto sm:h-24 md:h-28" /></div>
     </div>
 
     {{-- Metric Cards --}}
@@ -38,7 +38,7 @@
             <button type="button" wire:click="setPeriod('today')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'today' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Hari ini</button>
             <button type="button" wire:click="setPeriod('week')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'week' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Minggu ini</button>
             <button type="button" wire:click="setPeriod('month')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'month' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Per bulan</button>
-            <button type="button" wire:click="setPeriod('custom')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'custom' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Tanggal custom</button>
+            <button type="button" wire:click="setPeriod('custom')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'custom' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Rentang tanggal</button>
         </div>
         <form wire:submit="refreshReport" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filter laporan">
             <x-ui.select wire:model="reportType" name="reportType" label="Jenis laporan" :options="$reportTypes" />
@@ -59,27 +59,44 @@
             <x-ui.input wire:model="search" name="search" label="Nomor transaksi" placeholder="Contoh: STR-2026-001" />
             <x-ui.button type="submit" wire:loading.attr="disabled" class="justify-self-end lg:self-end">
                 <span wire:loading.remove>Terapkan</span>
-                <span wire:loading>Memuat...</span>
+                <span wire:loading>Menerapkan...</span>
             </x-ui.button>
         </form>
     </x-ui.panel>
 
     {{-- Export --}}
     <x-ui.panel title="Ekspor Excel" description="Unduh data sesuai filter aktif untuk disimpan atau dibagikan secara internal.">
+        @error('export')
+            <div role="alert" class="mb-4 rounded-md border border-terracotta bg-danger-bg p-4 text-body-sm text-text-primary">
+                <p class="font-semibold text-deep-green">Ekspor tidak dapat dibuat</p>
+                <p class="mt-1">{{ $message }}</p>
+            </div>
+        @enderror
         <div class="flex justify-end">
-            <x-ui.button wire:click="export" type="button" wire:loading.attr="disabled" class="min-w-[10.5rem] whitespace-nowrap px-5">
+            <x-ui.button wire:click="export" type="button" wire:loading.attr="disabled" wire:target="export" class="min-w-[10.5rem] whitespace-nowrap px-5">
                 <span wire:loading.remove wire:target="export" class="inline-flex w-full flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
                     <svg viewBox="0 0 24 24" class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 3v12m0 0 5-5m-5 5-5-5M5 19h14a2 2 0 0 0 2-2v-2M5 19a2 2 0 0 1-2-2v-2" />
                     </svg>
                     <span class="whitespace-nowrap">Unduh Excel</span>
                 </span>
-                <span wire:loading wire:target="export" class="inline-flex w-full flex-nowrap items-center justify-center whitespace-nowrap">Menyiapkan...</span>
+                <span wire:loading wire:target="export" class="inline-flex w-full flex-nowrap items-center justify-center whitespace-nowrap">Mengekspor...</span>
             </x-ui.button>
         </div>
     </x-ui.panel>
 
-    <x-ui.panel title="Hasil laporan" description="Data hanya dapat dilihat dan mengikuti cakupan akses serta filter yang dipilih.">
+    <x-ui.panel title="Hasil laporan" description="Data yang tampil mengikuti hak akses dan filter yang dipilih.">
+        <p wire:loading wire:target="refreshReport,setPeriod" role="status" aria-live="polite" class="mb-4 text-body-sm font-semibold text-text-secondary">Memuat hasil laporan sesuai filter...</p>
+        <div wire:loading wire:target="refreshReport,setPeriod" class="grid gap-3" aria-hidden="true">
+            @for ($item = 0; $item < 3; $item++)
+                <div class="rounded-md border border-border bg-warm-canvas p-4">
+                    <div class="h-5 w-40 rounded-md bg-disabled-bg"></div>
+                    <div class="mt-3 h-4 w-64 max-w-full rounded-md bg-disabled-bg"></div>
+                    <div class="mt-2 h-4 w-48 max-w-full rounded-md bg-disabled-bg"></div>
+                </div>
+            @endfor
+        </div>
+        <div wire:loading.remove wire:target="refreshReport,setPeriod">
         <div class="grid gap-3 md:hidden">
             @forelse ($rows as $row)
                 @php($isWeight = $row['value_format'] === 'weight')
@@ -144,6 +161,7 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
         </div>
     </x-ui.panel>
 </section>

@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Citizen;
 
-use App\Domain\Pickups\Exceptions\PickupCapacityUnavailable;
 use App\Domain\Pickups\Services\PickupService;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Livewire\Concerns\InteractsWithMediaPicker;
 use App\Models\User;
-use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -33,9 +30,6 @@ final class PickupRequestForm extends Component
 
     public string $serviceAreaId = '';
 
-    /** @var list<string> */
-    public array $availableDates = [];
-
     /** @var list<array{waste_type_id: string, estimated_weight_kg: string, estimated_quantity: string}> */
     public array $items = [];
 
@@ -52,9 +46,8 @@ final class PickupRequestForm extends Component
         $this->items = [['waste_type_id' => '', 'estimated_weight_kg' => '', 'estimated_quantity' => '']];
     }
 
-    public function updatedServiceAreaId(PickupService $service): void
+    public function updatedServiceAreaId(): void
     {
-        $this->refreshAvailableDates($service);
         $this->resetErrorBag('selectedDate');
     }
 
@@ -103,12 +96,8 @@ final class PickupRequestForm extends Component
         return array_map(static fn (UploadedFile $photo): array => self::mediaPickerMetadata($photo), $this->photos);
     }
 
-    public function nextStep(PickupService $service): void
+    public function nextStep(): void
     {
-        if ($this->step === 1) {
-            $this->refreshAvailableDates($service, false);
-        }
-
         $valid = match ($this->step) {
             1 => $this->validateStep($this->locationRules()),
             2 => $this->validateStep($this->itemRules()),
@@ -138,12 +127,6 @@ final class PickupRequestForm extends Component
             return;
         }
 
-        $this->refreshAvailableDates($service, false);
-        if ($this->getErrorBag()->has('serviceAreaId')) {
-            $this->dispatch('focus-pickup-errors');
-
-            return;
-        }
         if (! $this->validateStep([...$this->locationRules(), ...$this->itemRules()])) {
             return;
         }
@@ -157,17 +140,6 @@ final class PickupRequestForm extends Component
                 'selected_date' => $this->selectedDate,
                 'notes' => $this->notes,
             ], $this->items, $this->photos, $this->idempotencyKey);
-        } catch (PickupCapacityUnavailable $exception) {
-            $this->refreshAvailableDates($service, false);
-            $alternatives = array_values(array_intersect($exception->alternatives, $this->availableDates));
-            $message = 'Tanggal pilihan baru saja tidak tersedia. Pilih tanggal lain yang tersedia.';
-            if ($alternatives !== []) {
-                $message .= ' Alternatif: '.implode(', ', array_map(static fn (string $date): string => CarbonImmutable::parse($date, 'Asia/Jakarta')->locale('id')->translatedFormat('d F Y'), $alternatives)).'.';
-            }
-            $this->addError('selectedDate', $message);
-            $this->dispatch('focus-pickup-errors');
-
-            return;
         } catch (ValidationException $exception) {
             $errors = $exception->validator->errors();
             if ($errors->has('service_area_id')) {
@@ -199,32 +171,18 @@ final class PickupRequestForm extends Component
     {
         return [
             'serviceAreaId' => ['required', 'integer', 'min:1'],
-            'selectedDate' => ['required', 'date_format:Y-m-d', Rule::in($this->availableDates)],
+            'selectedDate' => ['required', 'date_format:Y-m-d', 'after_or_equal:today', 'before_or_equal:'.$this->preferredDateLimit()],
             'address' => ['required', 'string', 'min:5', 'max:500'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
-    private function refreshAvailableDates(PickupService $service, bool $selectFirst = true): void
+    private function preferredDateLimit(): string
     {
-        /** @var User $actor */
-        $actor = auth()->user();
-        $area = $service->activeAreaFor($actor, $this->serviceAreaId);
-        $estimatedWeight = collect($this->items)->sum(static fn (array $item): float => (float) $item['estimated_weight_kg']);
-        $this->availableDates = $area === null ? [] : $service->alternatives($area, today('Asia/Jakarta')->toDateString(), 14, $estimatedWeight > 0 ? number_format($estimatedWeight, 3, '.', '') : null);
-
-        if ($this->serviceAreaId !== '' && $area === null) {
-            $this->addError('serviceAreaId', 'Alamat berada di luar area pelayanan aktif.');
-        } else {
-            $this->resetErrorBag('serviceAreaId');
-        }
-
-        if (! in_array($this->selectedDate, $this->availableDates, true)) {
-            $this->selectedDate = $selectFirst ? ($this->availableDates[0] ?? '') : $this->selectedDate;
-        }
+        return today('Asia/Jakarta')->addDays((int) config('app.pickup_booking_horizon_days', 30))->toDateString();
     }
 
-    /** @return array<string, array<int, string|Rule>> */
+    /** @return array<string, array<int, string>> */
     private function itemRules(): array
     {
         return [

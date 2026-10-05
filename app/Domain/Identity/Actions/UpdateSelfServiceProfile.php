@@ -93,14 +93,15 @@ final readonly class UpdateSelfServiceProfile
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array{name: string, phone: string, address?: string}
+     * @return array{name: string, phone: string|null, address?: string}
      */
     private function normalize(array $data): array
     {
         $name = preg_replace('/\s+/u', ' ', trim($this->stringValue($data['name'] ?? null))) ?? trim($this->stringValue($data['name'] ?? null));
+        $rawPhone = trim($this->stringValue($data['phone'] ?? null));
         $normalized = [
             'name' => $name,
-            'phone' => PhoneNumber::normalize($this->stringValue($data['phone'] ?? null)),
+            'phone' => $rawPhone === '' ? null : PhoneNumber::normalize($rawPhone),
         ];
 
         if (array_key_exists('address', $data)) {
@@ -111,19 +112,19 @@ final readonly class UpdateSelfServiceProfile
     }
 
     /**
-     * @param  array{name: string, phone: string}  $data
-     * @return array{name: string, phone: string}
+     * @param  array{name: string, phone: string|null}  $data
+     * @return array{name: string, phone: string|null}
      */
     private function validatedUserAttributes(User $actor, array $data): array
     {
         $validated = Validator::make($data, [
             'name' => ['required', 'string', 'min:2', 'max:120', 'regex:/\S/u', 'not_regex:/[\p{Cc}]/u'],
-            'phone' => ['required', 'string', 'regex:/^62[0-9]{8,16}$/', Rule::unique('users', 'phone')->ignore($actor->getKey())],
+            'phone' => ['nullable', 'string', 'regex:/^62[0-9]{8,16}$/', Rule::unique('users', 'phone')->ignore($actor->getKey())],
         ])->validate();
 
         return [
             'name' => (string) $validated['name'],
-            'phone' => (string) $validated['phone'],
+            'phone' => is_string($validated['phone'] ?? null) && $validated['phone'] !== '' ? (string) $validated['phone'] : null,
         ];
     }
 

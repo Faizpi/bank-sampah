@@ -18,8 +18,6 @@ use App\Domain\Notifications\Data\NotificationPayload;
 use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Notifications\Support\NotificationDedupeKey;
 use App\Domain\Pickups\Enums\PickupStatus;
-use App\Domain\Pickups\Exceptions\PickupCapacityUnavailable;
-use App\Domain\Pickups\Models\PickupCapacity;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Platform\Actions\StorePrivateMedia;
 use App\Domain\Platform\Models\Media;
@@ -44,14 +42,6 @@ final readonly class PickupService
     private const IDEMPOTENCY_COMPLETE_SCOPE = 'pickup.complete';
 
     /** @var list<string> */
-    private const RESERVING_STATUSES = [
-        'menunggu_pemeriksaan',
-        'diterima',
-        'dijadwalkan',
-        'menuju_lokasi',
-        'dijemput',
-    ];
-
     public function __construct(
         private PermissionChecker $permissions,
         private StorePrivateMedia $mediaStore,
@@ -99,7 +89,7 @@ final readonly class PickupService
                     'status' => 'processing',
                 ]);
 
-                $this->lockAndAssertCapacity($area, $selectedDate, $estimatedWeight, null);
+                // No capacity check: citizens can submit for any valid date.
                 $pickup = PickupRequest::query()->create([
                     'request_number' => $this->number('PUP'),
                     'customer_id' => $customer->id,
@@ -149,55 +139,6 @@ final readonly class PickupService
         }
     }
 
-    public function setCapacity(User $actor, ServiceArea $area, string $date, ?int $maxAddresses, ?string $maxWeightKg, ?string $vehicleLabel = null, ?PickupCapacity $current = null): PickupCapacity
-    {
-        $this->authorize($actor, 'pickup.capacity.manage');
-        if (! $area->is_active) {
-            throw ValidationException::withMessages(['service_area_id' => 'Area pelayanan tidak aktif.']);
-        }
-        if (($maxAddresses ?? 0) < 0 || ($maxWeightKg !== null && $maxWeightKg !== '' && ! $this->isNonNegativeWeight($maxWeightKg))) {
-            throw ValidationException::withMessages(['capacity' => 'Batas kapasitas tidak valid.']);
-        }
-        $serviceDate = $this->businessDate($date);
-        if ($maxAddresses === null && ($maxWeightKg === null || $maxWeightKg === '')) {
-            throw ValidationException::withMessages(['capacity' => 'Minimal satu batas kapasitas harus diisi.']);
-        }
-
-        return DB::transaction(function () use ($actor, $area, $serviceDate, $maxAddresses, $maxWeightKg, $vehicleLabel, $current): PickupCapacity {
-            $lockedCurrent = $current === null
-                ? null
-                : PickupCapacity::query()->whereKey($current->id)->lockForUpdate()->firstOrFail();
-            $capacity = PickupCapacity::query()->lockForUpdate()->updateOrCreate(
-                ['service_area_id' => $area->id, 'service_date' => $serviceDate->toDateString()],
-                [
-                    'max_addresses' => $maxAddresses,
-                    'max_weight_kg' => $maxWeightKg === '' ? null : $maxWeightKg,
-                    'vehicle_label' => $this->optionalText($vehicleLabel, 'vehicle_label', 120),
-                    'is_active' => true,
-                ],
-            );
-            if ($lockedCurrent !== null && $lockedCurrent->id !== $capacity->id) {
-                $lockedCurrent->forceFill(['is_active' => false])->save();
-                $this->auditLogger->record($actor, 'pickup.capacity.replaced', $lockedCurrent, [
-                    'service_area_id' => $lockedCurrent->service_area_id,
-                    'service_date' => $lockedCurrent->service_date->toDateString(),
-                    'is_active' => true,
-                ], [
-                    'is_active' => false,
-                    'replacement_id' => $capacity->id,
-                ], $this->correlationId());
-            }
-            $this->auditLogger->record($actor, 'pickup.capacity.updated', $capacity, [], [
-                'service_area_id' => $area->id,
-                'service_date' => $serviceDate->toDateString(),
-                'max_addresses' => $maxAddresses,
-                'max_weight_kg' => $maxWeightKg,
-            ], $this->correlationId());
-
-            return $capacity->fresh();
-        });
-    }
-
     /** @return Builder<ServiceArea> */
     public function eligibleAreasFor(User $customer): Builder
     {
@@ -220,39 +161,6 @@ final readonly class PickupService
             : null;
     }
 
-    /** @return list<string> */
-    public function alternatives(ServiceArea $area, string $date, int $limit = 3, ?string $estimatedWeight = null): array
-    {
-        return $this->findAlternatives($area, CarbonImmutable::createFromFormat('!Y-m-d', $date, 'Asia/Jakarta'), $limit, $estimatedWeight);
-    }
-
-    /** @return list<string> */
-    private function findAlternatives(ServiceArea $area, CarbonImmutable $start, int $limit = 3, ?string $estimatedWeight = null): array
-    {
-        $alternatives = [];
-        $horizonDays = (int) config('app.pickup_booking_horizon_days', 30);
-        for ($offset = 0; $offset <= $horizonDays && count($alternatives) < $limit; $offset++) {
-            $candidate = $start->addDays($offset);
-            $capacity = PickupCapacity::query()->where('service_area_id', $area->id)->whereDate('service_date', $candidate->toDateString())->where('is_active', true)->first();
-            if ($capacity === null) {
-                continue;
-            }
-            $reserved = PickupRequest::query()->where('service_area_id', $area->id)->whereIn('status', self::RESERVING_STATUSES)->where(function (Builder $query) use ($candidate): void {
-                $query->whereDate('selected_date', $candidate->toDateString())->whereNull('scheduled_date')->orWhereDate('scheduled_date', $candidate->toDateString());
-            })->get();
-            if ($capacity->max_addresses !== null && $reserved->count() >= $capacity->max_addresses) {
-                continue;
-            }
-            $weightGrams = $reserved->sum(static fn (PickupRequest $request): int => $request->estimated_weight_kg === null ? 0 : Weight::fromDecimal((string) $request->estimated_weight_kg)->grams());
-            if ($capacity->max_weight_kg !== null && $estimatedWeight !== null && ($weightGrams + Weight::fromDecimal($estimatedWeight)->grams()) > Weight::fromDecimal((string) $capacity->max_weight_kg)->grams()) {
-                continue;
-            }
-            $alternatives[] = $candidate->toDateString();
-        }
-
-        return $alternatives;
-    }
-
     public function review(User $actor, PickupRequest $pickup, bool $accept, ?string $reason = null): PickupRequest
     {
         $this->authorize($actor, 'pickup.review');
@@ -261,7 +169,6 @@ final readonly class PickupService
             return DB::transaction(function () use ($actor, $pickup): PickupRequest {
                 $locked = $this->lockPickup($pickup);
                 $this->assertTransition($locked, PickupStatus::Accepted);
-                $this->lockAndAssertCapacity($locked->serviceArea()->firstOrFail(), $locked->selected_date, $locked->estimated_weight_kg, $locked->id);
                 $oldStatus = $locked->status;
                 $locked->forceFill(['status' => PickupStatus::Accepted, 'accepted_at' => now()])->save();
                 $this->recordStatus($locked, $actor, $oldStatus, PickupStatus::Accepted, 'Pengajuan diterima.');
@@ -297,10 +204,6 @@ final readonly class PickupService
         return DB::transaction(function () use ($actor, $pickup, $staff, $scheduledDate): PickupRequest {
             $locked = $this->lockPickup($pickup);
             $this->assertTransition($locked, PickupStatus::Scheduled);
-            $oldDate = $locked->scheduled_date ?? $locked->selected_date;
-            if ($oldDate->toDateString() !== $scheduledDate->toDateString()) {
-                $this->lockAndAssertCapacity($locked->serviceArea()->firstOrFail(), $scheduledDate, $locked->estimated_weight_kg, $locked->id);
-            }
             $oldStatus = $locked->status;
             $locked->forceFill([
                 'status' => PickupStatus::Scheduled,
@@ -551,6 +454,8 @@ final readonly class PickupService
             $typeId = $item['waste_type_id'] ?? null;
             $weight = $item['estimated_weight_kg'] ?? ($item['weight_kg'] ?? null);
             $quantity = $item['estimated_quantity'] ?? ($item['quantity'] ?? null);
+            $weight = $weight === '' ? null : $weight;
+            $quantity = $quantity === '' ? null : $quantity;
             if (! is_numeric($typeId) || (int) $typeId < 1 || (isset($weight) && (! is_string($weight) || ! $this->isPositiveWeight($weight))) || (isset($quantity) && (! is_numeric($quantity) || (int) $quantity < 1))) {
                 throw ValidationException::withMessages(["items.{$index}" => 'Jenis dan perkiraan harus valid.']);
             }
@@ -602,27 +507,6 @@ final readonly class PickupService
         if ($evidence === null && ! $pickup->media()->exists()) {
             throw ValidationException::withMessages(['evidence' => 'Tambahkan bukti foto penjemputan melalui kamera atau galeri sebelum menyelesaikan tugas.']);
         }
-    }
-
-    private function lockAndAssertCapacity(ServiceArea $area, CarbonImmutable $date, ?string $estimatedWeight, ?int $excludePickupId): PickupCapacity
-    {
-        $capacity = PickupCapacity::query()->where('service_area_id', $area->id)->whereDate('service_date', $date->toDateString())->where('is_active', true)->lockForUpdate()->first();
-        if ($capacity === null) {
-            throw new PickupCapacityUnavailable('Tanggal layanan tidak tersedia.', $this->findAlternatives($area, $date, estimatedWeight: $estimatedWeight));
-        }
-        $reserved = PickupRequest::query()->where('service_area_id', $area->id)->whereIn('status', self::RESERVING_STATUSES)->where(function (Builder $query) use ($date): void {
-            $query->whereDate('selected_date', $date->toDateString())->whereNull('scheduled_date')->orWhereDate('scheduled_date', $date->toDateString());
-        })->when($excludePickupId !== null, fn (Builder $query): Builder => $query->where('pickup_requests.id', '<>', $excludePickupId))->get();
-        $addressCount = $reserved->count();
-        $weightGrams = $reserved->sum(static fn (PickupRequest $request): int => $request->estimated_weight_kg === null ? 0 : Weight::fromDecimal((string) $request->estimated_weight_kg)->grams());
-        if ($capacity->max_addresses !== null && $addressCount >= $capacity->max_addresses) {
-            throw new PickupCapacityUnavailable('Kapasitas alamat untuk tanggal tersebut penuh.', $this->findAlternatives($area, $date, estimatedWeight: $estimatedWeight));
-        }
-        if ($capacity->max_weight_kg !== null && $estimatedWeight !== null && ($weightGrams + Weight::fromDecimal($estimatedWeight)->grams()) > Weight::fromDecimal((string) $capacity->max_weight_kg)->grams()) {
-            throw new PickupCapacityUnavailable('Kapasitas berat untuk tanggal tersebut penuh.', $this->findAlternatives($area, $date, estimatedWeight: $estimatedWeight));
-        }
-
-        return $capacity;
     }
 
     private function transition(User $actor, PickupRequest $pickup, PickupStatus $next, ?string $reason = null, bool $assignedOnly = false): PickupRequest

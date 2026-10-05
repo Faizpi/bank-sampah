@@ -2,26 +2,26 @@
     <section class="backoffice-page-intro" aria-labelledby="reconciliation-title">
         <p class="text-sm font-semibold text-forest-700">Pengawasan keuangan</p>
         <h2 id="reconciliation-title" class="mt-1 text-2xl font-bold text-deep-green">Rekonsiliasi saldo harian</h2>
-        <p class="mt-3 max-w-3xl text-base leading-7 text-text-secondary">Bandingkan catatan transaksi sistem dengan saldo tersedia dan kas pencairan fisik sebelum penutupan hari kerja.</p>
+        <p class="mt-3 max-w-3xl text-base leading-7 text-text-secondary">Bandingkan transaksi, saldo tersedia, dan kas pencairan sebelum penutupan hari kerja.</p>
     </section>
 
     @if (session('reconciliation-success'))
         <div class="mt-6 rounded-xl border border-success-200 bg-success-50 px-5 py-4 text-base font-medium leading-6 text-success-800" role="status">{{ session('reconciliation-success') }}</div>
     @endif
 
-    <details class="group mt-6 rounded-xl border border-primary-100 bg-primary-50 p-5 sm:p-6">
+    <details class="group mt-6 w-full min-w-0 rounded-xl border border-primary-100 bg-primary-50 p-5 sm:p-6">
         <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 rounded-md text-lg font-bold text-primary-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">
             <span>Cara melakukan rekonsiliasi</span>
             <svg data-disclosure-chevron viewBox="0 0 24 24" class="size-5 shrink-0 text-primary-700 transition-transform group-open:rotate-180 motion-reduce:transition-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </summary>
-        <ol class="mt-5 grid gap-5 text-base leading-7 text-primary-950 sm:grid-cols-3">
+        <ol class="mt-5 grid min-w-0 gap-5 text-base leading-7 text-primary-950 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))]">
             <li class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3">
                 <span aria-hidden="true" class="flex size-8 items-center justify-center rounded-sm bg-surface text-sm font-bold text-primary-800">1</span>
-                <div><p class="font-bold">Buat snapshot</p><p class="mt-1 text-sm leading-6">Pilih tanggal bisnis. Isi kas pencairan bila uang fisik sudah dihitung.</p></div>
+                <div><p class="font-bold">Simpan kondisi saldo</p><p class="mt-1 text-sm leading-6">Pilih tanggal bisnis. Isi kas pencairan bila uang fisik sudah dihitung.</p></div>
             </li>
             <li class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3">
                 <span aria-hidden="true" class="flex size-8 items-center justify-center rounded-sm bg-surface text-sm font-bold text-primary-800">2</span>
-                <div><p class="font-bold">Periksa pembanding</p><p class="mt-1 text-sm leading-6">Pastikan setoran, pencairan, sembako, kas, dan saldo tersedia semuanya berstatus sesuai.</p></div>
+                <div><p class="font-bold">Periksa pembanding</p><p class="mt-1 text-sm leading-6">Pastikan setoran, pencairan, penukaran sembako, kas, dan saldo tersedia semuanya sesuai.</p></div>
             </li>
             <li class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3">
                 <span aria-hidden="true" class="flex size-8 items-center justify-center rounded-sm bg-surface text-sm font-bold text-primary-800">3</span>
@@ -31,13 +31,13 @@
     </details>
 
     @if ($canCreate)
-        <section class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-7" aria-labelledby="snapshot-title">
+        <section class="mt-6 w-full min-w-0 rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-7" aria-labelledby="snapshot-title">
             <div class="max-w-3xl">
-                <h2 id="snapshot-title" class="text-xl font-bold text-gray-950">Buat snapshot harian</h2>
-                <p class="mt-2 text-base leading-7 text-gray-600">Snapshot menyimpan kondisi saat ini sebagai versi baru. Riwayat sebelumnya tetap utuh dan tidak dapat ditimpa.</p>
+                <h2 id="snapshot-title" class="text-xl font-bold text-gray-950">Simpan kondisi saldo harian</h2>
+                <p class="mt-2 text-base leading-7 text-gray-600">Catatan ini menyimpan kondisi saldo saat dibuat. Riwayat sebelumnya tetap tersimpan dan tidak dapat diubah.</p>
             </div>
 
-            <form wire:submit="createSnapshot" class="mt-7 grid max-w-3xl gap-x-6 gap-y-6 sm:grid-cols-2">
+            <form wire:submit="createSnapshot" class="mt-7 grid w-full min-w-0 gap-x-6 gap-y-6 sm:grid-cols-2">
                 <label class="block text-base font-semibold leading-6 text-gray-800">
                     <span>Tanggal bisnis</span>
                     <input wire:model="businessDate" type="date" class="mt-2 backoffice-form-control">
@@ -59,13 +59,15 @@
                 </label>
 
                 <div class="sm:col-span-2">
-                    <button type="submit" class="inline-flex min-h-11 items-center rounded-lg bg-primary-700 px-5 text-base font-semibold text-white transition hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" wire:loading.attr="disabled" wire:target="createSnapshot">Buat snapshot</button>
+                    <button type="submit" class="inline-flex min-h-11 items-center rounded-lg bg-primary-700 px-5 text-base font-semibold text-white transition hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" wire:loading.attr="disabled" wire:target="createSnapshot">Simpan kondisi saldo</button>
                 </div>
             </form>
         </section>
     @endif
 
-    <section class="mt-8" aria-labelledby="history-title">
+    <p id="reconciliation-comparison-help" class="mt-8 text-sm leading-6 text-gray-600">Gunakan tombol Tab untuk memfokuskan setiap tabel. Geser secara horizontal untuk melihat seluruh kolom pembanding.</p>
+
+    <section class="mt-4" aria-labelledby="history-title">
         <div class="max-w-3xl">
             <h2 id="history-title" class="text-xl font-bold text-gray-950">Riwayat rekonsiliasi</h2>
             <p class="mt-2 text-base leading-7 text-gray-600">Hanya snapshot dengan seluruh pembanding sesuai yang dapat diajukan dan disetujui.</p>
@@ -73,7 +75,7 @@
 
         <div class="mt-5 space-y-5">
             @forelse ($reconciliations as $reconciliation)
-                <article class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
+                <article class="w-full min-w-0 rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div class="min-w-0">
                             <h3 class="text-lg font-bold text-gray-950">{{ $reconciliation->business_date->format('d M Y') }} <span class="font-medium text-gray-500">· Versi {{ $reconciliation->version }}</span></h3>
@@ -88,8 +90,9 @@
                         ])>{{ ucfirst(str_replace('_', ' ', $reconciliation->status)) }}</span>
                     </div>
 
-                    <div class="mt-6 overflow-x-auto rounded-lg border border-gray-200" role="region" aria-label="Rincian pembanding rekonsiliasi {{ $reconciliation->business_date->format('d M Y') }}">
+                    <div class="mt-6 overflow-x-auto rounded-lg border border-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2" role="region" aria-label="Rincian pembanding rekonsiliasi {{ $reconciliation->business_date->format('d M Y') }}" aria-describedby="reconciliation-comparison-help reconciliation-comparison-caption-{{ $reconciliation->id }}" tabindex="0">
                         <table class="min-w-[46rem] w-full text-left text-sm">
+                            <caption id="reconciliation-comparison-caption-{{ $reconciliation->id }}" class="sr-only">Rincian pembanding rekonsiliasi tanggal {{ $reconciliation->business_date->format('d M Y') }}, versi {{ $reconciliation->version }}.</caption>
                             <thead class="bg-warm-canvas text-xs font-bold uppercase tracking-wide text-gray-600">
                                 <tr>
                                     <th scope="col" class="px-4 py-3">Pembanding</th>
@@ -148,24 +151,25 @@
                     @endif
                 </article>
             @empty
-                <div class="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-base leading-7 text-gray-600">Belum ada snapshot. Buat rekonsiliasi untuk menutup pemeriksaan saldo harian.</div>
+                <div class="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-base leading-7 text-gray-600">Belum ada catatan kondisi saldo. Buat pemeriksaan untuk menutup rekonsiliasi hari ini.</div>
             @endforelse
         </div>
     </section>
 
-    <nav class="mt-8 overflow-x-auto border-b border-gray-200" aria-label="Bagian rekonsiliasi">
+    <p id="reconciliation-navigation-help" class="mt-8 text-sm leading-6 text-gray-600">Gunakan tombol Tab untuk memfokuskan navigasi, lalu geser secara horizontal bila seluruh bagian belum terlihat.</p>
+    <nav class="mt-2 overflow-x-auto border-b border-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2" aria-label="Bagian rekonsiliasi" aria-describedby="reconciliation-navigation-help" tabindex="0">
         <div class="flex min-w-max gap-6">
             @if ($canReviewDeposits)
-                <a href="{{ \App\Filament\Resources\Deposits\Models\Deposits\DepositResource::getUrl('index') }}" class="inline-flex min-h-12 items-center border-b-2 border-transparent px-1 text-sm font-semibold text-gray-700 hover:border-primary-500 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">Koreksi setoran</a>
+                <a href="{{ \App\Filament\Resources\Deposits\Models\Deposits\DepositResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.deposits.models.deposits.*'), 'border-transparent text-gray-700 hover:border-primary-500 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.deposits.models.deposits.*')]) @if (request()->routeIs('filament.backoffice.resources.deposits.models.deposits.*')) aria-current="page" @endif>Koreksi setoran</a>
             @endif
             @if ($canViewLedger)
-                <a href="{{ \App\Filament\Resources\Ledger\Models\LedgerEntries\LedgerEntryResource::getUrl('index') }}" class="inline-flex min-h-12 items-center border-b-2 border-transparent px-1 text-sm font-semibold text-gray-700 hover:border-primary-500 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">Mutasi saldo</a>
+                <a href="{{ \App\Filament\Resources\Ledger\Models\LedgerEntries\LedgerEntryResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.ledger.models.ledger-entries.*'), 'border-transparent text-gray-700 hover:border-primary-500 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.ledger.models.ledger-entries.*')]) @if (request()->routeIs('filament.backoffice.resources.ledger.models.ledger-entries.*')) aria-current="page" @endif>Perubahan saldo</a>
             @endif
             @if ($canViewHolds)
-                <a href="{{ \App\Filament\Resources\Ledger\Models\BalanceHolds\BalanceHoldResource::getUrl('index') }}" class="inline-flex min-h-12 items-center border-b-2 border-transparent px-1 text-sm font-semibold text-gray-700 hover:border-primary-500 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">Dana ditahan</a>
+                <a href="{{ \App\Filament\Resources\Ledger\Models\BalanceHolds\BalanceHoldResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.ledger.models.balance-holds.*'), 'border-transparent text-gray-700 hover:border-primary-500 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.ledger.models.balance-holds.*')]) @if (request()->routeIs('filament.backoffice.resources.ledger.models.balance-holds.*')) aria-current="page" @endif>Dana ditahan</a>
             @endif
             @if ($canViewAudit)
-                <a href="{{ \App\Filament\Resources\AuditReconciliation\Models\AuditLogs\AuditLogResource::getUrl('index') }}" class="inline-flex min-h-12 items-center border-b-2 border-transparent px-1 text-sm font-semibold text-gray-700 hover:border-primary-500 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">Audit log</a>
+                <a href="{{ \App\Filament\Resources\AuditReconciliation\Models\AuditLogs\AuditLogResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.audit-reconciliation.models.audit-logs.*'), 'border-transparent text-gray-700 hover:border-primary-500 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.audit-reconciliation.models.audit-logs.*')]) @if (request()->routeIs('filament.backoffice.resources.audit-reconciliation.models.audit-logs.*')) aria-current="page" @endif>Audit log</a>
             @endif
         </div>
     </nav>
