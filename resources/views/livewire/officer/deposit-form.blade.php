@@ -111,7 +111,7 @@
                          wire:model.live="items.{{ $index }}.condition_id"
                         :error="$errors->first('items.'.$index.'.condition_id')">
                         <option value="">Pilih kondisi</option>
-                        @foreach ($conditions as $condition)
+                        @foreach ($conditionsByType->get((int) $item['waste_type_id'], collect()) as $condition)
                             <option value="{{ $condition->id }}">{{ $condition->name }}</option>
                         @endforeach
                     </x-ui.select>

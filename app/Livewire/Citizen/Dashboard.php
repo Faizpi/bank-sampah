@@ -15,6 +15,7 @@ use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
+use App\Support\Auth\AuthenticatedUserRedirector;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -22,12 +23,18 @@ use Livewire\Component;
 #[Layout('layouts.citizen')]
 final class Dashboard extends Component
 {
-    public function mount(PermissionChecker $permissions): void
+    public function mount(PermissionChecker $permissions, AuthenticatedUserRedirector $redirector): void
     {
         /** @var User|null $actor */
         $actor = auth()->user();
 
         abort_unless($actor instanceof User && $permissions->allows($actor, 'profile.view'), 403);
+
+        if ($actor->hasRole('admin', 'superadmin', 'petugas', 'bendahara') && ! $actor->hasRole('warga')) {
+            $this->redirect($redirector->dashboardUrl($actor), navigate: true);
+
+            return;
+        }
     }
 
     public function render(): View

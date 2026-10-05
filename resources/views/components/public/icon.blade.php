@@ -39,6 +39,9 @@
         'scale'         => 'scale',
         'target'        => 'target',
         'truck'         => 'truck',
+        'video'         => 'video',
+        'play'          => 'play',
+        'external-link' => 'external-link',
         'x'             => 'x',
     ];
     $resolvedName = $icons[$name] ?? 'circle-alert';
@@ -150,6 +153,15 @@
             @break
         @case('truck')
             <path d="M10 17h4V5H2v12h3M14 9h4l4 4v4h-2M5 17a2 2 0 1 0 4 0M16 17a2 2 0 1 0 4 0"/>
+            @break
+        @case('video')
+            <path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/>
+            @break
+        @case('play')
+            <polygon points="6 3 20 12 6 21 6 3"/>
+            @break
+        @case('external-link')
+            <path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
             @break
         @case('x')
             <path d="M18 6 6 18M6 6l12 12"/>

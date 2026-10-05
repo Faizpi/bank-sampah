@@ -100,7 +100,7 @@
             <div class="grid gap-4">
                 @foreach ($actualItems as $index => $item)
                     <div wire:key="actual-item-{{ $index }}" class="grid gap-3 rounded-xl border border-border bg-warm-canvas p-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
-                        <x-ui.select wire:model="actualItems.{{ $index }}.waste_type_id"
+                        <x-ui.select wire:model.live="actualItems.{{ $index }}.waste_type_id"
                             label="Jenis sampah" name="actualItems.{{ $index }}.waste_type_id"
                             placeholder="Pilih jenis sampah"
                             :error="$errors->first('actualItems.'.$index.'.waste_type_id')"
@@ -109,7 +109,7 @@
                             label="Kondisi" name="actualItems.{{ $index }}.condition_id"
                             placeholder="Pilih kondisi"
                             :error="$errors->first('actualItems.'.$index.'.condition_id')"
-                            :options="$conditions->pluck('name', 'id')->all()" />
+                            :options="$conditionsByType->get((int) $item['waste_type_id'], collect())->pluck('name', 'id')->all()" />
                         <x-ui.input wire:model="actualItems.{{ $index }}.weight_kg"
                             label="Berat aktual (kg)" name="actualItems.{{ $index }}.weight_kg"
                             inputmode="decimal" :error="$errors->first('actualItems.'.$index.'.weight_kg')" />

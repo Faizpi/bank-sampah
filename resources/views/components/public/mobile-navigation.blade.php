@@ -6,6 +6,7 @@
     $isAnnouncements = request()->routeIs('public.announcements');
     $isPrograms = request()->routeIs('public.programs');
     $isTerms = request()->routeIs('terms-and-privacy');
+    $isTutorials = request()->routeIs('public.tutorials');
     $isRegister = request()->routeIs('register');
     $isLogin = request()->routeIs('login');
     $activeItemClasses = 'rounded-md bg-success-bg font-bold text-deep-green shadow-xs';
@@ -76,6 +77,12 @@
                     <a href="{{ route('public.programs') }}" x-on:click="closeModal()" class="flex min-h-touch items-center gap-3 py-3 pl-3 {{ $isPrograms ? $activeItemClasses : $inactiveItemClasses }}" @if ($isPrograms) aria-current="page" @endif>
                         <x-public.icon name="circle-check" />
                         Target dan statistik
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('public.tutorials') }}" x-on:click="closeModal()" class="flex min-h-touch items-center gap-3 py-3 pl-3 {{ $isTutorials ? $activeItemClasses : $inactiveItemClasses }}" @if ($isTutorials) aria-current="page" @endif>
+                        <x-public.icon name="video" />
+                        Tutorial penggunaan
                     </a>
                 </li>
                 <li>

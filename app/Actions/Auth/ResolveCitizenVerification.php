@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Domain\AuditReconciliation\Services\AuditLogger;
+use App\Domain\CustomersRegions\Contracts\QrToken;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\CustomerProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -65,6 +67,31 @@ final readonly class ResolveCitizenVerification
                 ];
 
             $lockedSubject->forceFill($attributes)->save();
+
+            if ($decision === 'verify') {
+                $profile = $lockedSubject->customerProfile;
+                if ($profile instanceof CustomerProfile) {
+                    $profileUpdates = [];
+                    if ($profile->customer_number === null || $profile->customer_number === '') {
+                        do {
+                            $number = 'CST-'.str_pad((string) random_int(1, 99_999_999), 8, '0', STR_PAD_LEFT);
+                        } while (CustomerProfile::query()->where('customer_number', $number)->exists());
+                        $profileUpdates['customer_number'] = $number;
+                    }
+                    if ($profile->qr_token_hash === null || $profile->qr_token_encrypted === null) {
+                        $token = QrToken::generate();
+                        $profileUpdates['qr_token_hash'] = $token->hash();
+                        $profileUpdates['qr_token_encrypted'] = $token->value();
+                        $profileUpdates['qr_rotated_at'] = now();
+                    }
+                    if ($profile->joined_at === null) {
+                        $profileUpdates['joined_at'] = today();
+                    }
+                    if ($profileUpdates !== []) {
+                        $profile->forceFill($profileUpdates)->save();
+                    }
+                }
+            }
 
             $this->auditLogger->record(
                 $actor,

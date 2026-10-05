@@ -64,6 +64,40 @@ final readonly class AuthenticatedUserRedirector
             return null;
         }
 
+        $routeName = $route->getName();
+        $disallowedRouteNames = [
+            'citizen.dashboard',
+            'officer.dashboard',
+            'treasurer.dashboard',
+            'filament.backoffice.home',
+            'home',
+            'login',
+            'register',
+            'terms-and-privacy',
+        ];
+
+        if ($routeName !== null && in_array($routeName, $disallowedRouteNames, true)) {
+            return null;
+        }
+
+        $roleNames = $user->roles()->pluck('name')->all();
+
+        if (str_starts_with($path, '/warga') && ! in_array('warga', $roleNames, true)) {
+            return null;
+        }
+
+        if (str_starts_with($path, '/petugas') && ! in_array('petugas', $roleNames, true)) {
+            return null;
+        }
+
+        if (str_starts_with($path, '/bendahara') && ! in_array('bendahara', $roleNames, true)) {
+            return null;
+        }
+
+        if (str_starts_with($path, '/backoffice') && array_intersect(['admin', 'superadmin'], $roleNames) === []) {
+            return null;
+        }
+
         $middleware = $route->gatherMiddleware();
 
         if (! in_array('auth', $middleware, true)) {

@@ -5,6 +5,7 @@
     $isAnnouncements = request()->routeIs('public.announcements');
     $isPrograms = request()->routeIs('public.programs');
     $isTerms = request()->routeIs('terms-and-privacy');
+    $isTutorials = request()->routeIs('public.tutorials');
     $isRegister = request()->routeIs('register');
     $isLogin = request()->routeIs('login');
     $activeFooterClasses = 'font-bold text-surface underline decoration-harvest-gold decoration-2 underline-offset-4';
@@ -44,6 +45,7 @@
                         <a href="{{ route('public.mobile-schedule') }}" class="inline-flex min-h-touch items-center text-body-sm {{ $isSchedule ? $activeFooterClasses : $inactiveFooterClasses }}" @if ($isSchedule) aria-current="page" @endif>Jadwal keliling</a>
                         <a href="{{ route('public.announcements') }}" class="inline-flex min-h-touch items-center text-body-sm {{ $isAnnouncements ? $activeFooterClasses : $inactiveFooterClasses }}" @if ($isAnnouncements) aria-current="page" @endif>Pengumuman</a>
                         <a href="{{ route('public.programs') }}" class="inline-flex min-h-touch items-center text-body-sm {{ $isPrograms ? $activeFooterClasses : $inactiveFooterClasses }}" @if ($isPrograms) aria-current="page" @endif>Target dan statistik</a>
+                        <a href="{{ route('public.tutorials') }}" class="inline-flex min-h-touch items-center text-body-sm {{ $isTutorials ? $activeFooterClasses : $inactiveFooterClasses }}" @if ($isTutorials) aria-current="page" @endif>Tutorial penggunaan</a>
                     </nav>
                 </div>
 

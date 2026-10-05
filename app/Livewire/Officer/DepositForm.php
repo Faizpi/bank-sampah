@@ -129,6 +129,14 @@ final class DepositForm extends Component
             return;
         }
 
+        if (preg_match('/^(\d+)\.waste_type_id$/', $key, $matches) === 1) {
+            $index = (int) $matches[1];
+            if (isset($this->items[$index])) {
+                $this->items[$index]['condition_id'] = '';
+                $this->resetValidation('items.'.$index.'.condition_id');
+            }
+        }
+
         $field = 'items.'.$key;
         $rules = $this->itemRules();
         $ruleKey = preg_replace('/\.\d+\./', '.*.', $field);
@@ -227,13 +235,30 @@ final class DepositForm extends Component
             : 'Setoran berhasil dicatat.');
     }
 
-    /** @return array<string, array<int, string>> */
+    /** @return array<string, list<string|\Closure>> */
     private function itemRules(): array
     {
         return [
             'items' => ['required', 'array', 'min:1'],
             'items.*.waste_type_id' => ['required', 'integer', 'min:1'],
-            'items.*.condition_id' => ['required', 'integer', 'min:1'],
+            'items.*.condition_id' => [
+                'required',
+                'integer',
+                'min:1',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $index = (int) explode('.', $attribute)[1];
+                    $typeId = $this->items[$index]['waste_type_id'] ?? null;
+                    $valid = WasteType::query()
+                        ->whereKey($typeId)
+                        ->where('is_active', true)
+                        ->whereHas('conditions', static fn ($query) => $query->whereKey($value)->where('is_active', true))
+                        ->exists();
+
+                    if (! $valid) {
+                        $fail('Kondisi sampah tidak tersedia untuk jenis yang dipilih.');
+                    }
+                },
+            ],
             'items.*.weight_kg' => ['required', 'numeric', 'gt:0', 'max:'.(string) config('app.deposit_max_item_weight_kg'), 'regex:/^\\d+(?:\\.\\d{1,3})?$/'],
         ];
     }
@@ -270,20 +295,20 @@ final class DepositForm extends Component
                 : $this->activeAssignedMobileService($actor, $this->mobileServiceId));
         $mobileService?->loadMissing('wasteTypes');
         $types = $mobileService === null
-            ? WasteType::query()->with('conditions')->where('is_active', true)->whereHas('category', static fn ($query) => $query->where('is_active', true))->orderBy('name')->get()
-            : $mobileService->wasteTypes->filter(static fn (WasteType $type): bool => $type->is_active && $type->category()->where('is_active', true)->exists())->load('conditions')->sortBy('name')->values();
-        $supportedTypeIds = $types->modelKeys();
-        $conditions = WasteCondition::query()
-            ->where('is_active', true)
-            ->when($mobileService !== null, static fn ($query) => $query->whereHas('wasteTypes', static fn ($typesQuery) => $typesQuery->whereKey($supportedTypeIds)))
-            ->orderBy('sort_order')
-            ->get();
+            ? WasteType::query()->with(['conditions' => static fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])->where('is_active', true)->whereHas('category', static fn ($query) => $query->where('is_active', true))->orderBy('name')->get()
+            : $mobileService->wasteTypes->filter(static fn (WasteType $type): bool => $type->is_active && $type->category()->where('is_active', true)->exists())->load(['conditions' => static fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])->sortBy('name')->values();
+        $conditions = $types->flatMap(
+            static fn (WasteType $type) => $type->conditions,
+        )->unique('id')->values();
+        $conditionsByType = $types->mapWithKeys(static fn (WasteType $type): array => [
+            $type->id => $type->conditions,
+        ]);
 
         return view('livewire.officer.deposit-form', [
             'customer' => $customer,
             'mobileService' => $mobileService,
             'types' => $types,
-            'conditions' => $conditions,
+            'conditionsByType' => $conditionsByType,
             'pricePreview' => $this->pricePreview($types, $conditions),
         ]);
     }

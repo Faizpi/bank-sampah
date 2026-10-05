@@ -27,6 +27,7 @@ final readonly class LogoutUser
             $this->auditLogger->record($user, $action, $user, [], [], $this->correlationId($request));
         }
 
+        $this->session->forget('url.intended');
         $this->auth->guard()->logout();
         $this->session->invalidate();
         $this->session->regenerateToken();

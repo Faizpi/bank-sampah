@@ -168,6 +168,32 @@ final class FieldOperationsTest extends TestCase
         self::assertStringContainsString('$wire.closeScanner()', $view);
     }
 
+    public function test_pickup_task_filters_conditions_per_row_and_rejects_tampered_pairs(): void
+    {
+        $officer = $this->userWith('pickup.view', 'pickup.execute', 'pickup.complete');
+        [$firstType, $firstCondition] = $this->wasteContext();
+        [$secondType, $secondCondition] = $this->wasteContext();
+        $inactiveCondition = WasteCondition::factory()->create(['name' => 'Kondisi Pickup Nonaktif', 'is_active' => false]);
+        WasteMasterMutationGuard::run(static fn (): array => $firstType->conditions()->sync([$firstCondition->id, $inactiveCondition->id]));
+        $pickup = $this->scheduledPickup($officer);
+
+        Livewire::actingAs($officer)
+            ->test(PickupTask::class, ['pickup' => $pickup])
+            ->call('begin')
+            ->call('markPickedUp')
+            ->set('actualItems.0.waste_type_id', $firstType->id)
+            ->assertSee($firstCondition->name)
+            ->assertDontSee($secondCondition->name)
+            ->assertDontSee($inactiveCondition->name)
+            ->set('actualItems.0.condition_id', $firstCondition->id)
+            ->set('actualItems.0.waste_type_id', $secondType->id)
+            ->assertSet('actualItems.0.condition_id', '')
+            ->set('actualItems.0.condition_id', $firstCondition->id)
+            ->set('actualItems.0.weight_kg', '1.000')
+            ->call('reviewCompletion')
+            ->assertHasErrors(['actualItems.0.condition_id']);
+    }
+
     public function test_pickup_task_rejects_invalid_actual_items_before_financial_service(): void
     {
         $officer = $this->userWith('pickup.view', 'pickup.execute', 'pickup.complete');

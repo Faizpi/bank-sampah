@@ -285,6 +285,43 @@ final class DepositEvidenceTest extends TestCase
             ->assertSee('Jenis sampah wajib dipilih.');
     }
 
+    public function test_deposit_form_filters_conditions_per_row_and_rejects_tampered_pairs_in_direct_and_mobile_modes(): void
+    {
+        [$staff, $customer, $firstType, $firstCondition] = $this->context();
+        $secondCondition = WasteCondition::factory()->create(['name' => 'Kondisi Setoran Kedua', 'is_active' => true]);
+        $inactiveCondition = WasteCondition::factory()->create(['name' => 'Kondisi Setoran Nonaktif', 'is_active' => false]);
+        $secondType = WasteType::factory()
+            ->for($firstType->category, 'category')
+            ->for($firstType->unit, 'unit')
+            ->create(['name' => 'Jenis Setoran Kedua', 'is_active' => true]);
+        WasteMasterMutationGuard::run(static fn (): array => $firstType->conditions()->sync([$firstCondition->id, $inactiveCondition->id]));
+        WasteMasterMutationGuard::run(static fn (): array => $secondType->conditions()->sync([$secondCondition->id]));
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'mobile-service.operate', 'customer.view', 'user.view', 'user.view.all']);
+
+        $assertBehavior = function ($component) use ($firstType, $firstCondition, $secondType, $secondCondition, $inactiveCondition): void {
+            $component->call('addItem')
+                ->set('items.0.waste_type_id', $firstType->id)
+                ->assertSee($firstCondition->name)
+                ->assertDontSee($secondCondition->name)
+                ->assertDontSee($inactiveCondition->name)
+                ->set('items.0.condition_id', $firstCondition->id)
+                ->set('items.0.waste_type_id', $secondType->id)
+                ->assertSet('items.0.condition_id', '')
+                ->set('items.0.condition_id', $firstCondition->id)
+                ->set('items.0.weight_kg', '1.000')
+                ->call('saveDraft')
+                ->assertHasErrors(['items.0.condition_id']);
+        };
+
+        $assertBehavior(Livewire::actingAs($staff)->test(DepositForm::class, ['customerId' => $customer->id]));
+
+        $mobileService = $this->mobileService($staff, $firstType);
+        $mobileService->wasteTypes()->attach($secondType->id);
+        $assertBehavior(Livewire::actingAs($staff)
+            ->withQueryParams(['mobileServiceId' => $mobileService->id])
+            ->test(DepositForm::class, ['customerId' => $customer->id]));
+    }
+
     public function test_deposit_form_requires_evidence_and_clears_it_after_successful_finalization(): void
     {
         Storage::fake('media_private');

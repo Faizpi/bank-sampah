@@ -32,6 +32,10 @@ final class ApplyResponseSecurityHeaders
         $response->headers->set('Content-Security-Policy', self::CONTENT_SECURITY_POLICY);
         $response->headers->set('Permissions-Policy', self::permissionsPolicy($request));
 
+        if (self::mustNotIndex($request)) {
+            $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+        }
+
         if (config('app.env') === 'production' && $request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', self::STRICT_TRANSPORT_SECURITY);
         } else {
@@ -39,7 +43,8 @@ final class ApplyResponseSecurityHeaders
         }
 
         if (self::mustNotStore($request)) {
-            $response->headers->set('Cache-Control', 'private, no-store');
+            $response->headers->set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+            $response->headers->set('Pragma', 'no-cache');
         }
 
         return $response;
@@ -58,9 +63,25 @@ final class ApplyResponseSecurityHeaders
         return self::PERMISSIONS_POLICY;
     }
 
+    private static function mustNotIndex(Request $request): bool
+    {
+        return ! in_array($request->route()?->getName(), [
+            'home',
+            'terms-and-privacy',
+            'public.catalog',
+            'public.prices',
+            'public.announcements',
+            'public.mobile-schedule',
+            'public.programs',
+            'public.tutorials',
+            'robots',
+            'sitemap',
+        ], true);
+    }
+
     private static function mustNotStore(Request $request): bool
     {
-        if ($request->user() !== null || $request->is('login', 'daftar', 'media/*', 'laporan/ekspor/*')) {
+        if ($request->user() !== null || $request->is('login', 'daftar', 'backoffice*', '*/login', 'media/*', 'laporan/ekspor/*')) {
             return true;
         }
 

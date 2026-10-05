@@ -54,12 +54,9 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    'terms_version' => env('TERMS_VERSION', 'v1.0'),
+    'google_site_verification' => env('GOOGLE_SITE_VERIFICATION'),
 
-    // Optional first backoffice administrator, created by Database\Seeders\InitialAdminSeeder.
-    // Leave unset in production unless you intend to bootstrap an admin this way.
-    'initial_admin_email' => env('APP_INITIAL_ADMIN_EMAIL'),
-    'initial_admin_password' => env('APP_INITIAL_ADMIN_PASSWORD'),
+    'terms_version' => env('TERMS_VERSION', 'v1.0'),
 
     // Temporary demo data switch. It defaults to enabled outside production so
     // local development remains convenient, while production must opt in

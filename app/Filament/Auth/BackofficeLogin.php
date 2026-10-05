@@ -23,6 +23,38 @@ final class BackofficeLogin extends Login
 {
     protected string $view = 'filament.backoffice.auth.login';
 
+    public function mount(): void
+    {
+        if (\Filament\Facades\Filament::auth()->check()) {
+            $user = \Filament\Facades\Filament::auth()->user();
+            if ($user instanceof \App\Models\User && $user->canAccessPanel(\Filament\Facades\Filament::getCurrentOrDefaultPanel())) {
+                $intended = session()->pull('url.intended');
+                if (is_string($intended) && str_starts_with($intended, url('/backoffice')) && ! str_contains($intended, '/backoffice/login')) {
+                    $this->redirect($intended);
+
+                    return;
+                }
+
+                $this->redirect(\Filament\Facades\Filament::getUrl());
+
+                return;
+            }
+        }
+
+        $this->form->fill();
+    }
+
+    public function authenticate(): ?\Filament\Auth\Http\Responses\Contracts\LoginResponse
+    {
+        $response = parent::authenticate();
+
+        if ($response instanceof \Filament\Auth\Http\Responses\Contracts\LoginResponse) {
+            return new \App\Filament\Auth\Responses\BackofficeLoginResponse;
+        }
+
+        return $response;
+    }
+
     /**
      * Auto-fill the username/password form state for a demo role.
      *

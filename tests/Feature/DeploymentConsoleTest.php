@@ -21,7 +21,7 @@ it('provides a standalone ordinary migration action that preserves existing data
     expect($console)->not->toBeFalse();
 
     $start = strpos((string) $console, "'migrate' => [");
-    $end = strpos((string) $console, "'release' => [");
+    $end = strpos((string) $console, "'bootstrap-production' => [");
     $block = $start === false || $end === false ? '' : substr((string) $console, $start, $end - $start);
 
     expect($block)->not->toBe('')
@@ -70,6 +70,44 @@ it('migrates before seeding temporary demo data', function (): void {
         ->and(strpos($matches[1], "['migrate', ['--force' => true]]"))->not->toBeFalse()
         ->and(strpos($matches[1], "['db:seed', ['--class' => 'Database\\\\Seeders\\\\LocalDataSeeder', '--force' => true]]"))->not->toBeFalse()
         ->and(strpos($matches[1], "['migrate', ['--force' => true]]"))->toBeLessThan(strpos($matches[1], "['db:seed', ['--class' => 'Database\\\\Seeders\\\\LocalDataSeeder', '--force' => true]]"));
+});
+
+it('provides a safe production bootstrap action that seeds ProductionBootstrapSeeder without destroying data', function (): void {
+    $console = file_get_contents(base_path('public/deploy.php'));
+
+    expect($console)->not->toBeFalse();
+
+    preg_match("/'bootstrap-production'\s*=>\s*\[.*?'commands'\s*=>\s*\[(.*?)\],\s*\],/s", (string) $console, $matches);
+
+    expect($matches)->toHaveKey(1)
+        ->and($console)->toContain('Bootstrap data production')
+        ->and($console)->toContain('tanpa menghapus data yang ada')
+        ->and($console)->toContain('data demo lama dapat menyebabkan konflik unique key')
+        ->and($matches[1])->toContain("['migrate', ['--force' => true]]")
+        ->and($matches[1])->toContain("['db:seed', ['--class' => 'Database\\\\Seeders\\\\ProductionBootstrapSeeder', '--force' => true]]")
+        ->and($matches[1])->not->toContain('migrate:fresh')
+        ->and($matches[1])->not->toContain('Database\\\\Seeders\\\\DatabaseSeeder')
+        ->and($matches[1])->not->toContain('LocalDataSeeder')
+        ->and($matches[1])->not->toContain('DeveloperUsersSeeder')
+        ->and(strpos($matches[1], "['migrate', ['--force' => true]]"))->toBeLessThan(strpos($matches[1], "['db:seed', ['--class' => 'Database\\\\Seeders\\\\ProductionBootstrapSeeder', '--force' => true]]"));
+});
+
+it('provides one explicitly confirmed destructive production reset action', function (): void {
+    $console = file_get_contents(base_path('public/deploy.php'));
+
+    expect($console)->not->toBeFalse();
+
+    preg_match("/'reset-production'\s*=>\s*\[.*?'commands'\s*=>\s*\[(.*?)\],\s*\],/s", (string) $console, $matches);
+
+    expect($matches)->toHaveKey(1)
+        ->and($console)->toContain('RESET TOTAL + bootstrap production')
+        ->and($console)->toContain("'confirmation' => 'RESET PRODUCTION DATABASE'")
+        ->and($matches[1])->toContain("['migrate:fresh', ['--force' => true]]")
+        ->and($matches[1])->toContain("['db:seed', ['--class' => 'Database\\\\Seeders\\\\ProductionBootstrapSeeder', '--force' => true]]")
+        ->and($matches[1])->not->toContain('Database\\\\Seeders\\\\DatabaseSeeder')
+        ->and($matches[1])->not->toContain('DeveloperUsersSeeder')
+        ->and($matches[1])->not->toContain('LocalDataSeeder')
+        ->and(strpos($matches[1], "['migrate:fresh', ['--force' => true]]"))->toBeLessThan(strpos($matches[1], "['db:seed', ['--class' => 'Database\\\\Seeders\\\\ProductionBootstrapSeeder', '--force' => true]]"));
 });
 
 it('shows a bounded exception summary to the authenticated deployment operator', function (): void {

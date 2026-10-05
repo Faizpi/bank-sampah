@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: null,
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
         $middleware->prepend(AssignCorrelationId::class);
         $middleware->append(ApplyResponseSecurityHeaders::class);
         $middleware->preventRequestsDuringMaintenance(['/health', '/operations/health']);

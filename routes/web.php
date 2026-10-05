@@ -48,6 +48,36 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/robots.txt', static function () {
+    $sitemapUrl = route('sitemap');
+
+    return response("User-agent: *\nDisallow: /login\nDisallow: /daftar\nDisallow: /health\nDisallow: /operations/\nDisallow: /verifikasi/\nDisallow: /dashboard/\nDisallow: /warga/\nDisallow: /petugas/\nDisallow: /bendahara/\nDisallow: /statistik/internal\nDisallow: /profil/\nDisallow: /notifikasi\nDisallow: /media/\nDisallow: /laporan/ekspor/\nDisallow: /backoffice\n\nSitemap: {$sitemapUrl}\n", 200, [
+        'Content-Type' => 'text/plain; charset=UTF-8',
+    ]);
+})->name('robots');
+
+Route::get('/sitemap.xml', static function () {
+    $routeNames = [
+        'home',
+        'terms-and-privacy',
+        'public.catalog',
+        'public.prices',
+        'public.announcements',
+        'public.mobile-schedule',
+        'public.programs',
+        'public.tutorials',
+    ];
+    $locations = array_map(
+        static fn (string $routeName): string => '    <url><loc>'.htmlspecialchars(route($routeName), ENT_XML1).'</loc></url>',
+        $routeNames,
+    );
+    $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+    $xml .= "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n";
+    $xml .= implode("\n", $locations)."\n</urlset>\n";
+
+    return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
+})->name('sitemap');
+
 Route::get('/health', HealthController::class)->name('health');
 Route::get('/operations/health', OperationalHealthController::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:system.maintenance'])
@@ -55,6 +85,7 @@ Route::get('/operations/health', OperationalHealthController::class)
 
 Route::view('/', 'welcome')->name('home');
 Route::view('/ketentuan-dan-privasi', 'terms-and-privacy')->name('terms-and-privacy');
+Route::view('/tutorial-penggunaan', 'public.tutorials')->name('public.tutorials');
 Route::livewire('/katalog-sampah', WasteCatalog::class)->name('public.catalog');
 Route::livewire('/harga-sampah', WastePrices::class)->middleware('throttle:public-data')->name('public.prices');
 Route::livewire('/pengumuman', Announcements::class)->name('public.announcements');

@@ -7,6 +7,7 @@ namespace App\Livewire\Treasurer;
 use App\Authorization\PermissionChecker;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
+use App\Support\Auth\AuthenticatedUserRedirector;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -14,12 +15,18 @@ use Livewire\Component;
 #[Layout('layouts.officer')]
 final class Dashboard extends Component
 {
-    public function mount(PermissionChecker $permissions): void
+    public function mount(PermissionChecker $permissions, AuthenticatedUserRedirector $redirector): void
     {
         /** @var User|null $actor */
         $actor = auth()->user();
 
         abort_unless($actor instanceof User && $permissions->allows($actor, 'withdrawal.view'), 403);
+
+        if ($actor->hasRole('admin', 'superadmin', 'petugas', 'warga') && ! $actor->hasRole('bendahara')) {
+            $this->redirect($redirector->dashboardUrl($actor), navigate: true);
+
+            return;
+        }
     }
 
     public function render(WithdrawalService $withdrawals): View

@@ -97,4 +97,11 @@ final class BackofficePanelProvider extends PanelProvider
                 Authenticate::class,
             ]);
     }
+
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->bind(\Filament\Auth\Http\Responses\Contracts\LoginResponse::class, \App\Filament\Auth\Responses\BackofficeLoginResponse::class);
+    }
 }

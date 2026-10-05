@@ -13,6 +13,7 @@ use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Models\User;
+use App\Support\Auth\AuthenticatedUserRedirector;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,12 +23,18 @@ use Livewire\Component;
 #[Layout('layouts.officer')]
 final class Dashboard extends Component
 {
-    public function mount(PermissionChecker $permissions): void
+    public function mount(PermissionChecker $permissions, AuthenticatedUserRedirector $redirector): void
     {
         /** @var User|null $actor */
         $actor = auth()->user();
 
         abort_unless($actor instanceof User && $permissions->allows($actor, 'user.view'), 403);
+
+        if ($actor->hasRole('admin', 'superadmin', 'bendahara', 'warga') && ! $actor->hasRole('petugas')) {
+            $this->redirect($redirector->dashboardUrl($actor), navigate: true);
+
+            return;
+        }
     }
 
     public function render(PermissionChecker $permissions, GroceryService $groceries): View

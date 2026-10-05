@@ -295,6 +295,35 @@ $actions = [
             ['migrate', ['--force' => true]],
         ],
     ],
+    'bootstrap-production' => [
+        'label' => 'Bootstrap data production',
+        'description' => 'Menerapkan migration tertunda lalu membuat data awal production Sindangheula tanpa menghapus data yang ada. Gunakan hanya untuk database kosong atau yang sudah memakai seed production; data demo lama dapat menyebabkan konflik unique key.',
+        'group' => 'routine',
+        'risk' => 'routine',
+        'commands' => [
+            ['migrate', ['--force' => true]],
+            ['db:seed', ['--class' => 'Database\\Seeders\\ProductionBootstrapSeeder', '--force' => true]],
+            ['optimize:clear', []],
+            ['config:cache', []],
+            ['route:cache', []],
+            ['view:cache', []],
+        ],
+    ],
+    'reset-production' => [
+        'label' => 'RESET TOTAL + bootstrap production',
+        'description' => 'Menghapus seluruh tabel dan semua data lama, menjalankan seluruh migration, lalu mengisi 19 warga, 19 wilayah RT/kampung, akun pengelola, area layanan seluruh desa, dan 4 harga sampah production. Tidak membuat data demo atau transaksi contoh.',
+        'group' => 'destructive',
+        'risk' => 'dangerous',
+        'confirmation' => 'RESET PRODUCTION DATABASE',
+        'commands' => [
+            ['migrate:fresh', ['--force' => true]],
+            ['db:seed', ['--class' => 'Database\\Seeders\\ProductionBootstrapSeeder', '--force' => true]],
+            ['optimize:clear', []],
+            ['config:cache', []],
+            ['route:cache', []],
+            ['view:cache', []],
+        ],
+    ],
     'release' => [
         'label' => 'Selesaikan deployment',
         'description' => 'Menerapkan migration yang tertunda lalu membangun ulang seluruh cache produksi.',
@@ -325,7 +354,7 @@ $actions = [
     ],
     'seed-demo-data' => [
         'label' => 'Isi data uji lengkap',
-        'description' => 'Membuat akun demo, wilayah, harga sampah, transaksi, saldo, pencairan, sembako, pengumuman, dan statistik. Hanya aktif bila APP_DEMO_MODE=true.',
+        'description' => 'Membuat akun demo, wilayah, harga sampah, transaksi, saldo, pencairan, pengumuman, dan statistik. Hanya aktif bila APP_DEMO_MODE=true.',
         'group' => 'data',
         'risk' => 'routine',
         'commands' => [

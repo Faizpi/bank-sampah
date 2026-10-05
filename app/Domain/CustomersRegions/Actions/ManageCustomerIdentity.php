@@ -71,8 +71,15 @@ final readonly class ManageCustomerIdentity
                 throw ValidationException::withMessages(['identity' => 'QR hanya dapat dirotasi untuk identitas nasabah aktif.']);
             }
 
+            $rawNumber = (string) $profile->customer_number;
+            if (preg_match('/^SH-([0-9]+)$/', $rawNumber, $matches)) {
+                $rawNumber = 'CST-'.str_pad($matches[1], 8, '0', STR_PAD_LEFT);
+                $profile->customer_number = $rawNumber;
+            }
+
             $token = QrToken::generate();
             $profile->forceFill([
+                'customer_number' => $profile->customer_number,
                 'qr_token_hash' => $token->hash(),
                 'qr_token_encrypted' => $token->value(),
                 'qr_rotated_at' => now(),

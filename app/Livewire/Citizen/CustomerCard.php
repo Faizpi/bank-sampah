@@ -34,14 +34,43 @@ final class CustomerCard extends Component
         abort_unless($actor instanceof User && $permissions->allows($actor, 'customer.view'), 403);
 
         $profile = $actor->customerProfile;
-        if ($profile === null || $profile->customer_number === null || $actor->status->value !== 'aktif') {
+        if ($profile === null || $actor->status->value !== 'aktif') {
             return;
+        }
+
+        $needsSave = false;
+        if ($profile->customer_number === null || $profile->customer_number === '') {
+            do {
+                $number = 'CST-'.str_pad((string) random_int(1, 99_999_999), 8, '0', STR_PAD_LEFT);
+            } while (\App\Domain\Identity\Models\CustomerProfile::query()->where('customer_number', $number)->exists());
+            $profile->customer_number = $number;
+            $needsSave = true;
+        } elseif (preg_match('/^SH-([0-9]+)$/', (string) $profile->customer_number, $matches)) {
+            $profile->customer_number = 'CST-'.str_pad($matches[1], 8, '0', STR_PAD_LEFT);
+            $needsSave = true;
+        }
+
+        if ($profile->qr_token_hash === null || $profile->qr_token_encrypted === null) {
+            $token = QrToken::generate();
+            $profile->qr_token_hash = $token->hash();
+            $profile->qr_token_encrypted = $token->value();
+            $profile->qr_rotated_at = now();
+            $needsSave = true;
+        }
+
+        if ($profile->joined_at === null) {
+            $profile->joined_at = today();
+            $needsSave = true;
+        }
+
+        if ($needsSave) {
+            $profile->save();
         }
 
         $profile->loadMissing('rt.rw.dusun');
 
         $this->customerName = $actor->name;
-        $this->customerNumber = $profile->customer_number;
+        $this->customerNumber = (string) $profile->customer_number;
         $this->maskedNumber = substr($this->customerNumber, 0, 4).'****'.substr($this->customerNumber, -2);
         $this->serviceArea = $profile->rt->name ?? 'Desa Sindangheula';
         $encryptedToken = $profile->qr_token_encrypted;

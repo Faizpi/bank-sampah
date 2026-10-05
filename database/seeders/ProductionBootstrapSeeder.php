@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Domain\CustomersRegions\Contracts\QrToken;
 use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
@@ -133,15 +134,22 @@ final class ProductionBootstrapSeeder extends Seeder
             $user = $this->upsertUser($resident['username'], $resident['name']);
             $user->roles()->syncWithoutDetaching([$wargaRole->id => ['assigned_by' => $user->id, 'reason' => 'Bootstrap production Sindangheula']]);
             $region = collect(self::REGIONS)->firstWhere('rt', $resident['rt']);
-            CustomerProfile::query()->updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'customer_number' => 'SH-'.str_pad((string) ($index + 1), 5, '0', STR_PAD_LEFT),
-                    'rt_id' => $rts[$resident['rt']]->id,
-                    'address' => $resident['address'] ?? sprintf('%s, RT %s/RW %s, Desa Sindangheula', $region['kampung'], $resident['rt'], $region['rw']),
-                    'joined_at' => now()->toDateString(),
-                ],
-            );
+            $profile = CustomerProfile::query()->firstOrNew(['user_id' => $user->id]);
+            $needsToken = $profile->qr_token_hash === null || $profile->qr_token_encrypted === null;
+            $token = $needsToken ? QrToken::generate() : null;
+            $customerNumber = $profile->customer_number;
+            if ($customerNumber === null || str_starts_with($customerNumber, 'SH-')) {
+                $customerNumber = 'CST-'.str_pad((string) ($index + 1), 8, '0', STR_PAD_LEFT);
+            }
+            $profile->forceFill([
+                'customer_number' => $customerNumber,
+                'rt_id' => $rts[$resident['rt']]->id,
+                'address' => $resident['address'] ?? sprintf('%s, RT %s/RW %s, Desa Sindangheula', $region['kampung'], $resident['rt'], $region['rw']),
+                'joined_at' => $profile->joined_at ?? now()->toDateString(),
+                'qr_token_hash' => $needsToken ? $token?->hash() : $profile->qr_token_hash,
+                'qr_token_encrypted' => $needsToken ? $token?->value() : $profile->qr_token_encrypted,
+                'qr_rotated_at' => $needsToken ? now() : $profile->qr_rotated_at,
+            ])->save();
         }
 
         $staff = [];

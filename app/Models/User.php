@@ -88,6 +88,15 @@ class User extends Authenticatable implements FilamentUser
             ->withTimestamps();
     }
 
+    public function hasRole(string ...$roleNames): bool
+    {
+        if ($this->relationLoaded('roles')) {
+            return $this->roles->contains(static fn (Role $role): bool => in_array($role->name, $roleNames, true));
+        }
+
+        return $this->roles()->whereIn('name', $roleNames)->exists();
+    }
+
     /** @return HasOne<CustomerProfile, $this> */
     public function customerProfile(): HasOne
     {

@@ -77,4 +77,25 @@
             </div>
         </div>
     </div>
+
+    <script>
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+
+        document.addEventListener('livewire:init', function () {
+            if (window.Livewire) {
+                window.Livewire.hook('request', function ({ fail }) {
+                    fail(function ({ status, preventDefault }) {
+                        if (status === 419) {
+                            preventDefault();
+                            window.location.reload();
+                        }
+                    });
+                });
+            }
+        });
+    </script>
 </x-filament-panels::page.simple>

@@ -76,7 +76,9 @@ final class LoginForm extends Component
             $validated = $this->validate();
             $user = $authenticateUser->handle($validated['username'], $validated['password'], request());
             $redirector = app(AuthenticatedUserRedirector::class);
-            $intendedUrl = $redirector->authorizedIntendedUrl(app('redirect')->getIntendedUrl(), request(), $user);
+            $rawIntended = session()->pull('url.intended') ?? app('redirect')->getIntendedUrl();
+            session()->forget('url.intended');
+            $intendedUrl = $redirector->authorizedIntendedUrl($rawIntended, request(), $user);
 
             if ($intendedUrl !== null) {
                 $this->redirect($intendedUrl, navigate: true);

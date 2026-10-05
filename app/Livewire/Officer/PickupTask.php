@@ -89,6 +89,19 @@ final class PickupTask extends Component
         $this->actualItems = array_values($this->actualItems);
     }
 
+    public function updatedActualItems(mixed $value, ?string $key): void
+    {
+        if ($key === null || preg_match('/^(\d+)\.waste_type_id$/', $key, $matches) !== 1) {
+            return;
+        }
+
+        $index = (int) $matches[1];
+        if (isset($this->actualItems[$index])) {
+            $this->actualItems[$index]['condition_id'] = '';
+            $this->resetValidation('actualItems.'.$index.'.condition_id');
+        }
+    }
+
     public function reviewCompletion(): void
     {
         $this->validate($this->completionRules(), $this->completionMessages());
@@ -239,13 +252,30 @@ final class PickupTask extends Component
         session()->flash('success', 'Penjemputan selesai dan setoran aktual telah dibuat.');
     }
 
-    /** @return array<string, array<int, string>> */
+    /** @return array<string, list<string|\Closure>> */
     private function completionRules(): array
     {
         return [
             'actualItems' => ['required', 'array', 'min:1'],
             'actualItems.*.waste_type_id' => ['required', 'integer', 'min:1', 'exists:waste_types,id'],
-            'actualItems.*.condition_id' => ['required', 'integer', 'min:1', 'exists:waste_conditions,id'],
+            'actualItems.*.condition_id' => [
+                'required',
+                'integer',
+                'min:1',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $index = (int) explode('.', $attribute)[1];
+                    $typeId = $this->actualItems[$index]['waste_type_id'] ?? null;
+                    $valid = WasteType::query()
+                        ->whereKey($typeId)
+                        ->where('is_active', true)
+                        ->whereHas('conditions', static fn ($query) => $query->whereKey($value)->where('is_active', true))
+                        ->exists();
+
+                    if (! $valid) {
+                        $fail('Kondisi sampah tidak tersedia untuk jenis yang dipilih.');
+                    }
+                },
+            ],
             'actualItems.*.weight_kg' => ['required', 'numeric', 'gt:0', 'decimal:0,3'],
             'evidence' => ['nullable', 'file', 'max:1024', 'mimes:jpg,jpeg,png'],
         ];
@@ -274,12 +304,21 @@ final class PickupTask extends Component
 
     public function render(): View
     {
-        $types = WasteType::query()->where('is_active', true)->orderBy('name')->get();
-        $conditions = WasteCondition::query()->where('is_active', true)->orderBy('sort_order')->get();
+        $types = WasteType::query()
+            ->with(['conditions' => static fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $conditions = $types->flatMap(
+            static fn (WasteType $type) => $type->conditions,
+        )->unique('id')->values();
+        $conditionsByType = $types->mapWithKeys(static fn (WasteType $type): array => [
+            $type->id => $type->conditions,
+        ]);
 
         return view('livewire.officer.pickup-task', [
             'types' => $types,
-            'conditions' => $conditions,
+            'conditionsByType' => $conditionsByType,
             'canComplete' => $this->pickup->status === PickupStatus::PickedUp,
             'pricePreview' => $this->pricePreview($types, $conditions),
         ]);

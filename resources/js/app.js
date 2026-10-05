@@ -1280,3 +1280,22 @@ const photoPickerObserver = new MutationObserver((records) => {
 });
 
 photoPickerObserver.observe(document.body ?? document.documentElement, { childList: true, subtree: true });
+
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+
+document.addEventListener('livewire:init', () => {
+    if (window.Livewire) {
+        window.Livewire.hook('request', ({ fail }) => {
+            fail(({ status, preventDefault }) => {
+                if (status === 419) {
+                    preventDefault();
+                    window.location.reload();
+                }
+            });
+        });
+    }
+});

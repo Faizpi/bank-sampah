@@ -37,7 +37,13 @@ final class CustomerProfile extends Model
 
     public function customerNumber(): CustomerNumber
     {
-        return CustomerNumber::fromString((string) $this->customer_number);
+        $raw = (string) $this->customer_number;
+
+        if (preg_match('/^SH-([0-9]+)$/', $raw, $matches)) {
+            $raw = 'CST-'.str_pad($matches[1], 8, '0', STR_PAD_LEFT);
+        }
+
+        return CustomerNumber::fromString($raw);
     }
 
     public function serviceRegion(): ?string

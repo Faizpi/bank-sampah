@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 final readonly class RegisterCitizen
 {
     /**
-     * @param  array{name: string, phone: string, password: string, rt_id: int, address: string, terms_accepted: bool}  $attributes
+     * @param  array{name: string, username: string, phone?: string|null, password: string, rt_id: int, address: string, terms_accepted: bool}  $attributes
      */
     public function handle(array $attributes): User
     {
@@ -25,12 +25,14 @@ final readonly class RegisterCitizen
 
         $acceptedAt = now();
         $termsVersion = (string) config('app.terms_version');
+        $phone = trim((string) ($attributes['phone'] ?? ''));
 
-        return DB::transaction(function () use ($acceptedAt, $attributes, $termsVersion): User {
+        return DB::transaction(function () use ($acceptedAt, $attributes, $phone, $termsVersion): User {
             $user = new User;
             $user->forceFill([
                 'name' => $attributes['name'],
-                'phone' => $attributes['phone'],
+                'username' => $attributes['username'],
+                'phone' => $phone === '' ? null : $phone,
                 'password' => Hash::make($attributes['password']),
                 'status' => UserStatus::PendingVerification,
                 'terms_version' => $termsVersion,

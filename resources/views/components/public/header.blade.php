@@ -6,17 +6,19 @@
     $isAnnouncements = request()->routeIs('public.announcements');
     $isPrograms = request()->routeIs('public.programs');
     $isTerms = request()->routeIs('terms-and-privacy');
+    $isTutorials = request()->routeIs('public.tutorials');
     $hasHeroOverlay = $isHome || request()->routeIs(
         'public.catalog',
         'public.prices',
         'public.mobile-schedule',
         'public.announcements',
         'public.programs',
+        'public.tutorials',
         'public.deposit-verification',
         'terms-and-privacy',
     );
     $isExploreActive = $isHome || $isCatalog || $isPrices;
-    $isPublicInformationActive = $isSchedule || $isAnnouncements || $isPrograms || $isTerms;
+    $isPublicInformationActive = $isSchedule || $isAnnouncements || $isPrograms || $isTerms || $isTutorials;
     $isLogin = request()->routeIs('login');
     $isRegister = request()->routeIs('register');
     $activeAccountClasses = 'ring-2 ring-focus ring-offset-2';
@@ -65,6 +67,7 @@
                         <a href="{{ route('public.mobile-schedule') }}" class="flex min-h-touch w-full items-center whitespace-nowrap rounded-md px-3 text-body-sm transition-colors duration-180 {{ $isSchedule ? $activeNavClasses : $inactiveNavClasses }}" @if ($isSchedule) aria-current="page" @endif data-public-nav-link>Jadwal keliling</a>
                         <a href="{{ route('public.announcements') }}" class="flex min-h-touch w-full items-center whitespace-nowrap rounded-md px-3 text-body-sm transition-colors duration-180 {{ $isAnnouncements ? $activeNavClasses : $inactiveNavClasses }}" @if ($isAnnouncements) aria-current="page" @endif data-public-nav-link>Pengumuman</a>
                         <a href="{{ route('public.programs') }}" class="flex min-h-touch w-full items-center whitespace-nowrap rounded-md px-3 text-body-sm transition-colors duration-180 {{ $isPrograms ? $activeNavClasses : $inactiveNavClasses }}" @if ($isPrograms) aria-current="page" @endif data-public-nav-link>Target dan statistik</a>
+                        <a href="{{ route('public.tutorials') }}" class="flex min-h-touch w-full items-center whitespace-nowrap rounded-md px-3 text-body-sm transition-colors duration-180 {{ $isTutorials ? $activeNavClasses : $inactiveNavClasses }}" @if ($isTutorials) aria-current="page" @endif data-public-nav-link>Tutorial penggunaan</a>
                         <a href="{{ route('terms-and-privacy') }}" class="flex min-h-touch w-full items-center whitespace-nowrap rounded-md px-3 text-body-sm transition-colors duration-180 {{ $isTerms ? $activeNavClasses : $inactiveNavClasses }}" @if ($isTerms) aria-current="page" @endif data-public-nav-link>Ketentuan dan privasi</a>
                     </div>
                 </div>
