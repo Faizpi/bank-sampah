@@ -1,55 +1,50 @@
-# Workflow Web Bank Sampah Sindangheula
+# Workflow web empat role
 
-Keputusan 5 Oktober 2026: layanan web dibuat lebih ringkas untuk warga dan pengurus. Dokumen ini menjelaskan implementasi saat ini, bukan rancangan bot. WhatsApp tidak digunakan; Telegram belum tersedia.
+Baseline cutover 5 Oktober 2026. Hanya Warga, Petugas, Bendahara, dan Admin; satu role per akun. Semua warga menggunakan smartphone sendiri.
 
-## Warga
+## Setoran
 
-Registrasi dan persetujuan ketentuan tetap memerlukan verifikasi admin. Setelah aktif, warga melihat saldo tersedia, saldo tertahan, riwayat, serta kartu nasabah.
+Petugas memilih atau memindai warga aktif, mengisi jenis, kondisi, dan berat aktual, memeriksa total, lalu mencatat setoran. Semua setoran langsung final dan membuat satu mutasi masuk. Foto lampiran opsional. Transaksi final yang salah ditangani melalui koreksi atau pembalikan resmi.
 
-Pickup memakai alamat awal dari profil, tanggal pilihan, jenis/perkiraan, dan satu sampai dua foto. Area tunggal dipilih otomatis; beberapa area tetap harus dipilih. Tanggal adalah permintaan, bukan reservasi slot.
+## Pickup
 
-Pencairan tunai memerlukan nominal, tanggal, dan lokasi pengambilan. Sembako memerlukan paket aktif dan area yang sah. Keduanya membuat hold, belum saldo keluar. Pengulangan dengan kunci yang sama mengembalikan pengajuan sebelumnya.
+Warga mengisi alamat, tanggal pilihan, dan jenis sampah. Perkiraan dan foto opsional. Petugas searea mengambil tugas; penjadwalan memakai tanggal pilihan, kemudian menuju lokasi, menandai dijemput, dan menyelesaikan penimbangan aktual. Pickup selesai hanya setelah setoran final. Warga membatalkan sebelum klaim; claimant melepas tugas hanya sebelum sampah dijemput.
 
-Ringkasan status menggunakan Sedang diproses, Perlu tindakan Anda, Selesai, atau Perlu perhatian. Status bisnis dan riwayat terperinci tetap tersedia.
+## Pencairan tunai
 
-## Petugas
+Pengajuan Warga langsung menahan saldo dan menunggu Bendahara. Bendahara mengambil pembayaran hanya jika uang tunai fisik tersedia. Setelah uang diberikan satu kali, claimant mencatat pembayaran. Mutasi keluar, konversi hold, waktu, pelaksana, dan kuitansi disimpan atomik. Tidak ada transfer bank, approval Admin, pembayaran sebagian, tombol tunda kas, atau expiry otomatis.
 
-Cari/pindai nasabah dan pastikan identitasnya. Pada setoran, isi jenis, kondisi, berat aktual, serta bukti. Ringkasan nilai berada pada halaman yang sama; satu tombol akhir mencatat setoran. Simpan draf bersifat opsional. Harga draf yang dilanjutkan memakai waktu efektif pembuatan draf, bukan harga hari berikutnya.
+## Sembako
 
-Pickup yang ditugaskan bergerak menuju lokasi lalu dijemput. Kendala dapat dilaporkan dengan alasan oleh petugas berwenang, termasuk setelah berangkat. Timbang dan finalisasi tetap melalui web.
+Pengajuan paket aktif langsung menahan saldo dan menunggu Petugas. Petugas mengambil tugas hanya bila paket tersedia, lalu dapat langsung menyerahkan dan mencatat penyerahan. Paket siap diambil merupakan pilihan untuk pengambilan kemudian, bukan tahap wajib. Tidak tersedia sebelum klaim memerlukan alasan dan melepas hold tanpa mutasi keluar.
 
-Setoran yang mencapai ambang pemeriksaan (default Rp250.000, dapat dikonfigurasi) tidak langsung menambah saldo. Pickup tetap dijemput dengan keterangan menunggu pemeriksaan. Persetujuan setoran menyelesaikan pickup dan menambah saldo; penolakan mengakhiri pengajuan dengan alasan tanpa saldo masuk.
+## Kendala dan pengecualian
 
-Sembako yang disetujui cukup ditandai Paket sudah siap. Serah-terima tetap memerlukan kecocokan penerima, bukti, dan pelaksana yang sah. Status sedang_disiapkan lama tetap bisa dilanjutkan.
+Claimant boleh melepas klaim hanya jika belum ada serah fisik; hold tetap aktif. Penyerahan yang belum dapat dipastikan dikunci dan dilaporkan ke Admin. Admin memastikan fakta, menulis alasan, dan melakukan autentikasi ulang. Jika sudah diserahkan, penyelesaian memakai sumber mutasi yang unik. Jika belum, tugas kembali ke antrean. Jika belum pasti, tetap terkunci tanpa mutasi keluar.
 
-## Bendahara
+## Saldo
 
-Daftar pembayaran hanya mencakup pencairan siap diambil yang ditugaskan dan masih berada pada area tugas efektif. Cocokkan kartu/nomor nasabah dan unggah satu foto bukti. Periksa penerima, nominal, dan foto pada halaman yang sama.
+Saldo tersedia adalah mutasi masuk dikurangi mutasi keluar dan hold aktif. Saldo tertahan belum merupakan mutasi keluar. Pembatalan sah atau paket tidak tersedia melepas hold tepat satu kali. Konfirmasi penyerahan membuat mutasi keluar tepat satu kali. Tombol yang dicoba ulang tidak boleh menyebabkan penyerahan fisik kedua.
 
-Setelah uang fisik diserahkan, tekan Uang tunai sudah diserahkan - catat pembayaran. Sistem mencatat satu mutasi keluar dan mengonversi hold. Tombol tidak mengirim uang; transfer bank tidak tersedia.
+## Akun dan batas akses
 
-## Admin
+- Warga: Akun dan smartphone sendiri; saldo, riwayat, kartu, pengajuan pickup, pencairan tunai, dan sembako.
+- Petugas: Pindai warga, setoran, pickup, layanan keliling, dan sembako pada area tugas aktif. Tidak membayar tunai.
+- Bendahara: Mengambil serta mencatat pembayaran tunai pada area tugas aktif. Laporan hanya pembayaran sendiri.
+- Admin: Akun, verifikasi warga, wilayah, harga, paket, laporan, audit, koreksi resmi, pengecualian, dan Health baca-saja. Bukan pelaksana fisik rutin.
 
-Tinjau pencairan serta pilih bendahara melalui satu formulir Setujui dan tetapkan bendahara. Persetujuan dan penugasan tersimpan atomik. Bendahara harus berbeda dari pemberi persetujuan.
+## Batas implementasi
 
-Pickup diterima dan dijadwalkan melalui satu formulir dengan petugas dan tanggal. Penugasan tidak valid membatalkan seluruh tindakan. Pengajuan lama yang sudah diterima/disetujui tetap dapat dilanjutkan.
+- Satu akun memiliki tepat satu dari empat role tetap. Izin tidak dapat diedit melalui panel. Admin aktif terakhir dilindungi pada layanan dan database.
+- Penimbangan/finalisasi setoran serta penyiapan pilihan dan serah-terima sembako tetap melalui web. Bot Telegram belum diimplementasikan. WhatsApp tidak digunakan.
+- Semua warga diasumsikan mempunyai smartphone; tidak ada pengajuan oleh pengurus atas nama Warga.
+- Lampiran rutin opsional. Bila diunggah, file tetap tervalidasi dan privat. Kuitansi sistem bukan bukti independen bahwa uang/barang benar-benar berpindah.
+- Tidak ada modul kas atau stok terperinci. Ketersediaan uang/paket merupakan tanggung jawab pelaksana sebelum mengambil tugas.
+- Pengumuman, harga publik, estimasi nilai, target pengumpulan, partisipasi RT/RW, dan bank sampah keliling tetap tersedia sesuai role. Statistik publik tidak memuat data pribadi.
+- Teknologi utama tetap Laravel 13, PHP 8.3 atau lebih baru, MySQL 8.0.30/InnoDB, Livewire 4, Filament 5, dan Vite.
 
-Ketersediaan paket sembako diperiksa manual. Admin menyetujui/menolak; petugas menandai siap dan melaksanakan serah-terima. Tidak ada stok rinci.
+UAT empat role harus mencatat keberhasilan menyelesaikan tugas, kebutuhan bantuan, salah klik, waktu, dan pemahaman status. Tes otomatis bukan pengukuran usability. Tidak ada klaim nilai SUS atau hasil peserta nyata sebelum sesi tersebut dilakukan.
 
-Kartu antrean membuka daftar sesuai filter yang ditampilkan. Kelola akun dan tugas menampilkan profil serta area dalam satu formulir. Perubahan peran tetap memerlukan izin khusus dan alasan. Area kosong tidak dianggap berhasil dihapus; akhiri masa tugas atau gunakan penonaktifan pengguna yang sah.
+## Pembatalan setelah tugas diambil
 
-## Superadmin dan keamanan
-
-Superadmin mewarisi kewenangan admin, ditambah pengelolaan akses serta rekonsiliasi yang diizinkan. Ini tidak membolehkan pembayaran atau penyerahan transaksi sendiri.
-
-Admin operasional tidak dapat membuat atau mengambil alih akun superadmin. Perubahan permission mencatat nilai sebelum/sesudah dan mencabut sesi anggota. Halaman Health hanya membaca status, tidak mewarisi tindakan maintenance atau retensi.
-
-Editor menetapkan satu peran operasional. Data multi-role lama tetap didukung tanpa perubahan paksa. Semua portal dan panel memeriksa izin dan sesi, termasuk request Livewire: idle 30 menit dan batas absolut delapan jam.
-
-## Hal yang tidak dipangkas
-
-Kepemilikan data, penugasan/area, identitas penerima, bukti wajib, pemisahan pelaksana, transaksi database, idempotensi, dan audit tetap dijaga server. Pengurangan jumlah layar tidak berarti pengurangan perlindungan saldo.
-
-## Batas hasil
-
-Pengujian lokal menggunakan data sintetis dan database/storage terpisah. Hasil tersebut bukan bukti UAT stakeholder, deployment, atau keberhasilan integrasi Telegram.
+Sebelum klaim, pembatalan langsung melepas hold. Setelah klaim, permintaan batal mengunci penyerahan dan hold tetap aktif. Claimant mengonfirmasi pembatalan hanya bila belum ada serah fisik. Jika sudah diserahkan/tidak pasti atau claimant tidak lagi berwenang, Admin memastikan fakta melalui exception. Ini mencegah saldo dilepas saat uang/paket sedang berpindah; bukan approval rutin.

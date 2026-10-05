@@ -4,55 +4,59 @@
 
 # Bank Sampah Digital Sindangheula
 
-Website layanan bank sampah Desa Sindangheula untuk mencatat setoran, saldo, penjemputan, pencairan tunai, dan penukaran sembako.
+Website mobile-first untuk setoran, saldo rupiah, penjemputan, pencairan tunai, dan penukaran sembako Desa Sindangheula.
 
-[Alur pengguna](docs/WEB_WORKFLOW.md) · [Dokumentasi](docs/README.md) · [Pengujian](docs/TEST_PLAN.md) · [Deployment](docs/DEPLOYMENT.md)
+[Workflow](docs/WEB_WORKFLOW.md) · [Dokumentasi](docs/README.md) · [Pengujian](docs/TEST_PLAN.md) · [Validasi cutover](docs/VALIDATION_CUTOVER_2026-10-05.md)
 
-> Pengembangan web aktif. Pengujian lokal tidak menggantikan UAT dan persetujuan rilis. Bot Telegram belum diimplementasikan, WhatsApp tidak digunakan, dan pencairan hanya tunai.
+## Empat peran dan tugas yang jelas
 
-## Dibuat untuk layanan desa
-
-| Pengguna | Pekerjaan utama |
+| Peran | Tugas utama |
 | --- | --- |
-| Warga | Melihat saldo/riwayat, kartu nasabah, dan mengajukan pickup, pencairan, atau sembako. |
-| Petugas | Identifikasi warga, timbang/setoran, pickup yang ditugaskan, layanan keliling, dan serah-terima sembako sesuai area. |
-| Bendahara | Memverifikasi penerima dan mencatat pembayaran tunai yang ditugaskan. |
-| Admin | Verifikasi warga, harga/master, persetujuan dan penugasan, jadwal, serta laporan. |
-| Superadmin | Kewenangan admin ditambah pengelolaan akses, rekonsiliasi berizin, dan Health baca-saja. |
+| Warga | Menggunakan akun/smartphone sendiri; saldo, kartu, riwayat, dan pengajuan layanan. |
+| Petugas | Setoran, pickup, layanan keliling, dan sembako pada area tugas aktif. |
+| Bendahara | Mengambil dan mencatat pembayaran tunai searea; laporan pembayaran sendiri. |
+| Admin | Akun, wilayah, master, laporan, audit, koreksi resmi, dan pengecualian. |
 
-Pelayanan berbantuan tetap tersedia untuk warga tanpa smartphone.
+Satu akun hanya satu peran. Pengurus tidak merangkap tugas. Admin bukan pelaksana fisik rutin.
 
-## Alur yang lebih ringkas
+## Alur yang ringkas
 
-- Alamat pickup diisi awal dari profil; area tunggal digunakan otomatis.
-- Admin menerima sekaligus menjadwalkan pickup dalam satu formulir.
-- Admin menyetujui sekaligus menetapkan bendahara dalam satu formulir.
-- Ringkasan setoran dan pembayaran tetap terlihat sebelum satu konfirmasi akhir.
-- Petugas cukup menandai paket sembako siap, lalu melakukan serah-terima terverifikasi.
-- Ringkasan status warga dilengkapi rincian tahapan yang dapat dibuka bila diperlukan.
-- Kartu antrean membuka daftar terfilter; profil dan tugas pengguna dikelola dalam satu formulir.
+- Semua setoran langsung final setelah ringkasan berat/nilai diperiksa.
+- Petugas/Bendahara mengambil tugas sendiri, tanpa persetujuan Admin rutin.
+- Foto lampiran rutin opsional; bila dikirim tetap tervalidasi dan privat.
+- Pembayaran hanya tunai penuh, diambil ketika uang fisik tersedia. Tidak ada transfer, pembayaran sebagian, atau tombol tunda kas.
+- Sembako dapat langsung diserahkan; Paket siap diambil adalah pilihan, bukan tahap wajib.
+- Hold belum merupakan pengeluaran. Pelepasan klaim mempertahankan hold; pembatalan sah melepasnya. Setelah klaim, permintaan batal mengunci penyerahan sampai serah fisik dipastikan.
+- Tidak ada expiry otomatis pengajuan layanan.
 
-## Integritas transaksi
+Claim mengikat pelaksana sebelum uang/barang berpindah. Setelah serah fisik, satu pencatatan atomik membuat mutasi keluar dan kuitansi. Respons hilang tidak boleh memicu serah fisik kedua; ketidakpastian masuk jalur exception Admin beralasan dan terautentikasi ulang.
 
-Saldo tersedia dihitung dari mutasi masuk dikurangi mutasi keluar dan hold aktif. Hold belum merupakan pengeluaran. Pembayaran atau penyerahan membuat mutasi keluar dan menutup hold secara atomik.
-
-Setoran bernilai tinggi menunggu pemeriksa berbeda; pickup belum selesai selama setorannya belum final. Bukti tersimpan privat. Aksi finansial memeriksa izin, pemilik/penugasan, status, area, dan idempotensi di server. Admin operasional tidak dapat membuat atau mengambil alih akun superadmin.
+Bot Telegram belum diimplementasikan dan WhatsApp tidak digunakan. Penimbangan serta serah-terima sembako tetap melalui web. Tes otomatis belum menggantikan UAT peserta desa nyata.
 
 ## Teknologi
 
-Laravel 13, PHP 8.3+, MySQL 8.0.30-compatible/InnoDB, Blade, Livewire 4, Filament 5, Tailwind CSS, dan Vite. Node.js diperlukan untuk build aset, bukan runtime web produksi.
+Laravel 13, PHP 8.3+, MySQL 8.0.30-compatible/InnoDB, Livewire 4, Filament 5, Tailwind CSS, dan Vite. Node.js diperlukan untuk build/pengujian, bukan runtime web produksi.
 
-## Menjalankan secara lokal
+## Menjalankan lokal
 
-Siapkan PHP 8.3+, Composer 2, Node.js/npm, dan MySQL lokal (misalnya Laragon). Gunakan database lokal sendiri, bukan database produksi.
+1. Siapkan PHP, Composer, Node.js/npm dan MySQL lokal, misalnya Laragon.
+2. Jalankan `composer install` dan `npm ci --ignore-scripts`.
+3. Salin `.env.example` ke `.env`; isi koneksi lokal dan URL, lalu jalankan `php artisan key:generate`.
+4. Pada database lokal kosong, jalankan `php artisan migrate --seed`, kemudian `npm run build`.
+5. Document root Laragon harus `public/`; alternatifnya `php artisan serve`.
 
-1. Jalankan `composer install` dan `npm ci --ignore-scripts`.
-2. Salin `.env.example` menjadi `.env`, lalu isi koneksi database lokal dan URL aplikasi.
-3. Jalankan `php artisan key:generate`, lalu `php artisan migrate` pada database lokal tersebut.
-4. Jalankan `npm run build`.
-5. Arahkan document root Laragon ke `public/`, atau gunakan `php artisan serve`.
+Seed lokal membuat tepat empat akun demo (username `warga`, `petugas`, `bendahara`, `admin`), area tugas, harga, dan paket; tidak ada transaksi/saldo dummy. Kata sandi demo default: `Dev#Sindangheula2026`, kecuali dikonfigurasi sendiri. Akun ini hanya untuk local/testing, bukan akun produksi.
 
-Jangan mengunggah `.env`, data lokal, log, atau kredensial ke GitHub. Akun dan data demo hanya untuk lingkungan uji.
+### Reset baseline dummy yang sudah ada
+
+Simpan backup terlebih dahulu. Command ini hanya menerima local/testing, host loopback, tepat database `bank_sampah`, dan root media workspace.
+
+```bash
+php artisan app:reset-demo-baseline --confirm-reset-demo --dry-run
+php artisan app:reset-demo-baseline --confirm-reset-demo
+```
+
+Tanpa dry-run data dan media dummy dihapus. Jangan dipakai untuk data nyata; migration cutover transaksi menolak baseline transaksi yang tidak kosong. Cutover schema tidak dapat di-rollback sebagian. [Panduan rilis/rollback](docs/DEPLOYMENT.md).
 
 ## Pengujian
 
@@ -61,23 +65,11 @@ composer test
 composer analyse
 php vendor/bin/pint --test
 npm run build
-node --test tests/browser/support/isolated-environment.test.mjs
+npm run test:browser-guard
 ```
 
-Tes otomatis menggunakan SQLite memori dan storage sementara terpisah. Runner menolak database operasional; pengujian MySQL hanya boleh memakai database disposable bernama `bank_sampah_test` atau suffix-nya.
+Unit/feature memakai SQLite memori dan storage/cache/sesi terpisah. MySQL/browser hanya memakai database disposable `bank_sampah_test` atau suffix-nya, URL loopback, dan token preflight yang sesuai. Runner browser: `npm run test:browser`; skenario locking nyata: `tests/mysql/cutover-concurrency.php`. Lihat [rencana tes](docs/TEST_PLAN.md) untuk batas bukti.
 
-Uji browser juga memerlukan URL loopback dan token yang memverifikasi identitas database server. Lihat [rencana pengujian](docs/TEST_PLAN.md) dan [hasil validasi lokal](docs/VALIDATION_2026-10-05.md). Hasil SQLite tidak membuktikan seluruh perilaku locking MySQL.
+Proposal dan sembilan flowchart ada di [documents](documents/). Kuitansi/audit adalah jejak sistem, bukan bukti independen serah fisik. [UAT](docs/UAT_EVIDENCE.md) belum boleh diklaim selesai tanpa peserta nyata.
 
-## Dokumentasi dan batas lingkup
-
-- [Workflow warga dan pengurus](docs/WEB_WORKFLOW.md)
-- [Aturan bisnis](docs/BUSINESS_RULES.md)
-- [Role dan izin](docs/PERMISSIONS.md)
-- [Keamanan](docs/SECURITY.md)
-- [Keputusan terbaru](docs/DECISIONS.md)
-- [Catatan perubahan](docs/CHANGELOG.md)
-- [Deployment dan rollback](docs/DEPLOYMENT.md)
-
-Penimbangan/finalisasi setoran serta persiapan/serah-terima sembako tetap melalui web. Integrasi Telegram merupakan tahap terpisah setelah workflow web disepakati dan diuji; repository ini belum menyediakan bot.
-
-Lisensi metadata package: MIT. Distribusi mengikuti kebijakan lisensi proyek.
+Jangan mengunggah `.env`, token, backup/database, log, atau kredensial nyata ke GitHub. Lisensi metadata package MIT; distribusi mengikuti kebijakan proyek.

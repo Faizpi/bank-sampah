@@ -1,50 +1,8 @@
-# Roadmap Pengembangan
+# Roadmap
 
-Roadmap ini mencatat urutan pengembangan dan evaluasi ruang lingkup aktif. Dokumen ini tidak menjanjikan kapabilitas yang belum tersedia dan tidak menyatakan aplikasi siap produksi.
+1. Validasi teknis web empat role dan review independen.
+2. UAT warga dan pengurus nyata; perbaiki istilah, langkah, dan kesalahan penggunaan yang teramati.
+3. Persetujuan penerapan dan rencana data/akun nyata; deployment merupakan keputusan tersendiri.
+4. Rancang dan implementasikan Telegram secara terpisah setelah workflow web stabil.
 
-## Ruang lingkup aktif
-
-Ruang lingkup aktif mencakup fungsi inti yang dijelaskan pada [PRODUCT.md](PRODUCT.md), [REQUIREMENTS.md](REQUIREMENTS.md), dan [BUSINESS_RULES.md](BUSINESS_RULES.md). Aturan target yang masih menjadi sasaran produk, hierarki wilayah serta kapasitas layanan keliling, dan validasi penjemputan tetap normatif. Dokumentasi tidak menjadikan defect pada area tersebut sebagai perilaku yang diterima.
-
-## Prioritas pengembangan
-
-### Fondasi
-
-- Laravel 13 dengan PHP 8.3 atau lebih baru sesuai `composer.json`
-- Blade, Livewire 4, Tailwind CSS 4.1+, Filament 5, dan Pest 4
-- MySQL 8.0.30, autentikasi, role atau permission, audit, media privat, dan design system
-
-### Akun dan master data
-
-- Registrasi, verifikasi, login, perubahan kata sandi mandiri, serta bantuan admin bagi pengguna yang tidak dapat login
-- Warga tanpa smartphone dan kartu QR
-- Pengguna, wilayah, jenis sampah, kondisi, satuan, harga, dan edukasi
-
-### Transaksi dan layanan
-
-- Setoran langsung multi-item, snapshot harga, ledger, hold, koreksi, reversal, dan bukti
-- Penjemputan dengan foto wajib, validasi area/tanggal, penerimaan sekaligus penjadwalan, penimbangan aktual, dan penyelesaian setelah setoran final
-- Pencairan tunai dan penukaran sembako sederhana tanpa stok rinci
-- Estimasi nilai, pengumuman, dan notifikasi aplikasi
-
-### Program dan pengawasan
-
-- Jadwal Bank Sampah Keliling pada hierarki desa, dusun, RW, dan RT, dengan validasi benturan serta kapasitas per jadwal
-- Data agregat pengumpulan dan statistik yang tersedia
-- QR verifikasi bukti, laporan yang tersedia, dan audit log
-- Health sebagai satu-satunya administrasi teknis aktif
-
-## Di luar ruang lingkup aktif
-
-- Bantuan sembako gratis
-- Push notification dan notification center yang dijanjikan sebagai kanal aktif
-- Reset kata sandi publik berbasis token, email, SMS, atau WhatsApp
-- Queue database, worker asinkron, dan retry otomatis
-- WhatsApp gateway otomatis
-- Transfer bank, dompet digital, timbangan digital, Redis, Horizon, WebSocket, aplikasi native, AI klasifikasi foto, dan produksi paving block
-
-Penambahan kapabilitas memerlukan change request, analisis dampak, persetujuan pengelola, pembaruan dokumen, dan bukti implementasi.
-
-## Penyelarasan workflow 5 Oktober 2026
-
-Alur terkini mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md) dan ADR-012. UI menggabungkan tindakan yang berkaitan, tanpa menghapus validasi, bukti, audit, atau pemisahan pelaksana. WhatsApp tidak digunakan; Telegram belum dibuat. Tabel kapasitas pickup dan status sedang_disiapkan yang masih ada adalah kompatibilitas data lama, bukan langkah wajib layanan baru. Kapasitas layanan keliling tetap berlaku.
+Penimbangan dan serah fisik tetap web. Jangan menganggap bot sudah tersedia atau memakai WhatsApp sebagai kanal.

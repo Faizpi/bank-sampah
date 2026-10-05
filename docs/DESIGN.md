@@ -240,7 +240,7 @@ Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mo
 - Bendahara dapat mengganti `Setoran/Pindai` dengan `Pembayaran/Laporan` sesuai permission tanpa melebihi lima.
 - Aksi scan memiliki alternatif input nomor nasabah.
 
-### Shell admin/superadmin
+### Shell Admin
 
 Filament 5 dengan custom theme. Sidebar dikelompokkan:
 
@@ -249,7 +249,7 @@ Filament 5 dengan custom theme. Sidebar dikelompokkan:
 3. **Program:** target, layanan keliling, pengumuman, statistik publik/partisipasi.
 4. **Pengawasan:** laporan/ekspor Excel, rekonsiliasi, ledger/hold, dan audit log sesuai permission.
 5. **Keamanan & Akses:** bantuan kata sandi, sesi pengguna, peran, dan izin sesuai permission.
-6. **Administrasi sistem:** Health baca-saja untuk superadmin dengan `system.maintenance`; tidak ada item teknis aktif lain.
+6. **Administrasi sistem:** Health baca-saja untuk Admin dengan `system.maintenance`; tidak ada item teknis aktif lain.
 
 Sidebar menampilkan item sesuai permission. Tabel admin tidak dipaksakan ke layout kartu pada desktop; mobile memakai list/stack atau horizontal region yang diberi label dan fokus terkelola hanya bila tak terhindarkan.
 
@@ -453,7 +453,7 @@ Filament 5 hanya untuk back-office. Theme harus:
 - menggunakan Plus Jakarta Sans;
 - memakai Warm Canvas dan Surface;
 - menyamakan radius, shadow, focus ring, badge, button, form, table, chart, dan spacing;
-- mengelompokkan sidebar sesuai enam kelompok yang ditetapkan pada shell admin/superadmin;
+- mengelompokkan sidebar sesuai enam kelompok yang ditetapkan pada shell Admin;
 - mempertahankan density admin tanpa mengecilkan aksesibilitas;
 - menggunakan kontrol form custom minimum 44 px dengan padding dan jarak label yang konsisten, serta disclosure dengan chevron dan state terbuka/tertutup yang jelas;
 - mengotorisasi resource/action dengan policy dan permission granular;
@@ -484,4 +484,4 @@ Untuk setiap komponen/halaman, review wajib memastikan:
 
 ## Penyelarasan workflow 5 Oktober 2026
 
-Alur terkini mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md) dan ADR-012. UI menggabungkan tindakan yang berkaitan, tanpa menghapus validasi, bukti, audit, atau pemisahan pelaksana. WhatsApp tidak digunakan; Telegram belum dibuat. Tabel kapasitas pickup dan status sedang_disiapkan yang masih ada adalah kompatibilitas data lama, bukan langkah wajib layanan baru. Kapasitas layanan keliling tetap berlaku.
+Alur aktif mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md). Empat role tetap dan tidak rangkap tugas; foto rutin opsional, tanpa approval Admin rutin. Antrean klaim dan ringkasan nama/nilai harus terlihat jelas. WhatsApp tidak digunakan; Telegram belum diimplementasikan. Kapasitas layanan keliling tetap berlaku.

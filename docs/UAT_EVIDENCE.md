@@ -1,46 +1,12 @@
-# Catatan UAT
+# UAT empat role
 
-Dokumen ini menyediakan tempat untuk mencatat User Acceptance Testing (UAT) yang difasilitasi. Tidak ada bukti UAT aktif atau klaim kelulusan yang ditetapkan di sini.
+Status: menunggu peserta nyata. Tidak ada klaim SUS atau usability dari uji otomatis.
 
-## Status
+| Role | Tugas | Hasil | Bantuan | Salah klik | Waktu | Pemahaman status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Warga | Login, saldo, pengajuan, pembatalan, riwayat/kuitansi | Belum diuji peserta | Belum dicatat | Belum dicatat | Belum dicatat | Belum dicatat |
+| Petugas | Scan, setoran, claim pickup/sembako, kendala | Belum diuji peserta | Belum dicatat | Belum dicatat | Belum dicatat | Belum dicatat |
+| Bendahara | Ambil pembayaran, catat setelah uang diberikan, lepaskan/kunci kendala | Belum diuji peserta | Belum dicatat | Belum dicatat | Belum dicatat | Belum dicatat |
+| Admin | Akun/area/master, laporan, pemulihan exception | Belum diuji peserta | Belum dicatat | Belum dicatat | Belum dicatat | Belum dicatat |
 
-Stakeholder acceptance and approval: **PENDING**.
-
-## Catatan pelaksanaan
-
-Saat UAT dijalankan, catat informasi berikut:
-
-| Field | Value |
-|---|---|
-| Tanggal |  |
-| Environment |  |
-| Build atau commit |  |
-| Fasilitator |  |
-| Hasil |  |
-| Referensi bukti |  |
-
-## Cakupan penerimaan
-
-UAT harus memakai ruang lingkup aktif pada [REQUIREMENTS.md](REQUIREMENTS.md) dan struktur 36 alur pada [USER_FLOWS.md](USER_FLOWS.md). Skenario yang tidak berada dalam ruang lingkup aktif tidak boleh dicatat sebagai kapabilitas yang diterima.
-
-Setiap skenario mencatat data awal, langkah, hasil yang diharapkan, hasil aktual, bukti, severity temuan, dan keputusan. Aturan target, hierarki wilayah serta kapasitas layanan keliling, dan validasi penjemputan tetap dinilai sesuai kontrak normatif.
-
-## Persetujuan stakeholder
-
-| Peran stakeholder | Nama | Tanggal | Keputusan | Referensi persetujuan |
-|---|---|---|---|---|
-| Perwakilan warga dengan smartphone |  |  |  |  |
-| Perwakilan warga tanpa smartphone |  |  |  |  |
-| Petugas lapangan |  |  |  |  |
-| Bendahara |  |  |  |  |
-| Admin operasional |  |  |  |  |
-| Superadmin |  |  |  |  |
-| Pemerintah desa |  |  |  |  |
-
-## Gate terbuka
-
-- UAT stakeholder pada kandidat rilis yang sama
-- Pemeriksaan laporan dan ledger pada data UAT
-- Verifikasi deployment host dan Health privat
-- Cross-browser pada HTTPS production
-- Persetujuan rilis tertulis
+Jelaskan perbedaan saldo total/tersedia/tertahan, bahwa claim belum berarti dibayar/diserahkan, dan bahwa respons hilang bukan alasan mengulang serah fisik. Dapatkan penerimaan pemilik sebelum rilis desa.

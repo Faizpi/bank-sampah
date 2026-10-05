@@ -1,3 +1,7 @@
+# Arsip validasi checkpoint 13310a6
+
+Dokumen berikut adalah hasil sebelum cutover empat role. Tidak berlaku sebagai bukti implementasi saat ini; lihat VALIDATION_CUTOVER_2026-10-05.md.
+
 # Validasi Workflow Web 5 Oktober 2026
 
 ## Ruang lingkup

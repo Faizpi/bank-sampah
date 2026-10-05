@@ -1,6 +1,6 @@
 # Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0
 
-Dokumen publik ini adalah kontrak kanonis untuk pendaftaran dan penggunaan Bank Sampah Digital Sindangheula. Dokumen tersedia untuk dibaca publik, termasuk sebelum pendaftaran. Ketentuan penerimaan akun dan persetujuan layanan berbantuan dibedakan secara tegas.
+Dokumen publik ini adalah kontrak kanonis untuk pendaftaran dan penggunaan Bank Sampah Digital Sindangheula. Dokumen tersedia untuk dibaca publik, termasuk sebelum pendaftaran. Dokumen draft ini diselaraskan dengan baseline dummy empat role sebelum penggunaan nyata di desa.
 
 ## Ketentuan Operasional v1.0
 
@@ -24,9 +24,9 @@ Bank Sampah Digital Sindangheula membantu pencatatan layanan bank sampah, termas
 3. Status transaksi dan layanan mengikuti proses operasional. Persetujuan, pembayaran, penyerahan, dan perubahan saldo tidak dapat dianggap terjadi hanya dari pengisian formulir atau notifikasi.
 4. Informasi layanan tersedia melalui website dan notifikasi dalam aplikasi. WhatsApp tidak digunakan; Telegram belum diimplementasikan.
 
-### 4. Layanan berbantuan
+### 4. Layanan mandiri dan serah fisik
 
-Persetujuan untuk layanan berbantuan terpisah dari penerimaan ketentuan akun. Warga dapat memberi persetujuan untuk bantuan petugas pada layanan tertentu. Persetujuan ini tidak memberi petugas hak meminta, menyimpan, atau mengambil alih kata sandi warga. Warga tetap pemilik record, sedangkan petugas dicatat sebagai pelaksana.
+Semua Warga menggunakan akun serta smartphone sendiri. Petugas menangani setoran, pickup, dan sembako; Bendahara menangani uang tunai. Pengurus tidak mengajukan layanan atas nama Warga dan tidak meminta kata sandi Warga. Foto rutin opsional; hold belum merupakan pengeluaran. Claim belum berarti uang atau paket diberikan. Status final mengikuti pencatatan setelah serah fisik; jika tidak pasti, transaksi dikunci untuk pemeriksaan Admin.
 
 ### 5. Perubahan dokumen
 
@@ -55,7 +55,7 @@ Foto, bukti, ekspor, dan media privat dilindungi dengan akses terotorisasi. Kata
 
 ### 4. Hubungan dengan ketentuan
 
-Penerimaan Ketentuan Operasional v1.0 mencakup pengakuan bahwa Kebijakan Privasi Ringkas v1.0 telah tersedia untuk dibaca. Persetujuan layanan berbantuan tetap merupakan persetujuan terpisah untuk tindakan bantuan yang relevan.
+Penerimaan Ketentuan Operasional v1.0 mencakup pengakuan bahwa Kebijakan Privasi Ringkas v1.0 telah tersedia untuk dibaca. Tidak ada pengajuan transaksi rutin oleh pengurus atas nama Warga.
 
 ## Aksesibilitas dan kontrol pendaftaran
 
