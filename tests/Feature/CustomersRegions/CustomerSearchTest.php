@@ -12,14 +12,13 @@ use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\CustomersRegions\Queries\SearchCustomers;
 use App\Domain\CustomersRegions\Support\RegionMutationGuard;
 use App\Domain\Identity\Models\CustomerProfile;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
 use App\Domain\Identity\Models\StaffServiceArea;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class CustomerSearchTest extends TestCase
@@ -118,7 +117,7 @@ final class CustomerSearchTest extends TestCase
         self::assertCount(1, $results);
         self::assertSame($active->id, $results[0]->userId);
 
-        $withoutPermission = User::factory()->create();
+        $withoutPermission = User::factory()->inactive()->create();
         $this->expectException(AuthorizationException::class);
         app(SearchCustomers::class)->search($withoutPermission->fresh(), 'CST-');
     }
@@ -166,11 +165,6 @@ final class CustomerSearchTest extends TestCase
 
     private function grant(User $user, string ...$permissions): void
     {
-        $role = Role::query()->firstOrCreate(['name' => 'w2-search-role'], ['description' => 'W2 search test role']);
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => "W2 {$permissionName}"]);
-            $role->permissions()->syncWithoutDetaching($permission);
-        }
-        $user->roles()->syncWithoutDetaching($role);
+        $user = RoleFixtures::assign($user, $permissions);
     }
 }

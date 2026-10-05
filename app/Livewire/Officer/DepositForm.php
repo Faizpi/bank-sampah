@@ -9,6 +9,7 @@ use App\Domain\Deposits\Data\DepositItemInput;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Deposits\Services\DepositService;
+use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\WasteMaster\Models\WasteCondition;
@@ -36,9 +37,6 @@ final class DepositForm extends Component
 
     #[Locked]
     public ?int $mobileServiceId = null;
-
-    #[Locked]
-    public ?int $assistedServiceId = null;
 
     #[Locked]
     public ?Deposit $draft = null;
@@ -75,7 +73,6 @@ final class DepositForm extends Component
             $this->draft = $draft;
             $this->customerId = $draft->customer_id;
             $this->mobileServiceId = $draft->mobile_service_id;
-            $this->assistedServiceId = null;
             $this->items = $draft->items->map(static fn (DepositItem $item): array => [
                 'waste_type_id' => $item->waste_type_id,
                 'condition_id' => $item->waste_condition_id,
@@ -92,13 +89,12 @@ final class DepositForm extends Component
             abort_unless($permissions->allows($actor, 'mobile-service.operate'), 404);
             $this->mobileServiceId = $this->activeAssignedMobileService($actor, $requestedMobileServiceId)->id;
         }
-        $this->assistedServiceId = request()->integer('assistedServiceId') ?: null;
         $this->idempotencyKey = (string) str()->uuid();
     }
 
     public function startNewDeposit(): void
     {
-        if (! $this->draft?->isFinal() && ! $this->draft?->isPendingReview()) {
+        if (! $this->draft?->isFinal()) {
             return;
         }
 
@@ -156,7 +152,7 @@ final class DepositForm extends Component
     {
         return $this->confirmMediaPickerUpload(
             'evidence',
-            ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
+            ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
             ['evidence.required' => 'Unggah bukti transaksi sebelum melanjutkan.'],
         );
     }
@@ -178,7 +174,7 @@ final class DepositForm extends Component
     {
         $this->validateItems();
         $this->validate([
-            'evidence' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
+            'evidence' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
         ]);
         $this->finalizationReviewOpen = true;
     }
@@ -196,7 +192,7 @@ final class DepositForm extends Component
 
         $this->validateItems();
         $this->validate([
-            'evidence' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
+            'evidence' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,pdf'],
         ]);
         /** @var User $actor */
         $actor = auth()->user();
@@ -207,9 +203,7 @@ final class DepositForm extends Component
         $draftId = $this->draft->id;
 
         try {
-            $this->draft = $this->assistedServiceId === null
-                ? $service->finalize($actor, $this->draft, $this->idempotencyKey, $this->items, $this->evidence, $mobileService)
-                : $service->finalizeAndLinkAssisted($actor, $this->draft, $this->idempotencyKey, $this->assistedServiceId, $this->items, $this->evidence, $mobileService);
+            $this->draft = $service->finalize($actor, $this->draft, $this->idempotencyKey, $this->items, $this->evidence, $mobileService);
         } catch (Throwable $exception) {
             $durableDraft = Deposit::query()->find($draftId);
             if (! $durableDraft instanceof Deposit || $durableDraft->isDraft()) {
@@ -219,18 +213,14 @@ final class DepositForm extends Component
             $this->draft = $durableDraft->fresh('items');
             $this->evidence = null;
             $this->finalizationReviewOpen = false;
-            session()->flash('success', $this->draft->isPendingReview()
-                ? 'Setoran berhasil dicatat dan menunggu persetujuan pemeriksa.'
-                : 'Setoran berhasil dicatat.');
+            session()->flash('success', 'Setoran berhasil dicatat.');
 
             return;
         }
 
         $this->evidence = null;
         $this->finalizationReviewOpen = false;
-        session()->flash('success', $this->draft->isPendingReview()
-            ? 'Setoran bernilai tinggi menunggu persetujuan pemeriksa. Saldo belum ditambahkan.'
-            : 'Setoran berhasil dicatat.');
+        session()->flash('success', 'Setoran berhasil dicatat.');
     }
 
     /** @return array<string, list<string|\Closure>> */
@@ -283,7 +273,9 @@ final class DepositForm extends Component
 
     public function render(): View
     {
-        $customer = User::query()->with('customerProfile')->findOrFail($this->customerId);
+        /** @var User $scopeActor */
+        $scopeActor = auth()->user();
+        $customer = app(VisibleUsers::class)->queryFor($scopeActor)->where('role', 'warga')->with('customerProfile')->findOrFail($this->customerId);
         /** @var User $actor */
         $actor = auth()->user();
         $mobileService = $this->mobileServiceId === null

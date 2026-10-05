@@ -10,6 +10,16 @@ final class NotificationTemplateRegistry
 {
     /** @var array<string, array{title: string, body: string, placeholders: list<string>}> */
     private const TEMPLATES = [
+        'withdrawal.claimed' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
+        'withdrawal.released' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
+        'withdrawal.exception_reported' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
+        'withdrawal.exception_resolved' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
+        'withdrawal.completed' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
+        'grocery.claimed' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
+        'grocery.released' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
+        'grocery.exception_reported' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
+        'grocery.exception_resolved' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
+        'grocery.unavailable' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
         'deposit.finalized' => ['title' => 'Setoran selesai', 'body' => 'Setoran {reference} telah selesai diproses.', 'placeholders' => ['reference']],
         'transaction.corrected' => ['title' => 'Koreksi setoran tercatat', 'body' => 'Koreksi setoran {reference} telah tercatat.', 'placeholders' => ['reference']],
         'transaction.reversed' => ['title' => 'Setoran dibalik', 'body' => 'Setoran {reference} telah diproses melalui pembalikan resmi.', 'placeholders' => ['reference']],

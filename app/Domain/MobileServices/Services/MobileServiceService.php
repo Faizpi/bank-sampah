@@ -185,7 +185,7 @@ final readonly class MobileServiceService
         if ($rwId !== null && $rtId !== null && ! Rt::query()->whereKey($rtId)->where('rw_id', $rwId)->exists()) {
             throw ValidationException::withMessages(['rt_id' => 'RT layanan harus berada dalam RW yang dipilih.']);
         }
-        if (User::query()->whereIn('id', $staffIds)->where('status', UserStatus::Active)->whereHas('staffProfile')->whereHas('roles.permissions', fn (Builder $permissions): Builder => $permissions->where('permissions.name', 'mobile-service.operate'))->count() !== count(array_unique($staffIds)) || WasteType::query()->whereIn('id', $wasteTypeIds)->where('is_active', true)->count() !== count(array_unique($wasteTypeIds))) {
+        if (User::query()->whereIn('id', $staffIds)->where('status', UserStatus::Active)->whereHas('staffProfile')->where('role', 'petugas')->count() !== count(array_unique($staffIds)) || WasteType::query()->whereIn('id', $wasteTypeIds)->where('is_active', true)->count() !== count(array_unique($wasteTypeIds))) {
             throw ValidationException::withMessages(['assignment' => 'Pilih petugas aktif yang berwenang dan jenis sampah aktif.']);
         }
 

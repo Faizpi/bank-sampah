@@ -9,39 +9,16 @@ use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\CustomersRegions\Models\ServiceArea;
+use App\Domain\CustomersRegions\Support\RegionMutationGuard;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
 use App\Models\User;
 use Dotenv\Dotenv;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
-/**
- * Local/staging credential seeder.
- *
- * Creates one back-office/phone-capable account per baseline role so a local
- * or staging instance can be exercised end-to-end. NEVER wired into production:
- * the seeder aborts on APP_ENV=production and DatabaseSeeder only invokes it in
- * non-production environments.
- *
- * Credentials (all roles share the same password):
- *   warga      phone 6281234567801  email warga@sindangheula.dev
- *   petugas    phone 6281234567802  email petugas@sindangheula.dev
- *   bendahara  phone 6281234567803  email bendahara@sindangheula.dev
- *   admin      phone 6281234567804  email admin@sindangheula.dev
- *   superadmin phone 6281234567805  email superadmin@sindangheula.dev
- *   password   : Dev#Sindangheula2026
- *
- * Role-appropriate gates:
- *   - warga, petugas, bendahara, admin, superadmin log in through the public phone
- *     form (LoginForm, route 'login').
- *   - admin and superadmin additionally hold `backoffice.access` and log in through
- *     the Filament back-office form (email + password).
- *   - superadmin inherits every `admin` permission and adds the technical/system
- *     permissions (role.manage, system.*, backup.*, audit.retention.*).
- */
+/** Local-only credentials for the four fixed roles. */
 final class DeveloperUsersSeeder extends Seeder
 {
     public const DEV_PASSWORD = 'Dev#Sindangheula2026';
@@ -52,7 +29,6 @@ final class DeveloperUsersSeeder extends Seeder
         'petugas' => ['username' => 'petugas', 'phone' => '6281234567802', 'email' => 'petugas@sindangheula.dev', 'staff' => true, 'customer' => false],
         'bendahara' => ['username' => 'bendahara', 'phone' => '6281234567803', 'email' => 'bendahara@sindangheula.dev', 'staff' => true, 'customer' => false],
         'admin' => ['username' => 'admin', 'phone' => '6281234567804', 'email' => 'admin@sindangheula.dev', 'staff' => false, 'customer' => false],
-        'superadmin' => ['username' => 'superadmin', 'phone' => '6281234567805', 'email' => 'superadmin@sindangheula.dev', 'staff' => false, 'customer' => false],
     ];
 
     /** @var array<string, string> */
@@ -61,7 +37,6 @@ final class DeveloperUsersSeeder extends Seeder
         'petugas' => 'Dadan Hidayat',
         'bendahara' => 'Dewi Lestari',
         'admin' => 'Rina Marlina',
-        'superadmin' => 'Agus Setiawan',
     ];
 
     /** @return array<string, string> role name => username */
@@ -104,15 +79,7 @@ final class DeveloperUsersSeeder extends Seeder
 
     public static function canSeedDemoData(): bool
     {
-        if (config('app.env') !== 'production') {
-            return true;
-        }
-
-        $demoPassword = self::demoSetting('app.demo_password', 'APP_DEMO_PASSWORD');
-
-        return filter_var(self::demoSetting('app.demo_mode', 'APP_DEMO_MODE'), FILTER_VALIDATE_BOOL)
-            && is_string($demoPassword)
-            && mb_strlen($demoPassword) >= 16;
+        return in_array(config('app.env'), ['local', 'testing'], true);
     }
 
     public static function requireDemoDataConfiguration(): void
@@ -121,7 +88,7 @@ final class DeveloperUsersSeeder extends Seeder
             return;
         }
 
-        throw new \LogicException('Data uji production dinonaktifkan. Isi APP_DEMO_MODE=true dan APP_DEMO_PASSWORD minimal 16 karakter secara sementara, lalu bangun ulang cache.');
+        throw new \LogicException('Data demo hanya boleh dibuat pada lingkungan local atau testing.');
     }
 
     private static function demoSetting(string $configKey, string $environmentKey): mixed
@@ -171,9 +138,13 @@ final class DeveloperUsersSeeder extends Seeder
 
     public function run(): void
     {
+        RegionMutationGuard::run(fn () => $this->seedAccounts());
+    }
+
+    private function seedAccounts(): void
+    {
         self::requireDemoDataConfiguration();
 
-        $this->call(RolesAndPermissionsSeeder::class);
         // All generated accounts intentionally share the configured demo
         // password. Hash it once so a web-based deployment on shared hosting
         // does not spend its whole request budget repeating bcrypt work.
@@ -189,14 +160,12 @@ final class DeveloperUsersSeeder extends Seeder
                     'email_verified_at' => now(),
                     'password' => $passwordHash,
                     'status' => UserStatus::Active,
+                    'role' => $roleName,
                     'verified_at' => now(),
                     'terms_version' => (string) config('app.terms_version'),
                     'terms_accepted_at' => now(),
                 ],
             );
-
-            $role = Role::query()->where('name', $roleName)->firstOrFail();
-            $user->roles()->syncWithoutDetaching([$role->id => ['assigned_by' => $user->id, 'reason' => 'Dev credential bootstrap']]);
 
             $this->ensureProfiles($user, $roleName, $account['customer'], $account['staff']);
 
@@ -234,7 +203,7 @@ final class DeveloperUsersSeeder extends Seeder
         }
 
         if ($staff) {
-            StaffProfile::query()->updateOrCreate(
+            $profile = StaffProfile::query()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
                     'staff_number' => $roleName === 'bendahara' ? 'STF-SH-002' : 'STF-SH-001',
@@ -243,6 +212,8 @@ final class DeveloperUsersSeeder extends Seeder
                     'active_to' => null,
                 ],
             );
+            $this->localServiceArea()->rts()->syncWithoutDetaching([$this->localRt()->id]);
+            $profile->serviceAreas()->updateOrCreate(['service_area_id' => $this->localServiceArea()->id], ['active_from' => now()->subYear()->toDateString(), 'active_to' => null]);
         }
     }
 

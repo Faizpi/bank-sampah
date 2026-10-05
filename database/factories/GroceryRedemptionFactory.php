@@ -33,7 +33,7 @@ final class GroceryRedemptionFactory extends Factory
             'grocery_package_id' => $package->id,
             'value_snapshot' => $package->value,
             'package_snapshot' => ['code' => $package->code, 'name' => $package->name, 'contents' => $package->contents, 'value' => $package->value],
-            'status' => GroceryStatus::PendingVerification,
+            'status' => GroceryStatus::Waiting,
         ];
     }
 }

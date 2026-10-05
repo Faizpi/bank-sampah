@@ -40,7 +40,7 @@ EXPECTED_DIAGRAM_TITLES = (
     "Estimasi Nilai Sebelum Setor",
     "Pelayanan Warga Tanpa Smartphone",
     "Verifikasi Bukti Transaksi dengan QR",
-    "Pengaturan Kapasitas Penjemputan Harian",
+    "Konfirmasi Jadwal Penjemputan",
     "Health Sistem Read-Only",
 )
 

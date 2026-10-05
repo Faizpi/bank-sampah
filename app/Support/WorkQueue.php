@@ -26,9 +26,8 @@ final class WorkQueue
             'pickup_overdue' => $query->whereIn('status', ['dijadwalkan', 'menuju_lokasi', 'dijemput'])->where(function (Builder $dates) use ($today): void {
                 $dates->whereDate('scheduled_date', '<', $today)->orWhere(fn (Builder $fallback): Builder => $fallback->whereNull('scheduled_date')->whereDate('selected_date', '<', $today));
             }),
-            'withdrawal_unassigned' => $query->where('status', 'disetujui')->whereNull('payer_id'),
-            'withdrawal_expiring' => $query->whereIn('status', ['disetujui', 'siap_diambil'])->whereBetween('expires_at', [now('Asia/Jakarta'), now('Asia/Jakarta')->addDays(2)]),
-            'grocery_pending' => $query->where('status', 'menunggu_verifikasi'),
+            'withdrawal_unassigned' => $query->where('status', 'menunggu_bendahara')->whereNull('payer_id'),
+            'grocery_pending' => $query->where('status', 'menunggu_petugas'),
             default => $query->whereRaw('1 = 0'),
         };
     }

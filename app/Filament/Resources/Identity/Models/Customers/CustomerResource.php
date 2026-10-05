@@ -56,17 +56,13 @@ final class CustomerResource extends Resource
         return $actor instanceof User
             && app(PermissionChecker::class)->allows($actor, 'customer.view')
             && (app(PermissionChecker::class)->allows($actor, 'customer.update')
-                || app(PermissionChecker::class)->allows($actor, 'customer.create-assisted')
                 || app(PermissionChecker::class)->allows($actor, 'customer.card.issue')
                 || app(PermissionChecker::class)->allows($actor, 'customer.qr.rotate'));
     }
 
     public static function canCreate(): bool
     {
-        $actor = auth()->user();
-
-        return $actor instanceof User
-            && app(PermissionChecker::class)->allows($actor, 'customer.create-assisted');
+        return false;
     }
 
     public static function form(Schema $schema): Schema

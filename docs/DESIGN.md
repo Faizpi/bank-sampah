@@ -244,7 +244,7 @@ Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mo
 
 Filament 5 dengan custom theme. Sidebar dikelompokkan:
 
-1. **Operasional:** dashboard, setoran, penjemputan/kapasitas, pencairan, sembako, tugas/jadwal.
+1. **Operasional:** dashboard, setoran, penjemputan/penjadwalan, pencairan, sembako, tugas/jadwal.
 2. **Data Master:** pengguna/nasabah/petugas, wilayah, jenis/kategori/satuan/kondisi, harga, paket.
 3. **Program:** target, layanan keliling, pengumuman, statistik publik/partisipasi.
 4. **Pengawasan:** laporan/ekspor Excel, rekonsiliasi, ledger/hold, dan audit log sesuai permission.
@@ -481,3 +481,7 @@ Untuk setiap komponen/halaman, review wajib memastikan:
 - Validasi/state: [VALIDATION.md](VALIDATION.md)
 - UI shell teknis: [ARCHITECTURE.md](ARCHITECTURE.md)
 - Pengujian: [TEST_PLAN.md](TEST_PLAN.md)
+
+## Penyelarasan workflow 5 Oktober 2026
+
+Alur terkini mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md) dan ADR-012. UI menggabungkan tindakan yang berkaitan, tanpa menghapus validasi, bukti, audit, atau pemisahan pelaksana. WhatsApp tidak digunakan; Telegram belum dibuat. Tabel kapasitas pickup dan status sedang_disiapkan yang masih ada adalah kompatibilitas data lama, bukan langkah wajib layanan baru. Kapasitas layanan keliling tetap berlaku.

@@ -6,8 +6,6 @@ namespace Tests\Feature\Citizen;
 
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryRedemption;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Livewire\Citizen\GroceryHistory;
@@ -15,6 +13,7 @@ use App\Livewire\Citizen\WithdrawalHistory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class TransactionHistoryTest extends TestCase
@@ -26,7 +25,7 @@ final class TransactionHistoryTest extends TestCase
         $citizen = $this->citizenWithPermissions(['withdrawal.view']);
         $other = User::factory()->create();
         $matching = $this->withdrawal($citizen, 'WDR-CARI-001', WithdrawalStatus::Paid, '2026-08-10');
-        $this->withdrawal($citizen, 'WDR-LAIN-002', WithdrawalStatus::Rejected, '2026-08-11');
+        $this->withdrawal($citizen, 'WDR-LAIN-002', WithdrawalStatus::Cancelled, '2026-08-11');
         $this->withdrawal($other, 'WDR-CARI-RAHASIA', WithdrawalStatus::Paid, '2026-08-10');
 
         Livewire::actingAs($citizen)
@@ -49,7 +48,7 @@ final class TransactionHistoryTest extends TestCase
         $citizen = $this->citizenWithPermissions(['grocery.view']);
         $other = User::factory()->create();
         $matching = $this->redemption($citizen, 'GRC-CARI-001', GroceryStatus::Completed, '2026-08-10', 'Paket Beras');
-        $this->redemption($citizen, 'GRC-LAIN-002', GroceryStatus::Rejected, '2026-08-11', 'Paket Minyak');
+        $this->redemption($citizen, 'GRC-LAIN-002', GroceryStatus::Unavailable, '2026-08-11', 'Paket Minyak');
         $this->redemption($other, 'GRC-CARI-RAHASIA', GroceryStatus::Completed, '2026-08-10', 'Paket Rahasia');
 
         Livewire::actingAs($citizen)
@@ -106,7 +105,7 @@ final class TransactionHistoryTest extends TestCase
 
     public function test_history_routes_deny_users_without_the_required_permissions(): void
     {
-        $citizen = User::factory()->create();
+        $citizen = User::factory()->create(['role' => 'petugas']);
 
         foreach (['citizen.deposit-history', 'citizen.withdrawal-history', 'citizen.grocery-history'] as $routeName) {
             $this->actingAs($citizen)->get(route($routeName))->assertForbidden();
@@ -142,21 +141,8 @@ final class TransactionHistoryTest extends TestCase
     private function citizenWithPermissions(array $permissions): User
     {
         $citizen = User::factory()->create();
-        $role = Role::query()->create([
-            'name' => 'citizen-transactions-'.str()->random(12),
-            'description' => 'Citizen transaction history test role',
-        ]);
+        $citizen = RoleFixtures::assign($citizen, $permissions);
 
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(
-                ['name' => $permissionName],
-                ['description' => 'View citizen transaction history'],
-            );
-            $role->permissions()->attach($permission);
-        }
-
-        $citizen->roles()->attach($role);
-
-        return $citizen->fresh();
+        return $citizen;
     }
 }

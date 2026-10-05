@@ -66,28 +66,28 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 
 ### FL-09 — Setoran Sampah Langsung
 - **Aktor:** warga, petugas.
-- **Alur utama:** identifikasi QR/nomor → konfirmasi warga → timbang beberapa jenis → ambil harga → hitung → tinjau → bukti/konfirmasi → transaksi+saldo masuk → bukti/notifikasi.
+- **Alur utama:** identifikasi QR/nomor → timbang dan lengkapi bukti → periksa ringkasan pada halaman yang sama → satu konfirmasi → setoran final atau pemeriksaan nilai tinggi → saldo masuk setelah final.
 - **Keputusan/gagal:** data salah kembali ke timbang/input; commit gagal rollback seluruh efek.
 - **Hasil:** satu transaksi final dan satu efek saldo masuk.
 - **Jejak:** CST-001, DEP-001, PRC-002; BR-DEP-001–006.
 
 ### FL-10 — Pengajuan dan Penyelesaian Penjemputan
 - **Aktor:** warga, admin/petugas, petugas lapangan.
-- **Alur utama:** pengajuan+foto → validasi/kapasitas → pemeriksaan → terima/jadwalkan → menuju lokasi → timbang aktual → transaksi → saldo masuk → selesai.
-- **Keputusan/gagal:** kapasitas penuh menawarkan tanggal lain; tidak layak ditolak beralasan dan berhenti.
+- **Alur utama:** pengajuan+foto → validasi tanggal/area → terima dan jadwalkan dalam satu formulir → menuju lokasi → dijemput → timbang aktual → setoran/pemeriksaan → saldo masuk → selesai.
+- **Keputusan/gagal:** tanggal pilihan bukan slot yang dijamin; admin menetapkan jadwal; tidak layak ditolak beralasan dan berhenti.
 - **Hasil:** penyelesaian hanya setelah transaksi final.
 - **Jejak:** PUP-001, DEP-001; BR-PUP-001–010.
 
 ### FL-11 — Pencairan Saldo Tunai
-- **Aktor:** warga, admin approver, bendahara/petugas payer.
-- **Alur utama:** ajukan nominal → cek saldo/minimum → hold → approve → jadwal → verifikasi penerima → bayar+bukti → saldo keluar → selesai.
+- **Aktor:** warga, admin approver, bendahara yang ditugaskan.
+- **Alur utama:** ajukan nominal → cek saldo/minimum → hold → setujui dan tetapkan bendahara → verifikasi penerima dan foto → satu konfirmasi pencatatan tunai → saldo keluar → selesai.
 - **Keputusan/gagal:** saldo kurang berhenti tanpa hold; ditolak melepas hold dan berhenti; belum dibayar tidak membuat saldo keluar.
 - **Hasil:** uang diserahkan satu kali dan ledger konsisten.
 - **Jejak:** WDR-001, BAL-002; BR-WDR-001–009.
 
 ### FL-12 — Penukaran Saldo dengan Sembako
 - **Aktor:** warga, admin approver, petugas handover.
-- **Alur utama:** pilih paket → cek saldo/status → hold → cek ketersediaan manual → approve/siapkan → verifikasi/serahkan → bukti → saldo keluar.
+- **Alur utama:** pilih paket → cek saldo/status → hold → cek ketersediaan manual → approve → tandai paket siap → verifikasi penerima dan bukti → serahkan → saldo keluar.
 - **Keputusan/gagal:** tidak tersedia/ditolak melepas hold dan berhenti tanpa penyerahan.
 - **Hasil:** paket diserahkan satu kali tanpa stok terperinci.
 - **Jejak:** GRC-001, BAL-002; BR-GRC-001–009.
@@ -106,14 +106,12 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 - **Hasil:** harga baru aktif dan transaksi lama tetap memakai snapshot.
 - **Jejak:** PRC-001–002; BR-PRC-001–005.
 
-### FL-15 — Alur Informasi dan WhatsApp Manual
-- **Aktor:** warga, petugas, admin.
-- **Alur utama:** pengguna melihat informasi status atau pengumuman pada halaman terkait → bila perlu memilih **Buka WhatsApp** → aplikasi membuka tautan `wa.me` → pengguna meninjau dan mengirim pesan sendiri.
-- **Keputusan/gagal:** gagal membuka WhatsApp tidak mengubah proses atau status bisnis.
-- **Hasil:** informasi tersedia pada aplikasi tanpa klaim pesan otomatis atau push notification.
-- **Jejak:** WA-001, ANN-001; BR-WA-*, BR-ANN-*.
-
-## 4. Saldo dan transaksi
+### FL-15 — Alur Informasi dan Notifikasi Aplikasi
+- **Aktor:** warga dan pengurus.
+- **Alur utama:** transaksi commit → simpan notifikasi aplikasi → penerima membuka informasi sesuai izin.
+- **Keputusan/gagal:** kegagalan notifikasi tidak mengulang transaksi. WhatsApp tidak digunakan; Telegram belum tersedia.
+- **Hasil:** status tersimpan dapat ditelusuri tanpa klaim pesan eksternal terkirim.
+- **Jejak:** ANN-001; ADR-012.
 
 ### FL-16 — Alur Saldo Masuk
 - **Aktor:** petugas, sistem, warga.
@@ -175,7 +173,7 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 
 ### FL-24 — Status Penukaran Sembako
 - **Aktor:** warga, admin, petugas.
-- **Alur utama:** menunggu verifikasi → disetujui → sedang disiapkan → siap diambil → selesai.
+- **Alur utama:** menunggu verifikasi → disetujui → siap diambil → selesai.
 - **Keputusan/gagal:** tolak atau kedaluwarsa menjadi endpoint dan melepas hold.
 - **Hasil:** selesai hanya setelah bukti penyerahan.
 - **Jejak:** GRC-001; BR-GRC-009, BR-EXP-*.
@@ -254,12 +252,12 @@ Dokumen ini adalah representasi tekstual normatif dari 36 diagram pada dokumen f
 - **Hasil:** keaslian diverifikasi tanpa data pribadi.
 - **Jejak:** QRV-001; BR-QRV-001–005.
 
-### FL-35 — Pengaturan Kapasitas Penjemputan Harian
-- **Aktor:** admin, warga, sistem.
-- **Alur utama:** admin menetapkan batas per tanggal dan area pelayanan → warga memilih tanggal → sistem menghitung pemakaian dari pengajuan yang memesan slot → bila tersedia sistem mereservasi pengajuan secara atomik → admin menjadwalkan petugas.
-- **Keputusan/gagal:** penuh menawarkan tanggal lain; perubahan jadwal tidak mengubah estimasi menjadi nilai saldo.
-- **Hasil:** kapasitas tidak terlampaui dan alternatif transparan.
-- **Jejak:** PUP-001, REG-001; BR-PUP-004–007.
+### FL-35 — Konfirmasi Jadwal Penjemputan
+- **Aktor:** admin dan petugas.
+- **Alur utama:** tinjau permintaan, tanggal pilihan, dan area → pilih petugas serta tanggal → terima dan jadwalkan secara atomik.
+- **Keputusan/gagal:** penugasan tidak sah membatalkan seluruh tindakan; tanggal pilihan warga tidak menjamin slot.
+- **Hasil:** jadwal dikonfirmasi tanpa kuota atau alternatif tanggal otomatis.
+- **Jejak:** PUP-001; BR-PUP-004–007; ADR-012.
 
 ### FL-36 — Health Sistem
 - **Aktor:** superadmin.

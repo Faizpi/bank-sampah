@@ -6,7 +6,6 @@ namespace App\Domain\Withdrawals\Services;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
-use App\Domain\CustomersRegions\Actions\AssistedCustomerService as AssistedCustomerServiceAction;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\Ledger\Models\IdempotencyKey;
@@ -33,23 +32,25 @@ final readonly class WithdrawalRequestService
         private LedgerService $ledger,
         private AuditLogger $auditLogger,
         private VisibleUsers $visibleUsers,
-        private AssistedCustomerServiceAction $assistedServices,
     ) {}
 
     /** @param array<string, mixed> $data */
     public function handle(User $actor, array $data, string $idempotencyKey): WithdrawalRequest
     {
+        $actor = User::query()->whereKey($actor->id)->first();
+        if ($actor === null) {
+            throw new AuthorizationException('Akun tidak lagi aktif.');
+        }
         $this->authorize($actor, 'withdrawal.request');
         $this->validateIdempotencyKey($idempotencyKey);
         $customer = $this->customerForRequest($data['customer_id'] ?? $actor->id);
         $area = $this->areaForRequest($customer, $data['service_area_id'] ?? null);
-        if ($customer->id !== $actor->id && ! $this->visibleUsers->canView($actor, $customer)) {
+        if ($customer->id !== $actor->id) {
             throw new AuthorizationException('Nasabah berada di luar scope tugas Anda.');
         }
         $amount = $this->amount($data['amount'] ?? null);
         $location = $this->text($data['pickup_location'] ?? null, 'pickup_location', 3, 255);
         $pickupDate = $this->date($data['pickup_date'] ?? null);
-        $assistedServiceId = $this->assistedServiceId($data['assisted_service_id'] ?? null);
         $payloadHash = $this->payloadHash([
             'customer_id' => $customer->id,
             'rt_id' => $customer->customerProfile?->rt_id,
@@ -57,21 +58,17 @@ final readonly class WithdrawalRequestService
             'amount' => $amount,
             'pickup_location' => $location,
             'pickup_date' => $pickupDate->toDateString(),
-            'assisted_service_id' => $assistedServiceId,
         ]);
 
-        return DB::transaction(function () use ($actor, $customer, $area, $amount, $location, $pickupDate, $idempotencyKey, $payloadHash, $assistedServiceId): WithdrawalRequest {
+        return DB::transaction(function () use ($actor, $customer, $area, $amount, $location, $pickupDate, $idempotencyKey, $payloadHash): WithdrawalRequest {
+            $actor = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
+            $this->authorize($actor, 'withdrawal.request');
             $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
             if ($existing !== null) {
                 $withdrawal = WithdrawalRequest::query()->findOrFail($existing->result_id);
-                if ($assistedServiceId !== null) {
-                    $record = $this->assistedServices->lockForWithdrawalLink($actor, $assistedServiceId);
-                    $this->assistedServices->linkWithdrawalInTransaction($actor, $record, $withdrawal);
-                }
 
-                return $withdrawal->fresh(['balanceHold', 'customer', 'assistedService']);
+                return $withdrawal->fresh(['balanceHold', 'customer']);
             }
-            $record = $assistedServiceId === null ? null : $this->assistedServices->lockForWithdrawalLink($actor, $assistedServiceId);
             $key = $this->createIdempotency($actor, $idempotencyKey, $payloadHash);
             $withdrawal = WithdrawalRequest::query()->create([
                 'request_number' => $this->number('WDR'),
@@ -80,21 +77,18 @@ final readonly class WithdrawalRequestService
                 'service_area_id' => $area->id,
                 'requested_by_id' => $actor->id,
                 'amount' => $amount,
-                'status' => WithdrawalStatus::PendingVerification,
+                'status' => WithdrawalStatus::Waiting,
                 'pickup_location' => $location,
                 'pickup_date' => $pickupDate->toDateString(),
             ]);
             $hold = $this->ledger->createHold($customer, $withdrawal, $amount, 'withdrawal:'.$withdrawal->id.':hold');
             $withdrawal->forceFill(['balance_hold_id' => $hold->id])->save();
-            $withdrawal->statusHistory()->create(['old_status' => null, 'new_status' => WithdrawalStatus::PendingVerification->value, 'actor_id' => $actor->id, 'reason' => 'Pengajuan pencairan dibuat.', 'occurred_at' => now()]);
-            $this->auditLogger->record($actor, 'withdrawal.requested', $withdrawal, [], ['status' => WithdrawalStatus::PendingVerification->value, 'amount' => $amount, 'hold_id' => $hold->id], $this->correlationId());
-            if ($record !== null) {
-                $this->assistedServices->linkWithdrawalInTransaction($actor, $record, $withdrawal);
-            }
+            $withdrawal->statusHistory()->create(['old_status' => null, 'new_status' => WithdrawalStatus::Waiting->value, 'actor_id' => $actor->id, 'reason' => 'Pengajuan pencairan dibuat.', 'occurred_at' => now()]);
+            $this->auditLogger->record($actor, 'withdrawal.requested', $withdrawal, [], ['status' => WithdrawalStatus::Waiting->value, 'amount' => $amount, 'hold_id' => $hold->id], $this->correlationId());
             $key->forceFill(['status' => 'succeeded', 'result_type' => WithdrawalRequest::class, 'result_id' => $withdrawal->id])->save();
             $this->notify($withdrawal, 'Pengajuan pencairan diterima', 'Pengajuan '.$withdrawal->request_number.' telah menerima penahanan saldo.', 'withdrawal.requested');
 
-            return $withdrawal->fresh(['balanceHold', 'customer', 'assistedService']);
+            return $withdrawal->fresh(['balanceHold', 'customer']);
         });
     }
 
@@ -112,7 +106,7 @@ final readonly class WithdrawalRequestService
     public function visibleFor(User $actor): Builder
     {
         $this->authorize($actor, 'withdrawal.view');
-        $query = WithdrawalRequest::query()->with(['customer', 'payer', 'approver', 'balanceHold']);
+        $query = WithdrawalRequest::query()->with(['customer', 'payer', 'balanceHold']);
         if ($this->permissions->allows($actor, 'withdrawal.view') && $this->permissions->allows($actor, 'user.view.all')) {
             return $query;
         }
@@ -221,23 +215,6 @@ final readonly class WithdrawalRequestService
         if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{15,190}$/', $key) !== 1) {
             throw ValidationException::withMessages(['idempotency_key' => 'Idempotency key tidak valid.']);
         }
-    }
-
-    private function assistedServiceId(mixed $value): ?int
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-        if (! is_int($value) && (! is_string($value) || ! ctype_digit($value))) {
-            throw ValidationException::withMessages(['assisted_service_id' => 'Layanan berbantuan tidak valid.']);
-        }
-
-        $id = (int) $value;
-        if ($id < 1) {
-            throw ValidationException::withMessages(['assisted_service_id' => 'Layanan berbantuan tidak valid.']);
-        }
-
-        return $id;
     }
 
     private function existingIdempotency(User $actor, string $key, string $payloadHash): ?IdempotencyKey

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Withdrawals\Models;
 
-use App\Domain\CustomersRegions\Models\AssistedCustomerService;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Identity\Models\CustomerProfile;
@@ -19,20 +18,21 @@ use Database\Factories\WithdrawalRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use LogicException;
 
 /**
+ * @property string|null $settlement_payload_hash
+ * @property string|null $exception_resolution
+ * @property CarbonImmutable|null $exception_reported_at
+ * @property CarbonImmutable|null $exception_resolved_at
  * @property int $id
  * @property int $customer_id
  * @property int $amount
  * @property WithdrawalStatus $status
  * @property int|null $balance_hold_id
  * @property int $requested_by_id
- * @property int|null $approver_id
  * @property int|null $payer_id
- * @property CarbonImmutable|null $expires_at
  * @property CarbonImmutable|null $paid_at
  */
 final class WithdrawalRequest extends Model
@@ -46,19 +46,24 @@ final class WithdrawalRequest extends Model
     }
 
     protected $fillable = [
-        'request_number', 'customer_id', 'rt_id', 'service_area_id', 'requested_by_id', 'amount', 'status', 'balance_hold_id', 'approver_id', 'payer_id',
-        'pickup_location', 'pickup_date', 'approved_at', 'expires_at', 'paid_at', 'recipient_verification',
-        'recipient_reference', 'rejection_reason', 'cancellation_reason', 'proof_media_id', 'receipt_ledger_entry_id',
+        'exception_kind',
+        'physical_handed_over_at',
+        'cancellation_requested_at', 'cancellation_request_reason',
+        'claimed_at', 'claim_released_at', 'exception_reported_at', 'exception_reason', 'exception_resolved_by_id', 'exception_resolved_at', 'exception_resolution', 'settlement_payload_hash',
+        'request_number', 'customer_id', 'rt_id', 'service_area_id', 'requested_by_id', 'amount', 'status', 'balance_hold_id', 'payer_id',
+        'pickup_location', 'pickup_date', 'paid_at',
+        'rejection_reason', 'cancellation_reason', 'proof_media_id', 'receipt_ledger_entry_id',
     ];
 
     protected function casts(): array
     {
         return [
+            'physical_handed_over_at' => 'immutable_datetime',
+            'cancellation_requested_at' => 'immutable_datetime',
+            'claimed_at' => 'immutable_datetime', 'claim_released_at' => 'immutable_datetime', 'exception_reported_at' => 'immutable_datetime', 'exception_resolved_at' => 'immutable_datetime',
             'amount' => 'integer',
             'status' => WithdrawalStatus::class,
             'pickup_date' => 'immutable_date',
-            'approved_at' => 'immutable_datetime',
-            'expires_at' => 'immutable_datetime',
             'paid_at' => 'immutable_datetime',
         ];
     }
@@ -100,10 +105,6 @@ final class WithdrawalRequest extends Model
     }
 
     /** @return BelongsTo<User, $this> */
-    public function approver(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'approver_id');
-    }
 
     /** @return BelongsTo<User, $this> */
     public function payer(): BelongsTo
@@ -121,12 +122,6 @@ final class WithdrawalRequest extends Model
     public function receiptLedgerEntry(): BelongsTo
     {
         return $this->belongsTo(LedgerEntry::class, 'receipt_ledger_entry_id');
-    }
-
-    /** @return HasOne<AssistedCustomerService, $this> */
-    public function assistedService(): HasOne
-    {
-        return $this->hasOne(AssistedCustomerService::class, 'withdrawal_id');
     }
 
     /** @return MorphMany<StatusHistory, $this> */

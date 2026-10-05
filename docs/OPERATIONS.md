@@ -2,7 +2,7 @@
 
 ## 1. Tujuan dan prinsip
 
-Dokumen ini menjadi SOP harian bagi warga, petugas, bendahara, admin, dan pengelola teknis. Semua tindakan memakai akun pribadi, permission [PERMISSIONS.md](PERMISSIONS.md), aturan [BUSINESS_RULES.md](BUSINESS_RULES.md), serta waktu `Asia/Jakarta`. Tidak ada edit saldo langsung, pengiriman WhatsApp otomatis, transaksi offline tersinkron, atau proses produksi paving block.
+Dokumen ini menjadi SOP harian bagi warga, petugas, bendahara, admin, dan pengelola teknis. Semua tindakan memakai akun pribadi, permission [PERMISSIONS.md](PERMISSIONS.md), aturan [BUSINESS_RULES.md](BUSINESS_RULES.md), serta waktu `Asia/Jakarta`. Tidak ada edit saldo langsung, kanal WhatsApp, transaksi offline tersinkron, atau proses produksi paving block.
 
 ## 2. Tanggung jawab
 
@@ -11,7 +11,7 @@ Dokumen ini menjadi SOP harian bagi warga, petugas, bendahara, admin, dan pengel
 | Warga | Menjaga akun/kartu, memberi data/foto benar, memeriksa bukti/saldo. | Bukti, nomor pengajuan, alasan/status. |
 | Petugas | Identifikasi, timbang, setoran, pickup, tugas, bukti, layanan berbantuan/keliling. | Rekap tugas, alat, bukti, insiden. |
 | Bendahara | Verifikasi penerima, pembayaran disetujui, kas, bukti, laporan. | Daftar paid/pending, bukti, dan ekspor laporan. |
-| Admin | Verifikasi, master/harga, approve, kapasitas/jadwal, koreksi, laporan/audit. | Keputusan tertunda, koreksi, selisih, perubahan master. |
+| Admin | Verifikasi, master/harga, approve, penugasan/jadwal, koreksi, laporan/audit. | Keputusan tertunda, koreksi, selisih, perubahan master. |
 | Superadmin | Seluruh tugas operasional admin, laporan atau audit, role atau permission, Health, deploy, cron, dan insiden teknis. Bersama admin membuka panel back-office (`backoffice.access`). | Keputusan operasional, release, rotasi secret atau akses, dan log insiden. |
 
 ## 3. Pembukaan pelayanan
@@ -22,7 +22,7 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 2. Pastikan tanggal/waktu aplikasi benar dan layanan/jadwal hari ini aktif.
 3. Periksa internet, perangkat, baterai/power, printer bila digunakan, kamera, dan akses storage.
 4. Pastikan timbangan rata, nol, bersih, layak, dan hasil uji beban referensi sesuai prosedur alat.
-5. Tinjau harga aktif, jenis/kondisi diterima, pengumuman, kapasitas pickup, dan jadwal keliling.
+5. Tinjau harga aktif, jenis/kondisi diterima, pengumuman, penjadwalan pickup, dan jadwal keliling.
 6. Bendahara menghitung/mencatat kas awal tanpa membuka informasi kepada pihak tidak berizin.
 7. Pastikan tidak ada failed transaction/hold/selisih sebelumnya yang belum ditangani.
 8. Buka status layanan/titik keliling bila semua siap. Jika pemeriksaan kritis gagal, pelayanan finansial tidak dibuka sampai aman.
@@ -46,65 +46,34 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 - Pembatalan hanya sebelum batas status; periksa bahwa hold dilepas.
 
 ## 5. SOP setoran langsung
+1. Cari atau pindai nasabah, lalu pastikan nama penerima layanan.
+2. Isi jenis, kondisi, dan berat aktual. Periksa ringkasan nilai pada halaman yang sama.
+3. Unggah bukti. Simpan draf hanya jika perlu melanjutkan nanti; harga draf mengikuti waktu pembuatan draf.
+4. Tekan satu tombol konfirmasi akhir. Setoran di bawah ambang langsung final; setoran bernilai tinggi menunggu pemeriksa yang berbeda.
+5. Berikan bukti dan jelaskan apakah saldo sudah masuk atau masih menunggu pemeriksaan. Jangan membuat transaksi kedua ketika respons jaringan terlambat.
 
-1. Petugas mencari/memindai nomor/QR dan menyebut nama untuk dikonfirmasi warga.
-2. Periksa bahwa akun aktif dan bukan warga lain.
-3. Pisahkan sampah per jenis/kondisi; jelaskan penolakan item yang tidak memenuhi ketentuan.
-4. Nolkan timbangan sebelum setiap penimbangan; timbang aktual dan tunjukkan hasil bila memungkinkan.
-5. Masukkan setiap jenis, berat maksimal tiga desimal, dan kondisi. Sistem mengambil harga aktif.
-6. Tinjau subtotal per item dan total bersama warga. Jika salah, kembali ke input/timbang; jangan finalisasi.
-7. Ambil/unggah bukti sesuai kebijakan dan pastikan upload selesai.
-8. Tekan konfirmasi satu kali. Saat loading, jangan refresh/menekan ulang.
-9. Bila sukses, cocokkan nomor, saldo masuk, bukti, dan QR verifikasi; cetak/berikan bukti bila diperlukan.
-10. Bila respons gagal/terputus, ikuti SOP kegagalan internet sebelum mencoba lagi.
-
-## 6. SOP penjemputan dan kapasitas
-
-### Admin/petugas pemeriksa
-
-1. Tinjau foto, jenis/perkiraan, alamat, area, tanggal, dan kapasitas.
-2. Jika tanggal penuh, tawarkan alternatif; jangan memaksa slot melebihi kapasitas.
-3. Nilai kelayakan. Tolak dengan alasan yang jelas dan berhenti tanpa jadwal.
-4. Bila diterima, tetapkan tanggal, petugas, area/rute, dan catatan. Pastikan perubahan terlihat pada status pengajuan warga.
-5. Perubahan jadwal/kapasitas diberitahukan; perkiraan berat bukan nilai saldo.
-
-### Petugas lapangan
-
-1. Buka tugas dan verifikasi alamat/kontak sesuai scope.
-2. Ubah `menuju_lokasi` hanya saat benar-benar berangkat.
-3. Konfirmasi warga dan sampah; ubah `dijemput` setelah barang diterima.
-4. Timbang aktual per jenis dan buat transaksi setoran tertaut.
-5. Status `selesai` hanya setelah transaksi final, saldo masuk, dan bukti berhasil.
-6. Bila warga tidak ada/sampah tidak sesuai/alat gagal, catat kondisi dan ikuti keputusan status resmi; jangan membuat transaksi perkiraan.
+## 6. SOP penjemputan
+1. Warga memilih tanggal dan mengirim jenis/perkiraan serta foto. Alamat diisi awal dari profil; area tunggal digunakan otomatis.
+2. Admin meninjau dan memilih petugas serta tanggal dalam satu formulir Terima dan jadwalkan. Tanggal pilihan bukan slot terjamin; pickup tidak memakai kuota otomatis.
+3. Petugas menandai menuju lokasi lalu dijemput. Bila ada kendala, petugas berwenang mencatat alasan dan menghentikan tugas; warga tidak bisa membatalkan setelah petugas berangkat.
+4. Timbang aktual, periksa jenis/kondisi/berat, unggah bukti, lalu konfirmasi melalui web.
+5. Setoran yang perlu persetujuan membuat pickup tetap dijemput dengan keterangan menunggu pemeriksaan. Persetujuan mencatat saldo dan menyelesaikan pickup; penolakan mengakhiri pickup dengan alasan tanpa saldo masuk.
 
 ## 7. SOP pencairan tunai
-
-### Pengajuan dan approve
-
-1. Sistem memeriksa nominal/minimum/saldo dan membuat hold.
-2. Admin dengan `withdrawal.approve` memeriksa record, risiko, jadwal, dan kas; pengaju berbantuan tidak menyetujui record sendiri.
-3. Jika ditolak, tulis alasan; pastikan hold dilepas; jalur berhenti.
-4. Jika disetujui, tetapkan batas ambil/lokasi/payer dan informasikan warga.
-
-### Pay oleh bendahara/petugas
-
-1. Buka hanya daftar disetujui/siap diambil dalam assignment.
-2. Cocokkan nomor pengajuan, nama, kartu/identitas sesuai kebijakan, nominal, dan status.
-3. Hitung uang di depan penerima; minta konfirmasi penerimaan.
-4. Unggah bukti, lalu tandai dibayar satu kali.
-5. Verifikasi saldo keluar dan hold dikonversi; berikan bukti.
-6. Jika bukti/upload/commit gagal, jangan menyerahkan ulang uang sebelum status dan ledger diperiksa.
-7. Pengajuan lewat batas diproses scheduler sebagai kedaluwarsa dan hold dilepas; jangan bayar record kedaluwarsa.
+1. Warga mengisi nominal, tanggal, lokasi, dan area bila pilihannya lebih dari satu. Pengajuan membuat saldo tertahan, bukan saldo keluar.
+2. Admin memakai satu formulir Setujui dan tetapkan bendahara. Pembayar harus bendahara aktif dengan area yang sesuai dan berbeda dari pemberi persetujuan.
+3. Bendahara membuka antrean miliknya, mencocokkan kartu atau nomor nasabah, dan mengunggah foto bukti.
+4. Tinjau penerima, nominal, dan foto pada halaman yang sama. Setelah uang benar-benar diserahkan, tekan Uang tunai sudah diserahkan - catat pembayaran.
+5. Sistem membuat satu mutasi keluar dan menutup hold atomik. Tidak ada transfer bank atau pengiriman uang oleh aplikasi.
+6. Pengajuan lama yang sudah disetujui tetapi belum ditugaskan masih dapat dilanjutkan melalui tindakan penugasan.
 
 ## 8. SOP penukaran sembako
-
-1. Warga memilih paket aktif; sistem membuat hold sebesar snapshot nilai.
-2. Admin memeriksa ketersediaan **secara manual**; sistem tidak menjadi catatan stok rinci.
-3. Bila tidak tersedia/ditolak, isi alasan dan pastikan hold dilepas; jangan lanjut menyiapkan/menyerahkan.
-4. Bila disetujui, petugas menyiapkan paket sesuai deskripsi dan menandai siap diambil.
-5. Petugas `handover` memverifikasi penerima dan nomor pengajuan.
-6. Serahkan paket, unggah bukti, lalu selesaikan satu kali.
-7. Pastikan saldo keluar dibuat dan hold dikonversi setelah penyerahan.
+1. Warga memilih paket aktif dan area yang sesuai; sistem menyimpan snapshot paket dan menahan saldo.
+2. Admin memeriksa ketersediaan fisik lalu menyetujui atau menolak dengan alasan.
+3. Setelah paket tersedia, petugas searea menekan Paket sudah siap - beri tahu warga. Tidak wajib menekan Mulai siapkan.
+4. Serah-terima tetap melalui web: cocokkan penerima, simpan bukti, dan konfirmasikan penyerahan.
+5. Pengaju, penerima, atau pemberi persetujuan tidak boleh menjadi pelaksana penyerahan transaksi yang sama. Hold menjadi mutasi keluar hanya ketika serah-terima tercatat.
+6. Status sedang_disiapkan dari data lama tetap dapat dilanjutkan ke siap_diambil.
 
 ## 9. SOP layanan keliling
 
@@ -154,13 +123,11 @@ Petugas/admin melakukan checklist sebelum menerima transaksi:
 3. Setelah berhasil, sistem mencabut sesi aktif lain pengguna sambil mempertahankan sesi saat ini bila memungkinkan secara teknis. Bila tidak memungkinkan, sistem mencabut seluruh sesi dan pengguna harus autentikasi ulang.
 4. Audit mencatat aktor, metode `mandiri_profil`, alasan sistem `perubahan_mandiri`, dan hasil.
 
-## 12. SOP WhatsApp manual
-
-1. Pilih template resmi dan periksa nomor tujuan.
-2. Tekan **Buka WhatsApp**; aplikasi hanya membuka `wa.me`.
-3. Tinjau penerima dan isi di WhatsApp; hapus data yang tidak perlu.
-4. Pengguna menekan kirim sendiri.
-5. Jangan menandai pesan otomatis terkirim dalam sistem. Jika WhatsApp gagal dibuka, salin pesan atau gunakan kanal resmi alternatif tanpa mengubah status bisnis.
+## 12. SOP informasi layanan
+1. Buka informasi status, pengumuman, dan notifikasi dalam aplikasi.
+2. Gunakan ringkasan status warga; buka rincian tahapan hanya bila diperlukan.
+3. Notifikasi internal tersimpan setelah commit, bukan bukti pesan eksternal terkirim.
+4. WhatsApp tidak digunakan. Telegram belum tersedia.
 
 ## 13. SOP koreksi dan reversal
 

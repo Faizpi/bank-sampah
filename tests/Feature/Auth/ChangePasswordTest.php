@@ -6,8 +6,6 @@ namespace Tests\Feature\Auth;
 
 use App\Actions\Auth\ChangePassword;
 use App\Domain\AuditReconciliation\Models\AuditLog;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Livewire\Profile\Password as ProfilePassword;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -16,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class ChangePasswordTest extends TestCase
@@ -213,19 +212,6 @@ final class ChangePasswordTest extends TestCase
 
     private function grant(User $user, string $roleName, string ...$permissionNames): void
     {
-        $role = Role::query()->firstOrCreate(
-            ['name' => $roleName],
-            ['description' => "Test role {$roleName}"],
-        );
-
-        foreach ($permissionNames as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(
-                ['name' => $permissionName],
-                ['description' => "Test permission {$permissionName}"],
-            );
-            $role->permissions()->syncWithoutDetaching($permission);
-        }
-
-        $user->roles()->syncWithoutDetaching($role);
+        $user = RoleFixtures::assign($user, $permissionNames, $roleName);
     }
 }

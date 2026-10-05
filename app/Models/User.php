@@ -8,13 +8,15 @@ use App\Authorization\PermissionChecker;
 use App\Domain\Corrections\Models\TransactionCorrection;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Groceries\Models\GroceryRedemption;
+use App\Domain\Identity\Actions\AdminAvailabilityGuard;
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\DatabaseSession;
 use App\Domain\Identity\Models\PasswordResetToken;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
 use App\Domain\Identity\Models\TermsAcceptanceHistory;
+use App\Domain\Identity\Support\UserBuilder;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
@@ -28,7 +30,6 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -36,6 +37,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 /**
+ * @property UserRole $role
  * @property UserStatus $status
  * @property CarbonImmutable|null $email_verified_at
  * @property CarbonImmutable|null $verified_at
@@ -47,6 +49,18 @@ use Illuminate\Notifications\Notifiable;
 #[Hidden(['password', 'remember_token', 'phone', 'email', 'terms_version', 'terms_accepted_at'])]
 class User extends Authenticatable implements FilamentUser
 {
+    private static int $persistingInstances = 0;
+
+    public static function isPersistingInstance(): bool
+    {
+        return self::$persistingInstances > 0;
+    }
+
+    public function newEloquentBuilder($query): UserBuilder
+    {
+        return new UserBuilder($query);
+    }
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
 
@@ -59,6 +73,7 @@ class User extends Authenticatable implements FilamentUser
     protected function casts(): array
     {
         return [
+            'role' => UserRole::class,
             'status' => UserStatus::class,
             'email_verified_at' => 'immutable_datetime',
             'verified_at' => 'immutable_datetime',
@@ -82,21 +97,44 @@ class User extends Authenticatable implements FilamentUser
         );
     }
 
-    /** @return BelongsToMany<Role, $this> */
-    public function roles(): BelongsToMany
-    {
-        return $this->belongsToMany(Role::class)
-            ->withPivot(['assigned_by', 'reason'])
-            ->withTimestamps();
-    }
-
     public function hasRole(string ...$roleNames): bool
     {
-        if ($this->relationLoaded('roles')) {
-            return $this->roles->contains(static fn (Role $role): bool => in_array($role->name, $roleNames, true));
-        }
+        return in_array($this->role->value, $roleNames, true);
+    }
 
-        return $this->roles()->whereIn('name', $roleNames)->exists();
+    public function save(array $options = []): bool
+    {
+        if ($this->exists && ! $this->isDirty(['role', 'status', 'deleted_at'])) {
+            return parent::save($options);
+        }
+        $guard = app(AdminAvailabilityGuard::class);
+
+        return $guard->run(function () use ($guard, $options): bool {
+            $guard->ensureMutation($this);
+
+            self::$persistingInstances++;
+            try {
+                return parent::save($options);
+            } finally {
+                self::$persistingInstances--;
+            }
+        });
+    }
+
+    public function delete(): ?bool
+    {
+        $guard = app(AdminAvailabilityGuard::class);
+
+        return $guard->run(function () use ($guard): ?bool {
+            $guard->ensureMutation($this, true);
+
+            self::$persistingInstances++;
+            try {
+                return parent::delete();
+            } finally {
+                self::$persistingInstances--;
+            }
+        });
     }
 
     /** @return HasOne<CustomerProfile, $this> */
@@ -166,10 +204,6 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /** @return HasMany<GroceryRedemption, $this> */
-    public function preparedGroceries(): HasMany
-    {
-        return $this->hasMany(GroceryRedemption::class, 'prepared_by_id');
-    }
 
     /** @return HasMany<GroceryRedemption, $this> */
     public function handedOverGroceries(): HasMany

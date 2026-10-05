@@ -8,7 +8,7 @@ use App\Authorization\PermissionChecker;
 use App\Domain\Communication\Enums\AnnouncementStatus;
 use App\Domain\Communication\Services\AnnouncementService;
 use App\Domain\CustomersRegions\Models\ServiceArea;
-use App\Domain\Groceries\Services\GroceryService;
+use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
@@ -16,8 +16,7 @@ use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Services\PickupService;
 use App\Domain\Programs\Enums\TargetStatus;
 use App\Domain\Programs\Services\TargetService;
-use App\Domain\Withdrawals\Enums\WithdrawalStatus;
-use App\Domain\Withdrawals\Services\WithdrawalService;
+use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Filament\Resources\Communication\Models\Announcements\AnnouncementResource;
 use App\Filament\Resources\Groceries\Models\GroceryRedemptions\GroceryRedemptionResource;
 use App\Filament\Resources\Identity\Models\CitizenVerifications\CitizenVerificationResource;
@@ -91,44 +90,8 @@ final class WorkQueueDashboard extends Page
             ];
         }
 
-        if ($permissions->allows($actor, 'withdrawal.approve') && $permissions->allows($actor, 'withdrawal.view')) {
-            $withdrawalQuery = app(WithdrawalService::class)->visibleFor($actor);
-            $queues[] = [
-                'label' => 'Pencairan menunggu keputusan',
-                'count' => (clone $withdrawalQuery)->where('status', WithdrawalStatus::PendingVerification)->count(),
-                'description' => 'Periksa bukti dan dana yang ditahan.',
-                'cta' => 'Tinjau pencairan',
-                'href' => WithdrawalRequestResource::getUrl('index', ['filters' => ['status' => ['value' => WithdrawalStatus::PendingVerification->value]]]),
-            ];
-            $queues[] = [
-                'label' => 'Pencairan belum ditugaskan',
-                'count' => WorkQueue::apply(clone $withdrawalQuery, 'withdrawal_unassigned')->count(),
-                'description' => 'Tetapkan petugas pembayaran untuk pencairan.',
-                'cta' => 'Tetapkan petugas',
-                'href' => WithdrawalRequestResource::getUrl('index', ['filters' => ['queue' => ['value' => 'withdrawal_unassigned']]]),
-            ];
-        }
-
-        if ($permissions->allows($actor, 'withdrawal.view')) {
-            $withdrawalQuery ??= app(WithdrawalService::class)->visibleFor($actor);
-            $queues[] = [
-                'label' => 'Segera kedaluwarsa',
-                'count' => WorkQueue::apply(clone $withdrawalQuery, 'withdrawal_expiring')->count(),
-                'description' => 'Selesaikan dalam 2 hari.',
-                'cta' => 'Lihat batas waktu',
-                'href' => WithdrawalRequestResource::getUrl('index', ['filters' => ['queue' => ['value' => 'withdrawal_expiring']]]),
-            ];
-        }
-
-        if ($permissions->allows($actor, 'grocery.approve') && $permissions->allows($actor, 'grocery.view')) {
-            $groceryQuery = app(GroceryService::class)->visibleFor($actor);
-            $queues[] = [
-                'label' => 'Penukaran sembako',
-                'count' => WorkQueue::apply(clone $groceryQuery, 'grocery_pending')->count(),
-                'description' => 'Periksa ketersediaan dan setujui pengajuan.',
-                'cta' => 'Tinjau sembako',
-                'href' => GroceryRedemptionResource::getUrl('index', ['filters' => ['queue' => ['value' => 'grocery_pending']]]),
-            ];
+        foreach ([['Pencairan perlu pemeriksaan', WithdrawalRequest::class, WithdrawalRequestResource::class], ['Sembako perlu pemeriksaan', GroceryRedemption::class, GroceryRedemptionResource::class]] as [$label, $model, $resource]) {
+            $queues[] = ['label' => $label, 'count' => $model::query()->whereNotNull('exception_reported_at')->whereNull('exception_resolved_at')->count(), 'description' => 'Penyerahan dikunci sampai fakta dipastikan.', 'cta' => 'Periksa pengecualian', 'href' => $resource::getUrl('index', ['filters' => ['exception' => ['isActive' => true]]])];
         }
 
         if ($permissions->allows($actor, 'mobile-service.operate') && $permissions->allows($actor, 'mobile-service.view')) {
@@ -172,7 +135,7 @@ final class WorkQueueDashboard extends Page
 
         return [
             'queues' => $queues,
-            'hasVisibleQueues' => $queues !== [],
+            'hasVisibleQueues' => true,
             'environment' => app()->environment(),
             'maintenanceEnabled' => app()->maintenanceMode()->active(),
             'lastUpdated' => now('Asia/Jakarta')->translatedFormat('d F Y, H:i'),

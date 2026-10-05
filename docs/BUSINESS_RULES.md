@@ -21,9 +21,9 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-AUTH-004:** Hanya akun `aktif` yang dapat membuat sesi; login gagal tidak boleh membedakan “akun tidak ada” dan “kata sandi salah” kepada pengguna umum.
 - **BR-AUTH-005:** Perubahan kata sandi memiliki dua jalur saja. (A) Admin atau superadmin berizin hanya dapat mengubah langsung kata sandi pengguna target yang benar-benar lupa kata sandi dan tidak dapat login, melalui alur PasswordAssistance yang tervalidasi dan data pengguna/warga, setelah verifikasi `tatap_muka` atau `callback_nomor_terdaftar`, alasan 10–1000 karakter, permission `user.reset-password` dan `session.revoke`, serta scope record sah. Aktor berizin tidak boleh menjadi target sendiri. Server memvalidasi konfirmasi, panjang minimum, dan kebijakan password umum, lalu secara atomik menyimpan hash, mencabut seluruh sesi aktif target, dan mengaudit aktor/metode/alasan/hasil tanpa kata sandi. (B) Pengguna terautentikasi hanya dapat mengubah kata sandinya sendiri dari profil dengan kata sandi saat ini, kata sandi baru, dan konfirmasi yang tervalidasi. Setelah sukses, sistem mencabut sesi aktif lain pengguna sambil mempertahankan sesi saat ini bila memungkinkan secara teknis, atau mencabut seluruh sesi dan meminta autentikasi ulang bila tidak memungkinkan; audit mencatat aktor/metode `mandiri_profil`/hasil tanpa kata sandi. Tidak ada reset publik, token, masa berlaku atau penyimpanan/pengiriman token, email, SMS, WhatsApp, rate limit reset, atau permintaan generik.
 - **BR-AUTH-006:** Pendaftaran wajib menerima secara afirmatif [Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0](TERMS_AND_PRIVACY.md) yang tersedia untuk publik. Penerimaan menyimpan versi yang saat ini efektif pada `users.terms_version` dan waktu server pada `users.terms_accepted_at`, serta mencatat riwayat penerimaan append-only per pengguna dan versi. Penerimaan tidak menggantikan verifikasi, aktivasi, autentikasi, atau login, dan tidak mengubah status `menunggu_verifikasi`. Riwayat penerimaan dipertahankan; versi baru berlaku prospektif dan persetujuan ulang hanya mengikuti proses produk yang telah disetujui serta didokumentasikan tanpa mengubah sesi atau status akun.
-- **BR-USR-001:** Satu pengguna dapat memiliki role sesuai penugasan, tetapi tindakan selalu memerlukan permission granular dan scope record.
+- **BR-USR-001:** Pengaturan akun memilih satu peran operasional agar sederhana. Relasi dan pemeriksaan tetap kompatibel dengan akun multi-role yang sudah ada; izin dan scope record tetap diperiksa.
 - **BR-USR-002:** Penonaktifan pengguna menghentikan akses baru tanpa menghapus transaksi, audit, atau keterkaitan historis.
-- **BR-USR-003:** Perubahan role/permission, status akun, dan reset administratif wajib diaudit.
+- **BR-USR-003:** Perubahan role/permission, status akun, dan reset administratif wajib diaudit. Perubahan hak akses mencabut sesi; admin operasional tidak boleh membuat atau mengambil alih akun berprivilege superadmin.
 - **BR-USR-004:** Dashboard hanya menampilkan data yang dapat dibuka pengguna melalui endpoint detail terkait.
 - **BR-USR-005:** `user.view` wajib disertai scope eksplisit untuk membuka pengguna lain. `user.view.area` hanya berlaku bagi `StaffProfile` yang efektif hari ini dengan area pelayanan aktif dan pivot RT aktif, serta hanya menampilkan nasabah aktif pada RT tersebut; `user.view.all` menampilkan seluruh pengguna aktif. Tanpa scope eksplisit, akses fail-closed ke diri sendiri; query dan policy detail memakai scope yang sama dan akses di luar scope menghasilkan 404.
 
@@ -61,7 +61,7 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-DEP-001:** Setoran wajib memiliki nomor unik, nasabah aktif, petugas pelaksana, waktu, metode/lokasi, dan minimal satu detail.
 - **BR-DEP-002:** Setiap detail wajib memiliki jenis aktif saat dibuat, berat aktual positif, snapshot harga, dan subtotal.
 - **BR-DEP-003:** Draf tidak membuat mutasi saldo, QR bukti sah, target, atau statistik transaksi final.
-- **BR-DEP-004:** Finalisasi hanya boleh terjadi setelah identitas, detail, total, dan bukti yang disyaratkan dikonfirmasi.
+- **BR-DEP-004:** Identitas, detail, total, dan bukti ditinjau pada satu halaman sebelum satu tombol konfirmasi akhir. Draf opsional tidak menambah saldo.
 - **BR-DEP-005:** Finalisasi membuat transaksi, detail snapshot, saldo masuk, audit, dan status sumber terkait dalam satu database transaction.
 - **BR-DEP-006:** Satu transaksi final memiliki tepat satu mutasi saldo masuk sumber utama.
 - **BR-DEP-007:** Petugas pembuat dapat mengubah draf dalam scope tugasnya; transaksi final tidak dapat diedit langsung.
@@ -103,26 +103,26 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-EXP-002:** Proses scheduler menandai pengajuan melewati batas sebagai `kedaluwarsa` hanya jika belum dibayar/diserahkan.
 - **BR-EXP-003:** Kedaluwarsa melepas hold atomik dan memperbarui status yang terlihat oleh pihak terkait; tidak membuat saldo keluar.
 
-## 8. Penjemputan dan kapasitas
+## 8. Penjemputan dan penjadwalan
 
 - **BR-PUP-001:** Pengajuan penjemputan wajib memiliki minimal satu foto, alamat, wilayah, jenis/perkiraan, tanggal pilihan, dan catatan yang diperlukan.
-- **BR-PUP-002:** Perkiraan berat dipakai hanya untuk perencanaan kapasitas; nilai setoran memakai penimbangan aktual petugas.
+- **BR-PUP-002:** Perkiraan hanya membantu perencanaan pengurus; nilai saldo memakai penimbangan aktual.
 - **BR-PUP-003:** Alamat harus berada dalam area pelayanan aktif pada tanggal pilihan.
-- **BR-PUP-004:** Kapasitas harian dapat dibatasi oleh jumlah alamat, perkiraan berat, wilayah, petugas, dan kendaraan sebagai parameter operasional.
-- **BR-PUP-005:** Penghitungan kapasitas memasukkan pengajuan pada status yang memesan slot dan mengecualikan ditolak/dibatalkan/kedaluwarsa.
-- **BR-PUP-006:** Pemeriksaan dan reservasi kapasitas dilakukan atomik agar permintaan bersamaan tidak melampaui batas.
-- **BR-PUP-007:** Bila tanggal penuh, pengajuan tidak ditempatkan pada tanggal itu dan sistem menawarkan tanggal aktif terdekat yang memenuhi kebijakan.
+- **BR-PUP-004:** Tanggal pilihan warga adalah permintaan, bukan reservasi slot. Tidak ada kuota otomatis pada pickup individual.
+- **BR-PUP-005:** Admin menilai kesiapan layanan dan memilih petugas serta tanggal dalam satu formulir Terima dan jadwalkan.
+- **BR-PUP-006:** Penerimaan dan penjadwalan disimpan atomik. Penugasan tidak sah membatalkan seluruh tindakan gabungan.
+- **BR-PUP-007:** Pengajuan menerima tanggal hari ini sampai batas konfigurasi. Jika jadwal tidak memungkinkan, admin mengatur tanggal yang sesuai; aplikasi tidak menjanjikan alternatif otomatis.
 - **BR-PUP-008:** Penolakan wajib beralasan dan menjadi endpoint tanpa penjadwalan, penimbangan, transaksi, atau saldo masuk.
 - **BR-PUP-009:** Status valid: `menunggu_pemeriksaan → diterima → dijadwalkan → menuju_lokasi → dijemput → selesai`; endpoint lain `ditolak` dan `dibatalkan`.
-- **BR-PUP-010:** Status `selesai` hanya dapat dibuat setelah transaksi hasil penimbangan berhasil final.
+- **BR-PUP-010:** Pickup selesai hanya setelah setoran final dan saldo masuk tercatat. Setoran bernilai tinggi mempertahankan pickup dijemput sambil menunggu persetujuan; keputusan setoran memperbarui pickup atomik. Penolakan mengakhiri pickup sebagai dibatalkan dengan alasan dan tanpa saldo masuk.
 
 ## 9. Pencairan tunai
 
 - **BR-WDR-001:** Nominal pencairan berupa rupiah integer positif, memenuhi minimum aktif, dan tidak melebihi saldo tersedia.
 - **BR-WDR-002:** Pengajuan sah langsung membuat hold dengan nominal sama.
 - **BR-WDR-003:** Permission `withdrawal.approve` terpisah dari `withdrawal.pay`; UI, policy, dan service harus memeriksa keduanya.
-- **BR-WDR-004:** Admin approver menetapkan keputusan; penolakan wajib beralasan dan melepas hold.
-- **BR-WDR-005:** Payer hanya dapat melihat/membayar pengajuan disetujui atau siap diambil dalam scope penugasannya.
+- **BR-WDR-004:** Admin menyetujui dan menetapkan bendahara aktif dalam satu formulir atomik; pemberi persetujuan dan pembayar harus berbeda. Penolakan wajib alasan dan melepas hold.
+- **BR-WDR-005:** Bendahara dapat membayar hanya pengajuan siap_diambil yang ditugaskan kepadanya dalam area efektif; disetujui saja belum cukup untuk pembayaran.
 - **BR-WDR-006:** Verifikasi penerima dan bukti pembayaran wajib sebelum status `sudah_dibayar`.
 - **BR-WDR-007:** Saldo keluar dibuat setelah uang diserahkan, bersamaan dengan penyelesaian dan penutupan hold.
 - **BR-WDR-008:** Pembayaran idempotent; satu pengajuan tidak dapat dibayar dua kali.
@@ -137,18 +137,15 @@ Aturan bisnis adalah invariant wajib bagi seluruh alur pada [REQUIREMENTS.md](RE
 - **BR-GRC-006:** Penolakan/tidak tersedia wajib beralasan, melepas hold, dan berhenti tanpa penyiapan atau penyerahan.
 - **BR-GRC-007:** Verifikasi penerima dan bukti penyerahan wajib sebelum selesai.
 - **BR-GRC-008:** Saldo keluar dibuat setelah paket diserahkan, atomik dengan penutupan hold; penyerahan idempotent.
-- **BR-GRC-009:** Status valid: `menunggu_verifikasi → disetujui → sedang_disiapkan → siap_diambil → selesai`; endpoint `ditolak`, `dibatalkan`, `kedaluwarsa`.
+- **BR-GRC-009:** Alur utama: `menunggu_verifikasi → disetujui → siap_diambil → selesai`; endpoint `ditolak`, `dibatalkan`, `kedaluwarsa`. Status `sedang_disiapkan` tetap terbaca untuk data lama, bukan langkah wajib baru.
 
-## 11. Pengumuman dan WhatsApp manual
+## 11. Pengumuman dan notifikasi aplikasi
 
 - **BR-ANN-001:** Pengumuman memiliki audiens, periode publikasi, status, dan pelaku publikasi.
 - **BR-ANN-002:** Konten ditampilkan sebagai teks/HTML tersanitasi dan tidak dapat menjalankan script.
 - **BR-ANN-003:** Pengumuman di luar periode atau nonaktif tidak ditampilkan pada kanal sasaran.
-- **BR-WA-001:** WhatsApp hanya dibuka melalui tautan `wa.me` dengan template terenkode; aplikasi tidak mengirim pesan.
-- **BR-WA-002:** Tombol dan status hanya menyatakan “Buka WhatsApp” atau “Salin pesan”, tidak pernah “terkirim” atau “terkirim otomatis”.
-- **BR-WA-003:** Pengguna harus meninjau dan menekan kirim di aplikasi WhatsApp.
-- **BR-WA-004:** Template menggunakan data minimal, tidak memuat saldo lengkap, identitas sensitif, secret, atau URL privat tanpa proteksi.
-- **BR-WA-005:** Kegagalan membuka WhatsApp tidak mengubah status proses bisnis.
+
+WhatsApp tidak digunakan. BR-WA-001 sampai BR-WA-005 dihentikan oleh ADR-012. Notifikasi aplikasi tersimpan sesudah commit; Telegram belum diimplementasikan.
 
 ## 12. Target dan layanan keliling
 

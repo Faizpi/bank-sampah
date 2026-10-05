@@ -26,7 +26,7 @@ final class WithdrawalRequestFactory extends Factory
             'customer_id' => $customer->id,
             'requested_by_id' => $customer->id,
             'amount' => 10_000,
-            'status' => WithdrawalStatus::PendingVerification,
+            'status' => WithdrawalStatus::Waiting,
             'balance_hold_id' => null,
         ];
     }

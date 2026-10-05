@@ -22,7 +22,7 @@ Bank Sampah Digital Sindangheula membantu pencatatan layanan bank sampah, termas
 1. Pengguna memberikan data yang benar sesuai formulir dan menjaga kata sandinya sendiri.
 2. Akses akun, data, dan tindakan dibatasi oleh peran serta cakupan record yang berwenang.
 3. Status transaksi dan layanan mengikuti proses operasional. Persetujuan, pembayaran, penyerahan, dan perubahan saldo tidak dapat dianggap terjadi hanya dari pengisian formulir atau notifikasi.
-4. WhatsApp hanya disediakan sebagai tautan manual `wa.me`. Pengguna meninjau isi pesan dan menekan kirim sendiri di WhatsApp. Sistem tidak mengirim WhatsApp otomatis dan tidak menyatakan pesan telah terkirim.
+4. Informasi layanan tersedia melalui website dan notifikasi dalam aplikasi. WhatsApp tidak digunakan; Telegram belum diimplementasikan.
 
 ### 4. Layanan berbantuan
 
@@ -40,7 +40,7 @@ Sistem menggunakan data yang diperlukan untuk:
 
 - verifikasi akun dan pencegahan duplikasi;
 - penyediaan layanan bank sampah, termasuk pencatatan transaksi dan saldo;
-- informasi status pada halaman terkait serta pembukaan tautan WhatsApp manual atas tindakan pengguna;
+- informasi status pada halaman terkait dan notifikasi dalam aplikasi;
 - keamanan, pencegahan penyalahgunaan, audit, dan operasi layanan.
 
 ### 2. Akses dan keterbukaan terbatas

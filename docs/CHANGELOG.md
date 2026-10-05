@@ -1,4 +1,15 @@
-# Changelog
+# Riwayat Perubahan
+
+## 2026-10-05 - Audit dan workflow web ringkas
+- Tutup eskalasi admin ke superadmin, audit perubahan permission, konsistensi sesi portal/Livewire/Filament, dan mutasi tersembunyi Health.
+- Perbaiki penyelesaian pickup bernilai tinggi, pelaporan kendala, harga draf, pembatalan bersamaan, retry pengajuan, dan pencairan berbantuan multi-area.
+- Gabungkan persetujuan+penugasan pencairan dan penerimaan+jadwal pickup. Paket sembako cukup ditandai siap; tinjauan setoran dan pembayaran berada pada halaman yang sama dengan satu konfirmasi akhir.
+- Prefill alamat/area, ringkasan status warga, filter antrean, dan formulir akun/tugas terpadu.
+- Hapus helper WhatsApp yang tidak digunakan. Telegram tetap belum diimplementasikan.
+- Isolasi database/storage pengujian dan perbarui fixture tanggal serta navigasi.
+- Selaraskan dokumentasi, README, dan dokumen PDF. Tidak ada deployment atau klaim UAT baru.
+
+## Riwayat baseline sebelumnya
 
 Dokumen ini mencatat perubahan kontrak ruang lingkup. Entri bukan bukti rilis, User Acceptance Testing (UAT), deployment, atau perbaikan defect aplikasi.
 

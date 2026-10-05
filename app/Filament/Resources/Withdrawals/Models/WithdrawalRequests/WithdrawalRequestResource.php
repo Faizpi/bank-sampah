@@ -7,14 +7,10 @@ namespace App\Filament\Resources\Withdrawals\Models\WithdrawalRequests;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Domain\Withdrawals\Services\WithdrawalService;
+use App\Filament\Actions\ResolveServiceException;
 use App\Models\User;
 use App\Support\StatusLabel;
-use App\Support\WorkQueue;
 use BackedEnum;
-use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
@@ -25,6 +21,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 final class WithdrawalRequestResource extends Resource
@@ -45,101 +42,39 @@ final class WithdrawalRequestResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            TextInput::make('request_number')->label('Nomor')->disabled(),
-            TextInput::make('customer.name')->label('Nasabah')->disabled(),
-            TextInput::make('amount')->label('Nominal')->prefix('Rp')->disabled(),
-            TextInput::make('status')->label('Status')->disabled(),
-            Textarea::make('pickup_location')->label('Lokasi')->disabled(),
-            DatePicker::make('pickup_date')->label('Tanggal pengambilan')->disabled(),
-            DatePicker::make('expires_at')->label('Batas pengambilan')->disabled(),
-        ]);
+        return $schema->components([TextInput::make('request_number')->label('Nomor')->disabled(), TextInput::make('status')->label('Status')->disabled()]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
     }
 
     public static function table(Table $table): Table
     {
-        return $table
-            ->recordTitleAttribute('request_number')
-            ->defaultSort('expires_at', 'desc')
-            ->columns([
-                TextColumn::make('request_number')->label('Nomor')->searchable()->sortable(),
-                TextColumn::make('customer.name')->label('Nasabah')->searchable(),
-                TextColumn::make('amount')->label('Nominal')->money('IDR'),
-                TextColumn::make('status')->label('Status')->formatStateUsing(fn ($state): string => StatusLabel::for($state))->badge(),
-                TextColumn::make('approver.name')->label('Disetujui oleh')->placeholder('Belum diputuskan'),
-                TextColumn::make('payer.name')->label('Petugas pembayaran')->placeholder('Belum ditugaskan'),
-                TextColumn::make('expires_at')->label('Batas')->dateTime('d M Y H:i'),
-            ])
-            ->filters([
-                SelectFilter::make('queue')->label('Antrean kerja')->options(['withdrawal_unassigned' => 'Belum ditugaskan', 'withdrawal_expiring' => 'Segera kedaluwarsa'])
-                    ->query(fn (Builder $query, array $data): Builder => empty($data['value']) ? $query : WorkQueue::apply($query, (string) $data['value'])),
-                SelectFilter::make('status')->label('Status')->options([
-                    WithdrawalStatus::PendingVerification->value => 'Menunggu verifikasi',
-                    WithdrawalStatus::Approved->value => 'Disetujui',
-                    WithdrawalStatus::ReadyForPickup->value => 'Siap diambil',
-                    WithdrawalStatus::Paid->value => 'Sudah dibayar',
-                    WithdrawalStatus::Rejected->value => 'Ditolak',
-                    WithdrawalStatus::Cancelled->value => 'Dibatalkan',
-                    WithdrawalStatus::Expired->value => 'Kedaluwarsa',
-                ]),
-                Filter::make('pickup_date')->label('Tanggal pengambilan')->form([
-                    DatePicker::make('date')->label('Tanggal'),
-                ])->query(static function (Builder $query, array $data): Builder {
-                    return $query->when($data['date'] ?? null, static fn (Builder $query, string $date): Builder => $query->whereDate('pickup_date', $date));
-                }),
-            ])
-            ->recordActions([
-                Action::make('inspect')
-                    ->label('Tinjau pencairan')
-                    ->icon(Heroicon::OutlinedEye)
-                    ->modalHeading('Tinjau pencairan')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Tutup')
-                    ->schema([
-                        TextInput::make('customer')->label('Penerima')->disabled(),
-                        TextInput::make('amount')->label('Nominal')->disabled(),
-                        TextInput::make('available_balance')->label('Saldo tersedia saat pemeriksaan')->disabled(),
-                        TextInput::make('held_balance')->label('Dana ditahan')->disabled(),
-                        TextInput::make('status')->label('Status')->disabled(),
-                        TextInput::make('expires_at')->label('Batas pengambilan')->disabled(),
-                        Textarea::make('consent')->label('Persetujuan dan verifikasi')->disabled()->rows(3),
-                        Textarea::make('evidence')->label('Bukti')->disabled()->rows(3),
-                        Textarea::make('impact')->label('Dampak persetujuan')->disabled()->rows(4),
-                    ])
-                    ->fillForm(fn (WithdrawalRequest $record): array => self::inspectionData($record)),
-                Action::make('approve')
-                    ->label('Setujui dan tetapkan bendahara')
-                    ->icon(Heroicon::OutlinedCheckCircle)
-                    ->color('success')
-                    ->visible(fn (WithdrawalRequest $record): bool => $record->status->value === 'menunggu_verifikasi')
-                    ->authorize('approve')
-                    ->requiresConfirmation()
-                    ->modalHeading(fn (WithdrawalRequest $record): string => "Setujui pencairan {$record->request_number}?")
-                    ->modalDescription('Dana tetap ditahan dan pengajuan diteruskan ke petugas pembayaran. Periksa penerima dan bukti sebelum menyetujui.')
-                    ->modalSubmitActionLabel('Setujui dan tetapkan bendahara')
-                    ->schema([
-                        TextInput::make('customer')->label('Penerima')->disabled()->dehydrated(false),
-                        TextInput::make('amount')->label('Nominal')->disabled()->dehydrated(false),
-                        Select::make('payer_id')->label('Bendahara pembayaran')->helperText('Hanya bendahara aktif di area pengambilan, selain pemberi persetujuan.')->options(fn (WithdrawalRequest $record): array => self::payerOptions($record))->required(),
-                    ])
-                    ->fillForm(fn (WithdrawalRequest $record): array => self::inspectionData($record))
-                    ->action(fn (WithdrawalRequest $record, array $data): WithdrawalRequest => app(WithdrawalService::class)->approveAndAssign(self::actor(), $record, User::query()->findOrFail((int) $data['payer_id']))),
-                Action::make('reject')
-                    ->label('Tolak')
-                    ->icon(Heroicon::OutlinedXCircle)
-                    ->color('danger')
-                    ->visible(fn (WithdrawalRequest $record): bool => in_array($record->status->value, ['menunggu_verifikasi', 'disetujui'], true))
-                    ->authorize('approve')
-                    ->schema([Textarea::make('reason')->label('Alasan')->required()->minLength(10)->maxLength(1000)->rows(4)])
-                    ->action(fn (WithdrawalRequest $record, array $data): WithdrawalRequest => app(WithdrawalService::class)->approve(self::actor(), $record, false, (string) $data['reason'])),
-                Action::make('assignPayer')
-                    ->label('Tetapkan petugas pembayaran')
-                    ->icon(Heroicon::OutlinedUser)
-                    ->visible(fn (WithdrawalRequest $record): bool => $record->status->value === 'disetujui')
-                    ->authorize('approve')
-                    ->schema([Select::make('payer_id')->label('Bendahara pembayaran')->helperText('Hanya bendahara aktif di area pengambilan, selain pemberi persetujuan.')->options(fn (WithdrawalRequest $record): array => self::payerOptions($record))->required()])
-                    ->action(fn (WithdrawalRequest $record, array $data): WithdrawalRequest => app(WithdrawalService::class)->assignPayer(self::actor(), $record, User::query()->findOrFail((int) $data['payer_id']))),
-            ]);
+        return $table->defaultSort('created_at', 'desc')->columns([
+            TextColumn::make('request_number')->label('Nomor')->searchable(),
+            TextColumn::make('customer.name')->label('Warga')->searchable(),
+            TextColumn::make('amount')->label('Nilai')->money('IDR'),
+            TextColumn::make('status')->label('Status')->formatStateUsing(fn ($state): string => StatusLabel::for($state))->badge(),
+            TextColumn::make('payer.name')->label('Pengambil tugas')->placeholder('Belum diambil'),
+            TextColumn::make('serviceArea.name')->label('Area'),
+            TextColumn::make('balanceHold.status')->label('Saldo tertahan')->badge(),
+            TextColumn::make('exception_reason')->label('Pengecualian')->wrap(),
+        ])->filters([
+            SelectFilter::make('status')->label('Status')->options(collect(WithdrawalStatus::cases())->mapWithKeys(fn ($status): array => [$status->value => StatusLabel::for($status)])->all()),
+            Filter::make('exception')->label('Perlu pemeriksaan Admin')->query(fn (Builder $query): Builder => $query->whereNotNull('exception_reported_at')->whereNull('exception_resolved_at')),
+        ])->recordActions([ResolveServiceException::freeze(), ResolveServiceException::make()]);
     }
 
     /** @return Builder<WithdrawalRequest> */
@@ -152,44 +87,6 @@ final class WithdrawalRequestResource extends Resource
     public static function getPages(): array
     {
         return ['index' => Pages\ManageWithdrawalRequests::route('/')];
-    }
-
-    /** @return array<string, string> */
-    private static function inspectionData(WithdrawalRequest $record): array
-    {
-        $record->loadMissing(['customer.ledgerAccount', 'balanceHold', 'assistedService', 'proofMedia']);
-        $availableBalance = $record->customer?->ledgerAccount?->availableBalance();
-        $impact = match ($record->status->value) {
-            WithdrawalStatus::PendingVerification->value => 'Persetujuan mempertahankan dana ditahan Rp '.number_format((int) (data_get($record->balanceHold, 'amount') ?? $record->amount), 0, ',', '.').' dan meneruskan pencairan untuk ditugaskan kepada petugas pembayaran.',
-            WithdrawalStatus::Approved->value, WithdrawalStatus::ReadyForPickup->value => 'Pencairan sudah melewati pemeriksaan. Pastikan penerima dan bukti pembayaran cocok sebelum saldo keluar.',
-            default => 'Tidak ada tindakan persetujuan yang tersedia pada status ini.',
-        };
-
-        return [
-            'customer' => data_get($record->customer, 'name', 'Nasabah'),
-            'amount' => 'Rp '.number_format($record->amount, 0, ',', '.'),
-            'available_balance' => $availableBalance === null ? 'Tidak tersedia' : 'Rp '.number_format($availableBalance, 0, ',', '.'),
-            'held_balance' => 'Rp '.number_format((int) (data_get($record->balanceHold, 'amount') ?? 0), 0, ',', '.'),
-            'status' => StatusLabel::for($record->status),
-            'expires_at' => $record->expires_at?->setTimezone('Asia/Jakarta')->format('d M Y H:i') ?? 'Belum ditetapkan',
-            'consent' => $record->assistedService === null ? 'Pengajuan mandiri; verifikasi nasabah dilakukan pada tahap pembayaran.' : 'Persetujuan: '.$record->assistedService->consent_version.' · waktu: '.$record->assistedService->consented_at,
-            'evidence' => data_get($record->proofMedia, 'original_name') ?? ($record->assistedService?->evidence_media_id === null ? 'Belum ada bukti privat.' : 'Bukti persetujuan privat tersimpan.'),
-            'impact' => $impact,
-        ];
-    }
-
-    /** @return array<int, string> */
-    private static function payerOptions(WithdrawalRequest $record): array
-    {
-        return User::query()->where('status', 'aktif')->whereKeyNot($record->approver_id ?? self::actor()->id)
-            ->whereHas('roles', fn (Builder $roles): Builder => $roles->where('name', 'bendahara'))
-            ->whereHas('roles.permissions', fn (Builder $permissions): Builder => $permissions->where('name', 'withdrawal.pay'))
-            ->whereHas('staffProfile.serviceAreas', fn (Builder $assignments): Builder => $assignments
-                ->where('service_area_id', $record->service_area_id)
-                ->where(fn (Builder $dates): Builder => $dates->whereNull('active_from')->orWhereDate('active_from', '<=', today()))
-                ->where(fn (Builder $dates): Builder => $dates->whereNull('active_to')->orWhereDate('active_to', '>=', today()))
-                ->whereHas('serviceArea', fn (Builder $areas): Builder => $areas->where('is_active', true)))
-            ->orderBy('name')->pluck('name', 'id')->all();
     }
 
     private static function actor(): User

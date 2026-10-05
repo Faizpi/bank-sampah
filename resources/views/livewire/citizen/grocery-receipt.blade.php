@@ -17,12 +17,13 @@
     />
 
     <x-ui.panel title="Ringkasan penyerahan" description="Saldo keluar dicatat setelah serah-terima yang sah.">
+        <p class="mb-4 font-bold">Warga: {{ $redemption->customer->name }} · {{ $redemption->customer->customerProfile?->customer_number }}</p>
+        <p>Waktu serah fisik: {{ $redemption->physical_handed_over_at?->translatedFormat('d F Y H:i') ?? 'Tidak diketahui; waktu di bawah adalah waktu pencatatan sistem.' }}</p>
         <dl class="grid gap-4 text-body md:grid-cols-2">
             <div><dt class="text-body-sm text-text-secondary">Nomor</dt><dd class="mt-1 font-semibold">{{ $redemption->request_number }}</dd></div>
             <div><dt class="text-body-sm text-text-secondary">Paket</dt><dd class="mt-1 font-semibold">{{ $redemption->package_snapshot['name'] ?? 'Paket sembako' }}</dd></div>
             <div><dt class="text-body-sm text-text-secondary">Nilai saat pengajuan</dt><dd class="mt-1 font-semibold tabular-nums">Rp{{ number_format($redemption->value_snapshot, 0, ',', '.') }}</dd></div>
-            <div><dt class="text-body-sm text-text-secondary">Diserahkan</dt><dd class="mt-1 font-semibold">{{ $redemption->handed_over_at?->format('d M Y H:i') }}</dd></div>
-            <div><dt class="text-body-sm text-text-secondary">Verifikasi</dt><dd class="mt-1 font-semibold">{{ str_replace('_', ' ', (string) $redemption->recipient_verification) }}</dd></div>
+            <div><dt class="text-body-sm text-text-secondary">Tercatat</dt><dd class="mt-1 font-semibold">{{ $redemption->handed_over_at?->format('d M Y H:i') }}</dd></div>
             <div><dt class="text-body-sm text-text-secondary">Petugas</dt><dd class="mt-1 font-semibold">{{ $redemption->handoverActor?->name ?? 'Petugas' }}</dd></div>
         </dl>
     </x-ui.panel>

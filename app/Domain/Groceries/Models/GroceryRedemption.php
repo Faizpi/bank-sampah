@@ -21,6 +21,10 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use LogicException;
 
 /**
+ * @property string|null $settlement_payload_hash
+ * @property string|null $exception_resolution
+ * @property CarbonImmutable|null $exception_reported_at
+ * @property CarbonImmutable|null $exception_resolved_at
  * @property int $id
  * @property int $customer_id
  * @property int $requested_by_id
@@ -29,10 +33,8 @@ use LogicException;
  * @property array<string, mixed> $package_snapshot
  * @property GroceryStatus $status
  * @property int|null $balance_hold_id
- * @property int|null $approver_id
- * @property int|null $prepared_by_id
+ * @property int|null $claimed_by_id
  * @property int|null $handover_actor_id
- * @property CarbonImmutable|null $expires_at
  * @property CarbonImmutable|null $handed_over_at
  */
 final class GroceryRedemption extends Model
@@ -46,21 +48,25 @@ final class GroceryRedemption extends Model
     }
 
     protected $fillable = [
+        'exception_kind',
+        'physical_handed_over_at',
+        'cancellation_requested_at', 'cancellation_request_reason',
+        'claimed_at', 'claim_released_at', 'exception_reported_at', 'exception_reason', 'exception_resolved_by_id', 'exception_resolved_at', 'exception_resolution', 'settlement_payload_hash',
         'request_number', 'customer_id', 'rt_id', 'service_area_id', 'requested_by_id', 'grocery_package_id', 'value_snapshot', 'package_snapshot', 'status',
-        'balance_hold_id', 'approver_id', 'prepared_by_id', 'handover_actor_id', 'proof_media_id', 'receipt_ledger_entry_id',
-        'availability_note', 'rejection_reason', 'cancellation_reason', 'approved_at', 'expires_at', 'prepared_at', 'ready_at', 'handed_over_at',
-        'recipient_verification', 'recipient_reference',
+        'balance_hold_id', 'claimed_by_id', 'handover_actor_id', 'proof_media_id', 'receipt_ledger_entry_id',
+        'availability_note', 'rejection_reason', 'cancellation_reason', 'ready_at', 'handed_over_at',
+
     ];
 
     protected function casts(): array
     {
         return [
+            'physical_handed_over_at' => 'immutable_datetime',
+            'cancellation_requested_at' => 'immutable_datetime',
+            'claimed_at' => 'immutable_datetime', 'claim_released_at' => 'immutable_datetime', 'exception_reported_at' => 'immutable_datetime', 'exception_resolved_at' => 'immutable_datetime',
             'value_snapshot' => 'integer',
             'package_snapshot' => 'array',
             'status' => GroceryStatus::class,
-            'approved_at' => 'immutable_datetime',
-            'expires_at' => 'immutable_datetime',
-            'prepared_at' => 'immutable_datetime',
             'ready_at' => 'immutable_datetime',
             'handed_over_at' => 'immutable_datetime',
         ];
@@ -103,15 +109,11 @@ final class GroceryRedemption extends Model
     }
 
     /** @return BelongsTo<User, $this> */
-    public function approver(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'approver_id');
-    }
 
     /** @return BelongsTo<User, $this> */
-    public function preparedBy(): BelongsTo
+    public function claimant(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'prepared_by_id');
+        return $this->belongsTo(User::class, 'claimed_by_id');
     }
 
     /** @return BelongsTo<User, $this> */

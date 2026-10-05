@@ -124,7 +124,7 @@
                 </div>
             </x-ui.panel>
         @elseif ($step === 2)
-            <x-ui.panel title="Jenis dan perkiraan" description="Isi minimal satu jenis dan perkiraan beratnya.">
+            <x-ui.panel title="Jenis dan perkiraan" description="Pilih minimal satu jenis; perkiraan berat atau jumlah boleh dikosongkan.">
                 <div class="grid gap-3">
                     @foreach ($items as $index => $item)
                         <div wire:key="pickup-item-{{ $index }}" class="grid gap-3 rounded-md border border-border bg-warm-canvas p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
@@ -149,7 +149,7 @@
                 </div>
             </x-ui.panel>
 
-            <x-ui.panel title="Foto wajib" description="Unggah 1–2 foto sampah.">
+            <x-ui.panel title="Foto opsional" description="Boleh tanpa foto, maksimal dua foto bila diperlukan.">
                 <x-ui.media-picker
                     id="pickup-photos"
                     property="photos"

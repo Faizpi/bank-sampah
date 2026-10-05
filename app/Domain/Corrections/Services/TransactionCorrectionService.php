@@ -18,6 +18,7 @@ use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Notifications\Support\NotificationDedupeKey;
 use App\Domain\Platform\Actions\StorePrivateMedia;
 use App\Models\User;
+use App\Support\Auth\AdminReauthentication;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
@@ -38,6 +39,7 @@ final readonly class TransactionCorrectionService
     public function correct(User $actor, Deposit $deposit, int $newValue, string $reason, ?string $idempotencyKey = null, ?UploadedFile $evidence = null): TransactionCorrection
     {
         $this->authorize($actor, 'transaction.correct');
+        app(AdminReauthentication::class)->assertRecent($actor);
         $this->assertDepositScope($actor, $deposit);
         $this->validateReason($reason);
         if ($newValue < 0) {
@@ -70,13 +72,18 @@ final readonly class TransactionCorrectionService
                     }
                 }
                 $lockedDeposit = Deposit::query()->whereKey($deposit->id)->lockForUpdate()->firstOrFail();
+                $actor = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
+                $this->authorize($actor, 'transaction.correct');
+                app(AdminReauthentication::class)->assertRecent($actor);
+                $this->assertDepositScope($actor, $lockedDeposit);
+                User::query()->whereKey($lockedDeposit->customer_id)->lockForUpdate()->firstOrFail();
                 if ($lockedDeposit->status !== Deposit::STATUS_FINAL) {
                     throw ValidationException::withMessages(['deposit' => 'Hanya setoran final yang belum dikoreksi atau dibalik yang dapat dikoreksi.']);
                 }
                 $originalValue = (int) $lockedDeposit->total_value;
                 $delta = $newValue - $originalValue;
                 $account = LedgerAccount::query()->where('user_id', $lockedDeposit->customer_id)->lockForUpdate()->firstOrFail();
-                if ($delta < 0 && $account->availableBalance() < abs($delta)) {
+                if ($delta < 0 && $account->currentAvailableBalance() < abs($delta)) {
                     throw ValidationException::withMessages(['new_value' => 'Koreksi akan membuat saldo tersedia negatif.']);
                 }
                 $correction = TransactionCorrection::query()->create([
@@ -104,7 +111,7 @@ final readonly class TransactionCorrectionService
                         'source_id' => $correction->id,
                         'source_key' => 'correction:'.$correction->id,
                         'effective_at' => now(),
-                        'balance_after' => $account->availableBalance() + $delta,
+                        'balance_after' => $account->currentAvailableBalance() + $delta,
                     ]);
                     $this->auditLogger->record($actor, 'transaction.corrected', $correction, ['total_value' => $originalValue], ['total_value' => $newValue, 'ledger_entry_id' => $entry->id], $this->correlationId());
                 } else {
@@ -143,7 +150,7 @@ final readonly class TransactionCorrectionService
         }
 
         $query = Deposit::query()
-            ->whereIn('status', [Deposit::STATUS_PENDING_REVIEW, Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED, Deposit::STATUS_REVERSED, Deposit::STATUS_REJECTED])
+            ->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED, Deposit::STATUS_REVERSED])
             ->with(['customer', 'staff', 'reviewer', 'items', 'media', 'ledgerEntries', 'correction']);
         if ($this->permissions->allows($actor, 'user.view.all')) {
             return $query;
@@ -175,6 +182,7 @@ final readonly class TransactionCorrectionService
     public function reverse(User $actor, Deposit $deposit, string $reason, ?string $idempotencyKey = null, ?UploadedFile $evidence = null): TransactionReversal
     {
         $this->authorize($actor, 'transaction.reverse');
+        app(AdminReauthentication::class)->assertRecent($actor);
         $this->assertDepositScope($actor, $deposit);
         $this->validateReason($reason);
         $this->validateIdempotencyKey($idempotencyKey);
@@ -211,6 +219,10 @@ final readonly class TransactionCorrectionService
                 }
 
                 $lockedDeposit = Deposit::query()->whereKey($deposit->id)->lockForUpdate()->firstOrFail();
+                $actor = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
+                $this->authorize($actor, 'transaction.reverse');
+                app(AdminReauthentication::class)->assertRecent($actor);
+                $this->assertDepositScope($actor, $lockedDeposit);
                 $original = LedgerEntry::query()
                     ->where('source_type', Deposit::class)
                     ->where('source_id', $lockedDeposit->id)
@@ -225,7 +237,7 @@ final readonly class TransactionCorrectionService
 
                 $account = LedgerAccount::query()->whereKey($original->ledger_account_id)->lockForUpdate()->firstOrFail();
                 $original = LedgerEntry::query()->whereKey($original->id)->lockForUpdate()->firstOrFail();
-                if ($account->availableBalance() < $original->amount) {
+                if ($account->currentAvailableBalance() < $original->amount) {
                     throw ValidationException::withMessages(['deposit' => 'Saldo tersedia tidak cukup untuk reversal.']);
                 }
                 $reversal = TransactionReversal::query()->create([
@@ -251,7 +263,7 @@ final readonly class TransactionCorrectionService
                     'source_key' => 'reversal:'.$reversal->id,
                     'related_entry_id' => $original->id,
                     'effective_at' => now(),
-                    'balance_after' => $account->availableBalance() - $original->amount,
+                    'balance_after' => $account->currentAvailableBalance() - $original->amount,
                 ]);
                 $original->forceFill(['related_entry_id' => $entry->id])->saveQuietly();
                 $lockedDeposit->forceFill(['status' => Deposit::STATUS_REVERSED])->save();

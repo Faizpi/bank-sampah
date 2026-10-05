@@ -170,19 +170,19 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 
 ### PUP — penjemputan
 
-#### PUP-001 — Pengajuan, kapasitas, penjadwalan, dan penyelesaian penjemputan
+#### PUP-001 — Pengajuan, penjadwalan, dan penyelesaian penjemputan
 - **Aktor:** warga, admin/petugas, petugas lapangan.
 - **Prasyarat:** nasabah aktif; alamat dalam area pelayanan; tanggal layanan tersedia.
-- **Alur:** warga mengisi foto wajib, jenis, perkiraan jumlah/berat, alamat, tanggal, dan catatan; sistem memeriksa kapasitas; jika penuh menawarkan tanggal lain; petugas menilai, menerima/menolak beralasan, menjadwalkan, menjemput, menimbang aktual, dan membuat transaksi.
+- **Alur:** warga mengisi jenis/perkiraan, foto, tanggal, dan alamat (diisi awal dari profil). Area tunggal dipilih otomatis. Admin menerima sekaligus menjadwalkan petugas dalam satu tindakan; petugas menjemput, menimbang, dan mencatat setoran melalui web.
 - **Hasil:** pengajuan selesai hanya setelah transaksi setoran berhasil; saldo memakai berat aktual.
-- **Kegagalan:** foto/area invalid ditolak; kapasitas penuh tidak menyimpan pada tanggal tersebut; penolakan berhenti tanpa jadwal atau transaksi.
-- **Kriteria penerimaan:** alternatif tanggal tersedia; status mengikuti state machine; perkiraan tidak menjadi saldo; petugas berangkat mencegah pembatalan warga.
+- **Kegagalan:** foto, area, atau tanggal tidak sah ditolak. Penolakan dan kendala operasional berhenti dengan alasan tanpa saldo masuk; tidak ada reservasi kapasitas otomatis.
+- **Kriteria penerimaan:** tanggal pilihan dibedakan dari jadwal yang dikonfirmasi; perkiraan tidak menjadi saldo; warga tidak bisa membatalkan setelah petugas berangkat. Pickup menunggu keputusan bila setoran belum final.
 - **Jejak:** FL-10, FL-22, FL-35; BR-PUP-001–010; TC-PUP-001.
 
 ### WDR — pencairan tunai
 
 #### WDR-001 — Pengajuan, persetujuan, pembayaran, dan kedaluwarsa pencairan
-- **Aktor:** warga, admin approver, bendahara/petugas payer.
+- **Aktor:** warga, admin approver, bendahara yang ditugaskan.
 - **Prasyarat:** saldo tersedia memenuhi minimum; aktor berbeda memiliki permission terkait.
 - **Alur:** warga mengajukan nominal; sistem membuat hold; admin menyetujui/menolak; pengajuan disetujui dijadwalkan; payer memverifikasi penerima, membayar, mengunggah bukti, dan menyelesaikan; sistem membuat saldo keluar serta menutup hold.
 - **Hasil:** pembayaran selesai satu kali atau hold dilepas pada tolak, batal, dan kedaluwarsa.
@@ -201,16 +201,11 @@ Setiap kebutuhan memakai format `KELOMPOK-NNN`. Kata **harus** berarti wajib. Se
 - **Kriteria penerimaan:** `approve` terpisah dari `handover`; tidak ada stok rinci; bukti wajib.
 - **Jejak:** FL-12, FL-17, FL-18, FL-21, FL-24; BR-GRC-001–009; TC-GRC-001.
 
-### WA — WhatsApp manual
+### WA — Kanal yang dihentikan
 
-#### WA-001 — Tautan `wa.me` dan template pesan
-- **Aktor:** warga, petugas, admin.
-- **Prasyarat:** nomor tujuan dan template yang diizinkan tersedia.
-- **Alur:** aplikasi membentuk tautan `wa.me` dengan pesan terenkode; pengguna menekan tombol; aplikasi membuka WhatsApp; pengguna meninjau dan mengirim sendiri.
-- **Hasil:** komunikasi manual dimulai tanpa klaim pengiriman otomatis.
-- **Kegagalan:** nomor/template invalid tidak membuat tautan; WhatsApp tidak tersedia menampilkan instruksi alternatif.
-- **Kriteria penerimaan:** UI menggunakan frasa “Buka WhatsApp”, bukan “Pesan terkirim”; tidak ada gateway; data sensitif tidak dimasukkan ke template.
-- **Jejak:** FL-15; BR-WA-001–005; TC-WA-001.
+#### WA-001 — Tidak ada kanal WhatsApp
+- **Status:** dihentikan sesuai ADR-012. WhatsApp tidak digunakan dan helper lama dihapus.
+- **Pengganti:** informasi layanan dan notifikasi dalam aplikasi. Telegram tetap rancangan terpisah, belum diimplementasikan.
 
 ### ANN — pengumuman
 
@@ -354,7 +349,7 @@ Nomor mengacu pada urutan diagram di `Kumpulan_Flowchart_Bank_Sampah_Digital_Sin
 | FL-12 | Penukaran Saldo dengan Sembako | GRC-001, BAL-002 |
 | FL-13 | Koreksi Transaksi Final | DEP-002, BAL-002, AUD-001 |
 | FL-14 | Perubahan Harga Sampah | PRC-001, PRC-002 |
-| FL-15 | Alur Informasi dan WhatsApp Manual | WA-001, ANN-001 |
+| FL-15 | Alur Informasi dan Notifikasi Aplikasi | WA-001, ANN-001 |
 | FL-16 | Alur Saldo Masuk | DEP-001, BAL-001 |
 | FL-17 | Alur Saldo Keluar | BAL-001, WDR-001, GRC-001 |
 | FL-18 | Alur Saldo Tertahan | BAL-002, WDR-001, GRC-001 |
@@ -388,9 +383,9 @@ ID `FL-01`–`FL-36` mengikuti urutan generator dan diagram final sebagaimana di
 | Sampah, harga, edukasi | WST-001, PRC-001–002 |
 | Setoran, penimbangan, bukti, transaksi ganda | DEP-001–003 |
 | Ledger, saldo, hold, koreksi, reversal | BAL-001–002, DEP-002 |
-| Penjemputan dan kapasitas | PUP-001 |
+| Penjemputan dan penjadwalan | PUP-001 |
 | Pencairan dan sembako | WDR-001, GRC-001 |
-| Informasi status, WhatsApp manual, pengumuman | WA-001, ANN-001 |
+| Informasi status, notifikasi aplikasi, pengumuman | WA-001, ANN-001 |
 | Target, keliling, estimasi, QR bukti | TGT-001, MOB-001, EST-001, QRV-001 |
 | Partisipasi, publik, laporan | PUB-001–002, RPT-001 |
 | Audit dan PWA | AUD-001, PWA-001 |

@@ -41,7 +41,7 @@ final class PublicLandingPageTest extends TestCase
             'public.announcements' => ['Pengumuman', 'Pengumuman resmi Bank Sampah Digital Desa Sindangheula.'],
             'public.mobile-schedule' => ['Jadwal Bank Sampah Keliling', 'Jadwal layanan keliling Bank Sampah Digital Desa Sindangheula.'],
             'public.programs' => ['Target dan Statistik Program', 'Target pengumpulan dan statistik ringkasan publik Bank Sampah Digital Desa Sindangheula.'],
-            'public.tutorials' => ['Tutorial Penggunaan dan Panduan Video | Bank Sampah Digital Sindangheula', 'Kumpulan panduan video tutorial resmi Google Drive untuk warga, petugas, bendahara, dan administrator Bank Sampah Digital Desa Sindangheula.'],
+            'public.tutorials' => ['Tutorial Penggunaan dan Panduan Video | Bank Sampah Digital Sindangheula', 'Kumpulan panduan panduan penggunaan untuk warga, petugas, bendahara, dan administrator Bank Sampah Digital Desa Sindangheula.'],
         ];
 
         foreach ($pages as $routeName => [$title, $description]) {
@@ -102,9 +102,9 @@ final class PublicLandingPageTest extends TestCase
         $response->assertSee('Sesi Warga');
         $response->assertSee('Sesi Petugas');
         $response->assertSee('Sesi Bendahara');
-        $response->assertSee('Sesi Superadmin / Admin');
-        $response->assertSee('Tonton Video (Google Drive)');
-        $response->assertSee('1. Tutorial Masuk Aplikasi');
+        $response->assertSee('Sesi Admin');
+        $response->assertSee('Video belum tersedia.');
+        $response->assertSee('Akun dan saldo');
     }
 
     public function test_robots_references_absolute_sitemap_and_excludes_non_search_surfaces(): void

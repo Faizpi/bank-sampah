@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Domain\CustomersRegions\Models\Rt;
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\TermsAcceptanceHistory;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +35,7 @@ final readonly class RegisterCitizen
                 'phone' => $phone === '' ? null : $phone,
                 'password' => Hash::make($attributes['password']),
                 'status' => UserStatus::PendingVerification,
+                'role' => UserRole::Citizen,
                 'terms_version' => $termsVersion,
                 'terms_accepted_at' => $acceptedAt,
             ]);
@@ -52,13 +53,7 @@ final readonly class RegisterCitizen
                 'accepted_at' => $acceptedAt,
             ]);
 
-            $warga = Role::query()->firstOrCreate(
-                ['name' => 'warga'],
-                ['description' => 'Warga terdaftar'],
-            );
-            $user->roles()->attach($warga->id, ['assigned_by' => null, 'reason' => 'Penugasan otomatis saat registrasi warga.']);
-
-            return $user->fresh('roles');
+            return $user->fresh();
         });
     }
 

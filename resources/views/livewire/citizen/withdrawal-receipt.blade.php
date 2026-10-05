@@ -17,12 +17,12 @@
     />
 
     <x-ui.panel title="Ringkasan pembayaran" description="Saldo keluar tercatat setelah pembayaran sah.">
+        <p class="mb-4 font-bold">Warga: {{ $withdrawal->customer->name }} · {{ $withdrawal->customer->customerProfile?->customer_number }}</p>
+        <p>Waktu serah fisik: {{ $withdrawal->physical_handed_over_at?->translatedFormat('d F Y H:i') ?? 'Tidak diketahui; waktu di bawah adalah waktu pencatatan sistem.' }}</p>
         <dl class="grid gap-4 text-body md:grid-cols-2">
             <div><dt class="text-body-sm text-text-secondary">Nomor</dt><dd class="mt-1 font-semibold">{{ $withdrawal->request_number }}</dd></div>
             <div><dt class="text-body-sm text-text-secondary">Nominal</dt><dd class="mt-1 font-semibold tabular-nums">Rp{{ number_format($withdrawal->amount, 0, ',', '.') }}</dd></div>
-            <div><dt class="text-body-sm text-text-secondary">Dibayar</dt><dd class="mt-1 font-semibold">{{ $withdrawal->paid_at?->format('d M Y H:i') }}</dd></div>
-            <div><dt class="text-body-sm text-text-secondary">Verifikasi</dt><dd class="mt-1 font-semibold">{{ str_replace('_', ' ', $withdrawal->recipient_verification) }}</dd></div>
-            <div><dt class="text-body-sm text-text-secondary">Referensi penerima</dt><dd class="mt-1 font-semibold">{{ $withdrawal->recipient_reference }}</dd></div>
+            <div><dt class="text-body-sm text-text-secondary">Tercatat</dt><dd class="mt-1 font-semibold">{{ $withdrawal->paid_at?->format('d M Y H:i') }}</dd></div>
             <div><dt class="text-body-sm text-text-secondary">Petugas pembayaran</dt><dd class="mt-1 font-semibold">{{ $withdrawal->payer?->name }}</dd></div>
         </dl>
     </x-ui.panel>

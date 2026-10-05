@@ -7,7 +7,7 @@
     $actor = auth()->user();
     $access = app(\App\Authorization\PermissionChecker::class);
     $can = static fn (string $ability): bool => $actor instanceof \App\Models\User && $access->allows($actor, $ability);
-    $isTreasurer = $actor && $actor->roles()->where('name', 'bendahara')->exists();
+    $isTreasurer = $actor && $actor->hasRole('bendahara');
     $persona = match (true) {
         str_starts_with($routeName, 'treasurer.') => 'treasurer',
         str_starts_with($routeName, 'officer.') => 'officer',

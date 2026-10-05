@@ -6,8 +6,6 @@ namespace Tests\Feature\Wave9;
 
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Deposits\Models\DepositItem;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Platform\Models\Media;
 use App\Domain\Reports\Enums\ReportExportStatus;
 use App\Domain\Reports\Services\ReportExportService;
@@ -16,6 +14,7 @@ use App\Domain\WasteMaster\Models\WasteType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class ReportPdfExportTest extends TestCase
@@ -135,12 +134,7 @@ final class ReportPdfExportTest extends TestCase
     private function userWith(string ...$permissions): User
     {
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'pdf-'.uniqid(), 'description' => 'PDF export test']);
-        foreach ($permissions as $name) {
-            $permission = Permission::query()->firstOrCreate(['name' => $name], ['description' => $name]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
 
         return $user;
     }

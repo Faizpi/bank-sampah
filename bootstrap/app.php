@@ -4,6 +4,7 @@ use App\Http\Middleware\ApplyResponseSecurityHeaders;
 use App\Http\Middleware\AssignCorrelationId;
 use App\Http\Middleware\EnsureSessionIsFresh;
 use App\Http\Middleware\RequirePermission;
+use App\Http\Middleware\RequireRole;
 use App\Support\Auth\AuthenticatedUserRedirector;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->preventRequestsDuringMaintenance(['/health', '/operations/health']);
         $middleware->redirectUsersTo(fn (Request $request): string => app(AuthenticatedUserRedirector::class)->dashboardUrl());
         $middleware->alias([
+            'role' => RequireRole::class,
             'permission' => RequirePermission::class,
             'session.fresh' => EnsureSessionIsFresh::class,
         ]);

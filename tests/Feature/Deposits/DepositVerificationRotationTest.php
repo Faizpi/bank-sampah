@@ -9,11 +9,10 @@ use App\Domain\CustomersRegions\Contracts\QrToken;
 use App\Domain\Deposits\Actions\RotateDepositVerificationToken;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Identity\Models\CustomerProfile;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class DepositVerificationRotationTest extends TestCase
@@ -55,7 +54,7 @@ final class DepositVerificationRotationTest extends TestCase
 
     public function test_actor_without_rotation_permission_is_rejected(): void
     {
-        $actor = $this->userWith('deposit.view', 'user.view', 'user.view.all');
+        $actor = $this->userWith('deposit.view', 'user.view', 'user.view.area');
         $customer = User::factory()->create();
         CustomerProfile::factory()->for($customer)->create();
         $deposit = Deposit::query()->create([
@@ -78,12 +77,7 @@ final class DepositVerificationRotationTest extends TestCase
     private function userWith(string ...$permissions): User
     {
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'qr-rotation-test-'.$user->id, 'description' => 'QR rotation test']);
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
 
         return $user;
     }

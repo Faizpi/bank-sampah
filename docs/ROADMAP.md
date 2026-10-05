@@ -23,9 +23,9 @@ Ruang lingkup aktif mencakup fungsi inti yang dijelaskan pada [PRODUCT.md](PRODU
 ### Transaksi dan layanan
 
 - Setoran langsung multi-item, snapshot harga, ledger, hold, koreksi, reversal, dan bukti
-- Penjemputan dengan foto wajib, validasi area, kapasitas harian, alternatif tanggal, penimbangan aktual, dan penyelesaian setelah setoran final
+- Penjemputan dengan foto wajib, validasi area/tanggal, penerimaan sekaligus penjadwalan, penimbangan aktual, dan penyelesaian setelah setoran final
 - Pencairan tunai dan penukaran sembako sederhana tanpa stok rinci
-- Estimasi nilai, pengumuman, dan WhatsApp manual
+- Estimasi nilai, pengumuman, dan notifikasi aplikasi
 
 ### Program dan pengawasan
 
@@ -44,3 +44,7 @@ Ruang lingkup aktif mencakup fungsi inti yang dijelaskan pada [PRODUCT.md](PRODU
 - Transfer bank, dompet digital, timbangan digital, Redis, Horizon, WebSocket, aplikasi native, AI klasifikasi foto, dan produksi paving block
 
 Penambahan kapabilitas memerlukan change request, analisis dampak, persetujuan pengelola, pembaruan dokumen, dan bukti implementasi.
+
+## Penyelarasan workflow 5 Oktober 2026
+
+Alur terkini mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md) dan ADR-012. UI menggabungkan tindakan yang berkaitan, tanpa menghapus validasi, bukti, audit, atau pemisahan pelaksana. WhatsApp tidak digunakan; Telegram belum dibuat. Tabel kapasitas pickup dan status sedang_disiapkan yang masih ada adalah kompatibilitas data lama, bukan langkah wajib layanan baru. Kapasitas layanan keliling tetap berlaku.

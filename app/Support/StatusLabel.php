@@ -12,8 +12,11 @@ final class StatusLabel
     /** @var array<string, string> */
     private const LABELS = [
         'menunggu_verifikasi' => 'Menunggu verifikasi',
-        'menunggu_pemeriksaan' => 'Menunggu pemeriksaan',
-        'menunggu_persetujuan' => 'Menunggu persetujuan',
+        'menunggu_petugas' => 'Menunggu Petugas',
+        'diproses_petugas' => 'Diproses Petugas',
+        'menunggu_bendahara' => 'Menunggu Bendahara',
+        'diproses_bendahara' => 'Diproses Bendahara',
+        'tidak_tersedia' => 'Tidak tersedia',
         'final' => 'Selesai',
         'dikoreksi' => 'Dikoreksi',
         'dibalik' => 'Dibatalkan',

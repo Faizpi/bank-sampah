@@ -2,7 +2,7 @@
 
 ## 1. Prinsip otorisasi
 
-1. Role adalah paket permission awal, bukan pengganti pemeriksaan permission.
+1. Editor memilih satu peran operasional; data multi-role lama tetap kompatibel. Role adalah paket izin, bukan pengganti pemeriksaan permission.
 2. Setiap request memeriksa autentikasi, permission tindakan, scope record, status record, dan separation of duties.
 3. Menyembunyikan menu tidak dianggap sebagai kontrol keamanan. Policy/service tetap menolak akses langsung.
 4. Scope default adalah paling sempit: `own`, `assigned`, `area`, atau `all`; untuk record pengguna, scope harus diberikan secara eksplisit melalui `user.view.area` atau `user.view.all`.
@@ -17,7 +17,7 @@ Kode matriks: `O` own, `A` area, `X` semua record aktif, `—` tidak diberikan s
 | Role | Tanggung jawab utama | Batas utama |
 |---|---|---|
 | `warga` | Mengelola akun sendiri, melihat saldo/riwayat, dan membuat pengajuan. | Hanya record sendiri; tidak dapat membuat mutasi atau keputusan administratif. |
-| `petugas` | Setoran, penjemputan, layanan keliling, layanan berbantuan, pembayaran/penyerahan bila ditugaskan. | Scope penugasan/area; tidak mengubah harga, role, atau saldo langsung. |
+| `petugas` | Setoran, penjemputan, layanan keliling, layanan berbantuan, penyerahan sembako sesuai area. Pembayaran tunai khusus bendahara yang ditugaskan. | Scope penugasan/area; tidak mengubah harga, role, atau saldo langsung. |
 | `bendahara` | Pembayaran pencairan yang telah disetujui, bukti, kas, dan laporan. | Tidak menyetujui pencairan secara default dan tidak mengoreksi saldo. |
 | `admin` | Operasional, master data, verifikasi, persetujuan, laporan, koreksi bila permission khusus diberikan. | Tidak mengelola konfigurasi teknis berisiko tinggi atau melewati mekanisme ledger. |
 | `superadmin` | Seluruh tanggung jawab dan permission baseline admin, ditambah koreksi atau reversal transaksi, penyesuaian saldo, role atau permission, dan Health. | Tetap mengikuti policy, separation of duties, serta alasan dan bukti koreksi. |
@@ -235,3 +235,11 @@ Policy wajib memeriksa kepemilikan atau penugasan pada query dan aksi. ID record
 - Invariant: [BUSINESS_RULES.md](BUSINESS_RULES.md)
 - Keamanan otorisasi: [SECURITY.md](SECURITY.md)
 - SOP per role: [OPERATIONS.md](OPERATIONS.md)
+
+## Batas keamanan dan workflow ringkas
+
+- Admin operasional hanya membuat akun warga, petugas, atau bendahara. Role khusus dan akun superadmin memerlukan pengelola akses berizin role.manage; reset sandi, perubahan profil, dan penonaktifan akun istimewa mengikuti batas yang sama.
+- Pembayaran selalu mensyaratkan bendahara aktif, izin withdrawal.pay, penugasan payer, dan area efektif. Grant historis pada role lain bukan kewenangan pembayaran.
+- Persetujuan dan penugasan bendahara digabung pada UI, tetapi pemberi persetujuan tidak boleh membayar transaksi yang sama.
+- Setiap perubahan permission role menyimpan daftar sebelum/sesudah dan alasan, lalu mencabut sesi anggota. Sesi browser juga memeriksa perubahan izin pada setiap interaksi.
+- Profil pengguna, area tugas, dan perubahan peran tersedia pada satu formulir utama; perubahan peran tetap memerlukan izin khusus dan alasan.

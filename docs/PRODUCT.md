@@ -33,7 +33,7 @@ Menerima pelayanan berbantuan dari petugas menggunakan nomor/kartu QR dan bukti 
 
 ### Petugas
 
-Membutuhkan transaksi cepat, scan QR, daftar tugas hari ini, pengelolaan penjemputan, pembayaran, dan penyerahan.
+Membutuhkan transaksi cepat, scan QR, daftar tugas hari ini, pengelolaan penjemputan dan penyerahan sembako. Pembayaran tunai dilakukan bendahara yang ditugaskan.
 
 ### Bendahara
 
@@ -74,7 +74,7 @@ Membutuhkan laporan agregat untuk evaluasi partisipasi, pengumpulan sampah, dan 
 - Paket dan penukaran sembako sederhana tanpa stok terperinci.
 - Dashboard warga, tugas petugas hari ini, dan dashboard admin.
 - Pengumuman dan informasi status pada halaman terkait.
-- Tombol WhatsApp manual dengan template pesan melalui `wa.me`.
+- Notifikasi dalam aplikasi setelah perubahan layanan tersimpan.
 - Pelayanan berbantuan bagi warga tanpa smartphone.
 - Pengumuman, laporan dasar, dan audit log.
 
@@ -85,10 +85,10 @@ Membutuhkan laporan agregat untuk evaluasi partisipasi, pengumpulan sampah, dan 
 - Estimasi nilai sebelum setor.
 - QR verifikasi bukti transaksi.
 - Partisipasi RT/RW dan statistik publik desa.
-- Kapasitas penjemputan dan alternatif tanggal.
+- Tanggal pilihan pickup dan penjadwalan manual oleh admin tanpa reservasi kapasitas otomatis.
 - PWA installable dengan cache terbatas untuk informasi umum.
 
-WhatsApp tetap menggunakan pengiriman manual melalui tautan `wa.me`. Integrasi gateway otomatis berada di luar baseline dan hanya dapat ditambahkan melalui change request baru.
+WhatsApp tidak digunakan. Bot Telegram masih usulan penelitian, belum menjadi fitur aplikasi. Alur web terkini mengikuti [panduan workflow](WEB_WORKFLOW.md) dan ADR-012 (5 Oktober 2026).
 
 ## Di Luar Ruang Lingkup
 

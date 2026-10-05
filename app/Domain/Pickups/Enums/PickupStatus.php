@@ -6,8 +6,7 @@ namespace App\Domain\Pickups\Enums;
 
 enum PickupStatus: string
 {
-    case PendingReview = 'menunggu_pemeriksaan';
-    case Accepted = 'diterima';
+    case Waiting = 'menunggu_petugas';
     case Scheduled = 'dijadwalkan';
     case EnRoute = 'menuju_lokasi';
     case PickedUp = 'dijemput';
@@ -19,10 +18,9 @@ enum PickupStatus: string
     public function allowedNextStatuses(): array
     {
         return match ($this) {
-            self::PendingReview => [self::Accepted->value, self::Rejected->value, self::Cancelled->value],
-            self::Accepted => [self::Scheduled->value, self::Cancelled->value],
-            self::Scheduled => [self::EnRoute->value, self::Cancelled->value],
-            self::EnRoute => [self::PickedUp->value, self::Cancelled->value],
+            self::Waiting => [self::Scheduled->value, self::Rejected->value, self::Cancelled->value],
+            self::Scheduled => [self::Waiting->value, self::EnRoute->value, self::Cancelled->value],
+            self::EnRoute => [self::Waiting->value, self::PickedUp->value, self::Cancelled->value],
             self::PickedUp => [self::Completed->value, self::Cancelled->value],
             self::Completed, self::Rejected, self::Cancelled => [],
         };

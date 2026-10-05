@@ -7,8 +7,6 @@ namespace Tests\Feature\Auth;
 use App\Actions\Auth\LogoutUser;
 use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\Identity\Enums\UserStatus;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Http\Middleware\EnsureSessionIsFresh;
 use App\Livewire\Auth\LoginForm;
 use App\Models\User;
@@ -20,6 +18,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class CoreAuthenticationTest extends TestCase
@@ -229,39 +228,6 @@ final class CoreAuthenticationTest extends TestCase
             ->assertRedirect($intendedUrl);
     }
 
-    public function test_successful_login_falls_back_to_the_next_authorized_dashboard_when_role_dashboard_permission_is_missing(): void
-    {
-        $user = User::factory()->create([
-            'phone' => '6281234567890',
-            'password' => Hash::make('rahasia-yang-kuat'),
-            'status' => UserStatus::Active,
-        ]);
-        $this->grant($user, 'bendahara', 'user.view');
-
-        Livewire::test(LoginForm::class)
-            ->set('username', $user->username)
-            ->set('password', 'rahasia-yang-kuat')
-            ->call('login')
-            ->assertHasNoErrors()
-            ->assertRedirect(route('officer.dashboard'));
-    }
-
-    public function test_successful_login_falls_back_home_when_no_dashboard_permission_is_allowed(): void
-    {
-        $user = User::factory()->create([
-            'phone' => '6281234567890',
-            'password' => Hash::make('rahasia-yang-kuat'),
-            'status' => UserStatus::Active,
-        ]);
-
-        Livewire::test(LoginForm::class)
-            ->set('username', $user->username)
-            ->set('password', 'rahasia-yang-kuat')
-            ->call('login')
-            ->assertHasNoErrors()
-            ->assertRedirect(route('home'));
-    }
-
     public function test_successful_login_rejects_an_intended_url_without_its_required_permission(): void
     {
         $user = User::factory()->create([
@@ -283,24 +249,6 @@ final class CoreAuthenticationTest extends TestCase
             ->assertRedirect(route('citizen.dashboard'));
     }
 
-    public function test_successful_login_preserves_bendahara_precedence_over_other_staff_roles(): void
-    {
-        $user = User::factory()->create([
-            'phone' => '6281234567890',
-            'password' => Hash::make('rahasia-yang-kuat'),
-            'status' => UserStatus::Active,
-        ]);
-        $this->grant($user, 'petugas', 'user.view');
-        $this->grant($user, 'bendahara', 'withdrawal.view');
-
-        Livewire::test(LoginForm::class)
-            ->set('username', $user->username)
-            ->set('password', 'rahasia-yang-kuat')
-            ->call('login')
-            ->assertHasNoErrors()
-            ->assertRedirect(route('treasurer.dashboard'));
-    }
-
     public function test_authenticated_public_dashboard_ctas_use_the_next_authorized_dashboard(): void
     {
         $user = User::factory()->create();
@@ -311,8 +259,8 @@ final class CoreAuthenticationTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        self::assertSame(3, substr_count($html, 'href="'.route('officer.dashboard').'"'));
-        self::assertStringNotContainsString('href="'.route('treasurer.dashboard').'"', $html);
+        self::assertSame(3, substr_count($html, 'href="'.route('treasurer.dashboard').'"'));
+        self::assertStringNotContainsString('href="'.route('officer.dashboard').'"', $html);
     }
 
     public function test_login_rejects_a_suffix_host_intended_url(): void
@@ -458,19 +406,6 @@ final class CoreAuthenticationTest extends TestCase
 
     private function grant(User $user, string $roleName, string ...$permissionNames): void
     {
-        $role = Role::query()->firstOrCreate(
-            ['name' => $roleName],
-            ['description' => "Test role {$roleName}"],
-        );
-
-        foreach ($permissionNames as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(
-                ['name' => $permissionName],
-                ['description' => "Test permission {$permissionName}"],
-            );
-            $role->permissions()->syncWithoutDetaching($permission);
-        }
-
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissionNames, $roleName);
     }
 }

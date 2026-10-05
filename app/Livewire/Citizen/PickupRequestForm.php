@@ -207,7 +207,7 @@ final class PickupRequestForm extends Component
     private function photoRules(): array
     {
         return [
-            'photos' => ['required', 'array', 'min:1', 'max:2'],
+            'photos' => ['array', 'max:2'],
             'photos.*' => ['file', 'mimes:jpg,jpeg,png', 'max:1024'],
         ];
     }

@@ -40,7 +40,7 @@ final class ReportTypeAccess
     private function allowedFor(string $surface): array
     {
         return match ($surface) {
-            self::TREASURER => [ReportType::Withdrawals, ReportType::Groceries],
+            self::TREASURER => [ReportType::Withdrawals],
             self::BACKOFFICE => ReportType::cases(),
             default => throw ValidationException::withMessages(['surface' => 'Permukaan laporan tidak diizinkan.']),
         };

@@ -70,3 +70,7 @@ Dokumentasi ini menjelaskan kontrak produk, teknis, antarmuka, dan operasional S
 5. `DESIGN.md` menentukan seluruh keputusan visual dan interaksi.
 6. Bila dokumen bertentangan, keputusan terbaru yang tercatat di `DECISIONS.md` berlaku setelah mendapat persetujuan pengelola.
 7. Tidak ada emoji pada antarmuka, notifikasi, empty state, ilustrasi, atau dokumentasi produk. Ikon menggunakan SVG dari set yang disetujui.
+
+## Penyelarasan workflow 5 Oktober 2026
+
+Alur terkini mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md) dan ADR-012. UI menggabungkan tindakan yang berkaitan, tanpa menghapus validasi, bukti, audit, atau pemisahan pelaksana. WhatsApp tidak digunakan; Telegram belum dibuat. Tabel kapasitas pickup dan status sedang_disiapkan yang masih ada adalah kompatibilitas data lama, bukan langkah wajib layanan baru. Kapasitas layanan keliling tetap berlaku.

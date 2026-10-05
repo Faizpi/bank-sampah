@@ -15,8 +15,6 @@ final readonly class PermissionChecker
             return false;
         }
 
-        return $user->roles()
-            ->whereHas('permissions', static fn ($query) => $query->where('permissions.name', $permission))
-            ->exists();
+        return in_array($permission, RoleCapabilities::for($user->role), true);
     }
 }

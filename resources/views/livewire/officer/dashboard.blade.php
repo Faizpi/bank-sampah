@@ -3,8 +3,10 @@
 <x-slot:connectivity><x-ui.connectivity-status /></x-slot:connectivity>
 
 <x-slot:todayTasks>
+
     @if ($priorityTask)
         <section class="mb-4 rounded-lg border border-sky-blue/40 bg-info-bg p-5 shadow-xs" aria-labelledby="priority-task-title">
+
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="min-w-0">
                     <p class="text-caption font-semibold text-sky-blue">Fokus sekarang</p>
@@ -61,6 +63,17 @@
 </x-slot:todayTasks>
 
 <div class="grid gap-6">
+    <x-ui.panel title="Pickup menunggu Petugas">
+        <div class="space-y-3">
+            @forelse ($waitingPickups as $waiting)
+                <div class="rounded-xl border border-border p-4">
+                    <p class="font-bold">{{ $waiting->customer->name }} · {{ $waiting->selected_date->format('d M Y') }}</p>
+                    <p>{{ $waiting->address }} · {{ $waiting->request_number }}</p>
+                    <x-ui.button wire:click="claimPickup({{ $waiting->id }})" wire:loading.attr="disabled">Ambil tugas</x-ui.button>
+                </div>
+            @empty<p>Belum ada pickup menunggu.</p>@endforelse
+        </div>
+    </x-ui.panel>
     <section aria-labelledby="officer-dashboard-title" class="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div class="min-w-0">

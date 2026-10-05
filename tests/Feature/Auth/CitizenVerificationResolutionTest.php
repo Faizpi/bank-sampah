@@ -7,13 +7,12 @@ namespace Tests\Feature\Auth;
 use App\Actions\Auth\ResolveCitizenVerification;
 use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\Identity\Enums\UserStatus;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class CitizenVerificationResolutionTest extends TestCase
@@ -150,15 +149,6 @@ final class CitizenVerificationResolutionTest extends TestCase
 
     private function grant(User $user, string $permissionName): void
     {
-        $role = Role::query()->firstOrCreate(
-            ['name' => 'verifier'],
-            ['description' => 'Test verifier role'],
-        );
-        $permission = Permission::query()->firstOrCreate(
-            ['name' => $permissionName],
-            ['description' => "Test permission {$permissionName}"],
-        );
-        $role->permissions()->syncWithoutDetaching($permission);
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, [$permissionName]);
     }
 }

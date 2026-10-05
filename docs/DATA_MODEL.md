@@ -168,3 +168,7 @@ Laravel Truss v1.8.3 tersedia sebagai dependency development untuk melihat diagr
 - Gunakan `php artisan truss:doctor` untuk review struktur dan `php artisan truss:export --format=markdown` untuk artefak lokal bila diperlukan.
 - Hasil doctor adalah bahan triage, bukan quality gate. Primary key komposit pada tabel penghubung dan unique `transaction_corrections.deposit_id` dijaga migration; warning heuristic tetap ditinjau terhadap kontrak domain sebelum perubahan migration dibuat.
 - Jangan mengaktifkan `TRUSS_ENABLED` pada production. Nama tabel dan kolom tetap informasi sensitif, walaupun data baris tidak diekspos.
+
+## Penyelarasan workflow 5 Oktober 2026
+
+Alur terkini mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md) dan ADR-012. UI menggabungkan tindakan yang berkaitan, tanpa menghapus validasi, bukti, audit, atau pemisahan pelaksana. WhatsApp tidak digunakan; Telegram belum dibuat. Tabel kapasitas pickup dan status sedang_disiapkan yang masih ada adalah kompatibilitas data lama, bukan langkah wajib layanan baru. Kapasitas layanan keliling tetap berlaku.

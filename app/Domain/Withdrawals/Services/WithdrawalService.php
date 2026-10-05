@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Withdrawals\Services;
 
 use App\Domain\CustomersRegions\Models\ServiceArea;
+use App\Domain\Operations\Services\ClaimedServiceWorkflow;
 use App\Domain\Platform\Models\Media;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
@@ -15,9 +16,7 @@ final readonly class WithdrawalService
 {
     public function __construct(
         private WithdrawalRequestService $requests,
-        private WithdrawalDecisionService $decisions,
         private WithdrawalPaymentService $payments,
-        private WithdrawalTerminalService $terminals,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -26,34 +25,19 @@ final readonly class WithdrawalService
         return $this->requests->handle($actor, $data, $idempotencyKey);
     }
 
-    public function approve(User $actor, WithdrawalRequest $withdrawal, bool $approved, ?string $reason = null, ?string $location = null, ?string $date = null): WithdrawalRequest
+    public function pay(User $actor, WithdrawalRequest $withdrawal, ?UploadedFile $proof, string $idempotencyKey): WithdrawalRequest
     {
-        return $this->decisions->approve($actor, $withdrawal, $approved, $reason, $location, $date);
-    }
-
-    public function assignPayer(User $actor, WithdrawalRequest $withdrawal, User $payer): WithdrawalRequest
-    {
-        return $this->decisions->assignPayer($actor, $withdrawal, $payer);
-    }
-
-    public function approveAndAssign(User $actor, WithdrawalRequest $withdrawal, User $payer): WithdrawalRequest
-    {
-        return $this->decisions->approveAndAssign($actor, $withdrawal, $payer);
-    }
-
-    public function pay(User $actor, WithdrawalRequest $withdrawal, string $recipientVerification, string $recipientReference, UploadedFile $proof, string $idempotencyKey): WithdrawalRequest
-    {
-        return $this->payments->handle($actor, $withdrawal, $recipientVerification, $recipientReference, $proof, $idempotencyKey);
+        return app(ClaimedServiceWorkflow::class)->complete($actor, $withdrawal, $proof, $idempotencyKey);
     }
 
     public function cancel(User $actor, WithdrawalRequest $withdrawal, ?string $reason = null): WithdrawalRequest
     {
-        return $this->terminals->cancel($actor, $withdrawal, $reason);
+        return app(ClaimedServiceWorkflow::class)->cancel($actor, $withdrawal, $reason ?? 'Dibatalkan oleh pemilik pengajuan.');
     }
 
-    public function expire(WithdrawalRequest $withdrawal): WithdrawalRequest
+    public function claim(User $actor, WithdrawalRequest $withdrawal): WithdrawalRequest
     {
-        return $this->terminals->expire($withdrawal);
+        return app(ClaimedServiceWorkflow::class)->claim($actor, $withdrawal);
     }
 
     /** @return Builder<ServiceArea> */

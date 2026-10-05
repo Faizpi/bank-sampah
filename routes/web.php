@@ -102,11 +102,11 @@ Route::post('/logout', function (Request $request, LogoutUser $logoutUser): Redi
 })->middleware('auth')->name('logout');
 
 Route::livewire('/dashboard/warga', CitizenDashboard::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:profile.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:profile.view'])
     ->name('citizen.dashboard');
 
 Route::livewire('/dashboard/petugas', OfficerDashboard::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:user.view'])
+    ->middleware(['role:petugas', 'auth', 'session.fresh:30', 'permission:user.view'])
     ->name('officer.dashboard');
 
 Route::livewire('/statistik/internal', InternalDashboard::class)
@@ -114,82 +114,82 @@ Route::livewire('/statistik/internal', InternalDashboard::class)
     ->name('statistics.internal');
 
 Route::livewire('/petugas/pindai', CustomerIdentification::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:customer.view'])
+    ->middleware(['role:petugas', 'auth', 'session.fresh:30', 'permission:customer.view'])
     ->name('officer.customer-identification');
 
 Route::livewire('/petugas/setoran/{customerId}', DepositForm::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:deposit.create', 'throttle:financial'])
+    ->middleware(['role:petugas', 'auth', 'session.fresh:30', 'permission:deposit.create', 'throttle:financial'])
     ->whereNumber('customerId')
     ->name('officer.deposit-form');
 
 Route::livewire('/warga/estimasi', EstimateForm::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:waste.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:waste.view'])
     ->name('citizen.estimate');
 
 Route::livewire('/warga/riwayat-setoran', DepositHistory::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:deposit.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:deposit.view'])
     ->name('citizen.deposit-history');
 
 Route::livewire('/warga/setoran/{deposit}', DepositReceipt::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:deposit.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:deposit.view'])
     ->name('citizen.deposit-receipt');
 
 Route::livewire('/warga/penjemputan/ajukan', PickupRequestForm::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:pickup.request'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:pickup.request'])
     ->name('citizen.pickup.create');
 
 Route::livewire('/warga/penjemputan/{pickup}', PickupShow::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:pickup.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:pickup.view'])
     ->whereNumber('pickup')
     ->name('citizen.pickup.show');
 
 Route::livewire('/warga/riwayat-pencairan', WithdrawalHistory::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:withdrawal.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.view'])
     ->name('citizen.withdrawal-history');
 
 Route::livewire('/warga/pencairan/ajukan', WithdrawalRequestForm::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:withdrawal.request', 'throttle:financial'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.request', 'throttle:financial'])
     ->name('citizen.withdrawal.create');
 
 Route::livewire('/warga/pencairan/{withdrawal}', WithdrawalShow::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:withdrawal.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.view'])
     ->whereNumber('withdrawal')
     ->name('citizen.withdrawal.show');
 
 Route::livewire('/warga/pencairan/{withdrawal}/bukti', WithdrawalReceipt::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:withdrawal.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.view'])
     ->whereNumber('withdrawal')
     ->name('citizen.withdrawal.receipt');
 
 Route::livewire('/petugas/penjemputan/{pickup}', PickupTask::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:pickup.execute', 'throttle:financial'])
+    ->middleware(['role:petugas', 'auth', 'session.fresh:30', 'permission:pickup.execute', 'throttle:financial'])
     ->whereNumber('pickup')
     ->name('officer.pickup.task');
 
 Route::livewire('/warga/riwayat-sembako', GroceryHistory::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:grocery.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:grocery.view'])
     ->name('citizen.grocery-history');
 
 Route::livewire('/warga/sembako/ajukan', GroceryRequestForm::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:grocery.request', 'throttle:financial'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:grocery.request', 'throttle:financial'])
     ->name('citizen.grocery.create');
 
 Route::livewire('/warga/sembako/{redemption}', GroceryShow::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:grocery.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:grocery.view'])
     ->whereNumber('redemption')
     ->name('citizen.grocery.show');
 
 Route::livewire('/warga/sembako/{redemption}/bukti', GroceryReceipt::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:grocery.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:grocery.view'])
     ->whereNumber('redemption')
     ->name('citizen.grocery.receipt');
 
 Route::livewire('/petugas/sembako', GroceryTasks::class)
-    ->middleware(['auth', 'session.fresh:30', 'throttle:financial'])
+    ->middleware(['role:petugas', 'auth', 'session.fresh:30', 'throttle:financial'])
     ->name('officer.grocery.tasks');
 
 Route::livewire('/petugas/layanan-keliling', MobileServiceTasks::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:mobile-service.operate'])
+    ->middleware(['role:petugas', 'auth', 'session.fresh:30', 'permission:mobile-service.operate'])
     ->name('officer.mobile-services');
 
 Route::get('/media/pickups/{media}', PickupMediaController::class)
@@ -213,19 +213,19 @@ Route::get('/laporan/ekspor/{export}', ReportExportController::class)
     ->name('reports.export.download');
 
 Route::livewire('/warga/kartu-nasabah', CustomerCard::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:customer.view'])
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:customer.view'])
     ->name('citizen.customer-card');
 
 Route::livewire('/dashboard/bendahara', TreasurerDashboard::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:withdrawal.view'])
+    ->middleware(['role:bendahara', 'auth', 'session.fresh:30', 'permission:withdrawal.view'])
     ->name('treasurer.dashboard');
 
 Route::livewire('/bendahara/pencairan', WithdrawalPayments::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:withdrawal.pay', 'throttle:financial'])
+    ->middleware(['role:bendahara', 'auth', 'session.fresh:30', 'permission:withdrawal.pay', 'throttle:financial'])
     ->name('treasurer.withdrawal.payments');
 
 Route::livewire('/bendahara/laporan', Reports::class)
-    ->middleware(['auth', 'session.fresh:30', 'permission:report.view', 'throttle:exports'])
+    ->middleware(['role:bendahara', 'auth', 'session.fresh:30', 'permission:report.view', 'throttle:exports'])
     ->name('treasurer.reports');
 
 Route::livewire('/profil/kata-sandi', ProfilePassword::class)

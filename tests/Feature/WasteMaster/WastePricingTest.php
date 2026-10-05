@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\WasteMaster;
 
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Shared\InvalidValue;
 use App\Domain\WasteMaster\Actions\ManageWasteMaster;
 use App\Domain\WasteMaster\Actions\ManageWastePricing;
@@ -21,6 +19,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class WastePricingTest extends TestCase
@@ -310,9 +309,6 @@ final class WastePricingTest extends TestCase
 
     private function grant(User $user, string $permissionName): void
     {
-        $role = Role::query()->create(['name' => "{$permissionName}-role-{$user->id}", 'description' => 'Price role']);
-        $permission = Permission::query()->create(['name' => $permissionName, 'description' => 'Price permission']);
-        $role->permissions()->attach($permission);
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, [$permissionName]);
     }
 }

@@ -23,13 +23,13 @@ Jika sumber bertentangan, hentikan pekerjaan terdampak dan selaraskan dokumen se
 
 ## 3. Ruang lingkup kerja
 
-Pekerjaan aktif mempertahankan fungsi inti akun, pengguna, wilayah, master sampah dan harga, identitas nasabah, setoran, ledger, penjemputan, pencairan, penukaran sembako, pengumuman, WhatsApp manual, jadwal layanan keliling, estimasi, QR bukti, laporan yang tersedia, audit, media privat, dan PWA terbatas.
+Pekerjaan aktif mempertahankan fungsi inti akun, pengguna, wilayah, master sampah dan harga, identitas nasabah, setoran, ledger, penjemputan, pencairan, penukaran sembako, pengumuman, notifikasi aplikasi, jadwal layanan keliling, estimasi, QR bukti, laporan yang tersedia, audit, media privat, dan PWA terbatas.
 
 Aturan berikut tetap normatif dan tak boleh dilonggarkan untuk menyesuaikan defect:
 
 1. Target yang masih menjadi sasaran produk dihitung dari transaksi final bersih dan tidak menerima nilai progres bebas.
 2. Jadwal layanan keliling mengikuti hierarki desa, dusun, RW, dan RT, menolak benturan, serta menerapkan kapasitas pada jadwal terkait.
-3. Penjemputan memerlukan foto, area aktif, slot kapasitas, alternatif tanggal saat penuh, berat aktual, dan transaksi final sebelum status selesai.
+3. Penjemputan memerlukan foto, area/tanggal valid, penugasan petugas, berat aktual, dan transaksi final sebelum selesai. Tanggal pilihan tidak menjadi slot yang dijamin.
 
 ## 4. Administrasi teknis
 
@@ -60,10 +60,14 @@ Dokumentasi dan acceptance criteria tidak boleh menjanjikan:
 
 ## 7. Struktur 36 alur
 
-[USER_FLOWS.md](USER_FLOWS.md) mempertahankan FL-01 sampai FL-36. Sebagian flow berfungsi sebagai struktur traceability dan tidak otomatis menambah kapabilitas aktif. FL-15 menjelaskan informasi pada halaman terkait dan WhatsApp manual. FL-36 memvisualisasikan Health baca-saja yang memerlukan `system.maintenance`.
+[USER_FLOWS.md](USER_FLOWS.md) mempertahankan FL-01 sampai FL-36. Sebagian flow berfungsi sebagai struktur traceability dan tidak otomatis menambah kapabilitas aktif. FL-15 menjelaskan informasi layanan dan notifikasi aplikasi; WhatsApp tidak digunakan. FL-36 memvisualisasikan Health baca-saja yang memerlukan `system.maintenance`.
 
 ## 8. Status
 
 Status aktif: `needs_verification`.
 
 Catatan historis berada di [CHANGELOG.md](CHANGELOG.md). Template penerimaan berada di [UAT_EVIDENCE.md](UAT_EVIDENCE.md). Tidak ada snapshot historis yang menjadi bukti status aktif atau klaim bahwa defect aplikasi telah diperbaiki.
+
+## Penyelarasan workflow 5 Oktober 2026
+
+Alur terkini mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md) dan ADR-012. UI menggabungkan tindakan yang berkaitan, tanpa menghapus validasi, bukti, audit, atau pemisahan pelaksana. WhatsApp tidak digunakan; Telegram belum dibuat. Tabel kapasitas pickup dan status sedang_disiapkan yang masih ada adalah kompatibilitas data lama, bukan langkah wajib layanan baru. Kapasitas layanan keliling tetap berlaku.

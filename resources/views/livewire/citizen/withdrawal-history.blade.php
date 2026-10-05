@@ -34,9 +34,7 @@
                 @php
                     $badgeStatus = match ($withdrawal->status) {
                         \App\Domain\Withdrawals\Enums\WithdrawalStatus::Paid => 'success',
-                        \App\Domain\Withdrawals\Enums\WithdrawalStatus::Rejected => 'error',
                         \App\Domain\Withdrawals\Enums\WithdrawalStatus::Cancelled => 'cancelled',
-                        \App\Domain\Withdrawals\Enums\WithdrawalStatus::Expired => 'expired',
                         \App\Domain\Withdrawals\Enums\WithdrawalStatus::ReadyForPickup => 'info',
                         default => 'pending',
                     };

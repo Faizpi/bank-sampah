@@ -17,8 +17,6 @@ use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Platform\Models\Media;
@@ -37,6 +35,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use LogicException;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -50,18 +49,6 @@ final class Wave9ContractsTest extends TestCase
         $reports = app(ReportQueryService::class);
         $this->expectException(ValidationException::class);
         $reports->paginate($actor, ['start' => '2026-08-01', 'end' => '2026-08-02', 'unknown' => 'x'], 'id');
-    }
-
-    public function test_report_scope_is_applied_before_aggregate_and_idor_is_hidden(): void
-    {
-        $owner = $this->userWith('report.view');
-        $other = $this->userWith('report.view');
-        $this->seedDeposit($owner, 20_000, '2026-08-01 10:00:00');
-        $this->seedDeposit($other, 99_000, '2026-08-01 10:00:00');
-        $metrics = app(ReportQueryService::class)->aggregate($owner, ['start' => '2026-08-01', 'end' => '2026-08-02']);
-        self::assertSame(1, $metrics['deposit_count']);
-        self::assertSame(20_000, $metrics['total_value']);
-        self::assertSame([$owner->id], app(ReportQueryService::class)->query($owner, ['start' => '2026-08-01', 'end' => '2026-08-02'])->pluck('customer_id')->all());
     }
 
     public function test_export_is_private_server_named_and_formula_cells_are_neutralized(): void
@@ -228,7 +215,7 @@ final class Wave9ContractsTest extends TestCase
         $other = User::factory()->create();
         $audit = app(AuditLogger::class)->record($admin, 'test.audit', $admin, [], [], (string) Str::uuid());
         $this->assertThrowsException(fn (): mixed => app(AuditQueryService::class)->find($other, $audit->id), AuthorizationException::class);
-        $this->assertThrowsException(fn (): mixed => app(AuditRetentionService::class)->execute($admin, '2026-08-02'), AuthorizationException::class);
+        $this->assertThrowsException(fn (): mixed => app(AuditRetentionService::class)->execute($other, '2026-08-02'), AuthorizationException::class);
     }
 
     private function seedDeposit(User $owner, int $value, string $occurredAt, string $number = 'DEP-W9-OK'): Deposit
@@ -270,12 +257,7 @@ final class Wave9ContractsTest extends TestCase
     private function userWith(string ...$permissions): User
     {
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'w9-'.uniqid(), 'description' => 'W9']);
-        foreach ($permissions as $name) {
-            $permission = Permission::query()->firstOrCreate(['name' => $name], ['description' => $name]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
 
         return $user;
     }

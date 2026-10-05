@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature\Citizen;
 
 use App\Domain\Deposits\Models\Deposit;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Livewire\Citizen\DepositHistory;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class DepositHistoryTest extends TestCase
@@ -24,7 +23,7 @@ final class DepositHistoryTest extends TestCase
         $otherCitizen = User::factory()->create();
 
         $matching = $this->deposit($citizen, 'DEP-CARI-001', Deposit::STATUS_FINAL, '2026-08-10', 'penjemputan');
-        $this->deposit($citizen, 'DEP-LAIN-002', Deposit::STATUS_REJECTED, '2026-08-11', 'langsung');
+        $this->deposit($citizen, 'DEP-LAIN-002', Deposit::STATUS_REVERSED, '2026-08-11', 'langsung');
         $this->deposit($citizen, 'DEP-LAMA-003', Deposit::STATUS_FINAL, '2026-08-01', 'keliling');
         $this->deposit($otherCitizen, 'DEP-CARI-RAHASIA', Deposit::STATUS_FINAL, '2026-08-10', 'penjemputan');
 
@@ -77,12 +76,9 @@ final class DepositHistoryTest extends TestCase
     private function citizenWithDepositViewPermission(): User
     {
         $citizen = User::factory()->create();
-        $role = Role::query()->create(['name' => 'citizen-history-'.str()->random(12), 'description' => 'Citizen history test role']);
-        $permission = Permission::query()->firstOrCreate(['name' => 'deposit.view'], ['description' => 'View deposits']);
-        $role->permissions()->attach($permission);
-        $citizen->roles()->attach($role);
+        $citizen = RoleFixtures::assign($citizen, ['deposit.view']);
 
-        return $citizen->fresh();
+        return $citizen;
     }
 
     private function deposit(User $citizen, string $number, string $status, string $occurredAt, string $method = 'langsung'): Deposit

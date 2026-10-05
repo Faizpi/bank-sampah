@@ -4,29 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domain\Identity\Actions;
 
-use App\Authorization\AccountAdministration;
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\CustomersRegions\Models\Rt;
-use App\Domain\Groceries\Enums\GroceryStatus;
-use App\Domain\Groceries\Models\GroceryRedemption;
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\DatabaseSession;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Queries\VisibleUsers;
-use App\Domain\MobileServices\Enums\MobileServiceStatus;
-use App\Domain\MobileServices\Models\MobileService;
-use App\Domain\Pickups\Enums\PickupStatus;
-use App\Domain\Pickups\Models\PickupRequest;
-use App\Domain\Withdrawals\Enums\WithdrawalStatus;
-use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
 use App\Support\Auth\PhoneNumber;
 use App\Support\Auth\Username;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -40,60 +30,34 @@ final readonly class ManageUsers
         private AuditLogger $auditLogger,
     ) {}
 
-    /** @param array{name: string, username: string, phone?: string|null, email?: string|null, password: string, password_confirmation: string, role_id: int|string} $data */
+    /** @param array{name: string, username: string, phone?: string|null, email?: string|null, password: string, password_confirmation: string, role: string} $data */
     public function create(User $actor, array $data): User
     {
         Gate::forUser($actor)->authorize('create', User::class);
         $attributes = $this->userAttributes($data);
         $password = $this->createPassword($data);
-        $roleId = (int) $data['role_id'];
-        $role = Role::query()->whereKey($roleId)->first();
-        if (! $role instanceof Role) {
-            throw ValidationException::withMessages(['role_id' => 'Peran yang dipilih tidak valid.']);
-        }
-        if (! app(AccountAdministration::class)->canAssign($actor, $role)) {
-            throw new AuthorizationException('Peran ini hanya dapat ditetapkan oleh pengelola akses.');
+        $role = UserRole::tryFrom((string) $data['role']);
+        if ($role === null || $role === UserRole::Citizen) {
+            throw ValidationException::withMessages(['role' => 'Pilih Petugas, Bendahara, atau Admin. Warga mendaftar sendiri.']);
         }
 
-        return DB::transaction(function () use ($actor, $attributes, $password, $role): User {
+        return app(AdminAvailabilityGuard::class)->run(function () use ($actor, $attributes, $password, $role): User {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            Gate::forUser($actor)->authorize('create', User::class);
             $user = new User;
             $user->forceFill([
                 ...$attributes,
                 'password' => Hash::make($password),
                 'status' => UserStatus::Active,
+                'role' => $role,
             ])->save();
-            $user->roles()->attach($role->id, ['assigned_by' => $actor->id, 'reason' => 'Penugasan saat pembuatan pengguna.']);
-            $this->auditLogger->record($actor, 'identity.user.created', $user, [], ['status' => UserStatus::Active->value, 'role_id' => $role->id], $this->correlationId());
+            $this->auditLogger->record($actor, 'identity.user.created', $user, [], ['status' => UserStatus::Active->value, 'role' => $role->value], $this->correlationId());
 
-            return $user->fresh('roles');
+            return $user->fresh();
         });
     }
 
     /** @param array{name: string, username: string, phone?: string|null, email?: string|null, rt_id?: int, address?: string} $data */
-    public function createCustomer(User $actor, array $data): User
-    {
-        if (! $this->permissions->allows($actor, 'customer.create-assisted') && ! $this->permissions->allows($actor, 'user.create')) {
-            throw new AuthorizationException('Anda tidak memiliki akses membuat nasabah.');
-        }
-
-        $profile = $this->customerProfileAttributes($data);
-        $attributes = $this->userAttributes($data);
-        $this->ensureActiveRt((int) $profile['rt_id']);
-        $this->ensureActorCanAccessCustomerRt($actor, (int) $profile['rt_id']);
-
-        return DB::transaction(function () use ($actor, $attributes, $profile): User {
-            $user = new User;
-            $user->forceFill([
-                ...$attributes,
-                'password' => Hash::make(Str::random(64)),
-                'status' => UserStatus::PendingVerification,
-            ])->save();
-            CustomerProfile::query()->create(['user_id' => $user->id, ...$profile]);
-            $this->auditLogger->record($actor, 'identity.customer.created', $user, [], ['status' => UserStatus::PendingVerification->value, 'profile' => 'created'], $this->correlationId());
-
-            return $user->fresh('customerProfile');
-        });
-    }
 
     /** @param array{name: string, username: string, phone?: string|null, email?: string|null} $data */
     public function update(User $actor, User $subject, array $data): User
@@ -101,7 +65,11 @@ final readonly class ManageUsers
         Gate::forUser($actor)->authorize('update', $subject);
         $attributes = $this->userAttributes($data);
 
-        return DB::transaction(function () use ($actor, $attributes, $subject): User {
+        return app(AdminAvailabilityGuard::class)->run(function () use ($actor, $attributes, $subject): User {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            if (! $this->permissions->allows($actor, 'user.update')) {
+                throw new AuthorizationException('Akses Admin tidak lagi aktif.');
+            }
             $locked = $this->lockVisible($actor, $subject);
             $old = ['fields' => array_keys($attributes)];
             $locked->forceFill($attributes)->save();
@@ -120,7 +88,11 @@ final readonly class ManageUsers
         $this->ensureActiveRt((int) $profileAttributes['rt_id']);
         $this->ensureActorCanAccessCustomerRt($actor, (int) $profileAttributes['rt_id']);
 
-        return DB::transaction(function () use ($actor, $attributes, $profileAttributes, $subject): User {
+        return app(AdminAvailabilityGuard::class)->run(function () use ($actor, $attributes, $profileAttributes, $subject): User {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            if (! $this->permissions->allows($actor, 'user.update')) {
+                throw new AuthorizationException('Akses Admin tidak lagi aktif.');
+            }
             $locked = $this->lockVisible($actor, $subject);
             $profile = $locked->customerProfile;
 
@@ -140,7 +112,11 @@ final readonly class ManageUsers
     {
         Gate::forUser($actor)->authorize('activate', $subject);
 
-        return DB::transaction(function () use ($actor, $subject): User {
+        return app(AdminAvailabilityGuard::class)->run(function () use ($actor, $subject): User {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            if (! $this->permissions->allows($actor, 'user.update')) {
+                throw new AuthorizationException('Akses Admin tidak lagi aktif.');
+            }
             $locked = $this->lockVisible($actor, $subject);
 
             if ($locked->status !== UserStatus::Inactive) {
@@ -164,7 +140,11 @@ final readonly class ManageUsers
             throw ValidationException::withMessages(['reason' => 'Alasan penonaktifan harus 10–1000 karakter.']);
         }
 
-        return DB::transaction(function () use ($actor, $subject, $reason): User {
+        return app(AdminAvailabilityGuard::class)->run(function () use ($actor, $subject, $reason): User {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            if (! $this->permissions->allows($actor, 'user.update')) {
+                throw new AuthorizationException('Akses Admin tidak lagi aktif.');
+            }
             $locked = $this->lockVisible($actor, $subject);
             if ($locked->status !== UserStatus::Active) {
                 throw ValidationException::withMessages(['status' => 'Hanya pengguna aktif yang dapat dinonaktifkan.']);
@@ -203,37 +183,12 @@ final readonly class ManageUsers
         return $locked->load('customerProfile');
     }
 
-    /** @return array{sessions_revoked: int, password_reset_tokens_revoked: int, role_assignments_revoked: int, operational_assignments_revoked: int} */
+    /** @return array{sessions_revoked: int, password_reset_tokens_revoked: int} */
     private function revokeActiveAccess(User $user): array
     {
-        $sessionsRevoked = DatabaseSession::query()->where('user_id', $user->id)->delete();
-        $passwordResetTokensRevoked = $user->passwordResetTokens()->delete();
-        $roleAssignmentsRevoked = $user->roles()->detach();
-
-        $pickupAssignmentsRevoked = PickupRequest::query()
-            ->where('assigned_staff_id', $user->id)
-            ->whereIn('status', [PickupStatus::Scheduled, PickupStatus::EnRoute, PickupStatus::PickedUp])
-            ->update(['assigned_staff_id' => null]);
-        $withdrawalAssignmentsRevoked = WithdrawalRequest::query()
-            ->where('payer_id', $user->id)
-            ->where('status', WithdrawalStatus::ReadyForPickup)
-            ->update(['payer_id' => null]);
-        $groceryAssignmentsRevoked = GroceryRedemption::query()
-            ->where('prepared_by_id', $user->id)
-            ->whereIn('status', [GroceryStatus::Preparing, GroceryStatus::ReadyForPickup])
-            ->update(['prepared_by_id' => null]);
-        $mobileAssignmentsRevoked = DB::table('mobile_service_staff')
-            ->where('staff_id', $user->id)
-            ->whereIn('mobile_service_id', MobileService::query()
-                ->whereIn('status', [MobileServiceStatus::Draft, MobileServiceStatus::Published, MobileServiceStatus::Open])
-                ->select('id'))
-            ->delete();
-
         return [
-            'sessions_revoked' => $sessionsRevoked,
-            'password_reset_tokens_revoked' => $passwordResetTokensRevoked,
-            'role_assignments_revoked' => $roleAssignmentsRevoked,
-            'operational_assignments_revoked' => $pickupAssignmentsRevoked + $withdrawalAssignmentsRevoked + $groceryAssignmentsRevoked + $mobileAssignmentsRevoked,
+            'sessions_revoked' => DatabaseSession::query()->where('user_id', $user->id)->delete(),
+            'password_reset_tokens_revoked' => $user->passwordResetTokens()->delete(),
         ];
     }
 

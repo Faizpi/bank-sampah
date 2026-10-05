@@ -13,8 +13,6 @@ use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Reports\Enums\ReportExportStatus;
@@ -26,6 +24,7 @@ use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -213,8 +212,8 @@ final class ReportDetailedDepositExportTest extends TestCase
 
         foreach ([
             'pickups' => [['Nomor Penjemputan', 'Nama Nasabah', 'RT', 'Area Layanan', 'Alamat Penjemputan', 'Tanggal Pilihan', 'Tanggal Terjadwal', 'Petugas Penjemputan', 'Estimasi Berat (kg)', 'Catatan', 'Status Penjemputan'], ['PUP-RICH-EXPORT', 'Nasabah Ekspor Lengkap', 'RT Ekspor', 'Area Layanan Ekspor', '7.500']],
-            'withdrawals' => [['Nomor Pencairan', 'Nomor Nasabah', 'Nama Nasabah', 'RT', 'Area Layanan', 'Petugas Pembayar', 'Lokasi Pengambilan', 'Tanggal Pengambilan', 'Verifikasi Penerima', 'Referensi Penerima', 'Status Pencairan', 'Jumlah Pencairan (Rp)'], ['WDR-RICH-EXPORT', 'Nasabah Ekspor Lengkap', '85000']],
-            'groceries' => [['Nomor Penukaran', 'Nomor Nasabah', 'Nama Nasabah', 'RT', 'Area Layanan', 'Nama Paket', 'Isi Paket', 'Petugas Persiapan', 'Petugas Penyerahan', 'Catatan Ketersediaan', 'Verifikasi Penerima', 'Referensi Penerima', 'Status Penukaran', 'Nilai Sembako (Rp)'], ['GRC-RICH-EXPORT', 'Nasabah Ekspor Lengkap', '60000']],
+            'withdrawals' => [['Nomor Pencairan', 'Nomor Nasabah', 'Nama Nasabah', 'RT', 'Area Layanan', 'Petugas Pembayar', 'Lokasi Pengambilan', 'Tanggal Pengambilan', 'Status Pencairan', 'Jumlah Pencairan (Rp)'], ['WDR-RICH-EXPORT', 'Nasabah Ekspor Lengkap', '85000']],
+            'groceries' => [['Nomor Penukaran', 'Nomor Nasabah', 'Nama Nasabah', 'RT', 'Area Layanan', 'Nama Paket', 'Isi Paket', 'Pengambil tugas', 'Petugas Penyerahan', 'Catatan Ketersediaan', 'Status Penukaran', 'Nilai Sembako (Rp)'], ['GRC-RICH-EXPORT', 'Nasabah Ekspor Lengkap', '60000']],
             'participation' => [['Nomor Setoran', 'Tanggal Setoran', 'Nomor Nasabah', 'Nama Nasabah', 'RT', 'Area Layanan', 'Petugas Setoran', 'Metode Setoran', 'Lokasi Setoran', 'Status Setoran', 'Total Berat (kg)', 'Total Nilai (Rp)', 'Jenis Sampah', 'Kondisi Sampah'], ['Nasabah Ekspor Lengkap', 'Kardus Partisipasi', 'Kering Partisipasi', '3.000', '30000']],
         ] as $reportType => [$headers, $values]) {
             $export = app(ReportExportService::class)->export($actor, $reportType, ['start' => '2026-08-01', 'end' => '2026-08-02'], 'xlsx');
@@ -257,12 +256,7 @@ final class ReportDetailedDepositExportTest extends TestCase
     private function userWith(string ...$permissions): User
     {
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'detail-export-'.uniqid(), 'description' => 'Detailed deposit export test']);
-        foreach ($permissions as $name) {
-            $permission = Permission::query()->firstOrCreate(['name' => $name], ['description' => $name]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
 
         return $user;
     }

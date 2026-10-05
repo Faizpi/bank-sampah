@@ -1,7 +1,7 @@
 @extends('layouts.public')
 
 @section('title', 'Tutorial Penggunaan dan Panduan Video | Bank Sampah Digital Sindangheula')
-@section('description', 'Kumpulan panduan video tutorial resmi Google Drive untuk warga, petugas, bendahara, dan administrator Bank Sampah Digital Desa Sindangheula.')
+@section('description', 'Kumpulan panduan panduan penggunaan untuk warga, petugas, bendahara, dan administrator Bank Sampah Digital Desa Sindangheula.')
 
 @php
     $tutorials = config('tutorials.items', []);
@@ -9,7 +9,7 @@
     $wargaCount = count(array_filter($tutorials, fn($t) => $t['role'] === 'warga'));
     $petugasCount = count(array_filter($tutorials, fn($t) => $t['role'] === 'petugas'));
     $bendaharaCount = count(array_filter($tutorials, fn($t) => $t['role'] === 'bendahara'));
-    $adminCount = count(array_filter($tutorials, fn($t) => $t['role'] === 'superadmin'));
+    $adminCount = count(array_filter($tutorials, fn($t) => $t['role'] === 'admin'));
     $totalCount = count($tutorials);
 @endphp
 
@@ -27,12 +27,12 @@
                         Tutorial Penggunaan Sistem Bank Sampah
                     </h1>
                     <p class="mt-4 text-body text-surface/85 leading-relaxed">
-                        Pelajari alur operasional aplikasi Bank Sampah Digital Desa Sindangheula langkah demi langkah melalui video panduan resmi Google Drive yang dikelompokkan sesuai peran Anda.
+                        Pelajari alur operasional aplikasi Bank Sampah Digital Desa Sindangheula langkah demi langkah melalui panduan penggunaan yang dikelompokkan sesuai peran Anda.
                     </p>
                     <div class="mt-6 flex flex-wrap items-center gap-3 text-label text-surface/80">
                         <span class="inline-flex items-center gap-1.5">
                             <x-public.icon name="circle-check" size="size-4" class="text-harvest-gold" />
-                            {{ $totalCount }} Video Panduan
+                            {{ $totalCount }} Panduan
                         </span>
                         <span class="inline-block size-1 rounded-full bg-surface/40"></span>
                         <span class="inline-flex items-center gap-1.5">
@@ -186,15 +186,15 @@
 
                     <button
                         type="button"
-                        x-on:click="activeRole = 'superadmin'"
-                        :class="activeRole === 'superadmin'
+                        x-on:click="activeRole = 'admin'"
+                        :class="activeRole === 'admin'
                             ? 'bg-purple-700 text-surface font-bold shadow-xs'
                             : 'bg-surface text-text-secondary hover:bg-purple-50 hover:text-purple-800 border border-border/90 font-medium'"
                         class="inline-flex min-h-touch items-center gap-2 rounded-full px-4 py-2 text-body-sm transition duration-180"
                     >
-                        <span>Sesi Superadmin / Admin</span>
+                        <span>Sesi Admin</span>
                         <span
-                            :class="activeRole === 'superadmin' ? 'bg-surface/25 text-surface' : 'bg-purple-100 text-purple-800'"
+                            :class="activeRole === 'admin' ? 'bg-surface/25 text-surface' : 'bg-purple-100 text-purple-800'"
                             class="rounded-full px-2 py-0.5 text-caption font-bold"
                         >
                             {{ $adminCount }}
@@ -225,7 +225,7 @@
                                 'warga' => ['badge' => 'bg-emerald-50 text-emerald-800 border-emerald-200', 'dot' => 'bg-emerald-600', 'label' => 'Warga'],
                                 'petugas' => ['badge' => 'bg-blue-50 text-blue-800 border-blue-200', 'dot' => 'bg-blue-600', 'label' => 'Petugas'],
                                 'bendahara' => ['badge' => 'bg-amber-50 text-amber-800 border-amber-200', 'dot' => 'bg-amber-600', 'label' => 'Bendahara'],
-                                'superadmin' => ['badge' => 'bg-purple-50 text-purple-800 border-purple-200', 'dot' => 'bg-purple-600', 'label' => 'Superadmin'],
+                                'admin' => ['badge' => 'bg-purple-50 text-purple-800 border-purple-200', 'dot' => 'bg-purple-600', 'label' => 'Admin'],
                                 default => ['badge' => 'bg-gray-50 text-gray-800 border-gray-200', 'dot' => 'bg-gray-600', 'label' => ucfirst($item['role'])],
                             };
                         @endphp
@@ -268,19 +268,11 @@
 
                             {{-- Google Drive Video CTA Button --}}
                             <div class="mt-6 border-t border-border/70 pt-4">
-                                <a
-                                    href="{{ $item['video_url'] }}"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="group inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-deep-green px-4 py-2.5 text-label font-bold text-surface shadow-xs transition duration-180 hover:bg-forest-600 active:translate-y-px"
-                                >
-                                    <x-public.icon name="play" size="size-4" class="transition-transform duration-180 group-hover:scale-110" />
-                                    <span>Tonton Video (Google Drive)</span>
-                                    <x-public.icon name="external-link" size="size-3.5" class="opacity-75" />
-                                </a>
-                                <p class="mt-2 text-center text-caption text-text-secondary/80">
-                                    Tersimpan di Google Drive • Dapat diputar di HP & Laptop
-                                </p>
+                                @if (filled($item['video_url']))
+                                    <a href="{{ $item['video_url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-touch items-center font-bold text-forest-700">Tonton video panduan</a>
+                                @else
+                                    <p class="text-caption text-text-secondary">Panduan teks tersedia. Video belum tersedia.</p>
+                                @endif
                             </div>
                         </article>
                     @endforeach

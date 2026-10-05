@@ -12,14 +12,13 @@ use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Identity\Models\CustomerProfile;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
 use App\Domain\Identity\Models\StaffServiceArea;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class CustomerIdentityTest extends TestCase
@@ -131,7 +130,7 @@ final class CustomerIdentityTest extends TestCase
             self::assertArrayHasKey('token', $exception->errors());
         }
 
-        $unprivileged = User::factory()->create();
+        $unprivileged = User::factory()->inactive()->create();
         $this->expectException(AuthorizationException::class);
         $scanner->scan($unprivileged, QrToken::generate()->value());
     }
@@ -139,13 +138,8 @@ final class CustomerIdentityTest extends TestCase
     private function authorizedActor(string ...$permissions): User
     {
         $actor = User::factory()->create();
-        $role = Role::query()->create(['name' => 'w2-identity-'.fake()->unique()->numerify('####'), 'description' => 'W2 identity test role']);
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => "W2 {$permissionName}"]);
-            $role->permissions()->attach($permission);
-        }
-        $actor->roles()->attach($role);
+        $actor = RoleFixtures::assign($actor, $permissions);
 
-        return $actor->fresh();
+        return $actor;
     }
 }

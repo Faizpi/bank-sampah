@@ -6,10 +6,9 @@ namespace Tests\Feature\CustomersRegions;
 
 use App\Domain\CustomersRegions\Actions\ManageCustomerIdentity;
 use App\Domain\Identity\Models\CustomerProfile;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class CustomerQrStorageTest extends TestCase
@@ -36,11 +35,6 @@ final class CustomerQrStorageTest extends TestCase
 
     private function grant(User $user, string ...$permissions): void
     {
-        $role = Role::query()->create(['name' => 'w2-qr-storage-'.fake()->unique()->numerify('####'), 'description' => 'W2 QR storage test role']);
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => "W2 {$permissionName}"]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
     }
 }

@@ -115,7 +115,7 @@ Release diblokir oleh kegagalan P0/P1, test flaky yang menyentuh kritis, atau re
 **When** permission silang diuji  
 **Then** aksi silang ditolak dan selesai hanya setelah bukti handover.
 
-### QR, publik, WhatsApp, inklusi
+### QR, publik, notifikasi, inklusi
 
 **TC-QRV-001 — QR publik terbatas (P0)**  
 **Given** token bukti final valid  
@@ -132,10 +132,8 @@ Release diblokir oleh kegagalan P0/P1, test flaky yang menyentuh kritis, atau re
 **When** statistik publik diminta  
 **Then** hanya metrik allowlist/agregat aman tampil, ambang privasi diterapkan, dan tidak ada drill-down individu.
 
-**TC-WA-001 — WhatsApp manual (P1)**  
-**Given** nomor/template valid  
-**When** tombol dipilih  
-**Then** URL `wa.me` terenkode dibuka, teks UI menyatakan “Buka WhatsApp”, dan database tidak mencatat pesan otomatis terkirim.
+**TC-WA-001 — Kanal WhatsApp dihentikan**
+Pastikan tidak ada tombol atau klaim pengiriman WhatsApp. Notifikasi aplikasi tidak dinyatakan sebagai pesan Telegram terkirim.
 
 **TC-CST-002 — Warga tanpa smartphone (P0)**  
 **Given** warga memberi persetujuan dan identitas valid  
@@ -144,10 +142,10 @@ Release diblokir oleh kegagalan P0/P1, test flaky yang menyentuh kritis, atau re
 
 ### Penjemputan, pencairan, sembako
 
-**TC-PUP-001 — Foto wajib dan kapasitas (P1)**  
-**Given** tanggal kapasitas penuh  
+**TC-PUP-001 — Foto wajib dan tanggal pilihan (P1)**
+**Given** tanggal di luar horizon layanan
 **When** warga submit dengan foto valid  
-**Then** tanggal tidak dipesan dan alternatif ditawarkan; tanpa foto submit ditolak.
+**Then** pengajuan ditolak dengan penjelasan tanggal; tanpa foto submit ditolak. Tanggal valid diterima sebagai permintaan, bukan reservasi slot.
 
 **TC-PUP-002 — Penolakan berhenti (P0)**  
 **Given** pengajuan tidak layak  
@@ -235,13 +233,13 @@ Uji portrait/landscape relevan, teks panjang, error, loading, empty, success, ke
 1. Registrasi → admin approve/reject → login.
 2. Setoran multi-item → bukti → saldo/riwayat/QR.
 3. Klik ganda/retry UI pada finalisasi.
-4. Pickup foto → kapasitas alternatif → execute → setoran.
+4. Pickup foto → terima dan jadwalkan → execute → setoran/pemeriksaan → saldo setelah final.
 5. Pencairan approve terpisah pay → bukti → ledger.
 6. Sembako approve terpisah handover → bukti → ledger.
 7. Koreksi → tampilan warga → laporan memperlihatkan hasil resmi.
 8. Warga tanpa smartphone → kartu/nomor → bukti cetak.
 9. Statistik publik/QR tanpa data privat.
-10. WhatsApp manual membuka URL tanpa status otomatis.
+10. Notifikasi aplikasi menampilkan status aman tanpa kanal WhatsApp atau Telegram aktif.
 11. PWA installability dan cache allowlist; transaksi offline ditolak jelas.
 12. Admin sidebar/action sesuai permission.
 
@@ -260,7 +258,7 @@ Kriteria penerimaan:
 - Saldo/ledger dan hasil laporan diperiksa pada data UAT.
 - Permission dan privasi disetujui pemilik proses.
 - Alur warga tanpa smartphone dapat dijalankan tanpa kata sandi diambil alih.
-- Pengelola memahami bahwa WhatsApp manual dan PWA offline terbatas.
+- Pengelola memahami batas notifikasi internal, Telegram yang belum tersedia, dan PWA offline terbatas.
 
 ## 11. Deployment dan operasi test
 
@@ -309,3 +307,20 @@ Sebelum release:
 - Browser, accessibility, responsive, security, UAT, deployment, Health, dan rollback lulus.
 - Defect residual memiliki owner, severity, mitigasi, dan tidak melanggar baseline/acceptance criteria.
 - Laporan test mencatat commit, environment, waktu, runner, hasil, coverage, artefak, dan approval.
+
+## 14. Regresi audit 5 Oktober 2026
+
+- Admin tidak dapat membuat, mengubah, atau memulihkan kredensial superadmin.
+- Halaman Health tidak memiliki metode mutasi teknis.
+- Pembaruan HTTP Livewire memeriksa ulang izin; idle, delapan jam absolut, perubahan permission, dan cookie ingat-saya lama tidak melewati autentikasi.
+- Edit akun mempertahankan identitas dan kontak; daftar area kosong tidak boleh dilaporkan berhasil.
+- Pickup bernilai tinggi menunggu keputusan; penolakan tidak menyelesaikan saldo. Kendala setelah berangkat dapat dicatat petugas.
+- Harga pratinjau draf dan pembukuan memakai waktu yang sama.
+- Pembatalan warga dinilai lagi di bawah lock. Pengulangan pengajuan setelah hold mengembalikan hasil lama.
+- Pengajuan berbantuan multi-area memvalidasi pilihan sebelum menyimpan bukti persetujuan.
+- Persetujuan+penugasan serta penerimaan+jadwal rollback sepenuhnya bila langkah berikutnya gagal.
+- Sembako dapat langsung ditandai siap; tidak ada mutasi keluar sebelum penyerahan.
+- Kartu antrean dan daftar tujuan memakai filter yang sama.
+- Browser memeriksa lima role pada lebar 390 dan 1280 piksel dengan data sintetis. Ini bukan UAT stakeholder.
+
+Runner PHPUnit/Pest menolak database operasional dan memakai storage terisolasi. Browser memakai `tests/browser/bootstrap.php`, `router.php`, `seed-workflow.php`, serta `workflow-smoke.mjs`; URL loopback, nama database uji, dan token preflight wajib cocok. Bukti hasil dicatat terpisah di VALIDATION_2026-10-05.md setelah eksekusi.

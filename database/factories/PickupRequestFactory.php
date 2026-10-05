@@ -31,7 +31,7 @@ final class PickupRequestFactory extends Factory
             'scheduled_date' => null,
             'estimated_weight_kg' => '5.000',
             'notes' => null,
-            'status' => PickupStatus::PendingReview,
+            'status' => PickupStatus::Waiting,
             'rejection_reason' => null,
             'cancellation_reason' => null,
             'assigned_staff_id' => null,

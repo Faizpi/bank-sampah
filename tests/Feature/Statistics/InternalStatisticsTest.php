@@ -10,8 +10,6 @@ use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Identity\Models\CustomerProfile;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Programs\Enums\TargetStatus;
@@ -26,6 +24,7 @@ use App\Livewire\PublicSite\PublicPrograms;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class InternalStatisticsTest extends TestCase
@@ -221,12 +220,7 @@ final class InternalStatisticsTest extends TestCase
     private function userWith(string ...$permissions): User
     {
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'stats-test-'.$user->id, 'description' => 'Statistics test']);
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
 
         return $user;
     }

@@ -8,8 +8,6 @@ use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\CustomersRegions\Models\ServiceArea;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Http\Middleware\EnsureSessionIsFresh;
@@ -30,6 +28,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class NotificationCenterTest extends TestCase
@@ -187,7 +186,7 @@ final class NotificationCenterTest extends TestCase
             'address' => 'Alamat notifikasi warga',
             'selected_date' => today()->addDay(),
             'estimated_weight_kg' => '1.000',
-            'status' => PickupStatus::PendingReview,
+            'status' => PickupStatus::Waiting,
         ]);
         Notification::factory()->create([
             'recipient_id' => $recipient->getKey(),
@@ -214,7 +213,7 @@ final class NotificationCenterTest extends TestCase
             'address' => 'Alamat notifikasi warga lain',
             'selected_date' => today()->addDay(),
             'estimated_weight_kg' => '1.000',
-            'status' => PickupStatus::PendingReview,
+            'status' => PickupStatus::Waiting,
         ]);
         Notification::factory()->create([
             'recipient_id' => $recipient->getKey(),
@@ -254,9 +253,9 @@ final class NotificationCenterTest extends TestCase
 
     public function test_notification_center_route_forbids_authenticated_actor_without_notification_view_permission(): void
     {
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->inactive()->create())
             ->get(route('notifications.index'))
-            ->assertForbidden();
+            ->assertRedirectToRoute('login');
     }
 
     public function test_notification_center_route_redirects_a_stale_session_to_login_without_rendering_notifications(): void
@@ -292,20 +291,7 @@ final class NotificationCenterTest extends TestCase
 
     private function grant(User $user, string $roleName, string ...$permissionNames): void
     {
-        $role = Role::query()->firstOrCreate(
-            ['name' => $roleName],
-            ['description' => "Test role {$roleName}"],
-        );
-
-        foreach ($permissionNames as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(
-                ['name' => $permissionName],
-                ['description' => "Test permission {$permissionName}"],
-            );
-            $role->permissions()->syncWithoutDetaching($permission);
-        }
-
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissionNames, $roleName);
     }
 
     /** @return Testable<NotificationCenter> */

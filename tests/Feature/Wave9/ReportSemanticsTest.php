@@ -14,8 +14,6 @@ use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Groceries\Enums\GroceryStatus;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Domain\Groceries\Models\GroceryRedemption;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Reports\Services\ReportQueryService;
@@ -26,9 +24,9 @@ use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Livewire\Treasurer\Reports as TreasurerReports;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class ReportSemanticsTest extends TestCase
@@ -272,7 +270,7 @@ final class ReportSemanticsTest extends TestCase
 
     public function test_report_type_choices_are_limited_by_officer_role_without_an_all_transactions_choice(): void
     {
-        $treasurer = $this->userWith('report.view');
+        $treasurer = User::factory()->create(['role' => 'bendahara']);
         $backoffice = $this->userWith('report.view');
 
         Livewire::actingAs($treasurer);
@@ -280,7 +278,6 @@ final class ReportSemanticsTest extends TestCase
             ->assertSet('reportType', 'withdrawals')
             ->assertSet('reportTypes', [
                 'withdrawals' => 'Pencairan',
-                'groceries' => 'Sembako',
             ]);
 
         Livewire::actingAs($backoffice);
@@ -439,12 +436,7 @@ final class ReportSemanticsTest extends TestCase
     private function userWith(string ...$permissions): User
     {
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'report-semantics-'.Str::uuid(), 'description' => 'Report semantics tests']);
-        foreach ($permissions as $name) {
-            $permission = Permission::query()->firstOrCreate(['name' => $name], ['description' => $name]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
 
         return $user;
     }

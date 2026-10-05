@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Operations\Enums\BackupRestoreVerificationResult;
 use App\Domain\Operations\Enums\BackupStatus;
 use App\Domain\Operations\Models\BackupLog;
@@ -16,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
+use Tests\RoleFixtures;
 
 uses(RefreshDatabase::class);
 
@@ -164,17 +163,7 @@ it('checks database queue applicability without exposing queue payloads', functi
 
 function grantOperationalHealthPermission(User $user): void
 {
-    $role = Role::query()->create([
-        'name' => 'operational-health-'.$user->id.'-'.Str::lower(Str::random(8)),
-        'description' => 'Operational health test role',
-    ]);
-    $permission = Permission::query()->firstOrCreate([
-        'name' => 'system.maintenance',
-    ], [
-        'description' => 'System maintenance test permission',
-    ]);
-    $role->permissions()->attach($permission, ['reason' => 'Operational health test']);
-    $user->roles()->attach($role, ['reason' => 'Operational health test']);
+    $user = RoleFixtures::assign($user, ['system.maintenance']);
 }
 
 function operationalVerifiedBackup(): BackupLog

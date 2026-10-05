@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Filament;
 
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Filament\Auth\BackofficeLogin;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class BackofficeLoginFormTest extends TestCase
@@ -38,7 +37,7 @@ final class BackofficeLoginFormTest extends TestCase
         );
     }
 
-    public function test_demo_fill_populates_the_username_and_password_fields_for_admin_and_superadmin(): void
+    public function test_demo_fill_populates_the_username_and_password_fields_for_admin_and_admin(): void
     {
         Livewire::test(BackofficeLogin::class)
             ->call('fillDemo', 'admin')
@@ -48,9 +47,9 @@ final class BackofficeLoginFormTest extends TestCase
             ]);
 
         Livewire::test(BackofficeLogin::class)
-            ->call('fillDemo', 'superadmin')
+            ->call('fillDemo', 'admin')
             ->assertFormSet([
-                'username' => 'superadmin',
+                'username' => 'admin',
                 'password' => 'Dev#Sindangheula2026',
             ]);
     }
@@ -127,19 +126,6 @@ final class BackofficeLoginFormTest extends TestCase
 
     private function grant(User $user, string $roleName, string ...$permissionNames): void
     {
-        $role = Role::query()->firstOrCreate(
-            ['name' => $roleName],
-            ['description' => "Test role {$roleName}"],
-        );
-
-        foreach ($permissionNames as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(
-                ['name' => $permissionName],
-                ['description' => "Test permission {$permissionName}"],
-            );
-            $role->permissions()->syncWithoutDetaching($permission);
-        }
-
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissionNames, $roleName);
     }
 }

@@ -4,20 +4,18 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Identity\Models\Users;
 
-use App\Authorization\AccountAdministration;
 use App\Authorization\PermissionChecker;
 use App\Domain\CustomersRegions\Models\ServiceArea;
-use App\Domain\Identity\Actions\ManageRoles;
+use App\Domain\Identity\Actions\ChangeUserRole;
 use App\Domain\Identity\Actions\ManageStaffProfile;
 use App\Domain\Identity\Actions\ManageUsers;
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Enums\UserStatus;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Filament\Resources\Identity\Models\Users\Pages\ManageUsers as ManageUsersPage;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -81,7 +79,7 @@ final class UserResource extends Resource
                 TextInput::make('email')->label('Email')->email()->nullable(),
                 TextInput::make('password')->label('Kata sandi')->visibleOn('create')->password()->revealable()->required(fn (string $operation): bool => $operation === 'create')->minLength(8)->dehydrated(fn (?string $state): bool => filled($state)),
                 TextInput::make('password_confirmation')->label('Konfirmasi kata sandi')->visibleOn('create')->password()->revealable()->required(fn (string $operation): bool => $operation === 'create')->same('password')->dehydrated(fn (string $operation): bool => $operation === 'create'),
-                Select::make('role_id')->label('Peran')->options(fn (): array => Role::query()->orderBy('name')->get()->filter(fn (Role $role): bool => app(AccountAdministration::class)->canAssign(self::actor(), $role))->pluck('name', 'id')->all())->required(fn (string $operation): bool => $operation === 'create')->visibleOn('create')->dehydrated(fn (string $operation): bool => $operation === 'create'),
+                Select::make('role')->label('Peran')->options(fn (): array => UserRole::options(true))->required(fn (string $operation): bool => $operation === 'create')->visibleOn('create')->dehydrated(fn (string $operation): bool => $operation === 'create'),
             ])->columns(['default' => 1, 'md' => 2]),
             Section::make('Area dan masa tugas')->visible(fn (?User $record): bool => $record !== null && $record->hasRole('petugas', 'bendahara'))->schema([
                 Repeater::make('service_areas')->label('Penugasan')->defaultItems(0)->minItems(1)->required()->schema([
@@ -91,8 +89,8 @@ final class UserResource extends Resource
                 ])->columns(['default' => 1, 'md' => 3]),
             ]),
             Section::make('Perubahan peran')->visible(fn (?User $record): bool => $record !== null && app(PermissionChecker::class)->allows(self::actor(), 'role.manage'))->schema([
-                Select::make('new_role_id')->label('Peran baru (opsional)')->placeholder('Tetap menggunakan peran saat ini')->options(fn (): array => Role::orderBy('name')->pluck('name', 'id')->all())->live(),
-                Textarea::make('role_reason')->label('Alasan perubahan peran')->minLength(10)->maxLength(1000)->requiredWith('new_role_id'),
+                Select::make('new_role')->label('Peran baru (opsional)')->placeholder('Tetap menggunakan peran saat ini')->options(fn (): array => UserRole::options(true))->live(),
+                Textarea::make('role_reason')->label('Alasan perubahan peran')->minLength(10)->maxLength(1000)->requiredWith('new_role'),
             ]),
         ]);
     }
@@ -105,7 +103,7 @@ final class UserResource extends Resource
                 TextColumn::make('name')->label('Nama')->searchable()->sortable(),
                 TextColumn::make('status')->label('Status')->badge(),
                 TextColumn::make('customerProfile.customer_number')->label('Nomor nasabah')->placeholder('Belum terbit')->toggleable(),
-                TextColumn::make('roles.name')->label('Peran')->badge()->separator(','),
+                TextColumn::make('role')->label('Peran')->badge()->separator(','),
             ])
             ->recordActions([
                 ViewAction::make()->label('Lihat')->modalWidth(Width::FiveExtraLarge)->authorize('manageView')->schema([
@@ -119,7 +117,7 @@ final class UserResource extends Resource
                     TextInput::make('staff_number')->label('Nomor petugas')->placeholder('Belum dibuat'),
                     TextInput::make('service_area_names')->label('Area pelayanan')->placeholder('Belum diatur'),
                 ])->fillForm(function (User $record): array {
-                    $record->loadMissing(['roles', 'customerProfile.rt.rw.dusun', 'staffProfile.serviceAreas.serviceArea']);
+                    $record->loadMissing(['customerProfile.rt.rw.dusun', 'staffProfile.serviceAreas.serviceArea']);
 
                     return [
                         'name' => $record->name,
@@ -127,7 +125,7 @@ final class UserResource extends Resource
                         'status' => $record->status->value,
                         'phone' => $record->phone,
                         'email' => $record->email,
-                        'role_label' => $record->roles->pluck('name')->implode(', ') ?: null,
+                        'role_label' => $record->role->value,
                         'customer_number' => $record->customerProfile?->customer_number,
                         'staff_number' => $record->staffProfile?->staff_number,
                         'service_area_names' => $record->customerProfile?->serviceRegion()
@@ -140,12 +138,12 @@ final class UserResource extends Resource
                 EditAction::make()->label('Kelola akun dan tugas')->modalWidth(Width::SevenExtraLarge)->authorize('manageUpdate')
                     ->mutateRecordDataUsing(fn (array $data, User $record): array => [...$data, 'name' => $record->name, 'username' => $record->username, 'phone' => $record->phone, 'email' => $record->email, 'service_areas' => $record->staffProfile?->serviceAreas->map(fn ($assignment): array => [
                         'service_area_id' => $assignment->service_area_id, 'active_from' => $assignment->active_from?->toDateString(), 'active_to' => $assignment->active_to?->toDateString(),
-                    ])->all() ?? [], 'new_role_id' => null])
+                    ])->all() ?? [], 'new_role' => null])
                     ->using(function (User $record, array $data): User {
                         return DB::transaction(function () use ($record, $data): User {
                             $user = app(ManageUsers::class)->update(self::actor(), $record, $data);
-                            if (! empty($data['new_role_id'])) {
-                                $user = app(ManageRoles::class)->assignRoles(self::actor(), $user, [(int) $data['new_role_id']], (string) ($data['role_reason'] ?? ''));
+                            if (! empty($data['new_role'])) {
+                                $user = app(ChangeUserRole::class)->handle(self::actor(), $user, (string) $data['new_role'], (string) ($data['role_reason'] ?? ''));
                             }
                             if (array_key_exists('service_areas', $data) && $user->hasRole('petugas', 'bendahara')) {
                                 $user = app(ManageStaffProfile::class)->save(self::actor(), $user, $data);
@@ -154,47 +152,6 @@ final class UserResource extends Resource
                             return $user;
                         });
                     }),
-                ActionGroup::make([
-                    Action::make('assignRoles')
-                        ->label('Atur peran')
-                        ->icon(Heroicon::OutlinedUserGroup)
-                        ->authorize(fn (User $record): bool => auth()->user() instanceof User && auth()->user()->can('manageUpdate', $record) && app(PermissionChecker::class)->allows(auth()->user(), 'role.manage'))
-                        ->schema([
-                            Select::make('role_ids')->label('Peran')->options(fn (): array => Role::query()->orderBy('name')->pluck('name', 'id')->all())->preload()->required(),
-                            Textarea::make('reason')->label('Alasan perubahan peran')->required()->minLength(10)->maxLength(1000)->rows(3),
-                        ])
-                        ->fillForm(function (User $record): array {
-                            $roleIds = $record->roles()->pluck('roles.id')->all();
-
-                            return ['role_ids' => count($roleIds) === 1 ? $roleIds[0] : null];
-                        })
-                        ->requiresConfirmation()
-                        ->modalHeading(fn (User $record): string => "Atur peran {$record->name}?")
-                        ->modalDescription('Peran menentukan izin pengguna ini. Perubahan akan dicatat di riwayat aktivitas.')
-                        ->modalSubmitActionLabel('Simpan peran')
-                        ->action(fn (User $record, array $data): User => app(ManageRoles::class)->assignRoles(self::actor(), $record, [(int) $data['role_ids']], (string) $data['reason']))
-                        ->successNotificationTitle('Peran pengguna diperbarui.'),
-                    Action::make('manageStaffProfile')
-                        ->label('Atur area dan masa tugas')
-                        ->icon(Heroicon::OutlinedMapPin)
-                        ->authorize('manageUpdate')
-                        ->visible(fn (User $record): bool => $record->roles->contains(static fn (Role $role): bool => in_array($role->name, ['petugas', 'bendahara'], true)))
-                        ->modalWidth(Width::SevenExtraLarge)
-                        ->schema([
-                            Repeater::make('service_areas')->label('Area dan masa tugas')->schema([
-                                Select::make('service_area_id')->label('Area pelayanan')->options(fn (): array => ServiceArea::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->preload()->required()->distinct(),
-                                DatePicker::make('active_from')->label('Aktif mulai'),
-                                DatePicker::make('active_to')->label('Aktif sampai')->afterOrEqual('active_from'),
-                            ])->minItems(1)->defaultItems(1)->columns(['default' => 1, 'xl' => 3])->columnSpanFull(),
-                        ])
-                        ->fillForm(fn (User $record): array => ['service_areas' => $record->staffProfile?->serviceAreas->map(fn ($assignment): array => [
-                            'service_area_id' => $assignment->service_area_id,
-                            'active_from' => $assignment->active_from?->toDateString(),
-                            'active_to' => $assignment->active_to?->toDateString(),
-                        ])->all() ?? []])
-                        ->action(fn (User $record, array $data): User => app(ManageStaffProfile::class)->save(self::actor(), $record, $data))
-                        ->successNotificationTitle('Area dan masa tugas diperbarui.'),
-                ])->label('Tindakan akses')->button(),
                 Action::make('activate')->label('Aktifkan pengguna')->icon(Heroicon::OutlinedCheckCircle)->color('success')->authorize('activate')->visible(fn (User $record): bool => $record->status === UserStatus::Inactive)->requiresConfirmation()->modalHeading(fn (User $record): string => "Aktifkan pengguna {$record->name}?")->modalDescription('Pengguna dapat masuk kembali dan menggunakan izin yang masih dimilikinya.')->modalSubmitActionLabel('Aktifkan pengguna')->action(fn (User $record): User => app(ManageUsers::class)->activate(self::actor(), $record))->successNotificationTitle('Pengguna diaktifkan.'),
                 Action::make('deactivate')->label('Nonaktifkan pengguna')->icon(Heroicon::OutlinedNoSymbol)->color('danger')->authorize('deactivate')->visible(fn (User $record): bool => $record->status === UserStatus::Active)->requiresConfirmation()->modalHeading(fn (User $record): string => "Nonaktifkan pengguna {$record->name}?")->modalDescription('Pengguna tidak dapat masuk atau menjalankan tugas baru. Riwayat dan data transaksi tetap tersimpan.')->modalSubmitActionLabel('Nonaktifkan pengguna')->schema([Textarea::make('reason')->label('Alasan')->required()->minLength(10)->maxLength(1000)->rows(3)])->action(fn (User $record, array $data): User => app(ManageUsers::class)->deactivate(self::actor(), $record, (string) $data['reason']))->successNotificationTitle('Pengguna dinonaktifkan.'),
             ]);
@@ -215,8 +172,8 @@ final class UserResource extends Resource
         }
 
         return app(VisibleUsers::class)->queryFor($actor, ...UserStatus::cases())
-            ->with(['customerProfile.rt.rw.dusun', 'roles', 'staffProfile.serviceArea', 'staffProfile.serviceAreas.serviceArea'])
-            ->orderByRaw("CASE (SELECT roles.name FROM roles INNER JOIN role_user ON role_user.role_id = roles.id WHERE role_user.user_id = users.id LIMIT 1) WHEN 'superadmin' THEN 1 WHEN 'admin' THEN 2 WHEN 'bendahara' THEN 3 WHEN 'petugas' THEN 4 WHEN 'warga' THEN 5 ELSE 6 END")
+            ->with(['customerProfile.rt.rw.dusun', 'staffProfile.serviceArea', 'staffProfile.serviceAreas.serviceArea'])
+            ->orderByRaw("CASE role WHEN 'admin' THEN 1 WHEN 'bendahara' THEN 2 WHEN 'petugas' THEN 3 ELSE 4 END")
             ->orderBy('name');
     }
 

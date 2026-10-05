@@ -5,8 +5,6 @@ declare(strict_types=1);
 use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\AuditReconciliation\Services\AuditRetentionService;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Operations\Enums\BackupStatus;
 use App\Domain\Operations\Services\BackupArtifact;
 use App\Domain\Operations\Services\BackupArtifactPair;
@@ -24,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 
 uses(RefreshDatabase::class);
 
@@ -290,12 +289,7 @@ it('uses the Laravel maintenance contract and audits state changes without expos
 function operationsP2User(string ...$permissions): User
 {
     $user = User::factory()->create();
-    $role = Role::query()->create(['name' => 'operations-p2-'.Str::lower(Str::random(8)), 'description' => 'Operations P2 test role']);
-    foreach ($permissions as $permissionName) {
-        $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
-        $role->permissions()->attach($permission);
-    }
-    $user->roles()->attach($role);
+    $user = RoleFixtures::assign($user, $permissions);
 
-    return $user->fresh();
+    return $user;
 }

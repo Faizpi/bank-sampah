@@ -24,9 +24,6 @@ final class SessionAccess
 
     public static function fingerprint(User $user): string
     {
-        $roles = $user->roles()->with('permissions')->orderBy('roles.id')->get();
-        $grants = $roles->map(fn ($role): array => [$role->id, $role->permissions->pluck('id')->sort()->values()->all()])->all();
-
-        return hash('sha256', json_encode([$user->id, $user->status->value, $grants], JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode([$user->id, $user->status->value, $user->role->value], JSON_THROW_ON_ERROR));
     }
 }

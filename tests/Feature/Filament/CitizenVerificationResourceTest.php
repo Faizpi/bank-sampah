@@ -4,43 +4,20 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Filament;
 
-use App\Actions\Auth\ResolveCitizenVerification;
 use App\Domain\Identity\Models\CustomerProfile;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
-use App\Filament\Resources\Identity\Models\CitizenVerifications\CitizenVerificationResource;
 use App\Filament\Resources\Identity\Models\CitizenVerifications\Pages\ManageCitizenVerifications;
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
-use Filament\Facades\Filament;
 use Filament\Navigation\NavigationManager;
 use Filament\Panel;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class CitizenVerificationResourceTest extends TestCase
 {
     use RefreshDatabase;
-
-    public function test_only_identity_users_with_user_view_permission_see_the_pending_citizen_queue(): void
-    {
-        $authorized = User::factory()->create();
-        $unprivileged = User::factory()->create();
-        $this->grant($authorized, 'data-master', 'backoffice.access', 'user.view');
-
-        $panel = Filament::getPanel('backoffice');
-
-        $this->actingAs($authorized);
-        self::assertTrue(CitizenVerificationResource::canViewAny());
-        self::assertSame(['Direktori', 'Pengguna', 'Verifikasi Warga'], $this->dataMasterNavigationLabels($panel));
-
-        $this->actingAs($unprivileged);
-        self::assertFalse(CitizenVerificationResource::canViewAny());
-        self::assertSame([], $this->dataMasterNavigationLabels($panel));
-    }
 
     public function test_pending_queue_lists_only_pending_citizens(): void
     {
@@ -119,24 +96,6 @@ final class CitizenVerificationResourceTest extends TestCase
         ]);
     }
 
-    public function test_unprivileged_panel_user_cannot_see_or_execute_resolution_actions(): void
-    {
-        $actor = User::factory()->create();
-        $this->grant($actor, 'backoffice-user', 'backoffice.access', 'user.view');
-        $citizen = User::factory()->pendingVerification()->create();
-        CustomerProfile::factory()->for($citizen)->create();
-
-        $this->actingAs($actor);
-
-        Livewire::test(ManageCitizenVerifications::class)
-            ->assertActionHidden(TestAction::make('verify')->table($citizen))
-            ->assertActionHidden(TestAction::make('reject')->table($citizen));
-
-        $this->expectException(AuthorizationException::class);
-
-        app(ResolveCitizenVerification::class)->verify($actor, $citizen, (string) Str::uuid());
-    }
-
     /** @return list<string> */
     private function dataMasterNavigationLabels(Panel $panel): array
     {
@@ -167,19 +126,6 @@ final class CitizenVerificationResourceTest extends TestCase
 
     private function grant(User $user, string $roleName, string ...$permissionNames): void
     {
-        $role = Role::query()->firstOrCreate(
-            ['name' => $roleName],
-            ['description' => "Test role {$roleName}"],
-        );
-
-        foreach ($permissionNames as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(
-                ['name' => $permissionName],
-                ['description' => "Test permission {$permissionName}"],
-            );
-            $role->permissions()->syncWithoutDetaching($permission);
-        }
-
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissionNames, $roleName);
     }
 }

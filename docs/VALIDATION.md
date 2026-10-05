@@ -31,7 +31,7 @@
 |---|---|
 | `name` | Wajib; string 2–120 karakter; bukan whitespace; karakter kontrol ditolak. |
 | `phone` | Wajib; nomor Indonesia valid setelah normalisasi; unik pada akun berlaku; 10–15 digit format canonical. |
-| `password` | Wajib saat membuat/mengganti; minimal 10 karakter; confirmation sama; diperiksa terhadap password umum/terbocor bila layanan tersedia tanpa mengirim plaintext ke log. |
+| `password` | Wajib saat membuat/mengganti; minimal 8 karakter; confirmation sama; diperiksa terhadap password umum/terbocor bila layanan tersedia tanpa mengirim plaintext ke log. |
 | `dusun_id`, `rw_id`, `rt_id` | Wajib sesuai kebijakan; record aktif; relasi parent konsisten. |
 | `address` | Wajib; 5–500 karakter; teks biasa. |
 | `identity_number` | Opsional hanya bila kebijakan pengelola mengharuskan; format dan uniqueness terkontrol; tidak ditampilkan penuh. |
@@ -44,7 +44,7 @@
 - Percobaan login dibatasi per kombinasi IP/akun secara proporsional.
 - Jalur berbantuan admin hanya menerima target selain aktor yang benar-benar lupa kata sandi dan tidak dapat login, metode `tatap_muka` atau `callback_nomor_terdaftar`, alasan 10–1000 karakter, pelaku dengan `user.reset-password` dan `session.revoke`, serta scope target yang sah.
 - Jalur mandiri hanya menerima aktor terautentikasi pada profilnya sendiri, kata sandi saat ini yang cocok, kata sandi baru, dan confirmation. Jalur ini tidak menerima target, metode verifikasi, atau alasan dari pengguna.
-- Kata sandi baru wajib minimal 10 karakter, confirmation sama, dan lulus kebijakan password umum/terbocor bila layanan tersedia. Kata sandi tidak boleh menjadi input audit atau log.
+- Kata sandi baru wajib minimal 8 karakter, confirmation sama, dan lulus kebijakan password umum/terbocor bila layanan tersedia. Kata sandi tidak boleh menjadi input audit atau log.
 - Dalam satu transaction, Jalur A menyimpan hash, mencabut seluruh sesi aktif target, dan mencatat aktor, metode verifikasi, alasan, serta hasil tanpa secret. Jalur B menyimpan hash, mencabut sesi aktif lain sambil mempertahankan sesi saat ini bila mungkin secara teknis, atau mencabut seluruh sesi dan mewajibkan autentikasi ulang; audit mencatat aktor, metode `mandiri_profil`, alasan sistem `perubahan_mandiri`, serta hasil tanpa secret. Tidak ada input atau validasi token reset.
 
 ### Role dan permission
@@ -120,20 +120,14 @@ Finalisasi setoran melakukan validasi ulang harga aktif di dalam transaction. Ha
 - Reversal wajib menyebut alasan dan record asli yang belum pernah dibalik penuh.
 - Nilai baru yang menyebabkan saldo tersedia negatif ditolak dan diarahkan ke prosedur keputusan resmi, tidak dipaksakan.
 
-## 8. Penjemputan dan kapasitas
-
-| Field | Aturan |
-|---|---|
-| Foto | Minimal satu; lolos validasi file; wajib sebelum submit. |
-| Jenis/perkiraan | Minimal satu jenis; perkiraan jumlah/berat positif jika diisi; bukan dasar saldo. |
-| Alamat | Wajib; 5–500 karakter; wilayah dan area pelayanan aktif. |
-| Tanggal pilihan | Tanggal layanan aktif, tidak lampau, tidak libur, berada dalam horizon pemesanan. |
-| Catatan | Opsional, maksimum 1000, teks biasa. |
-| Kapasitas | Nilai batas nonnegatif; kombinasi wilayah/petugas/kendaraan valid; reservasi dilakukan atomik. |
-| Keputusan | Tolak wajib alasan; terima memerlukan slot; jadwal memerlukan petugas aktif. |
-| Penyelesaian | Memerlukan status `dijemput` dan transaksi setoran final tertaut. |
-
-Transisi yang tidak tercantum pada BR-PUP-009 ditolak. Pembatalan warga setelah `menuju_lokasi` ditolak dengan penjelasan.
+## 8. Penjemputan
+- Area harus aktif dan mencakup RT dalam hierarki aktif nasabah.
+- Tanggal pilihan mulai hari ini sampai horizon konfigurasi (default 30 hari); alamat minimal lima karakter.
+- Minimal satu jenis dengan perkiraan berat atau jumlah; perkiraan tidak menambah saldo.
+- Wajib satu sampai dua foto JPG/JPEG/PNG, maksimal 1 MB per foto pada formulir.
+- Penerimaan dan penjadwalan digabung secara atomik; petugas harus aktif dan berada pada area yang sesuai. Tidak ada validasi kuota otomatis pickup.
+- Setelah berangkat, warga tidak boleh membatalkan. Petugas berwenang dapat melaporkan kendala beralasan tanpa membuat setoran.
+- Penyelesaian membutuhkan timbang aktual dan bukti. Jika setoran menunggu pemeriksaan, pickup belum selesai dan tidak boleh membuat setoran kedua.
 
 ## 9. Pencairan
 
@@ -143,7 +137,7 @@ Transisi yang tidak tercantum pada BR-PUP-009 ditolak. Pembatalan warga setelah 
 - Approver bukan pengaju berbantuan pada record sama; permission `withdrawal.approve` wajib.
 - Penolakan memerlukan alasan 10–1000 karakter.
 - Persetujuan menetapkan batas ambil yang valid dan assignment payer/lokasi bila diperlukan.
-- Pembayaran memerlukan status `disetujui/siap_diambil`, `withdrawal.pay`, identitas penerima terkonfirmasi, nominal tetap sama, dan bukti valid.
+- Pembayaran memerlukan status `siap_diambil`, bendahara aktif dengan `withdrawal.pay`, penugasan dan area efektif, kecocokan penerima, nominal tetap, serta foto valid. Ringkasan dan satu konfirmasi akhir berada pada halaman yang sama.
 - `paid_at` diisi server; tidak boleh selesai dua kali.
 - Scheduler kedaluwarsa hanya memproses record melewati `expires_at` yang belum dibayar.
 
@@ -153,7 +147,7 @@ Transisi yang tidak tercantum pada BR-PUP-009 ditolak. Pembatalan warga setelah 
 - Nilai paket disnapshot saat pengajuan.
 - Pengajuan memerlukan paket aktif dan saldo cukup.
 - Persetujuan memerlukan hasil cek ketersediaan manual, catatan, dan `grocery.approve`.
-- Persiapan/siap diambil mengikuti urutan status.
+- Petugas dapat menandai paket siap langsung dari disetujui. Status persiapan lama tetap dapat dilanjutkan.
 - Handover memerlukan `grocery.handover`, penerima terverifikasi, bukti valid, dan status `siap_diambil`.
 - Selesai tidak dapat diulang; tolak/batal/kedaluwarsa melepas hold tanpa saldo keluar.
 
@@ -185,10 +179,10 @@ Transisi yang tidak tercantum pada BR-PUP-009 ditolak. Pembatalan warga setelah 
 - Query publik hanya memilih kolom allowlist dan menerapkan ambang privasi.
 - Data publik tidak menerima nama field bebas, raw SQL, atau sort column di luar allowlist.
 
-## 12. WhatsApp, pengumuman, dan laporan
+## 12. Notifikasi, pengumuman, dan laporan
 
-- Template WhatsApp memakai key yang terdaftar; placeholder hanya dari allowlist dan di-escape atau URL-encode.
-- Nomor `wa.me` dinormalisasi; aplikasi hanya menghasilkan URL dan tidak menerima status “terkirim”.
+- WhatsApp tidak digunakan. Isi notifikasi aplikasi mengikuti allowlist dan referensi yang sah.
+- Status delivered pada notifikasi internal berarti tersimpan dalam aplikasi, bukan pesan Telegram atau kanal eksternal terkirim.
 - Pengumuman: judul 3–160, isi 3–10.000, audiens enum, periode valid, konten disanitasi.
 - Filter laporan: periode wajib dalam batas; wilayah/status/jenis dari enum/FK; sort dan kolom ekspor allowlist.
 - Nama file ekspor dibuat server; tidak memakai input path pengguna.
@@ -254,7 +248,7 @@ Pesan tidak boleh menampilkan stack trace, SQL, path server, secret, token, atau
 ## 17. UI/UX regression checklist
 
 - Primary role flows are usable at 360px, 390px, 768px, and desktop widths without horizontal scrolling.
-- Every multi-step flow exposes the current step, preserves safe input, and presents a review before an irreversible submit.
+- Setoran dan pembayaran menampilkan ringkasan pada halaman yang sama sebelum satu konfirmasi akhir. Alur bertahap lain mempertahankan masukan aman dan langkah aktif.
 - Validation failures render a visible summary, move focus to it, and keep the user on the relevant step.
 - Destructive or irreversible actions require an explicit confirmation that states the affected record and consequence.
 - Statuses and operational metrics use human-readable labels; raw enum values and internal IDs are not presented as the primary UI.

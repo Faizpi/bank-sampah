@@ -22,7 +22,7 @@ final class Dashboard extends Component
 
         abort_unless($actor instanceof User && $permissions->allows($actor, 'withdrawal.view'), 403);
 
-        if ($actor->hasRole('admin', 'superadmin', 'petugas', 'warga') && ! $actor->hasRole('bendahara')) {
+        if ($actor->hasRole('admin', 'petugas', 'warga') && ! $actor->hasRole('bendahara')) {
             $this->redirect($redirector->dashboardUrl($actor), navigate: true);
 
             return;

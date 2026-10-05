@@ -44,7 +44,7 @@
                     <div class="min-w-0">
                         <div class="flex min-w-0 flex-wrap items-center gap-2">
                             <p class="min-w-0 break-words text-label font-semibold text-deep-green">{{ $deposit->deposit_number }}</p>
-                            <x-ui.status-badge :status="match ($deposit->status) { \App\Domain\Deposits\Models\Deposit::STATUS_FINAL, \App\Domain\Deposits\Models\Deposit::STATUS_CORRECTED => 'success', \App\Domain\Deposits\Models\Deposit::STATUS_REJECTED, \App\Domain\Deposits\Models\Deposit::STATUS_REVERSED => 'error', \App\Domain\Deposits\Models\Deposit::STATUS_DRAFT => 'cancelled', default => 'pending' }">
+                            <x-ui.status-badge :status="match ($deposit->status) { \App\Domain\Deposits\Models\Deposit::STATUS_FINAL, \App\Domain\Deposits\Models\Deposit::STATUS_CORRECTED => 'success', \App\Domain\Deposits\Models\Deposit::STATUS_REVERSED => 'error', \App\Domain\Deposits\Models\Deposit::STATUS_DRAFT => 'cancelled', default => 'pending' }">
                                 {{ \App\Support\StatusLabel::for($deposit->status) }}
                             </x-ui.status-badge>
                         </div>

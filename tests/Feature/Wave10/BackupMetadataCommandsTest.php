@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use App\Domain\AuditReconciliation\Models\AuditLog;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Operations\Enums\BackupRestoreVerificationResult;
 use App\Domain\Operations\Enums\BackupStatus;
 use App\Domain\Operations\Models\BackupLog;
@@ -18,6 +16,7 @@ use Illuminate\Console\Command;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\RoleFixtures;
 
 uses(RefreshDatabase::class);
 
@@ -294,7 +293,7 @@ it('rejects missing or malformed evidence before restore mutation', function (ar
 it('fails restore verification without backup.restore', function (): void {
     [$owner, $backup] = commandCompletedBackup();
     $actor = User::factory()->create();
-    grantBackupCommandPermission($actor, 'backup.run');
+    $actor->forceFill(['role' => 'petugas'])->save();
 
     $this->artisan('operations:backup-restore-verify', [
         '--actor-id' => (string) $actor->id,
@@ -416,8 +415,5 @@ function backupEvidenceReference(): string
 
 function grantBackupCommandPermission(User $user, string $permissionName): void
 {
-    $role = Role::query()->create(['name' => 'backup-command-test-role-'.$user->id.'-'.$permissionName, 'description' => 'Role test command backup']);
-    $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => 'Permission test command backup']);
-    $role->permissions()->syncWithoutDetaching([$permission->id => ['reason' => 'test']]);
-    $user->roles()->syncWithoutDetaching([$role->id => ['reason' => 'test']]);
+    $user = RoleFixtures::assign($user, [$permissionName]);
 }

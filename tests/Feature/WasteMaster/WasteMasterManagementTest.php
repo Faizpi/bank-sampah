@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\WasteMaster;
 
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\WasteMaster\Actions\ManageWasteMaster;
 use App\Domain\WasteMaster\Models\WasteCategory;
 use App\Domain\WasteMaster\Models\WasteCondition;
@@ -21,6 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use LogicException;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class WasteMasterManagementTest extends TestCase
@@ -181,9 +180,6 @@ final class WasteMasterManagementTest extends TestCase
 
     private function grant(User $user, string $permissionName): void
     {
-        $role = Role::query()->create(['name' => "{$permissionName}-role", 'description' => 'Waste role']);
-        $permission = Permission::query()->create(['name' => $permissionName, 'description' => 'Waste permission']);
-        $role->permissions()->attach($permission);
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, [$permissionName]);
     }
 }

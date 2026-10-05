@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\CustomersRegions;
 
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class W2IdentificationRouteTest extends TestCase
@@ -18,7 +17,7 @@ final class W2IdentificationRouteTest extends TestCase
     {
         $citizen = User::factory()->create();
 
-        $this->actingAs($citizen)->get(route('citizen.customer-card'))->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'petugas']))->get(route('citizen.customer-card'))->assertForbidden();
 
         $this->grant($citizen, 'customer.view');
         $this->actingAs($citizen)->get(route('citizen.customer-card'))->assertOk()->assertSee('Kartu nasabah');
@@ -30,21 +29,16 @@ final class W2IdentificationRouteTest extends TestCase
 
         $this->actingAs($officer)->get(route('officer.customer-identification'))->assertForbidden();
 
-        $this->grant($officer, 'customer.view');
+        $this->grant($officer, 'customer.view', 'user.view.area');
         $this->actingAs($officer)
             ->get(route('officer.customer-identification'))
             ->assertOk()
-            ->assertSee('Identifikasi warga')
+            ->assertSee('Pilih warga untuk setoran')
             ->assertHeader('Permissions-Policy', 'accelerometer=(), autoplay=(), camera=(self), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()');
     }
 
     private function grant(User $user, string ...$permissions): void
     {
-        $role = Role::query()->create(['name' => 'w2-route-'.fake()->unique()->numerify('####'), 'description' => 'W2 route test role']);
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => "W2 {$permissionName}"]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
     }
 }

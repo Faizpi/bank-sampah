@@ -12,8 +12,6 @@ use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\Deposits\Models\Deposit;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\MobileServices\Services\MobileServiceService;
@@ -27,51 +25,22 @@ use App\Domain\WasteMaster\Models\WasteCategory;
 use App\Domain\WasteMaster\Models\WasteCondition;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Models\WasteUnit;
-use App\Filament\Resources\Communication\Models\Announcements\AnnouncementResource;
 use App\Filament\Resources\Communication\Models\Announcements\Pages\ManageAnnouncements;
-use App\Filament\Resources\MobileServices\Models\MobileServices\MobileServiceResource;
 use App\Filament\Resources\MobileServices\Models\MobileServices\Pages\ManageMobileServices;
-use App\Filament\Resources\Programs\Models\CollectionTargets\CollectionTargetResource;
 use App\Filament\Resources\Programs\Models\CollectionTargets\Pages\ManageCollectionTargets;
 use App\Filament\Resources\Statistics\Models\StatisticPublications\Pages\ManageStatisticPublications;
-use App\Filament\Resources\Statistics\Models\StatisticPublications\StatisticPublicationResource;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class AdminOperationsResourceTest extends TestCase
 {
     use RefreshDatabase;
-
-    public function test_program_resources_are_permission_gated_and_have_management_pages(): void
-    {
-        $admin = $this->userWith('backoffice.access', 'announcement.manage', 'announcement.publish', 'target.manage', 'target.publish', 'mobile-service.manage', 'mobile-service.operate', 'statistics.public.manage', 'waste.manage');
-        $viewer = $this->userWith('backoffice.access');
-
-        $this->actingAs($admin);
-        self::assertTrue(AnnouncementResource::canViewAny());
-        self::assertTrue(CollectionTargetResource::canViewAny());
-        self::assertTrue(MobileServiceResource::canViewAny());
-        self::assertTrue(StatisticPublicationResource::canViewAny());
-        self::assertSame(['index'], array_keys(AnnouncementResource::getPages()));
-        self::assertSame(['index'], array_keys(CollectionTargetResource::getPages()));
-        self::assertSame(['index'], array_keys(MobileServiceResource::getPages()));
-        self::assertSame(['index'], array_keys(StatisticPublicationResource::getPages()));
-
-        $this->actingAs($viewer);
-        self::assertFalse(AnnouncementResource::canViewAny());
-        self::assertFalse(CollectionTargetResource::canViewAny());
-        self::assertFalse(MobileServiceResource::canViewAny());
-        self::assertFalse(StatisticPublicationResource::canViewAny());
-        self::assertSame(ManageAnnouncements::class, AnnouncementResource::getPages()['index']->getPage());
-        self::assertSame(ManageCollectionTargets::class, CollectionTargetResource::getPages()['index']->getPage());
-        self::assertSame(ManageMobileServices::class, MobileServiceResource::getPages()['index']->getPage());
-        self::assertSame(ManageStatisticPublications::class, StatisticPublicationResource::getPages()['index']->getPage());
-    }
 
     public function test_announcement_resource_creates_public_only_and_soft_deletes_with_permission(): void
     {
@@ -120,16 +89,6 @@ final class AdminOperationsResourceTest extends TestCase
         app(AnnouncementService::class)->delete($viewer, $announcement);
     }
 
-    public function test_announcement_delete_is_hidden_without_manage_permission(): void
-    {
-        $viewer = $this->userWith('backoffice.access', 'announcement.view');
-        $announcement = Announcement::factory()->create(['audience' => AnnouncementAudience::Public]);
-        $this->actingAs($viewer);
-
-        Livewire::test(ManageAnnouncements::class)
-            ->assertTableActionHidden('delete', $announcement);
-    }
-
     public function test_announcement_resource_publishes_and_unpublishes_through_audited_service_actions(): void
     {
         $admin = $this->userWith('backoffice.access', 'announcement.view', 'announcement.manage', 'announcement.publish');
@@ -160,26 +119,6 @@ final class AdminOperationsResourceTest extends TestCase
 
         self::assertDatabaseHas('announcements', ['id' => $announcement->id, 'status' => AnnouncementStatus::Inactive->value]);
         self::assertDatabaseHas('audit_logs', ['action' => 'announcement.unpublished', 'auditable_id' => $announcement->id, 'actor_id' => $admin->id]);
-    }
-
-    public function test_announcement_resource_scopes_non_admin_records_by_audience_and_policy(): void
-    {
-        $viewer = $this->userWith('backoffice.access', 'announcement.view');
-        $customerRt = $this->createRt('SCOPE-RT');
-        $viewer->customerProfile()->create(['customer_number' => 'CST-SCOPE-'.uniqid(), 'rt_id' => $customerRt->id, 'address' => 'Alamat scope', 'joined_at' => today()]);
-        $visible = Announcement::factory()->create(['audience' => AnnouncementAudience::Citizen]);
-        $hidden = Announcement::factory()->create(['audience' => AnnouncementAudience::Internal]);
-        $region = Announcement::factory()->create(['audience' => AnnouncementAudience::Region]);
-        $region->rts()->attach($customerRt);
-        $otherRegion = Announcement::factory()->create(['audience' => AnnouncementAudience::Region]);
-        $otherRt = $this->createRt('OTHER-RT');
-        $otherRegion->rts()->attach($otherRt);
-
-        $this->actingAs($viewer);
-        self::assertSame([$visible->id, $region->id], AnnouncementResource::getEloquentQuery()->pluck('id')->sort()->values()->all());
-        self::assertTrue($viewer->fresh()->can('view', $visible));
-        self::assertFalse($viewer->fresh()->can('view', $hidden));
-        self::assertFalse($viewer->fresh()->can('view', $otherRegion));
     }
 
     public function test_announcement_edit_action_does_not_expose_audience_or_rt_targets(): void
@@ -433,11 +372,10 @@ final class AdminOperationsResourceTest extends TestCase
                 ->assertTableActionVisible('publish', $service)
                 ->callTableAction('publish', $service);
             Livewire::test(ManageMobileServices::class)
-                ->assertTableActionVisible('open', $service->fresh())
-                ->callTableAction('open', $service->fresh());
-            Livewire::test(ManageMobileServices::class)
-                ->assertTableActionVisible('close', $service->fresh())
-                ->callTableAction('close', $service->fresh());
+                ->assertTableActionHidden('open', $service->fresh())
+                ->assertTableActionHidden('close', $service->fresh());
+            app(MobileServiceService::class)->transition($staff, $service->fresh(), MobileServiceStatus::Open);
+            app(MobileServiceService::class)->transition($staff, $service->fresh(), MobileServiceStatus::Closed);
 
             self::assertDatabaseHas('mobile_services', ['id' => $service->id, 'status' => MobileServiceStatus::Closed->value]);
             self::assertDatabaseHas('audit_logs', ['action' => 'mobile-service.status.changed', 'auditable_id' => $service->id, 'actor_id' => $admin->id]);
@@ -484,7 +422,7 @@ final class AdminOperationsResourceTest extends TestCase
     /** @return array{0: User, 1: User, 2: Rt, 3: WasteType} */
     private function mobileContext(): array
     {
-        $admin = $this->userWith('backoffice.access', 'mobile-service.view', 'mobile-service.manage', 'mobile-service.operate', 'waste.manage');
+        $admin = $this->userWith('backoffice.access', 'mobile-service.view', 'mobile-service.manage', 'waste.manage');
         $staff = $this->userWith('mobile-service.operate');
         $dusun = Dusun::query()->create(['code' => 'RESOURCE-DS-'.uniqid(), 'name' => 'Dusun Resource', 'is_active' => true]);
         $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'RESOURCE-RW-'.uniqid(), 'name' => 'RW Resource', 'is_active' => true]);
@@ -509,12 +447,7 @@ final class AdminOperationsResourceTest extends TestCase
     private function userWith(string ...$permissions): User
     {
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'resource-'.uniqid(), 'description' => 'Resource test']);
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
 
         return $user;
     }

@@ -15,8 +15,6 @@ final class SchemaIntegrityHardeningTest extends TestCase
     public function test_documented_pivot_pairs_are_composite_primary_keys(): void
     {
         foreach ([
-            'permission_role' => ['permission_id', 'role_id'],
-            'role_user' => ['role_id', 'user_id'],
             'service_area_rt' => ['service_area_id', 'rt_id'],
             'waste_type_conditions' => ['waste_type_id', 'waste_condition_id'],
         ] as $table => $columns) {

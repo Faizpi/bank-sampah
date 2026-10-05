@@ -4,144 +4,100 @@ import path from 'node:path';
 import { verifyIsolatedServer } from './support/isolated-environment.mjs';
 
 const { baseUrl } = await verifyIsolatedServer(process.env);
-const output = path.resolve(process.env.E2E_ARTIFACT_DIR ?? 'artifacts/workflow-audit-2026-10-05');
+const output = path.resolve(process.env.E2E_ARTIFACT_DIR ?? 'artifacts/cutover-browser-2026-10-05');
+const fixture = JSON.parse(fs.readFileSync(process.env.E2E_FIXTURE_FILE ?? 'artifacts/cutover-browser-fixture.json', 'utf8').replace(/^\uFEFF/, ''));
 fs.mkdirSync(output, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const errors = [];
 const results = [];
 const pages = {};
-const fixture = path.resolve('public/icons/icon-192x192.png');
-
-async function login(role) {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const page = await context.newPage();
-    pages[role] = page;
-    page.setDefaultTimeout(10000);
-    page.setDefaultNavigationTimeout(20000);
-    page.on('pageerror', error => errors.push(`${role}: ${error.message}`));
-    page.on('response', response => { if (response.status() >= 500) errors.push(`${role}: HTTP ${response.status()} ${response.url()}`); });
-    await page.goto(`${baseUrl}${['admin', 'superadmin'].includes(role) ? '/backoffice/login' : '/login'}`);
-    await page.locator('input[name=username], input[id="form.username"]').fill(`audit.${role}`);
-    await page.locator('input[type=password]').fill('AuditOnly#2026');
-    await page.getByRole('button', { name: /^Masuk(?: ke Akun)?$/i }).click();
-    await page.waitForURL(url => !url.pathname.endsWith('/login'));
-    await page.waitForLoadState('networkidle');
-    pages[role] = page;
-    return page;
-}
-
 async function capture(page, name) {
-    await page.waitForLoadState('networkidle');
-    await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
-    expect(overflow, `${name}: horizontal overflow`).toBe(false);
+  await page.waitForLoadState('networkidle');
+  await page.screenshot({path:path.join(output,name+'.png'),fullPage:true});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth+1),name+' horizontal overflow').toBe(false);
 }
-
 async function run(name, callback) {
-    try {
-        await callback();
-        results.push({ name, status: 'passed' });
-        console.log(`PASS ${name}`);
-    } catch (error) {
-        results.push({ name, status: 'failed', message: error.message });
-        console.log(`FAIL ${name}: ${error.message}`);
-    }
+  try { await callback(); results.push({name,status:'passed'}); console.log('PASS '+name); }
+  catch(error) {results.push({name,status:'failed',message:error.message});console.log('FAIL '+name+': '+error.message);}
 }
-
-async function upload(page, id) {
-    await page.locator(`#${id}`).setInputFiles(fixture);
-    await expect(page.locator(`#${id}-status`)).toContainText(/siap|berhasil|terpilih|tersimpan/i, { timeout: 30000 });
-}
-
 try {
-    for (const role of ['warga', 'petugas', 'bendahara', 'admin', 'superadmin']) {
-        await run(`login and responsive dashboard: ${role}`, async () => {
-            const page = await login(role);
-            await capture(page, `${role}-mobile`);
-            await page.setViewportSize({ width: 1280, height: 900 });
-            await capture(page, `${role}-desktop`);
-            await page.setViewportSize({ width: 390, height: 844 });
-        });
+  for (const role of ['warga','petugas','bendahara','admin']) await run('login and mobile/desktop '+role, async()=> {
+    const context=await browser.newContext({viewport:{width:390,height:844}});
+    const page=await context.newPage(); pages[role]=page; page.setDefaultTimeout(15000);
+    page.on('pageerror',e=>errors.push(role+': '+e.message));
+    page.on('response',r=>{if(r.status()>=500)errors.push(role+': HTTP '+r.status()+' '+r.url());});
+    await page.goto(baseUrl+(role==='admin'?'/backoffice/login':'/login'));
+    await page.locator('input[name=username], input[id="form.username"]').fill(role);
+    await page.locator('input[type=password]').fill('AuditOnly#2026');
+    await page.getByRole('button',{name:/^Masuk(?: ke Akun)?$/i}).click();
+    await page.waitForURL(u=>!u.pathname.endsWith('/login'));
+    await capture(page,role+'-mobile');
+    await page.setViewportSize({width:1280,height:900}); await capture(page,role+'-desktop');
+    await page.setViewportSize({width:390,height:844});
+  });
+  await run('pickup address is prefilled and photos optional',async()=>{
+    const page=pages.warga;await page.goto(baseUrl+'/warga/penjemputan/ajukan');
+    await expect(page.locator('[name=address]')).toHaveValue(fixture.address);
+    await capture(page,'citizen-pickup');
+  });
+  await run('Admin has no routine approval or physical buttons',async()=>{
+    const page=pages.admin;
+    for(const route of ['withdrawals/models/withdrawal-requests','groceries/models/grocery-redemptions','pickups/models/pickup-requests']) {
+      await page.goto(baseUrl+'/backoffice/'+route);
+      await expect(page.getByRole('button',{name:/Setujui|Tetapkan petugas|Terima dan jadwalkan|Ambil pembayaran|Paket sudah diserahkan/})).toHaveCount(0);
+      await capture(page,'admin-'+route.split('/')[0]);
     }
-
-    await run('citizen pickup address and single area are prefilled', async () => {
-        const page = pages.warga;
-        await page.goto(`${baseUrl}/warga/penjemputan/ajukan`);
-        await expect(page.locator('[name=address]')).toHaveValue('Alamat sintetis untuk uji antarmuka');
-        await expect(page.getByText('Area pelayanan: Area uji')).toBeVisible();
-        await capture(page, 'citizen-prefilled-pickup');
-    });
-
-    await run('admin approves and assigns cash payment in one dialog', async () => {
-        const page = pages.admin;
-        await page.goto(`${baseUrl}/backoffice/withdrawals/models/withdrawal-requests`);
-        await page.getByRole('button', { name: 'Setujui dan tetapkan bendahara', exact: true }).click();
-        const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'));
-        await dialog.locator('select').first().selectOption({ label: 'Akun Uji Bendahara' });
-        await capture(page, 'admin-combined-withdrawal');
-        await dialog.getByRole('button', { name: 'Setujui dan tetapkan bendahara', exact: true }).click();
-        await expect(dialog).toBeHidden();
-        await expect(page.locator('tbody').getByText('Siap diambil', { exact: true }).first()).toBeVisible();
-    });
-
-    await run('admin accepts and schedules pickup in one dialog', async () => {
-        const page = pages.admin;
-        await page.goto(`${baseUrl}/backoffice/pickups/models/pickup-requests`);
-        await page.getByRole('button', { name: 'Terima dan jadwalkan', exact: true }).click();
-        const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'));
-        await dialog.getByLabel('Petugas penjemputan', { exact: false }).selectOption({ label: 'Akun Uji Petugas' });
-        await capture(page, 'admin-combined-pickup');
-        await dialog.getByRole('button', { name: /Kirim|Simpan|Terima dan jadwalkan/ }).last().click();
-        await expect(dialog).toBeHidden();
-        await expect(page.locator('tbody').getByText('Dijadwalkan', { exact: true }).first()).toBeVisible();
-    });
-
-    await run('officer finalizes a deposit with one confirmation', async () => {
-        const page = pages.petugas;
-        await page.goto(`${baseUrl}/petugas/setoran/1?draftId=1`);
-        await upload(page, 'deposit-evidence');
-        await capture(page, 'officer-deposit-single-confirmation');
-        await page.getByRole('button', { name: 'Data sudah benar - catat setoran', exact: true }).click();
-        await expect(page.getByText('Setoran berhasil dicatat', { exact: true })).toBeVisible();
-    });
-
-    await run('treasurer records cash payment with one confirmation', async () => {
-        const page = pages.bendahara;
-        await page.goto(`${baseUrl}/bendahara/pencairan`);
-        await page.getByRole('button', { name: 'Proses Pembayaran', exact: true }).click();
-        await page.locator('select[name=recipientVerification]').selectOption('nomor_nasabah');
-        await page.locator('input[name=recipientReference]').fill('CST-00000001');
-        await upload(page, 'payment-proof');
-        await capture(page, 'treasurer-single-confirmation');
-        await page.getByRole('button', { name: 'Uang tunai sudah diserahkan - catat pembayaran', exact: true }).click();
-        await expect(page.getByText(/Pembayaran (berhasil|tercatat)/).first()).toBeVisible();
-    });
-
-    await run('grocery preparation needs only the ready action', async () => {
-        const page = pages.admin;
-        await page.goto(`${baseUrl}/backoffice/groceries/models/grocery-redemptions`);
-        await page.getByRole('button', { name: 'Setujui', exact: true }).click();
-        const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'));
-        await dialog.locator('textarea').first().fill('Paket tersedia untuk pengujian sintetis.');
-        await dialog.getByRole('button', { name: 'Setujui penukaran', exact: true }).click();
-        await expect(dialog).toBeHidden();
-        await pages.petugas.goto(`${baseUrl}/petugas/sembako`);
-        await expect(pages.petugas.getByRole('button', { name: 'Mulai siapkan', exact: true })).toHaveCount(0);
-        await pages.petugas.getByRole('button', { name: 'Paket sudah siap - beri tahu warga', exact: true }).click();
-        await expect(pages.petugas.getByRole('button', { name: 'Proses serah-terima', exact: true })).toBeVisible();
-        await capture(pages.petugas, 'officer-grocery-ready');
-    });
-
-    await run('superadmin user context combines account and staff assignments', async () => {
-        const page = pages.superadmin;
-        await page.goto(`${baseUrl}/backoffice/identity/models/users`);
-        const row = page.locator('tr').filter({ hasText: 'Akun Uji Petugas' });
-        await row.getByRole('button', { name: 'Kelola akun dan tugas', exact: true }).click();
-        await expect(page.getByRole('dialog').getByText('Area dan masa tugas', { exact: true })).toBeVisible();
-        await capture(page, 'superadmin-unified-user');
-    });
+  });
+  await run('officer records a deposit without photo',async()=>{
+    const page=pages.petugas;await page.goto(baseUrl+'/petugas/setoran/'+fixture.customerId+'?draftId='+fixture.draftId);
+    await page.getByRole('button',{name:'Data sudah benar - catat setoran'}).click();
+    await expect(page.getByText('Setoran berhasil dicatat',{exact:true}).first()).toBeVisible();
+    await capture(page,'officer-deposit-complete');
+  });
+  await run('Treasurer claims and pays cash without photo',async()=>{
+    const page=pages.bendahara;await page.goto(baseUrl+'/bendahara/pencairan');
+    await page.locator('button').filter({hasText:fixture.withdrawalNumber}).click();
+    await page.getByRole('button',{name:'Ambil pembayaran',exact:true}).click();
+    await page.getByRole('button',{name:'Uang tunai sudah diserahkan — catat pembayaran',exact:true}).click();
+    await expect(page.getByText('Penyerahan tercatat',{exact:true})).toBeVisible();
+    await capture(page,'cash-completed');
+  });
+  await run('officer hands groceries directly without preparation or photo',async()=>{
+    const page=pages.petugas;await page.goto(baseUrl+'/petugas/sembako');
+    await page.locator('button').filter({hasText:fixture.groceryNumber}).click();
+    await page.getByRole('button',{name:'Ambil sembako',exact:true}).click();
+    await page.getByRole('button',{name:'Paket sudah diserahkan',exact:true}).click();
+    await expect(page.getByText('Penyerahan tercatat',{exact:true})).toBeVisible();
+    await capture(page,'groceries-completed');
+  });
+  await run('citizen sees successful receipts without photos',async()=>{
+    const page=pages.warga;
+    await page.goto(baseUrl+'/warga/pencairan/'+fixture.withdrawalId+'/bukti');await expect(page.getByRole('heading',{name:'Pencairan berhasil',exact:true}).first()).toBeVisible();await capture(page,'cash-receipt');
+    await page.goto(baseUrl+'/warga/sembako/'+fixture.groceryId+'/bukti');await capture(page,'grocery-receipt');
+  });
+  await run('officer claims and finishes pickup with one final click',async()=>{
+    const page=pages.petugas;await page.goto(baseUrl+'/dashboard/petugas');
+    await page.getByRole('button',{name:'Ambil tugas',exact:true}).click();
+    await page.getByRole('button',{name:'Menuju Lokasi',exact:true}).click();
+    await page.getByRole('button',{name:'Tandai Dijemput',exact:true}).click();
+    await page.locator('[name="actualItems.0.waste_type_id"]').selectOption(String(fixture.typeId));
+    await page.locator('[name="actualItems.0.condition_id"]').selectOption(String(fixture.conditionId));
+    await page.locator('[name="actualItems.0.weight_kg"]').fill('1.000');
+    await page.locator('[name="actualItems.0.weight_kg"]').blur();
+    await page.getByRole('button',{name:'Catat setoran dan selesaikan pickup',exact:true}).click();
+    await expect(page.getByText('Penjemputan selesai dan setoran aktual telah dibuat.')).toBeVisible();
+    await capture(page,'pickup-completed');
+  });
+  await run('citizen cancels an unclaimed withdrawal and releases hold',async()=>{
+    const page=pages.warga;await page.goto(baseUrl+'/warga/pencairan/ajukan');
+    await page.locator('[name=amount]').fill('10000');await page.locator('[name=pickupLocation]').fill('Loket pembatalan uji');
+    await page.locator('[wire\\:click="submit"]').click();await page.waitForURL(/\/warga\/pencairan\/\d+$/);
+    await page.getByRole('button',{name:'Batalkan pengajuan',exact:true}).click();
+    await expect(page.getByText('Pengajuan dibatalkan dan saldo tertahan dilepas.')).toBeVisible();await capture(page,'citizen-cancelled');
+  });
 } finally {
-    fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify({ results, errors }, null, 2));
-    await browser.close();
+  fs.writeFileSync(path.join(output,'results.json'),JSON.stringify({results,errors},null,2));
+  await browser.close();
 }
-if (errors.length || results.some(result => result.status === 'failed')) process.exitCode = 1;
+if(errors.length||results.some(r=>r.status!=='passed')) process.exitCode=1;
+console.log(JSON.stringify({scenarios:results.length,passed:results.filter(r=>r.status==='passed').length,errors},null,2));

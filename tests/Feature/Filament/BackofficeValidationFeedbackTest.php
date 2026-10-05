@@ -12,8 +12,6 @@ use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\CustomersRegions\Support\RegionMutationGuard;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\WasteMaster\Actions\ManageWastePricing;
 use App\Domain\WasteMaster\Models\WasteCategory;
 use App\Domain\WasteMaster\Models\WasteCondition;
@@ -30,6 +28,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class BackofficeValidationFeedbackTest extends TestCase
@@ -115,12 +114,7 @@ final class BackofficeValidationFeedbackTest extends TestCase
     private function userWith(string ...$permissions): User
     {
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'feedback-'.uniqid(), 'description' => 'Feedback test']);
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
 
         return $user;
     }

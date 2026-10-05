@@ -15,6 +15,7 @@ use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Shared\InvalidValue;
 use App\Domain\Shared\Money;
 use App\Models\User;
+use App\Support\Auth\AdminReauthentication;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -89,7 +90,7 @@ final readonly class LedgerService
             'source_id' => $deposit->id,
             'source_key' => $sourceKey,
             'effective_at' => $deposit->occurred_at,
-            'balance_after' => $account->availableBalance() + $amount,
+            'balance_after' => $account->currentAvailableBalance() + $amount,
         ]);
 
         return ['account' => $account, 'entry' => $entry];
@@ -124,7 +125,7 @@ final readonly class LedgerService
                 return $existing;
             }
 
-            if ($account->availableBalance() < $amount) {
+            if ($account->currentAvailableBalance() < $amount) {
                 throw ValidationException::withMessages(['amount' => 'Saldo tersedia tidak mencukupi.']);
             }
 
@@ -179,7 +180,7 @@ final readonly class LedgerService
                 return $entry;
             }
 
-            $availableBefore = $account->availableBalance() + $locked->amount;
+            $availableBefore = $account->currentAvailableBalance() + $locked->amount;
             if ($availableBefore < $locked->amount) {
                 throw ValidationException::withMessages(['amount' => 'Saldo tersedia tidak mencukupi.']);
             }
@@ -248,6 +249,7 @@ final readonly class LedgerService
     public function adjust(User $actor, User $owner, int $delta, string $reason, string $idempotencyKey): LedgerEntry
     {
         $this->assertCanAdjust($actor);
+        app(AdminReauthentication::class)->assertRecent($actor);
         if ($delta === 0 || mb_strlen(trim($reason)) < 10 || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{15,190}$/', $idempotencyKey) !== 1) {
             throw ValidationException::withMessages(['adjustment' => 'Penyesuaian wajib memiliki nominal, alasan, dan idempotency key yang valid.']);
         }
@@ -258,6 +260,9 @@ final readonly class LedgerService
         $payloadHash = hash('sha256', json_encode(['owner_id' => $owner->id, 'delta' => $delta, 'reason' => trim($reason)], JSON_THROW_ON_ERROR));
 
         return DB::transaction(function () use ($actor, $owner, $delta, $idempotencyKey, $payloadHash): LedgerEntry {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            $this->assertCanAdjust($actor);
+            app(AdminReauthentication::class)->assertRecent($actor);
             $key = IdempotencyKey::activeForUpdate($actor->id, 'ledger.adjust', $idempotencyKey);
             if ($key !== null) {
                 if ($key->payload_hash !== $payloadHash || $key->result_id === null) {
@@ -271,7 +276,7 @@ final readonly class LedgerService
             if ($account === null) {
                 throw ValidationException::withMessages(['account' => 'Rekening saldo tidak ditemukan.']);
             }
-            if ($delta < 0 && $account->availableBalance() < abs($delta)) {
+            if ($delta < 0 && $account->currentAvailableBalance() < abs($delta)) {
                 throw ValidationException::withMessages(['delta' => 'Penyesuaian keluar membuat saldo tersedia negatif.']);
             }
             $entry = LedgerEntry::query()->create([
@@ -284,7 +289,7 @@ final readonly class LedgerService
                 'source_id' => $key->id,
                 'source_key' => 'ledger-adjustment:'.$idempotencyKey,
                 'effective_at' => now(),
-                'balance_after' => $account->availableBalance() + $delta,
+                'balance_after' => $account->currentAvailableBalance() + $delta,
             ]);
             $key->forceFill(['status' => 'succeeded', 'result_type' => LedgerEntry::class, 'result_id' => $entry->id])->save();
             $this->auditLogger->record($actor, 'ledger.adjusted', $entry, [], ['owner_id' => $owner->id, 'delta' => $delta, 'amount' => abs($delta)], $this->correlationId());

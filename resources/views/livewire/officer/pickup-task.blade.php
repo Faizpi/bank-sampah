@@ -22,6 +22,19 @@
 @endphp
 
 <section aria-labelledby="pickup-task-title" class="grid gap-6">
+    @if (! $pickup->isTerminal())
+        <details class="rounded-xl border border-border p-4"><summary>Kendala yang belum dapat dipastikan?</summary>
+            <x-ui.input name="failureReason" label="Alasan pengecualian" wire:model="failureReason" />
+            <x-ui.button variant="secondary" wire:click="reportException">Kunci dan laporkan ke Admin</x-ui.button>
+        </details>
+    @endif
+    @if ($pickup->exception_reported_at && ! $pickup->exception_resolved_at)<p role="alert">Pickup dikunci untuk pemeriksaan Admin. Jangan ulangi penjemputan.</p>@endif
+    @if (in_array($pickup->status->value, ['dijadwalkan', 'menuju_lokasi'], true))
+        <details class="rounded-xl border border-border p-4"><summary class="font-semibold">Tidak dapat melanjutkan tugas?</summary>
+            <x-ui.input name="failureReason" label="Alasan melepas tugas (minimal 10 karakter)" wire:model="failureReason" />
+            <x-ui.button variant="secondary" wire:click="releaseTask">Lepas tugas ke antrean</x-ui.button>
+        </details>
+    @endif
     {{-- Page header --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -95,9 +108,6 @@
     </x-ui.panel>
 
     {{-- Actual Weighing --}}
-    @if ($pickup->deposit?->isPendingReview())
-        <p role="status" class="rounded-xl border border-border bg-warning-bg p-4">Hasil timbang menunggu persetujuan. Tidak perlu mengirim ulang; saldo warga belum bertambah.</p>
-    @endif
     @if ($canComplete)
         <x-ui.panel title="Timbang aktual" description="Berat aktual ini menjadi sumber setoran dan saldo." state="success">
             <div class="grid gap-4">
@@ -165,8 +175,8 @@
                 </div>
 
                 <div class="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
-                    <x-ui.button type="button" wire:click="reviewCompletion" wire:loading.attr="disabled" data-photo-picker-action>
-                        <span wire:loading.remove>Periksa penyelesaian</span>
+                    <x-ui.button type="button" wire:click="complete" wire:loading.attr="disabled" data-photo-picker-action>
+                        <span wire:loading.remove>Catat setoran dan selesaikan pickup</span>
                         <span wire:loading>Memeriksa...</span>
                     </x-ui.button>
                 </div>
@@ -184,20 +194,6 @@
             :description="session('success')"
         />
     @endif
-
-    @if ($completionDialogOpen)
-        <div class="fixed inset-0 z-overlay flex items-end justify-center bg-overlay p-4 sm:items-center" role="presentation">
-            <div class="w-full max-w-form rounded-lg border border-border bg-surface p-5 shadow-dialog sm:p-6" role="dialog" aria-modal="true" aria-labelledby="pickup-completion-title">
-                <h2 id="pickup-completion-title" class="text-h2 font-bold text-deep-green">Finalkan setoran aktual?</h2>
-                <p class="mt-2 text-body-sm text-text-secondary">Berat dan nilai akan dicatat, saldo warga bertambah, dan tugas selesai. Tindakan ini tidak dapat dibatalkan dari tugas ini.</p>
-                <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                    <x-ui.button type="button" variant="secondary" wire:click="cancelCompletionReview">Ubah data</x-ui.button>
-                    <x-ui.button type="button" wire:click="complete" wire:loading.attr="disabled" wire:target="complete"><span wire:loading.remove wire:target="complete">Finalkan setoran</span><span wire:loading wire:target="complete">Memproses...</span></x-ui.button>
-                </div>
-            </div>
-        </div>
-    @endif
-
     {{-- Status History --}}
     <x-ui.panel title="Tahapan penjemputan" description="Semua tahapan ditampilkan; tahapan berikutnya tetap redup sampai status tugas berubah.">
         <x-ui.status-stepper

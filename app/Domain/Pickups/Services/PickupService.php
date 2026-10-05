@@ -9,14 +9,15 @@ use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Deposits\Data\DepositItemInput;
 use App\Domain\Deposits\Services\DepositService;
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Identity\Models\StaffServiceArea;
-use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Notifications\Data\NotificationPayload;
 use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Notifications\Support\NotificationDedupeKey;
+use App\Domain\Operations\Services\ServiceTaskGuard;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Platform\Actions\StorePrivateMedia;
@@ -24,10 +25,10 @@ use App\Domain\Platform\Models\Media;
 use App\Domain\Shared\Weight;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Models\User;
+use App\Support\Auth\AdminReauthentication;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -46,7 +47,6 @@ final readonly class PickupService
         private StorePrivateMedia $mediaStore,
         private AuditLogger $auditLogger,
         private DepositService $deposits,
-        private VisibleUsers $visibleUsers,
     ) {}
 
     /**
@@ -56,6 +56,10 @@ final readonly class PickupService
      */
     public function submit(User $actor, array $data, array $items, array $photos, string $idempotencyKey): PickupRequest
     {
+        $actor = User::query()->whereKey($actor->id)->first();
+        if ($actor === null) {
+            throw new AuthorizationException('Akun tidak lagi aktif.');
+        }
         $this->authorize($actor, 'pickup.request');
         $this->validateIdempotencyKey($idempotencyKey);
 
@@ -72,6 +76,8 @@ final readonly class PickupService
 
         try {
             return DB::transaction(function () use ($actor, $customer, $area, $address, $selectedDate, $notes, $normalizedItems, $estimatedWeight, $photos, $idempotencyKey, $payloadHash, &$storedMedia): PickupRequest {
+                $actor = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
+                $this->authorize($actor, 'pickup.request');
                 $existingKey = IdempotencyKey::activeForUpdate($actor->id, self::IDEMPOTENCY_REQUEST_SCOPE, $idempotencyKey);
 
                 if ($existingKey !== null) {
@@ -98,7 +104,7 @@ final readonly class PickupService
                     'selected_date' => $selectedDate->toDateString(),
                     'estimated_weight_kg' => $estimatedWeight,
                     'notes' => $notes,
-                    'status' => PickupStatus::PendingReview,
+                    'status' => PickupStatus::Waiting,
                 ]);
 
                 foreach ($normalizedItems as $item) {
@@ -117,9 +123,9 @@ final readonly class PickupService
                     ])->save();
                 }
 
-                $this->recordStatus($pickup, $actor, null, PickupStatus::PendingReview, 'Pengajuan dibuat.');
+                $this->recordStatus($pickup, $actor, null, PickupStatus::Waiting, 'Pengajuan dibuat.');
                 $this->auditLogger->record($actor, 'pickup.requested', $pickup, [], [
-                    'status' => PickupStatus::PendingReview->value,
+                    'status' => PickupStatus::Waiting->value,
                     'service_area_id' => $area->id,
                     'selected_date' => $selectedDate->toDateString(),
                     'item_count' => count($normalizedItems),
@@ -160,80 +166,46 @@ final readonly class PickupService
             : null;
     }
 
-    public function review(User $actor, PickupRequest $pickup, bool $accept, ?string $reason = null): PickupRequest
+    public function claim(User $actor, PickupRequest $pickup): PickupRequest
     {
-        $this->authorize($actor, 'pickup.review');
-        $this->assertRecordScope($actor, $pickup, false);
-        if ($accept) {
-            return DB::transaction(function () use ($actor, $pickup): PickupRequest {
-                $locked = $this->lockPickup($pickup);
-                $this->assertTransition($locked, PickupStatus::Accepted);
-                $oldStatus = $locked->status;
-                $locked->forceFill(['status' => PickupStatus::Accepted, 'accepted_at' => now()])->save();
-                $this->recordStatus($locked, $actor, $oldStatus, PickupStatus::Accepted, 'Pengajuan diterima.');
-                $this->auditLogger->record($actor, 'pickup.accepted', $locked, ['status' => $oldStatus->value], ['status' => PickupStatus::Accepted->value], $this->correlationId());
-                $this->notifyStatus($locked, 'Penjemputan diterima', 'Pengajuan penjemputan '.$locked->request_number.' telah diterima.', 'pickup.accepted');
+        return DB::transaction(function () use ($actor, $pickup): PickupRequest {
+            $locked = $this->lockPickup($pickup);
+            app(ServiceTaskGuard::class)->check($actor, UserRole::Officer, $locked->service_area_id);
+            if ($locked->status === PickupStatus::Scheduled && $locked->assigned_staff_id === $actor->id) {
+                return $locked;
+            }
+            $this->assertTransition($locked, PickupStatus::Scheduled);
+            if ($locked->assigned_staff_id !== null) {
+                throw ValidationException::withMessages(['status' => 'Tugas sudah diambil petugas lain.']);
+            }
+            $old = $locked->status;
+            $locked->forceFill(['status' => PickupStatus::Scheduled, 'assigned_staff_id' => $actor->id, 'claimed_at' => now(), 'scheduled_at' => now(), 'scheduled_date' => $locked->selected_date])->save();
+            $this->recordStatus($locked, $actor, $old, PickupStatus::Scheduled, 'Petugas mengambil tugas.');
+            $this->auditLogger->record($actor, 'pickup.claimed', $locked, ['status' => $old->value], ['status' => $locked->status->value], $this->correlationId());
 
-                return $locked->fresh(['items', 'media']);
-            });
-        }
+            return $locked;
+        }, 5);
+    }
 
-        $reason = $this->requiredReason($reason, 'rejection_reason');
+    public function release(User $actor, PickupRequest $pickup, string $reason): PickupRequest
+    {
+        $reason = $this->requiredReason($reason, 'reason');
 
         return DB::transaction(function () use ($actor, $pickup, $reason): PickupRequest {
             $locked = $this->lockPickup($pickup);
-            $this->assertTransition($locked, PickupStatus::Rejected);
-            $oldStatus = $locked->status;
-            $locked->forceFill(['status' => PickupStatus::Rejected, 'rejection_reason' => $reason])->save();
-            $this->recordStatus($locked, $actor, $oldStatus, PickupStatus::Rejected, $reason);
-            $this->auditLogger->record($actor, 'pickup.rejected', $locked, ['status' => $oldStatus->value], ['status' => PickupStatus::Rejected->value, 'reason' => $reason], $this->correlationId());
-            $this->notifyStatus($locked, 'Pengajuan penjemputan ditolak', 'Pengajuan penjemputan '.$locked->request_number.' ditolak.', 'pickup.rejected');
-
-            return $locked->fresh(['items', 'media']);
-        });
-    }
-
-    public function schedule(User $actor, PickupRequest $pickup, User $staff, ?string $date = null): PickupRequest
-    {
-        $this->authorize($actor, 'pickup.schedule');
-        $this->assertRecordScope($actor, $pickup, false);
-        $this->assertActiveAssignedStaff($staff, $pickup);
-        $scheduledDate = $date === null ? CarbonImmutable::parse((string) $pickup->selected_date, 'Asia/Jakarta') : $this->businessDate($date, 'scheduled_date');
-
-        return DB::transaction(function () use ($actor, $pickup, $staff, $scheduledDate): PickupRequest {
-            $locked = $this->lockPickup($pickup);
-            $this->assertTransition($locked, PickupStatus::Scheduled);
-            $oldStatus = $locked->status;
-            $locked->forceFill([
-                'status' => PickupStatus::Scheduled,
-                'scheduled_date' => $scheduledDate->toDateString(),
-                'assigned_staff_id' => $staff->id,
-                'scheduled_at' => now(),
-            ])->save();
-            $this->recordStatus($locked, $actor, $oldStatus, PickupStatus::Scheduled, 'Penjemputan dijadwalkan.');
-            $this->auditLogger->record($actor, 'pickup.scheduled', $locked, ['status' => $oldStatus->value], ['status' => PickupStatus::Scheduled->value, 'scheduled_date' => $scheduledDate->toDateString(), 'assigned_staff_id' => $staff->id], $this->correlationId());
-            $this->notifyStatus($locked, 'Penjemputan dijadwalkan', 'Penjemputan '.$locked->request_number.' telah dijadwalkan.', 'pickup.scheduled');
-
-            return $locked->fresh(['items', 'media', 'assignedStaff']);
-        });
-    }
-
-    public function acceptAndSchedule(User $actor, PickupRequest $pickup, User $staff, string $date): PickupRequest
-    {
-        $this->authorize($actor, 'pickup.schedule');
-        $this->assertRecordScope($actor, $pickup, false);
-
-        return DB::transaction(function () use ($actor, $pickup, $staff, $date): PickupRequest {
-            $locked = $this->lockPickup($pickup);
-            if ($locked->status === PickupStatus::Scheduled && $locked->assigned_staff_id === $staff->id && $locked->scheduled_date?->toDateString() === $date) {
-                return $locked;
+            app(ServiceTaskGuard::class)->check($actor, UserRole::Officer, $locked->service_area_id);
+            $this->assertRecordScope($actor, $locked, true);
+            $this->assertNoPickupException($locked);
+            if (! in_array($locked->status, [PickupStatus::Scheduled, PickupStatus::EnRoute], true)) {
+                throw ValidationException::withMessages(['status' => 'Tugas tidak dapat dilepas setelah sampah dijemput.']);
             }
-            if ($locked->status === PickupStatus::PendingReview) {
-                $locked = $this->review($actor, $locked, true);
-            }
+            $old = $locked->status;
+            $locked->forceFill(['status' => PickupStatus::Waiting, 'assigned_staff_id' => null, 'claimed_at' => null, 'claim_released_at' => now(), 'scheduled_date' => null, 'scheduled_at' => null, 'en_route_at' => null])->save();
+            $this->recordStatus($locked, $actor, $old, PickupStatus::Waiting, $reason);
+            $this->auditLogger->record($actor, 'pickup.released', $locked, ['status' => $old->value], ['status' => $locked->status->value, 'reason' => $reason], $this->correlationId());
 
-            return $this->schedule($actor, $locked, $staff, $date);
-        });
+            return $locked;
+        }, 5);
     }
 
     public function begin(User $actor, PickupRequest $pickup): PickupRequest
@@ -260,7 +232,6 @@ final readonly class PickupService
         $this->authorize($actor, 'pickup.complete');
         $this->assertRecordScope($actor, $pickup, true);
         $this->validateIdempotencyKey($idempotencyKey);
-        $this->assertCompletionEvidence($pickup, $evidence);
         $normalized = array_map(static fn (array|DepositItemInput $item): DepositItemInput => $item instanceof DepositItemInput ? $item : DepositItemInput::fromArray($item), $actualItems);
         if ($normalized === []) {
             throw ValidationException::withMessages(['items' => 'Minimal satu hasil timbang diperlukan.']);
@@ -278,6 +249,17 @@ final readonly class PickupService
 
         try {
             return DB::transaction(function () use ($actor, $pickup, $normalized, $idempotencyKey, $payloadHash, $evidence, &$media): PickupRequest {
+                $locked = $this->lockPickup($pickup);
+                app(ServiceTaskGuard::class)->check($actor, UserRole::Officer, $locked->service_area_id);
+                $this->assertRecordScope($actor, $locked, true);
+                if ($locked->status === PickupStatus::Completed) {
+                    if ($locked->getAttribute('completion_payload_hash') !== $payloadHash) {
+                        throw ValidationException::withMessages(['idempotency_key' => 'Pickup sudah selesai dengan hasil timbang/lampiran berbeda.']);
+                    }
+
+                    return $locked;
+                }
+                $this->assertNoPickupException($locked);
                 $existingKey = IdempotencyKey::activeForUpdate($actor->id, self::IDEMPOTENCY_COMPLETE_SCOPE, $idempotencyKey);
                 if ($existingKey !== null) {
                     $this->assertSamePayload($existingKey, $payloadHash);
@@ -286,9 +268,16 @@ final readonly class PickupService
                 }
                 $key = IdempotencyKey::query()->create(['actor_id' => $actor->id, 'scope' => self::IDEMPOTENCY_COMPLETE_SCOPE, 'key' => $idempotencyKey, 'payload_hash' => $payloadHash, 'status' => 'processing']);
                 $locked = $this->lockPickup($pickup);
+                app(ServiceTaskGuard::class)->check($actor, UserRole::Officer, $locked->service_area_id);
+                $this->assertRecordScope($actor, $locked, true);
+                $this->assertNoPickupException($locked);
                 $this->assertTransition($locked, PickupStatus::Completed);
                 if ($locked->status !== PickupStatus::PickedUp) {
                     throw ValidationException::withMessages(['status' => 'Penjemputan harus berstatus dijemput sebelum diselesaikan.']);
+                }
+                if ($locked->customer_id !== $actor->id) {
+                    app(ServiceTaskGuard::class)->check($actor, UserRole::Officer, $locked->service_area_id);
+                    $this->assertRecordScope($actor, $locked, true);
                 }
                 if ($locked->deposit_id !== null) {
                     throw ValidationException::withMessages(['status' => 'Hasil timbang sudah dikirim. Tunggu keputusan pemeriksaan setoran.']);
@@ -305,7 +294,7 @@ final readonly class PickupService
                 $deposit = $this->deposits->finalize($actor, $deposit, 'pickup-'.$locked->id.'-'.$idempotencyKey, array_map(static fn (DepositItemInput $item): array => ['waste_type_id' => $item->wasteTypeId, 'condition_id' => $item->conditionId, 'weight_kg' => $item->weightKg], $normalized));
                 $oldStatus = $locked->status;
                 $next = $deposit->isFinal() ? PickupStatus::Completed : PickupStatus::PickedUp;
-                $locked->forceFill(['status' => $next, 'deposit_id' => $deposit->id, 'completed_at' => $deposit->isFinal() ? now() : null])->save();
+                $locked->forceFill(['status' => $next, 'completion_payload_hash' => $payloadHash, 'deposit_id' => $deposit->id, 'completed_at' => $deposit->isFinal() ? now() : null])->save();
                 $reason = $deposit->isFinal() ? 'Penimbangan aktual dan setoran final berhasil.' : 'Hasil timbang menunggu persetujuan setoran; saldo belum bertambah.';
                 $this->recordStatus($locked, $actor, $oldStatus, $next, $reason);
                 $this->auditLogger->record($actor, $deposit->isFinal() ? 'pickup.completed' : 'pickup.deposit_review_requested', $locked, ['status' => $oldStatus->value], ['status' => $next->value, 'deposit_id' => $deposit->id, 'actual_weight_kg' => $deposit->total_weight_kg], $this->correlationId());
@@ -338,72 +327,41 @@ final readonly class PickupService
 
     public function cancel(User $actor, PickupRequest $pickup, ?string $reason = null): PickupRequest
     {
-        $this->authorize($actor, 'pickup.cancel');
-        if ($pickup->customer_id !== $actor->id && ! $this->canView($actor, $pickup)) {
-            throw new AuthorizationException('Anda tidak memiliki akses untuk tindakan ini.');
-        }
         $reason = $this->optionalText($reason, 'cancellation_reason', 1000);
 
         return DB::transaction(function () use ($actor, $pickup, $reason): PickupRequest {
             $locked = $this->lockPickup($pickup);
-            if (in_array($locked->status, [PickupStatus::EnRoute, PickupStatus::PickedUp], true) && $locked->customer_id === $actor->id) {
-                throw new AuthorizationException('Penjemputan tidak dapat dibatalkan setelah petugas menuju lokasi.');
-            }
-            if ($locked->deposit_id !== null) {
-                throw ValidationException::withMessages(['status' => 'Setoran terkait harus diputuskan melalui pemeriksaan setoran.']);
-            }
-            if (in_array($locked->status, [PickupStatus::EnRoute, PickupStatus::PickedUp], true) && mb_strlen(trim((string) $reason)) < 10) {
-                throw ValidationException::withMessages(['cancellation_reason' => 'Alasan kendala minimal 10 karakter.']);
-            }
-            if (! $locked->status->canTransitionTo(PickupStatus::Cancelled)) {
-                throw ValidationException::withMessages(['status' => 'Status penjemputan tidak dapat dibatalkan.']);
-            }
-            $oldStatus = $locked->status;
-            $locked->forceFill(['status' => PickupStatus::Cancelled, 'cancellation_reason' => $reason])->save();
-            $this->recordStatus($locked, $actor, $oldStatus, PickupStatus::Cancelled, $reason);
-            $this->auditLogger->record($actor, 'pickup.cancelled', $locked, ['status' => $oldStatus->value], ['status' => PickupStatus::Cancelled->value, 'reason' => $reason], $this->correlationId());
-            $this->notifyStatus($locked, 'Penjemputan dibatalkan', 'Penjemputan '.$locked->request_number.' telah dibatalkan.', 'pickup.cancelled');
-
-            return $locked->fresh(['items', 'media']);
-        });
-    }
-
-    public function expire(PickupRequest $pickup): PickupRequest
-    {
-        return DB::transaction(function () use ($pickup): PickupRequest {
-            $locked = $this->lockPickup($pickup);
-            if (! in_array($locked->status, [PickupStatus::PendingReview, PickupStatus::Accepted, PickupStatus::Scheduled], true)) {
+            $current = User::query()->lockForUpdate()->findOrFail($actor->id);
+            $this->authorize($current, 'pickup.cancel');
+            if ($locked->status === PickupStatus::Cancelled && $locked->customer_id === $current->id) {
                 return $locked;
             }
-            $oldStatus = $locked->status;
-            $reason = 'Pengajuan kedaluwarsa karena tidak diproses dalam batas layanan.';
+            if ($locked->customer_id === $current->id) {
+                if (! $current->hasRole('warga') || $locked->status !== PickupStatus::Waiting) {
+                    throw new AuthorizationException('Warga membatalkan hanya sebelum tugas diambil.');
+                }
+            } else {
+                app(ServiceTaskGuard::class)->check($current, UserRole::Officer, $locked->service_area_id);
+                $this->assertRecordScope($current, $locked, true);
+                if (! in_array($locked->status, [PickupStatus::Scheduled, PickupStatus::EnRoute], true)) {
+                    throw ValidationException::withMessages(['status' => 'Sampah sudah dijemput; laporkan pengecualian, jangan batalkan.']);
+                }
+                $this->requiredReason($reason, 'cancellation_reason');
+            }
+            $this->assertNoPickupException($locked);
+            $this->assertTransition($locked, PickupStatus::Cancelled);
+            $old = $locked->status;
             $locked->forceFill(['status' => PickupStatus::Cancelled, 'cancellation_reason' => $reason])->save();
-            $locked->statusHistory()->create(['old_status' => $oldStatus->value, 'new_status' => PickupStatus::Cancelled->value, 'actor_id' => null, 'reason' => $reason, 'occurred_at' => now()]);
-            $this->auditLogger->record(null, 'pickup.expired', $locked, ['status' => $oldStatus->value], ['status' => PickupStatus::Cancelled->value, 'reason' => $reason], $this->correlationId());
-            $this->notifyStatus($locked, 'Penjemputan kedaluwarsa', 'Pengajuan penjemputan '.$locked->request_number.' kedaluwarsa dan tidak dilanjutkan.', 'pickup.expired');
+            $this->recordStatus($locked, $current, $old, PickupStatus::Cancelled, $reason);
+            $this->auditLogger->record($current, 'pickup.cancelled', $locked, ['status' => $old->value], ['status' => $locked->status->value, 'reason' => $reason], $this->correlationId());
 
-            return $locked->fresh(['items', 'media']);
-        });
+            return $locked;
+        }, 5);
     }
 
     public function canView(User $actor, PickupRequest $pickup): bool
     {
-        if ($pickup->customer_id === $actor->id) {
-            return $this->permissions->allows($actor, 'pickup.view')
-                || $this->permissions->allows($actor, 'pickup.request')
-                || $this->permissions->allows($actor, 'pickup.cancel');
-        }
-        if (! $this->permissions->allows($actor, 'pickup.view')) {
-            return false;
-        }
-        if ($this->permissions->allows($actor, 'user.view.all')) {
-            return true;
-        }
-        if ($pickup->assigned_staff_id === $actor->id) {
-            return true;
-        }
-
-        return $this->isStaffInArea($actor, $pickup);
+        return $this->visibleFor($actor)->whereKey($pickup->id)->exists();
     }
 
     public function canDownloadMedia(User $actor, Media $media): bool
@@ -420,18 +378,23 @@ final readonly class PickupService
     public function visibleFor(User $actor): Builder
     {
         $query = PickupRequest::query();
-        if ($this->permissions->allows($actor, 'pickup.view') && $this->permissions->allows($actor, 'user.view.all')) {
+        if (! $this->permissions->allows($actor, 'pickup.view')) {
+            return $query->whereKey([]);
+        }
+        if ($actor->hasRole('admin')) {
             return $query;
         }
+        if ($actor->hasRole('warga')) {
+            return $query->where('customer_id', $actor->id);
+        }
+        if (! $actor->hasRole('petugas')) {
+            return $query->whereKey([]);
+        }
 
-        return $query->where(function (Builder $scope) use ($actor): void {
-            $scope->where('customer_id', $actor->id)->orWhere('assigned_staff_id', $actor->id);
-            if ($this->isStaff($actor)) {
-                $scope->orWhere(function (Builder $area) use ($actor): void {
-                    $area->whereHas('serviceArea', fn (Builder $serviceArea): Builder => $serviceArea->whereHas('staffProfiles', fn (Builder $staff): Builder => $this->activeStaffQuery($staff, $actor)));
-                });
-            }
-        });
+        return $query->whereHas('serviceArea', fn (Builder $area): Builder => $area->where('is_active', true))
+            ->whereIn('service_area_id', StaffServiceArea::query()->select('service_area_id')->where('staff_profile_user_id', $actor->id)
+                ->where(fn (Builder $q): Builder => $q->whereNull('active_from')->orWhereDate('active_from', '<=', today()))
+                ->where(fn (Builder $q): Builder => $q->whereNull('active_to')->orWhereDate('active_to', '>=', today())));
     }
 
     /** @param array<string, mixed> $data */
@@ -445,7 +408,7 @@ final readonly class PickupService
         if ($customer === null || $customer->customerProfile === null) {
             throw ValidationException::withMessages(['customer_id' => 'Nasabah aktif tidak ditemukan.']);
         }
-        if ($customer->id !== $actor->id && ! $this->visibleUsers->canView($actor, $customer)) {
+        if ($customer->id !== $actor->id) {
             throw new AuthorizationException('Nasabah berada di luar scope tugas Anda.');
         }
 
@@ -497,9 +460,6 @@ final readonly class PickupService
             if ($type === null || ! $type->is_active || $type->category?->is_active !== true) {
                 throw ValidationException::withMessages(["items.{$index}" => 'Jenis sampah tidak aktif.']);
             }
-            if ($weight === null && $quantity === null) {
-                throw ValidationException::withMessages(["items.{$index}" => 'Isi perkiraan berat atau jumlah.']);
-            }
             $seen[$typeId] = true;
             $normalized[] = [
                 'waste_type_id' => $typeId,
@@ -527,15 +487,8 @@ final readonly class PickupService
     /** @param list<UploadedFile> $photos */
     private function validatePhotos(array $photos): void
     {
-        if (count($photos) < 1 || count($photos) > 2) {
-            throw ValidationException::withMessages(['photos' => 'Unggah minimal satu dan maksimal dua foto.']);
-        }
-    }
-
-    private function assertCompletionEvidence(PickupRequest $pickup, ?UploadedFile $evidence): void
-    {
-        if ($evidence === null && ! $pickup->media()->exists()) {
-            throw ValidationException::withMessages(['evidence' => 'Tambahkan bukti foto penjemputan melalui kamera atau galeri sebelum menyelesaikan tugas.']);
+        if (count($photos) > 2) {
+            throw ValidationException::withMessages(['photos' => 'Maksimal dua foto opsional.']);
         }
     }
 
@@ -543,9 +496,11 @@ final readonly class PickupService
     {
         return DB::transaction(function () use ($actor, $pickup, $next, $reason, $assignedOnly): PickupRequest {
             $locked = $this->lockPickup($pickup);
+            app(ServiceTaskGuard::class)->check($actor, UserRole::Officer, $locked->service_area_id);
             if ($assignedOnly && $locked->assigned_staff_id !== $actor->id) {
                 throw new AuthorizationException('Penjemputan tidak ditugaskan kepada Anda.');
             }
+            $this->assertNoPickupException($locked);
             $this->assertTransition($locked, $next);
             $oldStatus = $locked->status;
             $timestamps = match ($next) {
@@ -556,7 +511,6 @@ final readonly class PickupService
             $locked->forceFill([
                 'status' => $next,
                 ...$timestamps,
-                ...($next === PickupStatus::Accepted ? ['accepted_at' => now()] : []),
             ])->save();
             $this->recordStatus($locked, $actor, $oldStatus, $next, $reason);
             $this->auditLogger->record($actor, 'pickup.status.changed', $locked, ['status' => $oldStatus->value], ['status' => $next->value], $this->correlationId());
@@ -588,40 +542,72 @@ final readonly class PickupService
         }
     }
 
-    private function assertActiveAssignedStaff(User $staff, PickupRequest $pickup): void
+    private function assertNoPickupException(PickupRequest $pickup): void
     {
-        if ($staff->status !== UserStatus::Active || ! $this->permissions->allows($staff, 'pickup.execute') || ! $this->isStaffInArea($staff, $pickup)) {
-            throw ValidationException::withMessages(['assigned_staff_id' => 'Petugas aktif pada area penjemputan wajib dipilih.']);
+        if ($pickup->exception_reported_at !== null && $pickup->exception_resolved_at === null) {
+            throw ValidationException::withMessages(['status' => 'Pickup dikunci untuk pemeriksaan Admin.']);
         }
     }
 
-    private function isStaff(User $actor): bool
+    public function reportException(User $actor, PickupRequest $pickup, string $reason): PickupRequest
     {
-        return $actor->staffProfile()->exists();
+        $reason = $this->requiredReason($reason, 'reason');
+
+        return DB::transaction(function () use ($actor, $pickup, $reason): PickupRequest {
+            $locked = $this->lockPickup($pickup);
+            app(ServiceTaskGuard::class)->check($actor, UserRole::Officer, $locked->service_area_id);
+            $this->assertRecordScope($actor, $locked, true);
+            if ($locked->isTerminal()) {
+                throw ValidationException::withMessages(['status' => 'Pickup sudah selesai.']);
+            }
+            $locked->forceFill(['exception_reported_at' => now(), 'exception_reason' => $reason, 'exception_resolved_at' => null, 'exception_resolved_by_id' => null, 'exception_resolution' => null])->save();
+            $this->recordStatus($locked, $actor, $locked->status, $locked->status, 'Pengecualian: '.$reason);
+            $this->auditLogger->record($actor, 'pickup.exception_reported', $locked, [], ['reason' => $reason, 'claimant_id' => $locked->assigned_staff_id], $this->correlationId());
+
+            return $locked;
+        }, 5);
     }
 
-    private function isStaffInArea(User $actor, PickupRequest $pickup): bool
+    public function freezeException(User $admin, PickupRequest $pickup, string $reason, string $password): PickupRequest
     {
-        $today = today()->toDateString();
+        $reason = $this->requiredReason($reason, 'reason');
+        app(AdminReauthentication::class)->confirm($admin, $password);
 
-        return StaffServiceArea::query()
-            ->where('staff_service_areas.staff_profile_user_id', $actor->id)
-            ->where('staff_service_areas.service_area_id', $pickup->service_area_id)
-            ->where(static fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_from')->orWhereDate('staff_service_areas.active_from', '<=', $today))
-            ->where(static fn (Builder $dates): Builder => $dates->whereNull('staff_service_areas.active_to')->orWhereDate('staff_service_areas.active_to', '>=', $today))
-            ->whereHas('serviceArea', static fn (Builder $area): Builder => $area->where('service_areas.is_active', true))
-            ->exists();
+        return DB::transaction(function () use ($admin, $pickup, $reason): PickupRequest {
+            $locked = $this->lockPickup($pickup);
+            $admin = User::query()->lockForUpdate()->findOrFail($admin->id);
+            $this->authorize($admin, 'transaction.exception');
+            if ($locked->assigned_staff_id === null || $locked->isTerminal() || in_array($admin->id, [$locked->customer_id, $locked->assigned_staff_id], true)) {
+                throw ValidationException::withMessages(['status' => 'Hanya klaim bermasalah pihak lain yang dapat dikunci.']);
+            }
+            $locked->forceFill(['exception_reported_at' => now(), 'exception_reason' => $reason, 'exception_resolved_at' => null, 'exception_resolved_by_id' => null, 'exception_resolution' => null])->save();
+            $this->auditLogger->record($admin, 'pickup.exception_frozen', $locked, [], ['reason' => $reason, 'claimant_id' => $locked->assigned_staff_id], $this->correlationId());
+
+            return $locked;
+        }, 5);
     }
 
-    /**
-     * @param  Builder<Model>  $query
-     * @return Builder<Model>
-     */
-    private function activeStaffQuery(Builder $query, User $actor): Builder
+    public function reassignException(User $admin, PickupRequest $pickup, User $staff, string $reason, string $password): PickupRequest
     {
-        $today = today()->toDateString();
+        $reason = $this->requiredReason($reason, 'reason');
+        app(AdminReauthentication::class)->confirm($admin, $password);
 
-        return $query->where('user_id', $actor->id)->where(fn (Builder $dates): Builder => $dates->whereNull('active_from')->orWhere('active_from', '<=', $today))->where(fn (Builder $dates): Builder => $dates->whereNull('active_to')->orWhere('active_to', '>=', $today));
+        return DB::transaction(function () use ($admin, $pickup, $staff, $reason): PickupRequest {
+            $locked = $this->lockPickup($pickup);
+            $admin = User::query()->lockForUpdate()->findOrFail($admin->id);
+            $this->authorize($admin, 'transaction.exception');
+            app(ServiceTaskGuard::class)->check($staff, UserRole::Officer, $locked->service_area_id);
+            if ($locked->exception_reported_at === null || $locked->exception_resolved_at !== null || $locked->isTerminal()
+                || $locked->assigned_staff_id === null || $locked->deposit_id !== null || in_array($admin->id, [$locked->customer_id, $locked->assigned_staff_id], true)) {
+                throw ValidationException::withMessages(['status' => 'Pengalihan hanya melalui pengecualian pickup yang belum selesai.']);
+            }
+            $oldClaimant = $locked->assigned_staff_id;
+            $locked->forceFill(['assigned_staff_id' => $staff->id, 'claimed_at' => now(), 'exception_resolved_by_id' => $admin->id, 'exception_resolved_at' => now(), 'exception_resolution' => $reason])->save();
+            $this->recordStatus($locked, $admin, $locked->status, $locked->status, 'Pengalihan pengecualian: '.$reason);
+            $this->auditLogger->record($admin, 'pickup.exception_reassigned', $locked, ['claimant_id' => $oldClaimant], ['claimant_id' => $staff->id, 'reason' => $reason], $this->correlationId());
+
+            return $locked;
+        }, 5);
     }
 
     private function recordStatus(PickupRequest $pickup, ?User $actor, ?PickupStatus $old, PickupStatus $new, ?string $reason): void
@@ -735,7 +721,7 @@ final readonly class PickupService
             'selected_date' => $date,
             'notes' => trim((string) ($data['notes'] ?? '')),
             'items' => $items,
-            'photos' => array_map(static fn (UploadedFile $photo): array => [$photo->getClientOriginalName(), $photo->getSize(), $photo->getMimeType()], $photos),
+            'photos' => array_map(static fn (UploadedFile $photo): array => [hash_file('sha256', $photo->getRealPath())], $photos),
         ], JSON_THROW_ON_ERROR));
     }
 

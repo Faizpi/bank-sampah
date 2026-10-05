@@ -6,8 +6,6 @@ namespace Tests\Feature\Wave8;
 
 use App\Domain\Communication\Enums\AnnouncementStatus;
 use App\Domain\Communication\Services\AnnouncementService;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Notifications\Data\NotificationPayload;
 use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Notifications\Listeners\PersistNotification;
@@ -28,6 +26,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class Wave8ContractsTest extends TestCase
@@ -130,12 +129,7 @@ final class Wave8ContractsTest extends TestCase
     private function userWith(string ...$permissions): User
     {
         $user = User::factory()->create();
-        $role = Role::query()->create(['name' => 'w8-'.uniqid(), 'description' => 'W8 test']);
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
 
         return $user;
     }

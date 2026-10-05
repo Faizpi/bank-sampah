@@ -9,8 +9,6 @@ use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\CustomersRegions\Models\ServiceArea;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Models\User;
 use App\Policies\DusunPolicy;
 use App\Policies\RtPolicy;
@@ -20,6 +18,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class RegionalManagementTest extends TestCase
@@ -166,9 +165,6 @@ final class RegionalManagementTest extends TestCase
 
     private function grant(User $user, string $permissionName): void
     {
-        $role = Role::query()->create(['name' => 'regional-manager', 'description' => 'Regional manager']);
-        $permission = Permission::query()->create(['name' => $permissionName, 'description' => 'Manage regions']);
-        $role->permissions()->attach($permission);
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, [$permissionName]);
     }
 }

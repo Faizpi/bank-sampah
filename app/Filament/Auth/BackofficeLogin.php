@@ -77,7 +77,7 @@ final class BackofficeLogin extends Login
             return;
         }
 
-        if (! in_array($role, ['admin', 'superadmin'], true)) {
+        if (! in_array($role, ['admin'], true)) {
             return;
         }
 

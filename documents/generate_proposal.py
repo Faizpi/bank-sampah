@@ -272,7 +272,7 @@ def build_story() -> list:
     s += section("7. Konsep Nilai Sampah")
     s += [p("Aplikasi menggunakan saldo rupiah langsung tanpa sistem poin. Setiap jenis sampah memiliki harga berdasarkan kilogram atau satuan lain yang ditentukan pengelola."), p("<b>Nilai setoran = berat sampah × harga per satuan</b>", CALLOUT)]
     s += [table(["Komponen", "Contoh"], [["Jenis", "Botol plastik PET"], ["Berat", "3 kilogram"], ["Harga", "Rp3.000/kg"], ["Nilai setoran", "Rp9.000"]], [6*cm, 9.6*cm])]
-    s += [p("Setelah transaksi dikonfirmasi, saldo warga bertambah. Saldo dapat disimpan, dicairkan tunai, atau ditukar dengan paket sembako sesuai baseline fitur yang disetujui.")]
+    s += [p("Saldo bertambah setelah setoran final; setoran bernilai tinggi menunggu persetujuan pemeriksa. Saldo dapat disimpan, dicairkan tunai, atau ditukar dengan paket sembako sesuai baseline fitur yang disetujui.")]
 
     s += section("8. Konsep Saldo dan Mutasi")
     s += [p("Saldo tidak boleh berupa angka yang dapat diubah langsung. Setiap perubahan harus berasal dari mutasi dengan sumber dan riwayat yang jelas. Agar mudah dipahami warga dan pengelola, dokumen ini menggunakan istilah saldo masuk dan saldo keluar, bukan istilah kredit dan debit.")]
@@ -300,9 +300,9 @@ def build_story() -> list:
     s += section("9. Pengguna Aplikasi")
     roles = {
         "9.1 Warga atau nasabah": ["Registrasi dan login.", "Profil, nomor, dan QR nasabah.", "Harga, panduan, jadwal, riwayat, saldo, notifikasi, dan pengumuman.", "Pengajuan penjemputan, pencairan tunai, dan penukaran sembako."],
-        "9.2 Petugas bank sampah": ["Mencari atau memindai nasabah.", "Mencatat setoran dan hasil penimbangan.", "Memproses penjemputan.", "Mencatat pembayaran pencairan dan penyerahan sembako.", "Melihat transaksi harian dan aktivitas sendiri."],
+        "9.2 Petugas bank sampah": ["Mencari atau memindai nasabah.", "Mencatat setoran dan hasil penimbangan.", "Memproses penjemputan.", "Mencatat penyerahan sembako sesuai area. Pembayaran tunai dilakukan bendahara yang ditugaskan.", "Melihat transaksi harian dan aktivitas sendiri."],
         "9.3 Admin atau pengelola": ["Mengelola pengguna, wilayah, sampah, harga, transaksi, saldo, dan jadwal.", "Menyetujui pencairan dan penukaran.", "Membuat pengumuman, laporan, ekspor, dan melihat audit log."],
-        "9.4 Bendahara atau petugas pembayaran": ["Melihat pencairan yang disetujui.", "Memverifikasi penerima.", "Menyerahkan uang, mengunggah bukti, dan menyelesaikan pembayaran."],
+        "9.4 Bendahara": ["Melihat pencairan yang disetujui.", "Memverifikasi penerima.", "Menyerahkan uang, mengunggah bukti, dan menyelesaikan pembayaran."],
         "9.5 Superadmin": ["Mengelola admin, role, permission, dan status akun.", "Tidak boleh mengubah saldo tanpa mekanisme koreksi tercatat."],
     }
     for title, items in roles.items(): s += [subsection(title)] + bullets(items)
@@ -310,7 +310,7 @@ def build_story() -> list:
     s += section("10. Fitur Warga")
     features = {
         "10.1 Registrasi": "Warga mengisi nama, telepon, alamat, dusun, RT/RW, identitas bila diperlukan, kata sandi, serta persetujuan ketentuan. Akun berstatus menunggu verifikasi, aktif, ditolak, atau dinonaktifkan.",
-        "10.2 Login": "Login memakai nomor telepon dan kata sandi, dilengkapi ubah kata sandi setelah login, logout, pembatasan percobaan, dan pengelolaan sesi. Pemulihan akses dibantu admin setelah verifikasi identitas warga.",
+        "10.2 Login": "Login memakai username dan kata sandi, dilengkapi ubah kata sandi setelah login, logout, pembatasan percobaan, dan pengelolaan sesi. Pemulihan akses dibantu admin setelah verifikasi identitas warga.",
         "10.3 Profil nasabah": "Memuat identitas dasar, nomor nasabah, alamat, wilayah, tanggal bergabung, status akun, dan QR code.",
         "10.4 Nomor dan QR code": "QR mempercepat pencarian dan mengurangi salah pemilihan akun; petugas tetap mengonfirmasi nama warga.",
         "10.5 Dashboard warga": "Menampilkan saldo tersedia dan tertahan, berat, transaksi, nilai bulan berjalan, status pengajuan, jadwal, pengumuman, dan notifikasi.",
@@ -322,7 +322,7 @@ def build_story() -> list:
         "10.11 Saldo": "Menampilkan saldo tersedia, tertahan, total masuk, total keluar, riwayat dan sumber mutasi, tanggal, serta saldo setelah mutasi.",
         "10.12 Pencairan tunai": "Sistem memeriksa nominal dan saldo, menahan saldo, menunggu persetujuan, mencatat pembayaran dan bukti, lalu memotong permanen setelah selesai.",
         "10.13 Penukaran sembako": "Warga memilih paket, saldo ditahan, admin memeriksa ketersediaan manual, petugas menyerahkan dan mengunggah bukti, kemudian saldo dipotong.",
-        "10.14 Notifikasi dan pengingat": "Notifikasi dalam aplikasi mencakup akun, transaksi, saldo, penjemputan, pencairan, penukaran, harga, pengumuman, jadwal setor atau bank sampah keliling, perubahan jadwal, serta pengajuan yang mendekati kedaluwarsa. WhatsApp tersedia secara manual melalui tautan wa.me; aplikasi hanya membuka WhatsApp dan pengguna mengirim pesan sendiri.",
+        "10.14 Notifikasi dan pengingat": "Notifikasi dalam aplikasi mencakup akun, transaksi, saldo, penjemputan, pencairan, penukaran, harga, pengumuman, jadwal setor atau bank sampah keliling, perubahan jadwal, serta pengajuan yang mendekati kedaluwarsa. WhatsApp tidak digunakan. Notifikasi hanya tersedia di dalam aplikasi; Telegram belum diimplementasikan.",
         "10.15 Estimasi nilai sebelum setor": "Warga dapat memilih jenis sampah dan memasukkan perkiraan berat untuk melihat estimasi nilai berdasarkan harga aktif. Estimasi hanya bersifat informasi dan tidak membentuk transaksi atau saldo; nilai akhir tetap mengikuti penimbangan aktual petugas.",
         "10.16 Edukasi kontekstual": "Petunjuk pemilahan ditampilkan sesuai jenis sampah dan tindakan pengguna, misalnya cara membersihkan botol PET, melipat kardus, memperbaiki foto yang buram, atau memahami alasan sampah tidak diterima.",
         "10.17 Riwayat koreksi untuk warga": "Warga dapat melihat nilai sebelum dan setelah koreksi, alasan, tanggal, serta dampaknya terhadap saldo tanpa membuka data internal yang sensitif.",
@@ -333,14 +333,14 @@ def build_story() -> list:
 
     s += section("11. Fitur Petugas")
     petugas = [
-        ("11.1 Dashboard dan tugas hari ini", "Menampilkan setoran, penjemputan, pencairan siap dibayar, sembako siap diserahkan, perubahan jadwal, notifikasi penting, serta tugas yang belum dimulai, sedang dikerjakan, dan selesai."),
+        ("11.1 Dashboard dan tugas hari ini", "Menampilkan setoran, penjemputan, sembako siap diserahkan, perubahan jadwal, notifikasi penting, serta tugas yang belum dimulai, sedang dikerjakan, dan selesai."),
         ("11.2 Pencarian nasabah", "Berdasarkan nama, telepon, nomor nasabah, RT/RW, atau QR code."),
         ("11.3 Setoran langsung", "Pilih nasabah, input jenis dan berat, hitung otomatis, unggah bukti, konfirmasi, buat mutasi, dan kirim notifikasi."),
         ("11.4 Hasil penjemputan", "Buka pengajuan, timbang tiap jenis, input berat aktual, unggah foto, konfirmasi transaksi, tambah saldo, dan selesaikan penjemputan."),
-        ("11.5 Koreksi", "Draf dapat diedit petugas pembuat. Transaksi final hanya dikoreksi admin dengan alasan, nilai sebelum-sesudah, waktu, pengguna, referensi, dampak saldo, dan bukti."),
-        ("11.6 Bukti transaksi", "Dapat dilihat, diunduh, dicetak, dan dibagikan melalui WhatsApp secara manual menggunakan tautan wa.me; aplikasi tidak mengirim pesan otomatis."),
-        ("11.7 Penjemputan", "Melihat foto dan alamat, menerima atau menolak, memperbarui status, mencatat hasil, dan membentuk transaksi berdasarkan berat aktual."),
-        ("11.8 Pembayaran pencairan", "Memverifikasi nomor dan identitas, mencatat waktu dan metode, mengunggah bukti, dan menandai sudah dibayar."),
+        ("11.5 Koreksi", "Draf dapat diedit petugas pembuat. Transaksi final hanya dikoreksi superadmin atau aktor berizin khusus dengan alasan, nilai sebelum-sesudah, waktu, pengguna, referensi, dampak saldo, dan bukti."),
+        ("11.6 Bukti transaksi", "Dapat dilihat, diunduh, dan dicetak sesuai kewenangan. WhatsApp tidak digunakan."),
+        ("11.7 Penjemputan", "Membuka tugas yang ditugaskan admin, memperbarui status, melaporkan kendala, dan mencatat hasil timbang aktual melalui web."),
+        ("11.8 Pencairan berbantuan", "Petugas dapat membantu pengajuan warga dengan persetujuan dan bukti. Pembayaran tunai hanya dicatat bendahara aktif yang ditugaskan."),
         ("11.9 Penyerahan sembako", "Memeriksa identitas dan nomor pengajuan, mencatat tanggal, mengunggah bukti, dan menyelesaikan penyerahan."),
         ("11.10 Pelayanan warga tanpa smartphone", "Dengan persetujuan warga, petugas dapat membantu pendaftaran, menggunakan nomor atau kartu QR, mencatat transaksi atas nama warga, menyampaikan informasi saldo, dan memberikan bukti cetak tanpa mengambil alih kata sandi pribadi warga."),
         ("11.11 Bank Sampah Keliling", "Petugas melihat jadwal, titik pelayanan, wilayah, kapasitas, dan daftar tugas; transaksi pada titik keliling tetap menggunakan alur setoran langsung."),
@@ -357,8 +357,8 @@ def build_story() -> list:
         "12.5 Harga": "Harga dan tanggal berlaku, riwayat, aktivasi, serta snapshot harga agar transaksi lama tidak berubah.",
         "12.6 Transaksi": "Daftar, detail, filter, koreksi, pembalikan, bukti, ekspor, dan log perubahan.",
         "12.7 Saldo": "Saldo, mutasi, saldo tertahan, kewajiban total, pembekuan, dan koreksi resmi tanpa edit angka langsung.",
-        "12.8 Penjemputan": "Permintaan, petugas, jadwal, batas minimal, kapasitas harian berdasarkan alamat atau perkiraan berat, wilayah, foto, status, alternatif tanggal, penolakan, pembatalan, dan riwayat.",
-        "12.9 Pencairan": "Pemeriksaan saldo, persetujuan, penolakan, jadwal, lokasi, petugas pembayaran, bukti, dan riwayat status.",
+        "12.8 Penjemputan": "Permintaan bertanggal, petugas/area aktif, foto, persetujuan sekaligus jadwal, penolakan, kendala, dan penyelesaian sesudah setoran final.",
+        "12.9 Pencairan": "Pemeriksaan saldo, persetujuan sekaligus penugasan bendahara, lokasi/tanggal, verifikasi penerima, foto, satu konfirmasi tunai, dan riwayat.",
         "12.10 Paket sembako": "Nama, isi, nilai, foto, status, periode, permintaan, persetujuan, lokasi, dan bukti; tanpa pengelolaan stok terperinci.",
         "12.11 Jadwal": "Jadwal buka, setor, penjemputan, hari libur, kapasitas, wilayah, lokasi, dan catatan.",
         "12.12 Pengumuman": "Perubahan harga, kegiatan, libur, edukasi, pelayanan, dan informasi desa terkait bank sampah.",
@@ -375,7 +375,7 @@ def build_story() -> list:
     flows = [
         ["Setoran langsung", "Warga → QR/nomor → timbang → input → hitung → bukti → konfirmasi → mutasi → saldo bertambah"],
         ["Penjemputan", "Foto dan pengajuan → pemeriksaan → jadwal → jemput → timbang → transaksi → saldo bertambah"],
-        ["Pencairan", "Ajukan nominal → saldo ditahan → persetujuan → pembayaran → bukti → saldo dipotong"],
+        ["Pencairan", "Ajukan nominal → hold → setujui dan tugaskan bendahara → verifikasi dan bukti → konfirmasi tunai → mutasi keluar"],
         ["Sembako", "Pilih paket → saldo ditahan → cek manual → siapkan → serahkan → bukti → saldo dipotong"],
         ["Koreksi", "Buka transaksi → alasan → nilai benar → dampak saldo → konfirmasi → mutasi penyesuaian → audit"],
     ]
@@ -383,14 +383,14 @@ def build_story() -> list:
 
     s += section("14. Aturan Bisnis")
     rule_groups = {
-        "14.1 Transaksi": ["Nomor transaksi unik; wajib memiliki warga dan petugas.", "Berat lebih dari nol dan maksimal tiga desimal.", "Harga berlaku disimpan sebagai snapshot.", "Saldo bertambah setelah konfirmasi dan tidak boleh dua kali.", "Transaksi final tidak dihapus langsung; koreksi hanya oleh pihak berwenang."],
+        "14.1 Transaksi": ["Nomor transaksi unik; wajib memiliki warga dan petugas.", "Berat lebih dari nol dan maksimal tiga desimal.", "Harga berlaku disimpan sebagai snapshot.", "Saldo bertambah setelah setoran final dan tidak boleh dua kali.", "Transaksi final tidak dihapus langsung; koreksi hanya oleh pihak berwenang."],
         "14.2 Saldo": ["Menggunakan rupiah dan tidak boleh minus.", "Semua perubahan memiliki mutasi.", "Saldo pengajuan ditahan dan dikembalikan jika ditolak atau dibatalkan.", "Nilai uang dan pembulatan diterapkan secara konsisten."],
-        "14.3 Penjemputan": ["Foto, alamat, dan jenis wajib.", "Perkiraan tidak menjadi dasar saldo.", "Berat final berasal dari petugas.", "Sistem memeriksa kapasitas harian berdasarkan kebijakan jumlah alamat, perkiraan berat, wilayah, petugas, atau kendaraan; jika penuh, warga ditawarkan tanggal lain.", "Penolakan wajib beralasan; selesai hanya setelah transaksi berhasil."],
+        "14.3 Penjemputan": ["Foto, alamat, dan jenis wajib.", "Perkiraan tidak menjadi dasar saldo.", "Berat final berasal dari petugas.", "Tanggal pilihan warga bukan reservasi slot; admin menerima dan menjadwalkan petugas dalam satu formulir tanpa kuota otomatis pickup.", "Penolakan wajib beralasan; selesai hanya setelah transaksi berhasil."],
         "14.4 Harga": ["Dikelola admin, memiliki tanggal berlaku, riwayat tetap tersimpan, tidak negatif, dan perubahan diaudit."],
-        "14.5 Pencairan": ["Nominal tidak melebihi saldo dan memenuhi minimum.", "Saldo ditahan saat pengajuan.", "Admin menyetujui; petugas membayar dan mengunggah bukti.", "Tidak dapat diselesaikan dua kali; pengajuan dapat kedaluwarsa."],
+        "14.5 Pencairan": ["Nominal tidak melebihi saldo dan memenuhi minimum.", "Saldo ditahan saat pengajuan.", "Admin menyetujui dan menetapkan bendahara; bendahara mencocokkan penerima, mengunggah foto, dan mencatat penyerahan tunai.", "Tidak dapat diselesaikan dua kali; pengajuan dapat kedaluwarsa."],
         "14.6 Penukaran sembako": ["Saldo mencukupi dan paket tersedia.", "Ketersediaan diperiksa manual.", "Saldo dipotong setelah bukti penyerahan."],
         "14.7 Status": ["Perubahan mengikuti urutan dan menyimpan status lama-baru, pengguna, waktu, catatan, serta alasan."],
-        "14.8 Pembatalan": ["Penjemputan sebelum petugas berangkat; pencairan sebelum dibayar; penukaran sebelum diserahkan; transaksi final melalui reversal atau koreksi."],
+        "14.8 Pembatalan": ["Warga membatalkan pickup sebelum petugas berangkat serta pencairan/sembako sebelum persetujuan. Pembatalan lanjutan hanya oleh pengurus berwenang; setoran final memakai koreksi atau reversal."],
         "14.9 Estimasi nilai": ["Estimasi memakai harga aktif dan perkiraan berat.", "Hasil estimasi tidak membentuk transaksi, tidak menahan saldo, dan tidak menjamin nilai akhir.", "Nilai final hanya berasal dari penimbangan dan konfirmasi petugas."],
         "14.10 Verifikasi bukti QR": ["QR hanya berisi token atau referensi acak.", "Halaman verifikasi menampilkan nomor, tanggal, berat, nilai, dan status sah secara terbatas.", "Saldo, alamat, nomor identitas, dan nomor telepon lengkap tidak ditampilkan."],
         "14.11 Pelayanan inklusif": ["Warga tanpa smartphone dapat dibantu petugas dengan persetujuan.", "Transaksi tetap tercatat atas nama warga.", "Petugas tidak mengambil alih kata sandi pribadi dan warga dapat menerima kartu QR atau bukti cetak."],
@@ -402,7 +402,7 @@ def build_story() -> list:
         ["Umum", "Beranda, tentang, harga, panduan, jadwal, statistik publik desa, verifikasi bukti QR, pengumuman, login, registrasi, privasi, ketentuan, kontak."],
         ["Warga", "Dashboard, profil, QR, harga, kalkulator estimasi, edukasi, transaksi dan koreksi, saldo, penjemputan, jadwal keliling, pencairan, sembako, dan pengingat."],
         ["Petugas", "Dashboard tugas hari ini, scan QR, transaksi, layanan warga tanpa smartphone, nasabah, penjemputan, layanan keliling, pencairan, penyerahan, riwayat, profil."],
-        ["Admin", "Dashboard, target pengumpulan, partisipasi RT/RW, statistik publik, pengguna, wilayah, sampah, harga, transaksi, saldo, penjemputan dan kapasitas, layanan keliling, laporan, dan audit."],
+        ["Admin", "Dashboard, target pengumpulan, partisipasi RT/RW, statistik publik, pengguna, wilayah, sampah, harga, transaksi, saldo, penjemputan dan penjadwalan, layanan keliling, laporan, dan audit."],
     ]
     s += [table(["Kelompok", "Halaman"], pages, [3.2*cm, 12.4*cm])]
 
@@ -441,7 +441,7 @@ def build_story() -> list:
             ["Interaksi antarmuka", "Alpine.js"],
             ["Desain dan styling", "Tailwind CSS"],
             ["Panel administrasi", "Filament"],
-            ["Basis data", "MariaDB terkelola yang kompatibel dengan MySQL"],
+            ["Basis data", "MySQL 8.0.30-compatible dengan InnoDB"],
             ["Layanan hosting", "Hostinger Web Hosting Premium atau Business"],
             ["Pengelolaan hosting", "hPanel, SSH/SFTP, Composer 2, dan cron job"],
             ["Infrastruktur server", "Linux dan web server terkelola oleh Hostinger"],
@@ -459,7 +459,7 @@ def build_story() -> list:
     s += [p("Aplikasi menggunakan pendekatan modular monolith: seluruh modul berada dalam satu aplikasi Laravel, tetapi dipisahkan berdasarkan proses bisnis dan tanggung jawabnya. Proses yang memengaruhi transaksi, saldo masuk, saldo keluar, dan saldo tertahan wajib menggunakan database transaction, penguncian data yang sesuai, foreign key, unique constraint, dan referensi transaksi unik untuk menjaga konsistensi serta mencegah transaksi ganda.")]
 
     s += section("18. Fitur Pengembangan yang Disetujui")
-    s += numbered(["Registrasi, login, ubah kata sandi setelah login, dan pemulihan akses berbantuan admin.", "Verifikasi akun, termasuk pelayanan berbantuan bagi warga tanpa smartphone.", "Data nasabah, petugas, role, permission, wilayah, nomor, kartu, dan QR nasabah.", "Jenis sampah, harga, riwayat harga, serta edukasi kontekstual.", "Transaksi multi-jenis, saldo rupiah, mutasi, riwayat, dan riwayat koreksi yang dapat dilihat warga.", "Penjemputan dengan foto, kapasitas harian, alternatif tanggal, dan pemrosesannya.", "Pencairan tunai.", "Paket sembako sederhana dan penukaran tanpa pengelolaan stok terperinci.", "Dashboard warga, dashboard tugas petugas hari ini, dan dashboard admin.", "Notifikasi dan pengingat dalam aplikasi serta WhatsApp manual melalui tautan wa.me.", "Target pengumpulan sampah desa dan progres pencapaiannya.", "Bank Sampah Keliling per RT/RW.", "Kalkulator estimasi nilai sebelum setor.", "Bukti transaksi dengan QR verifikasi publik terbatas.", "Peta atau heatmap partisipasi RT/RW.", "Ringkasan statistik publik desa tanpa data pribadi.", "PWA installable dengan cache terbatas untuk informasi umum.", "Laporan web, Excel, CSV, dan PDF.", "Audit log dan bukti transaksi, pencairan, serta penyerahan."])
+    s += numbered(["Registrasi, login, ubah kata sandi setelah login, dan pemulihan akses berbantuan admin.", "Verifikasi akun, termasuk pelayanan berbantuan bagi warga tanpa smartphone.", "Data nasabah, petugas, role, permission, wilayah, nomor, kartu, dan QR nasabah.", "Jenis sampah, harga, riwayat harga, serta edukasi kontekstual.", "Transaksi multi-jenis, saldo rupiah, mutasi, riwayat, dan riwayat koreksi yang dapat dilihat warga.", "Penjemputan dengan foto, tanggal pilihan, penjadwalan gabungan, dan penimbangan aktual.", "Pencairan tunai.", "Paket sembako sederhana dan penukaran tanpa pengelolaan stok terperinci.", "Dashboard warga, dashboard tugas petugas hari ini, dan dashboard admin.", "Notifikasi dan informasi status dalam aplikasi; WhatsApp tidak digunakan.", "Target pengumpulan sampah desa dan progres pencapaiannya.", "Bank Sampah Keliling per RT/RW.", "Kalkulator estimasi nilai sebelum setor.", "Bukti transaksi dengan QR verifikasi publik terbatas.", "Peta atau heatmap partisipasi RT/RW.", "Ringkasan statistik publik desa tanpa data pribadi.", "PWA installable dengan cache terbatas untuk informasi umum.", "Laporan web, Excel, CSV, dan PDF.", "Audit log dan bukti transaksi, pencairan, serta penyerahan."])
 
     s += section("19. Pengembangan di Luar Baseline")
     s += bullets(["WhatsApp gateway otomatis.", "Pengelolaan stok sembako terperinci.", "Transfer bank, dompet digital, OTP atau PIN pengambilan.", "Integrasi timbangan digital dan pelacakan armada.", "Aplikasi native, AI klasifikasi foto, dan sistem produksi paving block."])
@@ -469,8 +469,8 @@ def build_story() -> list:
         "20.1 Akun dan akses": ["Warga dapat mendaftar; admin dapat memverifikasi; akun nonaktif tidak dapat login.", "Warga tidak dapat melihat data warga lain; petugas tidak dapat mengubah harga; percobaan login dibatasi."],
         "20.2 Transaksi": ["Setoran multi-jenis dihitung benar; harga lama tidak berubah; konfirmasi menambah saldo satu kali; koreksi diaudit."],
         "20.3 Saldo": ["Tidak negatif; setiap perubahan bermutuasi; saldo tertahan tidak dapat dipakai; saldo kembali jika ditolak."],
-        "20.4 Penjemputan": ["Foto wajib; penolakan beralasan; hasil aktual dapat dimasukkan; penyelesaian menghasilkan transaksi.", "Jika kapasitas tanggal penuh, sistem menolak tanggal tersebut dan menawarkan jadwal lain tanpa menggunakan perkiraan sebagai dasar saldo."],
-        "20.5 Pencairan": ["Saldo diperiksa dan ditahan; admin memutuskan; petugas mencatat pembayaran dan bukti; tidak selesai dua kali."],
+        "20.4 Penjemputan": ["Foto wajib; penolakan beralasan; hasil aktual dapat dimasukkan; penyelesaian menghasilkan transaksi.", "Tanggal di luar horizon ditolak; tanggal valid diterima sebagai permintaan. Perkiraan tidak menjadi saldo dan pickup menunggu jika setoran perlu pemeriksaan."],
+        "20.5 Pencairan": ["Saldo diperiksa dan ditahan; admin memutuskan; bendahara ditugaskan mencatat pembayaran dan bukti; tidak selesai dua kali."],
         "20.6 Sembako": ["Paket dapat dipilih; saldo ditahan; ketersediaan diperiksa manual; bukti penyerahan tersimpan; saldo dipotong setelah penyerahan selesai."],
         "20.7 Laporan dan audit": ["Laporan dapat difilter dan diekspor; koreksi, harga, persetujuan, pembayaran, dan ekspor dapat ditelusuri."],
         "20.8 Tampilan": ["Dapat digunakan pada HP dan laptop, termasuk lebar 360 px; tanpa scroll horizontal; tombol mudah ditekan; status tidak hanya warna."],
@@ -517,7 +517,9 @@ def build_story() -> list:
     s += section("26. Pelatihan Pengguna")
     training = [
         ["Warga", "Registrasi, login, harga, saldo, riwayat, penjemputan, pencairan, sembako, keamanan akun."],
-        ["Petugas", "Pencarian/QR, penimbangan, perhitungan, penjemputan, pembayaran, penyerahan, bukti, kesalahan input, kerahasiaan."],
+        ["Petugas", "Pencarian/QR, penimbangan, penjemputan, paket siap, serah-terima, bukti, dan kendala."],
+        ["Bendahara", "Penugasan pembayaran, kecocokan penerima, foto, dan satu konfirmasi pencatatan tunai."],
+        ["Superadmin", "Kewenangan admin, akses dan sesi, rekonsiliasi berizin, audit, dan Health baca-saja."],
         ["Admin", "Verifikasi, pengguna, harga, transaksi, koreksi, saldo, persetujuan, laporan, audit, rekonsiliasi."],
     ]
     s += [table(["Peserta", "Materi"], training, [3.2*cm, 12.4*cm])]

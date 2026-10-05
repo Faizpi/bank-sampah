@@ -34,9 +34,7 @@ final class DepositHistory extends Component
     /** @var list<string> */
     public array $statuses = [
         Deposit::STATUS_DRAFT,
-        Deposit::STATUS_PENDING_REVIEW,
         Deposit::STATUS_FINAL,
-        Deposit::STATUS_REJECTED,
         Deposit::STATUS_CORRECTED,
         Deposit::STATUS_REVERSED,
     ];

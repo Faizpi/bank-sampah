@@ -34,9 +34,8 @@
                 @php
                     $badgeStatus = match ($redemption->status) {
                         \App\Domain\Groceries\Enums\GroceryStatus::Completed => 'success',
-                        \App\Domain\Groceries\Enums\GroceryStatus::Rejected => 'error',
+                        \App\Domain\Groceries\Enums\GroceryStatus::Unavailable => 'error',
                         \App\Domain\Groceries\Enums\GroceryStatus::Cancelled => 'cancelled',
-                        \App\Domain\Groceries\Enums\GroceryStatus::Expired => 'expired',
                         \App\Domain\Groceries\Enums\GroceryStatus::Preparing, \App\Domain\Groceries\Enums\GroceryStatus::ReadyForPickup => 'info',
                         default => 'pending',
                     };

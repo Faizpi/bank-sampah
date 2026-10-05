@@ -29,7 +29,7 @@ final class GroceryShow extends Component
         /** @var User $actor */
         $actor = auth()->user();
         $this->redemption = $service->cancel($actor, $this->redemption, 'Warga membatalkan pengajuan sebelum persetujuan.');
-        session()->flash('success', 'Pengajuan penukaran sembako dibatalkan. Dana yang ditahan dikembalikan jika ada.');
+        session()->flash('success', $this->redemption->status->value === 'dibatalkan' ? 'Pengajuan dibatalkan dan saldo tertahan dilepas.' : 'Permintaan batal dikirim. Penyerahan dikunci; saldo tetap ditahan sampai serah fisik dipastikan.');
         $this->dispatch('close-dialog', id: 'cancel-grocery-dialog');
     }
 

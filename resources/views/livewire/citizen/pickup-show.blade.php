@@ -3,8 +3,7 @@
 
 @php
     $pickupStages = [
-        ['title' => 'Diajukan', 'description' => 'Permintaan tercatat dan menunggu pemeriksaan petugas.', 'icon' => 'file-check', 'statuses' => ['menunggu_pemeriksaan']],
-        ['title' => 'Diterima', 'description' => 'Permintaan diterima untuk dijadwalkan.', 'icon' => 'clipboard-check', 'statuses' => ['diterima']],
+        ['title' => 'Diajukan', 'description' => 'Permintaan tercatat dan menunggu Petugas mengambil tugas.', 'icon' => 'file-check', 'statuses' => ['menunggu_petugas']],
         ['title' => 'Dijadwalkan', 'description' => 'Tanggal layanan sudah ditetapkan.', 'icon' => 'calendar-days', 'statuses' => ['dijadwalkan']],
         ['title' => 'Menuju lokasi', 'description' => 'Petugas sedang menuju alamat penjemputan.', 'icon' => 'truck', 'statuses' => ['menuju_lokasi']],
         ['title' => 'Dijemput', 'description' => 'Sampah sedang diperiksa dan ditimbang di lokasi.', 'icon' => 'map-pin', 'statuses' => ['dijemput']],
@@ -21,10 +20,7 @@
 @endphp
 
 <section aria-labelledby="pickup-detail-title" class="grid gap-6">
-    <x-ui.service-progress :status="$pickup->status" :next-step="$pickup->deposit?->isPendingReview() ? 'Hasil timbang sedang diperiksa. Saldo belum bertambah.' : null" />
-    @if ($pickup->deposit?->isPendingReview())
-        <p role="status" class="rounded-xl border border-border bg-warning-bg p-4">Sampah sudah dijemput. Hasil timbang sedang diperiksa; saldo belum bertambah.</p>
-    @endif
+    <x-ui.service-progress :status="$pickup->status"  />
     {{-- Page header --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -50,7 +46,7 @@
             </div>
             <div class="rounded-lg bg-warm-canvas px-3 py-2">
                 <dt class="text-caption font-medium text-text-secondary">Tanggal jadwal</dt>
-                <dd class="mt-0.5 font-semibold text-deep-green">{{ $pickup->scheduled_date?->translatedFormat('d F Y') ?? 'Menunggu pemeriksaan' }}</dd>
+                <dd class="mt-0.5 font-semibold text-deep-green">{{ $pickup->scheduled_date?->translatedFormat('d F Y') ?? 'Menunggu Petugas' }}</dd>
             </div>
             <div class="rounded-lg bg-warm-canvas px-3 py-2">
                 <dt class="text-caption font-medium text-text-secondary">Perkiraan berat</dt>
@@ -101,7 +97,7 @@
     </x-ui.panel>
     </details>
 
-    @if (in_array($pickup->status->value, ['menunggu_pemeriksaan', 'diterima', 'dijadwalkan'], true))
+    @if (in_array($pickup->status->value, ['menunggu_petugas'], true))
         <div class="flex justify-end">
             <button type="button" x-on:click="$dispatch('open-dialog', { id: 'cancel-pickup-dialog', invoker: $el })"
                 class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">

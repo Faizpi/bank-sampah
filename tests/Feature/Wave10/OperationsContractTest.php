@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use App\Domain\AuditReconciliation\Models\AuditLog;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Operations\Enums\BackupRestoreVerificationResult;
 use App\Domain\Operations\Enums\BackupStatus;
 use App\Domain\Operations\Exceptions\BackupRequestConflict;
@@ -25,6 +23,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\RoleFixtures;
 
 uses(RefreshDatabase::class);
 
@@ -598,10 +597,7 @@ it('prints only sanitized read-only smoke checks', function (): void {
 
 function grantOperationPermission(User $user, string $permissionName): void
 {
-    $role = Role::query()->firstOrCreate(['name' => 'operations-test-role'], ['description' => 'Role test operasi']);
-    $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => 'Permission test operasi']);
-    $role->permissions()->syncWithoutDetaching([$permission->id => ['reason' => 'test']]);
-    $user->roles()->syncWithoutDetaching([$role->id => ['reason' => 'test']]);
+    $user = RoleFixtures::assign($user, [$permissionName]);
 }
 
 function pairedBackupArtifacts(): BackupArtifactPair

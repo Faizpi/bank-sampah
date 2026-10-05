@@ -7,8 +7,7 @@ namespace Tests\Feature\Pickups;
 use App\Domain\CustomersRegions\Actions\ManageRegions;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Identity\Enums\UserStatus;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
+use App\Domain\Identity\Models\StaffProfile;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Pickups\Services\PickupService;
@@ -20,6 +19,7 @@ use App\Domain\WasteMaster\Support\WasteMasterMutationGuard;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class PickupRouteTest extends TestCase
@@ -29,7 +29,7 @@ final class PickupRouteTest extends TestCase
     public function test_citizen_request_and_detail_routes_require_permission_and_owner_scope(): void
     {
         [$customer, $area, $type] = $this->context();
-        $this->actingAs($customer)->get(route('citizen.pickup.create'))->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => 'petugas']))->get(route('citizen.pickup.create'))->assertForbidden();
         $this->grant($customer, 'pickup.request', 'pickup.view');
 
         $this->actingAs($customer)->get(route('citizen.pickup.create'))->assertOk()->assertSee('Ajukan penjemputan');
@@ -89,6 +89,8 @@ final class PickupRouteTest extends TestCase
     {
         [$customer, $area] = $this->context();
 
+        StaffProfile::create(['user_id' => $staff->id, 'staff_number' => 'PICKUP-TEST-'.$staff->id, 'service_area_id' => $area->id]);
+
         return PickupRequest::query()->create([
             'request_number' => 'PUP-ROUTE-ASSIGNED-'.$staff->id,
             'customer_id' => $customer->id,
@@ -104,11 +106,6 @@ final class PickupRouteTest extends TestCase
 
     private function grant(User $user, string ...$permissions): void
     {
-        $role = Role::query()->create(['name' => 'w5-route-role-'.$user->id.'-'.str()->random(5), 'description' => 'W5 route']);
-        foreach ($permissions as $name) {
-            $permission = Permission::query()->firstOrCreate(['name' => $name], ['description' => $name]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
     }
 }

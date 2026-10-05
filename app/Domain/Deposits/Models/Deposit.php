@@ -34,15 +34,12 @@ final class Deposit extends Model
 
     public const STATUS_FINAL = 'final';
 
-    public const STATUS_PENDING_REVIEW = 'menunggu_persetujuan';
-
-    public const STATUS_REJECTED = 'ditolak';
-
     public const STATUS_CORRECTED = 'dikoreksi';
 
     public const STATUS_REVERSED = 'dibalik';
 
     protected $fillable = [
+        'finalization_payload_hash',
         'deposit_number', 'customer_id', 'staff_id', 'method', 'pickup_request_id', 'mobile_service_id', 'location',
         'occurred_at', 'status', 'total_weight_kg', 'total_value', 'finalized_at', 'review_requested_at', 'reviewed_at', 'reviewed_by', 'review_reason',
         'idempotency_key', 'verification_token_hash', 'verification_token_encrypted',
@@ -122,11 +119,6 @@ final class Deposit extends Model
         return $this->status === self::STATUS_DRAFT;
     }
 
-    public function isPendingReview(): bool
-    {
-        return $this->status === self::STATUS_PENDING_REVIEW;
-    }
-
     public function isFinal(): bool
     {
         return in_array($this->status, [self::STATUS_FINAL, self::STATUS_CORRECTED, self::STATUS_REVERSED], true);
@@ -190,15 +182,10 @@ final class Deposit extends Model
                 throw new LogicException('Final deposits are immutable; use a correction or reversal.');
             }
 
-            if ($originalStatus === self::STATUS_PENDING_REVIEW
-                && ($meaningfulDirty === [] || ! in_array((string) $deposit->getAttribute('status'), [self::STATUS_FINAL, self::STATUS_REJECTED], true)
-                    || array_diff($meaningfulDirty, ['status', 'finalized_at', 'reviewed_at', 'reviewed_by', 'review_reason']) !== [])) {
-                throw new LogicException('Setoran yang menunggu persetujuan hanya dapat ditinjau melalui proses persetujuan resmi.');
-            }
         });
 
         self::deleting(static function (self $deposit): void {
-            if ($deposit->isFinal() || $deposit->isPendingReview()) {
+            if ($deposit->isFinal()) {
                 throw new LogicException('Final deposits cannot be deleted.');
             }
         });

@@ -41,6 +41,20 @@ final class LedgerAccount extends Model
         return $incoming - $outgoing - $held;
     }
 
+    /** Read current rows while the account is locked, not an older MySQL snapshot. */
+    public function currentAvailableBalance(): int
+    {
+        $balance = 0;
+        foreach ($this->entries()->orderBy('id')->lockForUpdate()->get() as $entry) {
+            $balance += $entry->direction === LedgerEntry::DIRECTION_IN ? $entry->amount : -$entry->amount;
+        }
+        foreach ($this->holds()->where('status', BalanceHold::STATUS_ACTIVE)->orderBy('id')->lockForUpdate()->get() as $hold) {
+            $balance -= $hold->amount;
+        }
+
+        return $balance;
+    }
+
     protected static function booted(): void
     {
         self::deleting(static function (): void {

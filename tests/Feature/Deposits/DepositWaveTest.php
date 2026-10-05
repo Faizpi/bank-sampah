@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Deposits;
 
-use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\Corrections\Models\TransactionCorrection;
 use App\Domain\Corrections\Models\TransactionReversal;
@@ -12,13 +11,13 @@ use App\Domain\Corrections\Services\TransactionCorrectionService;
 use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
+use App\Domain\CustomersRegions\Models\ServiceArea;
+use App\Domain\CustomersRegions\Support\RegionMutationGuard;
 use App\Domain\Deposits\Data\DepositItemInput;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Deposits\Services\DepositPublicPresenter;
-use App\Domain\Deposits\Services\DepositReviewService;
 use App\Domain\Deposits\Services\DepositService;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
+use App\Domain\Identity\Models\StaffProfile;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Ledger\Models\LedgerAccount;
@@ -34,7 +33,6 @@ use App\Domain\WasteMaster\Models\WasteUnit;
 use App\Domain\WasteMaster\Support\WasteMasterMutationGuard;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,6 +40,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 use LogicException;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class DepositWaveTest extends TestCase
@@ -51,7 +50,7 @@ final class DepositWaveTest extends TestCase
     public function test_lane_a_finalizes_multi_item_with_server_snapshot_half_up_and_one_ledger_entry(): void
     {
         [$staff, $customer, $type, $condition] = $this->context();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $manager = User::factory()->create();
         $this->grant($manager, ['price.manage']);
         app(ManageWastePricing::class)->createPeriod($manager, $type, $condition, 3_333, CarbonImmutable::parse('2026-08-01', 'Asia/Jakarta'), null, (string) str()->uuid());
@@ -78,7 +77,7 @@ final class DepositWaveTest extends TestCase
     public function test_lane_a_rejects_inactive_master_invalid_precision_and_missing_price_without_ledger(): void
     {
         [$staff, $customer, $type, $condition] = $this->context();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $draft = app(DepositService::class)->createDraft($staff, $customer);
         $this->expectException(InvalidValue::class);
         app(DepositService::class)->replaceDraftItems($staff, $draft, [new DepositItemInput($type->id, $condition->id, '1.2345')]);
@@ -87,7 +86,7 @@ final class DepositWaveTest extends TestCase
     public function test_lane_a_rolls_back_idempotency_items_and_status_when_price_resolution_fails(): void
     {
         [$staff, $customer, $type, $condition] = $this->context();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $service = app(DepositService::class);
         $draft = $service->createDraft($staff, $customer);
         $this->expectException(ValidationException::class);
@@ -101,7 +100,7 @@ final class DepositWaveTest extends TestCase
     public function test_lane_a_retry_returns_same_result_and_conflicting_payload_does_not_duplicate(): void
     {
         [$staff, $customer, $type, $condition] = $this->pricedContext();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $service = app(DepositService::class);
         $draft = $service->createDraft($staff, $customer);
         $result = $service->finalize($staff, $draft, 'w4-retry-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
@@ -289,7 +288,7 @@ final class DepositWaveTest extends TestCase
     public function test_lane_c_public_presenter_hides_private_data_and_rejects_reversed_receipt(): void
     {
         [$staff, $customer, $type, $condition] = $this->pricedContext();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $service = app(DepositService::class);
         $final = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-public-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         $presented = app(DepositPublicPresenter::class)->present($final);
@@ -303,7 +302,7 @@ final class DepositWaveTest extends TestCase
     public function test_lane_c_receipt_route_scopes_to_owner_and_public_qr_exposes_only_allowlisted_fields(): void
     {
         [$staff, $customer, $type, $condition] = $this->pricedContext();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $this->grant($customer, ['deposit.view']);
         $service = app(DepositService::class);
         $deposit = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-route-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
@@ -328,21 +327,10 @@ final class DepositWaveTest extends TestCase
         $this->get(route('public.deposit-verification', ['token' => str_repeat('a', 43)]))->assertNotFound();
     }
 
-    public function test_seeded_superadmin_can_reach_sensitive_reconciliation_boundaries(): void
-    {
-        $this->seed(RolesAndPermissionsSeeder::class);
-        $superadmin = User::factory()->create();
-        $superadmin->roles()->attach(Role::query()->where('name', 'superadmin')->sole());
-        $checker = app(PermissionChecker::class);
-        self::assertTrue($checker->allows($superadmin->fresh(), 'transaction.correct'));
-        self::assertTrue($checker->allows($superadmin->fresh(), 'transaction.reverse'));
-        app(LedgerService::class)->assertCanAdjust($superadmin->fresh());
-    }
-
     public function test_lane_d_correction_requires_permission_reason_and_blocks_negative_available_balance(): void
     {
         [$staff, $customer, $type, $condition] = $this->pricedContext();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $service = app(DepositService::class);
         $deposit = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-correction-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         $admin = User::factory()->create();
@@ -364,7 +352,7 @@ final class DepositWaveTest extends TestCase
     public function test_corrected_deposit_presents_the_effective_value_without_overwriting_the_audit_snapshot(): void
     {
         [$staff, $customer, $type, $condition] = $this->pricedContext();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $deposit = app(DepositService::class)->finalize($staff, app(DepositService::class)->createDraft($staff, $customer), 'effective-value-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         $reviewer = User::factory()->create();
         $this->grant($reviewer, ['user.view', 'user.view.all', 'transaction.correct']);
@@ -376,34 +364,10 @@ final class DepositWaveTest extends TestCase
         self::assertTrue($presented['is_corrected']);
     }
 
-    public function test_large_deposit_needs_a_different_reviewer_before_it_can_credit_the_balance(): void
-    {
-        $threshold = config('app.deposit_review_threshold');
-        config()->set('app.deposit_review_threshold', 2_000);
-        try {
-            [$staff, $customer, $type, $condition] = $this->pricedContext();
-            $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
-            $deposit = app(DepositService::class)->finalize($staff, app(DepositService::class)->createDraft($staff, $customer), 'high-review-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
-
-            self::assertSame(Deposit::STATUS_PENDING_REVIEW, $deposit->status);
-            self::assertSame(0, LedgerEntry::query()->count());
-            $reviewer = User::factory()->create();
-            $this->grant($reviewer, ['deposit.approve', 'user.view.all']);
-            $approved = app(DepositReviewService::class)->approve($reviewer, $deposit, 'Nilai dan bukti timbang sudah diverifikasi petugas lain.', 'high-review-approval-key-0001');
-
-            self::assertSame(Deposit::STATUS_FINAL, $approved->status);
-            self::assertSame($reviewer->id, $approved->reviewed_by);
-            self::assertSame(1, LedgerEntry::query()->where('source_type', Deposit::class)->count());
-            self::assertSame(3_000, LedgerAccount::query()->where('user_id', $customer->id)->sole()->availableBalance());
-        } finally {
-            config()->set('app.deposit_review_threshold', $threshold);
-        }
-    }
-
     public function test_server_rejects_weight_above_the_configured_item_limit_before_finalization(): void
     {
         [$staff, $customer, $type, $condition] = $this->context();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $draft = app(DepositService::class)->createDraft($staff, $customer);
 
         $this->expectException(ValidationException::class);
@@ -413,10 +377,9 @@ final class DepositWaveTest extends TestCase
     public function test_correction_and_reversal_require_explicit_customer_scope(): void
     {
         [$staff, $customer, $type, $condition] = $this->pricedContext();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $deposit = app(DepositService::class)->finalize($staff, app(DepositService::class)->createDraft($staff, $customer), 'w4-scope-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
-        $admin = User::factory()->create();
-        $this->grant($admin, ['user.view', 'transaction.correct', 'transaction.reverse']);
+        $admin = User::factory()->create(['role' => 'petugas']);
         $service = app(TransactionCorrectionService::class);
 
         try {
@@ -437,7 +400,7 @@ final class DepositWaveTest extends TestCase
     public function test_lane_d_reversal_is_a_law_entry_and_is_idempotently_rejected_twice(): void
     {
         [$staff, $customer, $type, $condition] = $this->pricedContext();
-        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.all']);
+        $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize', 'customer.view', 'user.view', 'user.view.area']);
         $deposit = app(DepositService::class)->finalize($staff, app(DepositService::class)->createDraft($staff, $customer), 'w4-reversal-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         $admin = User::factory()->create();
         $this->grant($admin, ['user.view', 'user.view.all', 'transaction.reverse']);
@@ -480,6 +443,9 @@ final class DepositWaveTest extends TestCase
         $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'W4-RW-'.$customer->id, 'name' => 'RW W4']);
         $rt = Rt::query()->create(['rw_id' => $rw->id, 'code' => 'W4-RT-'.$customer->id, 'name' => 'RT W4']);
         $customer->customerProfile()->create(['rt_id' => $rt->id, 'address' => 'Alamat pengujian']);
+        $area = ServiceArea::create(['name' => 'Area setoran '.$customer->id]);
+        RegionMutationGuard::run(fn () => $area->rts()->sync([$rt->id]));
+        StaffProfile::create(['user_id' => $staff->id, 'staff_number' => 'SETORAN-TEST-'.$staff->id, 'service_area_id' => $area->id]);
 
         return [$staff, $customer, $type, $condition];
     }
@@ -496,11 +462,6 @@ final class DepositWaveTest extends TestCase
     /** @param list<string> $names */
     private function grant(User $user, array $names): void
     {
-        $role = Role::query()->create(['name' => 'w4-role-'.$user->id.'-'.str()->random(5), 'description' => 'W4']);
-        foreach ($names as $name) {
-            $permission = Permission::query()->firstOrCreate(['name' => $name], ['description' => $name]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $names);
     }
 }

@@ -38,12 +38,12 @@ flowchart LR
     App --> DB[(MySQL 8.0.30)]
     App --> Private[(Storage Privat)]
     App --> PublicFiles[(Aset Publik Terkontrol)]
-    App --> WA[wa.me: dibuka manual]
+    App --> Notifications[Notifikasi dalam aplikasi]
     Cron[Hostinger Cron] --> Scheduler[Laravel Scheduler]
     Scheduler --> App
 ```
 
-WhatsApp bukan integrasi pengiriman. Aplikasi hanya membentuk tautan dan membuka klien pengguna.
+WhatsApp tidak digunakan. Telegram masih usulan dan belum memiliki adaptor, webhook, sesi bot, atau pengirim pesan.
 
 ## 4. Modular monolith
 
@@ -56,11 +56,11 @@ WhatsApp bukan integrasi pengiriman. Aplikasi hanya membentuk tautan dan membuka
 | WastePricing | Kategori, jenis, satuan, kondisi, edukasi, periode harga. | Mengubah snapshot transaksi lama. |
 | Deposits | Draf/final setoran, detail, bukti, koreksi, reversal, QR bukti. | Mengedit transaksi final langsung. |
 | Ledger | Rekening, mutasi masuk/keluar/penyesuaian, hold, saldo tersedia. | Menyimpan saldo sebagai angka bebas edit. |
-| Pickups | Pengajuan, foto, kapasitas, alternatif tanggal, penugasan, status. | Menggunakan perkiraan sebagai nilai saldo. |
+| Pickups | Pengajuan, foto, tanggal pilihan, penjadwalan manual, penugasan, dan status. | Menggunakan perkiraan sebagai nilai saldo. |
 | Withdrawals | Pengajuan, approve, pay, kedaluwarsa, bukti. | Menggabungkan approve dan pay sebagai satu permission. |
 | Groceries | Paket deskriptif, approve, prepare, handover, bukti. | Mengelola stok rinci. |
 | Programs | Target, layanan keliling, partisipasi wilayah, statistik publik. | Mengelola produksi paving block. |
-| Communications | Pengumuman, informasi status pada halaman terkait, dan template `wa.me`. | Menyatakan WhatsApp atau push notification terkirim otomatis. |
+| Communications | Pengumuman, informasi status, dan notifikasi dalam aplikasi. | Menyatakan WhatsApp atau push notification terkirim otomatis. |
 | Reporting | Laporan web dan file ekspor privat yang tersedia. | Melewati scope record. |
 | AuditReconciliation | Audit append-oriented dan insiden operasional. | Menghapus audit lewat fungsi operasional. |
 | Platform | Media, scheduler, Health, dan PWA. | Menambahkan UI teknis selain Health atau memerlukan daemon shared hosting. |
@@ -246,7 +246,7 @@ Manifest menyediakan instalasi. Offline tidak berarti transaksi offline.
 
 | Integrasi | Kontrak |
 |---|---|
-| WhatsApp | URL `https://wa.me/<nomor>?text=<encoded>`; pengguna mengirim manual; tidak ada webhook/status kirim. |
+| Notifikasi aplikasi | Disimpan setelah commit; status delivered berarti tersimpan, bukan pesan eksternal terkirim. |
 | MySQL 8.0.30 | TLS bila tersedia/diwajibkan, least-privilege credential, koneksi dari aplikasi hosting. |
 | Object storage kompatibel S3 | Opsional jika dipilih; credential melalui environment; private bucket; signed URL. |
 

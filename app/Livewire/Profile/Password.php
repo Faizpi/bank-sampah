@@ -118,7 +118,7 @@ final class Password extends Component
 
     private function layoutFor(User $actor): string
     {
-        return $actor->roles()->whereIn('name', ['petugas', 'bendahara', 'admin', 'superadmin'])->exists()
+        return $actor->hasRole('petugas', 'bendahara', 'admin')
             ? 'layouts.officer'
             : 'layouts.citizen';
     }

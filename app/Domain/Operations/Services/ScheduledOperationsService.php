@@ -5,20 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Operations\Services;
 
 use App\Domain\AuditReconciliation\Services\AuditLogger;
-use App\Domain\Groceries\Enums\GroceryStatus;
-use App\Domain\Groceries\Models\GroceryRedemption;
-use App\Domain\Groceries\Services\GroceryService;
 use App\Domain\Ledger\Models\IdempotencyKey;
 use App\Domain\Notifications\Models\NotificationDeliveryFailure;
-use App\Domain\Pickups\Enums\PickupStatus;
-use App\Domain\Pickups\Models\PickupRequest;
-use App\Domain\Pickups\Services\PickupService;
 use App\Domain\Reports\Enums\ReportExportStatus;
 use App\Domain\Reports\Models\ReportExport;
 use App\Domain\Reports\Services\ReportExportService;
-use App\Domain\Withdrawals\Enums\WithdrawalStatus;
-use App\Domain\Withdrawals\Models\WithdrawalRequest;
-use App\Domain\Withdrawals\Services\WithdrawalService;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -27,22 +18,16 @@ use Illuminate\Support\Str;
 final readonly class ScheduledOperationsService
 {
     public function __construct(
-        private WithdrawalService $withdrawals,
-        private GroceryService $groceries,
-        private PickupService $pickups,
         private ReportExportService $exports,
         private AuditLogger $auditLogger,
     ) {}
 
-    /** @return array{withdrawals: int, groceries: int, pickups: int, exports: int} */
+    /** @return array{exports: int} */
     public function expireEligible(): array
     {
         $now = now();
 
         return [
-            'withdrawals' => $this->expireWithdrawals($now),
-            'groceries' => $this->expireGroceries($now),
-            'pickups' => $this->expirePickups($now),
             'exports' => $this->expireExports($now),
         ];
     }
@@ -57,69 +42,6 @@ final readonly class ScheduledOperationsService
             'idempotency_keys' => $this->purgeIdempotencyKeys($now, $correlationId),
             'notification_failures' => $this->purgeNotificationFailures($now, $correlationId),
         ];
-    }
-
-    private function expireWithdrawals(CarbonInterface $now): int
-    {
-        $ids = $this->ids(
-            WithdrawalRequest::query()
-                ->whereIn('status', [
-                    WithdrawalStatus::PendingVerification->value,
-                    WithdrawalStatus::Approved->value,
-                    WithdrawalStatus::ReadyForPickup->value,
-                ])
-                ->whereNotNull('expires_at')
-                ->where('expires_at', '<=', $now),
-        );
-
-        $expired = 0;
-        foreach ($ids as $id) {
-            $expired += $this->expireWithdrawal($id, $now) ? 1 : 0;
-        }
-
-        return $expired;
-    }
-
-    private function expireGroceries(CarbonInterface $now): int
-    {
-        $ids = $this->ids(
-            GroceryRedemption::query()
-                ->whereIn('status', [
-                    GroceryStatus::PendingVerification->value,
-                    GroceryStatus::Approved->value,
-                    GroceryStatus::Preparing->value,
-                    GroceryStatus::ReadyForPickup->value,
-                ])
-                ->whereNotNull('expires_at')
-                ->where('expires_at', '<=', $now),
-        );
-
-        $expired = 0;
-        foreach ($ids as $id) {
-            $expired += $this->expireGrocery($id, $now) ? 1 : 0;
-        }
-
-        return $expired;
-    }
-
-    private function expirePickups(CarbonInterface $now): int
-    {
-        $ids = $this->ids(
-            PickupRequest::query()
-                ->whereIn('status', [
-                    PickupStatus::PendingReview->value,
-                    PickupStatus::Accepted->value,
-                    PickupStatus::Scheduled->value,
-                ])
-                ->whereDate('scheduled_date', '<', $now->toDateString()),
-        );
-
-        $expired = 0;
-        foreach ($ids as $id) {
-            $expired += $this->expirePickup($id, $now) ? 1 : 0;
-        }
-
-        return $expired;
     }
 
     private function expireExports(CarbonInterface $now): int
@@ -137,48 +59,6 @@ final readonly class ScheduledOperationsService
         }
 
         return $expired;
-    }
-
-    private function expireWithdrawal(int $id, CarbonInterface $now): bool
-    {
-        return DB::transaction(function () use ($id, $now): bool {
-            $withdrawal = WithdrawalRequest::query()->lockForUpdate()->find($id);
-            if (! $withdrawal instanceof WithdrawalRequest || ! $this->isExpiredWithdrawal($withdrawal, $now)) {
-                return false;
-            }
-
-            $this->withdrawals->expire($withdrawal);
-
-            return true;
-        }, 3);
-    }
-
-    private function expireGrocery(int $id, CarbonInterface $now): bool
-    {
-        return DB::transaction(function () use ($id, $now): bool {
-            $redemption = GroceryRedemption::query()->lockForUpdate()->find($id);
-            if (! $redemption instanceof GroceryRedemption || ! $this->isExpiredGrocery($redemption, $now)) {
-                return false;
-            }
-
-            $this->groceries->expire($redemption);
-
-            return true;
-        }, 3);
-    }
-
-    private function expirePickup(int $id, CarbonInterface $now): bool
-    {
-        return DB::transaction(function () use ($id, $now): bool {
-            $pickup = PickupRequest::query()->lockForUpdate()->find($id);
-            if (! $pickup instanceof PickupRequest || ! $this->isExpiredPickup($pickup, $now)) {
-                return false;
-            }
-
-            $this->pickups->expire($pickup);
-
-            return true;
-        }, 3);
     }
 
     private function expireExport(int $id, CarbonInterface $now, string $correlationId): bool
@@ -267,27 +147,6 @@ final readonly class ScheduledOperationsService
 
             return true;
         }, 3);
-    }
-
-    private function isExpiredWithdrawal(WithdrawalRequest $withdrawal, CarbonInterface $now): bool
-    {
-        return ! $withdrawal->status->isTerminal()
-            && $withdrawal->expires_at !== null
-            && $withdrawal->expires_at->lessThanOrEqualTo($now);
-    }
-
-    private function isExpiredGrocery(GroceryRedemption $redemption, CarbonInterface $now): bool
-    {
-        return ! $redemption->status->isTerminal()
-            && $redemption->expires_at !== null
-            && $redemption->expires_at->lessThanOrEqualTo($now);
-    }
-
-    private function isExpiredPickup(PickupRequest $pickup, CarbonInterface $now): bool
-    {
-        return ! $pickup->isTerminal()
-            && $pickup->scheduled_date !== null
-            && $pickup->scheduled_date->isBefore($now->copy()->startOfDay());
     }
 
     private function isExpiredExport(ReportExport $export, CarbonInterface $now): bool

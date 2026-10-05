@@ -1,94 +1,83 @@
 <p align="center">
-  <img src="./public/images/landing/mascot-6.png" width="180" alt="Maskot Bank Sampah Digital Sindangheula">
+  <img src="./public/images/landing/mascot-6.png" width="160" alt="Maskot Bank Sampah Digital Sindangheula">
 </p>
 
-<h1 align="center">Bank Sampah Digital Sindangheula</h1>
+# Bank Sampah Digital Sindangheula
 
-<p align="center">Sistem informasi layanan bank sampah Desa Sindangheula yang transparan dan dapat ditelusuri.</p>
+Website layanan bank sampah Desa Sindangheula untuk mencatat setoran, saldo, penjemputan, pencairan tunai, dan penukaran sembako.
 
-<p align="center">
-  <a href="docs/README.md">Dokumentasi</a> |
-  <a href="docs/PRODUCT.md">Produk</a> |
-  <a href="docs/DEPLOYMENT.md">Deployment</a> |
-  <a href="docs/TEST_PLAN.md">Pengujian</a>
-</p>
+[Alur pengguna](docs/WEB_WORKFLOW.md) · [Dokumentasi](docs/README.md) · [Pengujian](docs/TEST_PLAN.md) · [Deployment](docs/DEPLOYMENT.md)
 
-> **Status: belum siap produksi.** Proyek masih dalam baseline pengembangan. Kesiapan tiap alur bergantung pada implementasi, pengujian, UAT, dan validasi deployment yang terdokumentasi.
+> Pengembangan web aktif. Pengujian lokal tidak menggantikan UAT dan persetujuan rilis. Bot Telegram belum diimplementasikan, WhatsApp tidak digunakan, dan pencairan hanya tunai.
 
-## Ringkasan
+## Dibuat untuk layanan desa
 
-Aplikasi web mobile-first ini mendukung informasi publik, layanan warga, pekerjaan lapangan, setoran, saldo, penjemputan, pencairan, penukaran sembako, pelaporan, dan audit. Warga tanpa smartphone tetap dapat dilayani petugas melalui nomor atau kartu nasabah serta bukti transaksi.
-
-## Fitur menurut peran
-
-| Peran | Ringkasan fitur |
+| Pengguna | Pekerjaan utama |
 | --- | --- |
-| Publik | Katalog dan harga sampah, pengumuman, jadwal layanan keliling, statistik agregat, verifikasi bukti QR. |
-| Warga | Registrasi, saldo dan riwayat, estimasi, penjemputan, pencairan, bukti transaksi, kartu nasabah, penukaran sembako. |
-| Petugas | Pencarian nasabah, setoran multi-item, tugas penjemputan, penukaran, dan layanan keliling. |
-| Bendahara | Verifikasi dan pencatatan pencairan, bukti pembayaran, laporan sesuai permission. |
-| Back-office | Verifikasi warga, bantuan kata sandi, role dan permission, wilayah, harga, pencairan, penukaran, audit, dan rekonsiliasi. Health hanya tersedia sebagai UI teknis untuk Superadmin. |
+| Warga | Melihat saldo/riwayat, kartu nasabah, dan mengajukan pickup, pencairan, atau sembako. |
+| Petugas | Identifikasi warga, timbang/setoran, pickup yang ditugaskan, layanan keliling, dan serah-terima sembako sesuai area. |
+| Bendahara | Memverifikasi penerima dan mencatat pembayaran tunai yang ditugaskan. |
+| Admin | Verifikasi warga, harga/master, persetujuan dan penugasan, jadwal, serta laporan. |
+| Superadmin | Kewenangan admin ditambah pengelolaan akses, rekonsiliasi berizin, dan Health baca-saja. |
 
-## Stack dan kebutuhan runtime
+Pelayanan berbantuan tetap tersedia untuk warga tanpa smartphone.
 
-- Laravel 13, PHP `^8.3` atau PHP 8.3+.
-- MySQL 8.0.30-compatible, InnoDB, dan `utf8mb4`.
-- Blade, Livewire 4, Filament 5, Tailwind CSS, dan Vite.
-- Media, bukti, dan file sensitif disimpan di storage privat.
-- Hosting harus menjadikan `public/` sebagai document root dan memberi akses tulis hanya pada `storage/` serta `bootstrap/cache/`.
-- Node.js hanya diperlukan untuk build Vite di lokal atau CI, bukan sebagai runtime production.
+## Alur yang lebih ringkas
 
-## Mulai cepat di lokal
+- Alamat pickup diisi awal dari profil; area tunggal digunakan otomatis.
+- Admin menerima sekaligus menjadwalkan pickup dalam satu formulir.
+- Admin menyetujui sekaligus menetapkan bendahara dalam satu formulir.
+- Ringkasan setoran dan pembayaran tetap terlihat sebelum satu konfirmasi akhir.
+- Petugas cukup menandai paket sembako siap, lalu melakukan serah-terima terverifikasi.
+- Ringkasan status warga dilengkapi rincian tahapan yang dapat dibuka bila diperlukan.
+- Kartu antrean membuka daftar terfilter; profil dan tugas pengguna dikelola dalam satu formulir.
 
-Prasyarat: PHP 8.3+, Composer 2, Node.js dan npm, serta MySQL yang kompatibel. Salin `.env.example` menjadi `.env`, lalu isi koneksi database lokal.
+## Integritas transaksi
+
+Saldo tersedia dihitung dari mutasi masuk dikurangi mutasi keluar dan hold aktif. Hold belum merupakan pengeluaran. Pembayaran atau penyerahan membuat mutasi keluar dan menutup hold secara atomik.
+
+Setoran bernilai tinggi menunggu pemeriksa berbeda; pickup belum selesai selama setorannya belum final. Bukti tersimpan privat. Aksi finansial memeriksa izin, pemilik/penugasan, status, area, dan idempotensi di server. Admin operasional tidak dapat membuat atau mengambil alih akun superadmin.
+
+## Teknologi
+
+Laravel 13, PHP 8.3+, MySQL 8.0.30-compatible/InnoDB, Blade, Livewire 4, Filament 5, Tailwind CSS, dan Vite. Node.js diperlukan untuk build aset, bukan runtime web produksi.
+
+## Menjalankan secara lokal
+
+Siapkan PHP 8.3+, Composer 2, Node.js/npm, dan MySQL lokal (misalnya Laragon). Gunakan database lokal sendiri, bukan database produksi.
+
+1. Jalankan `composer install` dan `npm ci --ignore-scripts`.
+2. Salin `.env.example` menjadi `.env`, lalu isi koneksi database lokal dan URL aplikasi.
+3. Jalankan `php artisan key:generate`, lalu `php artisan migrate` pada database lokal tersebut.
+4. Jalankan `npm run build`.
+5. Arahkan document root Laragon ke `public/`, atau gunakan `php artisan serve`.
+
+Jangan mengunggah `.env`, data lokal, log, atau kredensial ke GitHub. Akun dan data demo hanya untuk lingkungan uji.
+
+## Pengujian
 
 ```bash
-composer setup
-composer dev
-```
-
-`composer setup` menyiapkan dependency, environment lokal, key aplikasi, migrasi, dan aset. `composer dev` menjalankan lingkungan pengembangan lokal.
-
-## Verifikasi penting
-
-```bash
-composer check
+composer test
+composer analyse
+php vendor/bin/pint --test
 npm run build
-php artisan migrate:status
+node --test tests/browser/support/isolated-environment.test.mjs
 ```
 
-Build Vite harus menghasilkan `public/build/manifest.json`. Pengujian SQLite tidak membuktikan kompatibilitas MySQL production, lakukan rehearsal pada MySQL 8.0.30-compatible sebelum rilis.
+Tes otomatis menggunakan SQLite memori dan storage sementara terpisah. Runner menolak database operasional; pengujian MySQL hanya boleh memakai database disposable bernama `bank_sampah_test` atau suffix-nya.
 
-## Perubahan untuk upload hosting
+Uji browser juga memerlukan URL loopback dan token yang memverifikasi identitas database server. Lihat [rencana pengujian](docs/TEST_PLAN.md) dan [hasil validasi lokal](docs/VALIDATION_2026-10-05.md). Hasil SQLite tidak membuktikan seluruh perilaku locking MySQL.
 
-Gunakan artefak release yang dibangun dari commit atau tag yang disetujui. Untuk setiap perubahan **kode aplikasi, konfigurasi, dependency, aset, dokumentasi, atau PDF**, unggah **seluruh artefak release**, bukan hanya file PDF. Ini menjaga source, `composer.lock`, hasil build Vite, dan dokumen release tetap sinkron.
+## Dokumentasi dan batas lingkup
 
-### Checklist perubahan
-
-- [ ] **Wajib unggah seluruh artefak release:** perubahan pada `app/`, `bootstrap/`, `config/`, `database/`, `resources/`, `routes/`, `public/`, `composer.json`, `composer.lock`, atau dependency/aset yang dibangun.
-- [ ] **Wajib unggah seluruh artefak release:** perubahan pada `docs/` atau `documents/*.pdf`; jangan mengunggah PDF saja.
-- [ ] **Dokumen atau PDF saja:** tetap buat artefak release lengkap dan unggah seluruhnya. Tidak perlu migration atau build ulang cache bila kode, dependency, aset, dan konfigurasi tidak berubah.
-- [ ] Keluarkan `.env`, cache lokal, log, database lokal, `node_modules`, artefak test, dan secret dari artefak.
-- [ ] Pastikan `public/build/manifest.json` sudah ada dari build lokal atau CI.
-
-### Urutan deploy aman
-
-1. Verifikasi PHP web dan CLI memenuhi `^8.3`, MySQL kompatibel, HTTPS aktif, storage privat tersedia, dan document root dapat diarahkan hanya ke `public/`.
-2. Bangun serta verifikasi artefak, lalu unggah ke direktori nonpublik. Simpan `.env` production secara privat.
-3. Jalankan `composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction` dari root aplikasi. Jangan menjalankan `composer update` di production.
-4. Arahkan document root ke `public/`; pastikan file aplikasi dan data privat tidak dapat diakses dari web.
-5. Jalankan `php artisan migrate:status`, tinjau kompatibilitas schema dan rencana rollback, lalu jalankan `php artisan migrate --force` hanya setelah review tersebut selesai.
-6. Jalankan `php artisan optimize:clear`, `php artisan config:cache`, `php artisan route:cache`, dan `php artisan view:cache`.
-7. Jika scheduler digunakan, pasang cron provider untuk `php artisan schedule:run`; kemudian verifikasi database, storage privat, Health, dan aset sebelum membuka trafik.
-
-## Dokumentasi lengkap
-
-- [Pusat dokumentasi](docs/README.md)
-- [Kontrak produk](docs/PRODUCT.md)
-- [Arsitektur](docs/ARCHITECTURE.md)
-- [Panduan deployment dan rollback](docs/DEPLOYMENT.md)
+- [Workflow warga dan pengurus](docs/WEB_WORKFLOW.md)
+- [Aturan bisnis](docs/BUSINESS_RULES.md)
+- [Role dan izin](docs/PERMISSIONS.md)
 - [Keamanan](docs/SECURITY.md)
-- [Rencana pengujian](docs/TEST_PLAN.md)
-- [Operasi](docs/OPERATIONS.md)
+- [Keputusan terbaru](docs/DECISIONS.md)
+- [Catatan perubahan](docs/CHANGELOG.md)
+- [Deployment dan rollback](docs/DEPLOYMENT.md)
 
-Lisensi pada metadata package adalah MIT. Distribusi dan notice final mengikuti kebijakan lisensi proyek.
+Penimbangan/finalisasi setoran serta persiapan/serah-terima sembako tetap melalui web. Integrasi Telegram merupakan tahap terpisah setelah workflow web disepakati dan diuji; repository ini belum menyediakan bot.
+
+Lisensi metadata package: MIT. Distribusi mengikuti kebijakan lisensi proyek.

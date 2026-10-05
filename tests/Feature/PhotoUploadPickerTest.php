@@ -5,11 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Livewire\Citizen\PickupRequestForm;
-use App\Livewire\Officer\CustomerIdentification;
-use App\Livewire\Officer\DepositForm;
-use App\Livewire\Officer\GroceryTasks;
 use App\Livewire\Officer\PickupTask;
-use App\Livewire\Treasurer\WithdrawalPayments;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
@@ -111,17 +107,15 @@ final class PhotoUploadPickerTest extends TestCase
         $views = [
             'livewire/citizen/pickup-request-form.blade.php',
             'livewire/officer/pickup-task.blade.php',
-            'livewire/treasurer/withdrawal-payments.blade.php',
             'livewire/officer/deposit-form.blade.php',
-            'livewire/officer/grocery-tasks.blade.php',
-            'livewire/officer/customer-identification.blade.php',
+            'livewire/service-task-queue.blade.php',
         ];
         $contents = implode("\n", array_map(
             static fn (string $view): string => (string) file_get_contents(resource_path("views/{$view}")),
             $views,
         ));
 
-        self::assertSame(7, substr_count($contents, '<x-ui.media-picker'));
+        self::assertSame(4, substr_count($contents, '<x-ui.media-picker'));
         self::assertStringNotContainsString('wire:model="evidence" type="file"', $contents);
         self::assertStringNotContainsString('wire:model="proof" type="file"', $contents);
         self::assertStringNotContainsString('wire:model="assistedEvidence" type="file"', $contents);
@@ -149,10 +143,9 @@ final class PhotoUploadPickerTest extends TestCase
     {
         $citizenComponent = (string) file_get_contents(app_path('Livewire/Citizen/PickupRequestForm.php'));
         $officerComponent = (string) file_get_contents(app_path('Livewire/Officer/PickupTask.php'));
-        $treasurerComponent = (string) file_get_contents(app_path('Livewire/Treasurer/WithdrawalPayments.php'));
+        $treasurerComponent = (string) file_get_contents(app_path('Livewire/Concerns/ServiceTaskQueue.php'));
         $depositComponent = (string) file_get_contents(app_path('Livewire/Officer/DepositForm.php'));
-        $groceryComponent = (string) file_get_contents(app_path('Livewire/Officer/GroceryTasks.php'));
-        $identificationComponent = (string) file_get_contents(app_path('Livewire/Officer/CustomerIdentification.php'));
+        $groceryComponent = (string) file_get_contents(app_path('Livewire/Concerns/ServiceTaskQueue.php'));
 
         self::assertStringContainsString('public function removePhoto(int $index): void', $citizenComponent);
         self::assertStringContainsString('public function updatedPhotos(): void', $citizenComponent);
@@ -165,53 +158,6 @@ final class PhotoUploadPickerTest extends TestCase
         self::assertStringContainsString('public function confirmEvidenceUpload(): array', $depositComponent);
         self::assertStringContainsString('public function clearProof(): void', $groceryComponent);
         self::assertStringContainsString('public function confirmProofUpload(): array', $groceryComponent);
-        self::assertStringContainsString('public function clearAssistedEvidence(): void', $identificationComponent);
-        self::assertStringContainsString('public function confirmAssistedEvidenceUpload(): array', $identificationComponent);
-        self::assertStringContainsString('public function clearWithdrawalEvidence(): void', $identificationComponent);
-        self::assertStringContainsString('public function confirmWithdrawalEvidenceUpload(): array', $identificationComponent);
-    }
-
-    public function test_each_picker_confirms_the_authoritative_server_upload_before_showing_success(): void
-    {
-        $citizen = new PickupRequestForm;
-        $citizen->photos = [
-            UploadedFile::fake()->image('first.jpg'),
-            UploadedFile::fake()->image('second.jpg'),
-        ];
-        $citizen->addError('photos', 'Foto sampah wajib diisi.');
-
-        $citizenFiles = $citizen->confirmPhotoUploads();
-
-        self::assertSame(['first.jpg', 'second.jpg'], array_column($citizenFiles, 'name'));
-        self::assertFalse($citizen->getErrorBag()->has('photos'));
-
-        $officer = new PickupTask;
-        $officer->evidence = UploadedFile::fake()->image('evidence.jpg');
-        $officer->addError('evidence', 'Tambahkan bukti foto.');
-
-        self::assertSame('evidence.jpg', $officer->confirmEvidenceUpload()[0]['name']);
-        self::assertFalse($officer->getErrorBag()->has('evidence'));
-
-        $treasurer = new WithdrawalPayments;
-        $treasurer->proof = UploadedFile::fake()->image('proof.jpg');
-        $treasurer->addError('proof', 'Tambahkan satu foto bukti pembayaran.');
-
-        self::assertSame('proof.jpg', $treasurer->confirmProofUpload()[0]['name']);
-        self::assertFalse($treasurer->getErrorBag()->has('proof'));
-
-        $deposit = new DepositForm;
-        $deposit->evidence = UploadedFile::fake()->image('deposit.jpg');
-        self::assertSame('image/jpeg', $deposit->confirmEvidenceUpload()[0]['mimeType']);
-
-        $grocery = new GroceryTasks;
-        $grocery->proof = UploadedFile::fake()->image('handover.jpg');
-        self::assertSame('handover.jpg', $grocery->confirmProofUpload()[0]['name']);
-
-        $identification = new CustomerIdentification;
-        $identification->assistedEvidence = UploadedFile::fake()->image('assisted.jpg');
-        $identification->withdrawalEvidence = UploadedFile::fake()->image('withdrawal.jpg');
-        self::assertSame('assisted.jpg', $identification->confirmAssistedEvidenceUpload()[0]['name']);
-        self::assertSame('withdrawal.jpg', $identification->confirmWithdrawalEvidenceUpload()[0]['name']);
     }
 
     public function test_early_confirmation_does_not_add_a_required_error_while_livewire_is_settling_the_upload(): void

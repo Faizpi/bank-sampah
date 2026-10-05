@@ -9,6 +9,7 @@ use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Ledger\Services\LedgerService;
 use App\Filament\Resources\Ledger\Models\LedgerEntries\Pages\ManageLedgerEntries;
 use App\Models\User;
+use App\Support\Auth\AdminReauthentication;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -101,10 +102,12 @@ final class LedgerEntryResource extends Resource
                     ->schema([
                         Select::make('owner_id')->label('Nasabah')->options(fn (): array => User::query()->where('status', 'aktif')->orderBy('name')->pluck('name', 'id')->all())->searchable()->required(),
                         TextInput::make('delta')->label('Dampak saldo (Rp)')->numeric()->integer()->rule('not_in:0')->required(),
+                        TextInput::make('password')->label('Kata sandi Admin')->password()->required(),
                         Textarea::make('reason')->label('Alasan')->minLength(10)->maxLength(1000)->required(),
                         TextInput::make('idempotency_key')->label('Kunci transaksi unik')->default(fn (): string => 'ledger-adjust-'.str()->uuid())->required(),
                     ])
                     ->action(function (array $data): void {
+                        app(AdminReauthentication::class)->confirm(self::actor(), (string) $data['password']);
                         app(LedgerService::class)->adjust(self::actor(), User::query()->findOrFail((int) $data['owner_id']), (int) $data['delta'], (string) $data['reason'], (string) $data['idempotency_key']);
                     })
                     ->successNotificationTitle('Penyesuaian saldo tercatat.'),

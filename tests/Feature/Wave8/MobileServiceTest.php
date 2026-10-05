@@ -7,10 +7,10 @@ namespace Tests\Feature\Wave8;
 use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\Rw;
+use App\Domain\CustomersRegions\Models\ServiceArea;
+use App\Domain\CustomersRegions\Support\RegionMutationGuard;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Deposits\Services\DepositService;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\MobileServices\Services\MobileDepositGuard;
@@ -25,6 +25,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class MobileServiceTest extends TestCase
@@ -60,7 +61,7 @@ final class MobileServiceTest extends TestCase
             app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
 
             $this->expectException(ValidationException::class);
-            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+            app(MobileServiceService::class)->transition($staff, $service, MobileServiceStatus::Open);
         } finally {
             CarbonImmutable::setTestNow();
         }
@@ -76,7 +77,7 @@ final class MobileServiceTest extends TestCase
             app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
 
             $this->expectException(ValidationException::class);
-            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+            app(MobileServiceService::class)->transition($staff, $service, MobileServiceStatus::Open);
         } finally {
             CarbonImmutable::setTestNow();
         }
@@ -134,7 +135,7 @@ final class MobileServiceTest extends TestCase
             $this->grant($staff, ['deposit.create']);
             $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai RT 03', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 20, '', [$staff->id], [$type->id]);
             app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
-            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+            app(MobileServiceService::class)->transition($staff, $service, MobileServiceStatus::Open);
             $customer = User::factory()->create();
             $deposit = Deposit::query()->create([
                 'deposit_number' => 'DEP-MOBILE-LINK-001',
@@ -169,7 +170,7 @@ final class MobileServiceTest extends TestCase
             $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize']);
             $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai Slot Transaksi', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 1, '', [$staff->id], [$type->id]);
             app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
-            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+            app(MobileServiceService::class)->transition($staff, $service, MobileServiceStatus::Open);
             $customer = User::factory()->create();
             $customer->customerProfile()->create(['rt_id' => $rt->id, 'address' => 'Alamat warga layanan keliling']);
             $condition = $type->conditions()->firstOrFail();
@@ -198,7 +199,7 @@ final class MobileServiceTest extends TestCase
             $this->grant($staff, ['deposit.create', 'deposit.update-draft', 'deposit.finalize']);
             $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai Draf Terlampir', '2026-08-10 09:00:00', '2026-08-10 11:00:00', 1, '', [$staff->id], [$type->id]);
             app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
-            app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+            app(MobileServiceService::class)->transition($staff, $service, MobileServiceStatus::Open);
             $customer = User::factory()->create();
             $customer->customerProfile()->create(['rt_id' => $rt->id, 'address' => 'Alamat warga layanan keliling']);
             $condition = $type->conditions()->firstOrFail();
@@ -308,7 +309,7 @@ final class MobileServiceTest extends TestCase
         $rejected = WasteType::factory()->create();
         $service = app(MobileServiceService::class)->create($admin, null, $rt->id, 'Balai RT 04', now()->subHour()->toDateTimeString(), now()->addHour()->toDateTimeString(), 20, '', [$staff->id], [$accepted->id]);
         app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Published);
-        app(MobileServiceService::class)->transition($admin, $service, MobileServiceStatus::Open);
+        app(MobileServiceService::class)->transition($staff, $service, MobileServiceStatus::Open);
         $deposit = Deposit::query()->create([
             'deposit_number' => 'DEP-MOBILE-MULTI-REJECT-001',
             'customer_id' => User::factory()->create()->id,
@@ -381,7 +382,7 @@ final class MobileServiceTest extends TestCase
 
     private function context(): array
     {
-        $admin = $this->userWith('mobile-service.manage', 'mobile-service.operate', 'waste.manage');
+        $admin = $this->userWith('mobile-service.manage', 'waste.manage');
         $staff = $this->userWith('mobile-service.operate');
         $dusun = Dusun::query()->create(['code' => 'W8-DS-'.uniqid(), 'name' => 'W8 Dusun', 'is_active' => true]);
         $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => 'W8-RW-'.uniqid(), 'name' => 'W8 RW', 'is_active' => true]);
@@ -390,7 +391,9 @@ final class MobileServiceTest extends TestCase
         $unit = app(ManageWasteMaster::class)->createUnit($admin, 'W8-UNIT-'.uniqid(), 'Kilogram', 'kg', WasteUnit::CLASSIFICATION_WEIGHT, '1.000000');
         $condition = app(ManageWasteMaster::class)->createCondition($admin, 'W8-COND-'.uniqid(), 'Bersih', null);
         $type = app(ManageWasteMaster::class)->createType($admin, $category, $unit, 'W8-TYPE-'.uniqid(), 'Plastik', null, 0, true, true, [$condition->id]);
-        $staff->staffProfile()->create(['staff_number' => 'W8-STF-'.uniqid(), 'service_area_id' => null, 'active_from' => today(), 'active_to' => null]);
+        $area = ServiceArea::create(['name' => 'Area keliling '.$staff->id]);
+        RegionMutationGuard::run(fn () => $area->rts()->sync([$rt->id]));
+        $staff->staffProfile()->create(['staff_number' => 'W8-STF-'.uniqid(), 'service_area_id' => $area->id, 'active_from' => '2026-01-01', 'active_to' => null]);
 
         return [$admin, $staff, $rt, $type];
     }
@@ -406,11 +409,6 @@ final class MobileServiceTest extends TestCase
     /** @param list<string> $permissions */
     private function grant(User $user, array $permissions): void
     {
-        $role = Role::query()->create(['name' => 'w8-mobile-'.uniqid(), 'description' => 'W8 mobile test']);
-        foreach ($permissions as $permissionName) {
-            $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
-            $role->permissions()->attach($permission);
-        }
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, $permissions);
     }
 }

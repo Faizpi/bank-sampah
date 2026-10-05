@@ -47,20 +47,23 @@ final class PickupRequest extends Model
     }
 
     protected $fillable = [
+        'completion_payload_hash',
+        'exception_reported_at', 'exception_reason', 'exception_resolved_by_id', 'exception_resolved_at', 'exception_resolution',
+        'claimed_at', 'claim_released_at',
         'request_number', 'customer_id', 'rt_id', 'service_area_id', 'address', 'selected_date',
         'scheduled_date', 'estimated_weight_kg', 'notes', 'status', 'rejection_reason',
-        'cancellation_reason', 'assigned_staff_id', 'deposit_id', 'accepted_at', 'scheduled_at',
+        'cancellation_reason', 'assigned_staff_id', 'deposit_id', 'scheduled_at',
         'en_route_at', 'picked_up_at', 'completed_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'exception_reported_at' => 'immutable_datetime', 'exception_resolved_at' => 'immutable_datetime',
             'status' => PickupStatus::class,
             'selected_date' => 'immutable_date',
             'scheduled_date' => 'immutable_date',
             'estimated_weight_kg' => 'decimal:3',
-            'accepted_at' => 'immutable_datetime',
             'scheduled_at' => 'immutable_datetime',
             'en_route_at' => 'immutable_datetime',
             'picked_up_at' => 'immutable_datetime',

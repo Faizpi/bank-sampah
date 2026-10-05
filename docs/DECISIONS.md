@@ -2,7 +2,7 @@
 
 ## Konvensi
 
-Status: `Accepted`, `Superseded`, atau `Deprecated`. Semua keputusan di bawah berstatus `Accepted` dan mengikat baseline. Perubahan memerlukan change request, analisis dampak, persetujuan pengelola, pembaruan dokumen terkait, dan entri [CHANGELOG.md](CHANGELOG.md).
+Status: `Accepted`, `Superseded`, atau `Deprecated`. Status setiap keputusan mengikuti penandaan masing-masing; keputusan yang digantikan tetap disimpan sebagai riwayat. Perubahan memerlukan change request, analisis dampak, persetujuan pengelola, pembaruan dokumen terkait, dan entri [CHANGELOG.md](CHANGELOG.md).
 
 ## ADR-001 — Laravel, Blade, dan Livewire tanpa React
 
@@ -44,14 +44,9 @@ IMP-019 menetapkan fondasi teknis back-office Filament 5 sesuai ADR ini: instala
 - **Alternatif ditolak:** database embedded atau layanan terpisah yang menambah operasi.
 - **Referensi:** [DATA_MODEL.md](DATA_MODEL.md).
 
-## ADR-005 — WhatsApp manual melalui wa.me
-
-- **Status:** Accepted
-- **Konteks:** Pengguna membutuhkan komunikasi WhatsApp tanpa gateway otomatis dan tanpa klaim palsu status pengiriman.
-- **Keputusan:** Aplikasi membentuk tautan `wa.me` dan template terenkode; pengguna membuka, meninjau, lalu mengirim di WhatsApp.
-- **Konsekuensi:** Tidak ada webhook, delivery receipt, retry otomatis, atau status “terkirim”. UI memakai “Buka WhatsApp”. Kegagalan membuka tidak mengubah status bisnis.
-- **Alternatif ditolak:** gateway WhatsApp otomatis karena berada di luar baseline dan menambah biaya/compliance/integrasi.
-- **Referensi:** WA-001 di [REQUIREMENTS.md](REQUIREMENTS.md), BR-WA-*.
+## ADR-005 — WhatsApp manual
+- **Status:** Superseded oleh ADR-012 pada 5 Oktober 2026.
+- **Keputusan terkini:** WhatsApp tidak digunakan. Helper lama dan tes helper dihapus; tidak ada pengiriman WhatsApp atau Telegram aktif.
 
 ## ADR-006 — Ledger sebagai sumber kebenaran saldo
 
@@ -149,3 +144,16 @@ IMP-019 menetapkan fondasi teknis back-office Filament 5 sesuai ADR ini: instala
 - **Konsekuensi:** Tidak ada tujuan bottom-nav `Setoran` yang menduplikasi `Riwayat`. Active state mengikuti fungsi halaman: kartu ke `Kartu Nasabah`, arsip dan bukti setoran ke `Riwayat`, pengajuan/detail transaksi aktif ke `Layanan`.
 - **Alternatif ditolak:** mempertahankan `Setoran` dan `Riwayat` dengan destination yang sama, atau menghapus `Kartu Nasabah` dari navigasi utama.
 - **Referensi:** [DESIGN.md](DESIGN.md), [CHANGELOG.md](CHANGELOG.md).
+
+## ADR-012 — Workflow web ringkas sebelum integrasi Telegram
+
+- **Status:** Accepted, 5 Oktober 2026; disetujui pemilik proyek setelah audit.
+- **Tujuan:** memudahkan warga, petugas, bendahara, admin, dan superadmin tanpa menghilangkan integritas saldo atau bukti.
+- **Keputusan:** gunakan [WEB_WORKFLOW.md](WEB_WORKFLOW.md) sebagai panduan operasional terkini. Gabungkan persetujuan dan penugasan pencairan; gabungkan penerimaan dan jadwal pickup; persiapan sembako cukup ditandai siap. Ringkasan dan satu konfirmasi akhir menggantikan tinjauan berulang untuk setoran dan pembayaran.
+- **Kanal:** web dan notifikasi aplikasi aktif; WhatsApp tidak digunakan; Telegram belum dibuat.
+- **Pickup:** tanggal pilihan bukan slot yang dijamin. Tidak ada kuota atau alternatif tanggal otomatis. Persetujuan setoran bernilai tinggi tetap wajib; pickup belum selesai selama setoran belum final.
+- **Harga:** draf tersimpan mempertahankan waktu efektif saat dibuat, baik pada ringkasan maupun pembukuan.
+- **Akses:** editor memilih satu peran operasional; akun multi-role lama tetap dibaca tanpa migrasi pemaksaan. Admin tidak dapat menetapkan atau memulihkan kredensial superadmin. Health benar-benar baca-saja.
+- **Sesi:** semua portal dan panel memakai batas idle 30 menit dan batas absolut delapan jam. Remember-me tidak digunakan pada panel; perubahan role/permission mengakhiri sesi lama.
+- **Konsekuensi:** data, status, izin, bukti, dan audit tetap diperiksa server. Pemangkasan layar bukan izin membayar sendiri atau mengubah saldo langsung. Status persiapan sembako lama tetap didukung.
+- **Batas:** hasil tes lokal bukan UAT, izin deployment, atau bukti bot sudah tersedia.

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -26,6 +27,7 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'role' => UserRole::Citizen,
             'name' => fake()->name(),
             'username' => fake()->unique()->userName(),
             'phone' => null,

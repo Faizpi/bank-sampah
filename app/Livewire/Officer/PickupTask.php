@@ -43,8 +43,6 @@ final class PickupTask extends Component
 
     public bool $failureDialogOpen = false;
 
-    public bool $completionDialogOpen = false;
-
     /** @var array{number: string, value: int, occurredAt: string, status: string}|null */
     public ?array $receipt = null;
 
@@ -56,6 +54,22 @@ final class PickupTask extends Component
         $this->pickup = $pickup->load(['customer', 'items.wasteType', 'media', 'statusHistory.actor']);
         $this->idempotencyKey = (string) str()->uuid();
         $this->actualItems = [['waste_type_id' => '', 'condition_id' => '', 'weight_kg' => '']];
+    }
+
+    public function reportException(PickupService $service): void
+    {
+        /** @var User $actor */
+        $actor = auth()->user();
+        $this->pickup = $service->reportException($actor, $this->pickup, $this->failureReason);
+        session()->flash('success', 'Pickup dikunci untuk pemeriksaan Admin.');
+    }
+
+    public function releaseTask(PickupService $service): void
+    {
+        /** @var User $actor */
+        $actor = auth()->user();
+        $service->release($actor, $this->pickup, $this->failureReason);
+        $this->redirectRoute('officer.dashboard');
     }
 
     public function begin(PickupService $service): void
@@ -102,32 +116,17 @@ final class PickupTask extends Component
         }
     }
 
-    public function reviewCompletion(): void
-    {
-        $this->validate($this->completionRules(), $this->completionMessages());
-        if ($this->evidence === null && ! $this->pickup->media()->exists()) {
-            $this->addError('evidence', 'Tambahkan bukti foto penjemputan melalui kamera atau galeri sebelum menyelesaikan tugas.');
-
-            return;
-        }
-
-        $this->completionDialogOpen = true;
-    }
-
-    public function cancelCompletionReview(): void
-    {
-        $this->completionDialogOpen = false;
-    }
-
     public function reportFailure(PickupService $service): void
     {
         /** @var User $actor */
         $actor = auth()->user();
         $this->assertAssigned($actor);
         $this->validate(['failureReason' => ['required', 'string', 'min:10', 'max:1000']]);
-        $this->pickup = $service->cancel($actor, $this->pickup, $this->failureReason);
+        $this->pickup = $this->pickup->status === PickupStatus::PickedUp
+            ? $service->reportException($actor, $this->pickup, $this->failureReason)
+            : $service->cancel($actor, $this->pickup, $this->failureReason);
         $this->failureDialogOpen = false;
-        session()->flash('success', 'Kegagalan tugas tercatat dan penjemputan dihentikan.');
+        session()->flash('success', $this->pickup->status === PickupStatus::PickedUp ? 'Pickup dikunci untuk pemeriksaan; sampah sudah dijemput.' : 'Kendala tercatat dan pickup dibatalkan sebelum pengumpulan.');
     }
 
     public function openFailureReport(): void
@@ -158,21 +157,11 @@ final class PickupTask extends Component
 
     public function complete(PickupService $service): void
     {
-        if (! $this->completionDialogOpen) {
-            $this->addError('actualItems', 'Tinjau lalu konfirmasi penyelesaian sebelum menyelesaikan tugas.');
-
-            return;
-        }
 
         /** @var User $actor */
         $actor = auth()->user();
         $this->assertAssigned($actor);
         $this->validate($this->completionRules(), $this->completionMessages());
-        if ($this->evidence === null && ! $this->pickup->media()->exists()) {
-            $this->addError('evidence', 'Tambahkan bukti foto penjemputan melalui kamera atau galeri sebelum menyelesaikan tugas.');
-
-            return;
-        }
 
         $pickupId = $this->pickup->id;
         $items = array_map(static fn (array $item): DepositItemInput => DepositItemInput::fromArray($item), $this->actualItems);
@@ -248,8 +237,7 @@ final class PickupTask extends Component
             ? ['number' => (string) $deposit->deposit_number, 'value' => (int) $deposit->total_value, 'occurredAt' => $deposit->occurred_at->setTimezone('Asia/Jakarta')->translatedFormat('d F Y, H:i'), 'status' => (string) $deposit->status]
             : null;
         $this->evidence = null;
-        $this->completionDialogOpen = false;
-        session()->flash('success', $deposit?->isPendingReview() ? 'Hasil timbang dikirim untuk pemeriksaan. Saldo belum bertambah.' : 'Penjemputan selesai dan setoran aktual telah dibuat.');
+        session()->flash('success', 'Penjemputan selesai dan setoran aktual telah dibuat.');
     }
 
     /** @return array<string, list<string|\Closure>> */
@@ -304,6 +292,9 @@ final class PickupTask extends Component
 
     public function render(): View
     {
+        /** @var User $scopeActor */
+        $scopeActor = auth()->user();
+        abort_unless(app(PickupService::class)->canView($scopeActor, $this->pickup) && $this->pickup->assigned_staff_id === $scopeActor->id, 404);
         $types = WasteType::query()
             ->with(['conditions' => static fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])
             ->where('is_active', true)

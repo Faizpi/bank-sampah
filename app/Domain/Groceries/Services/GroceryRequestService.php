@@ -37,6 +37,10 @@ final readonly class GroceryRequestService
     /** @param array<string, mixed> $data */
     public function handle(User $actor, array $data, string $idempotencyKey): GroceryRedemption
     {
+        $actor = User::query()->whereKey($actor->id)->first();
+        if ($actor === null) {
+            throw new AuthorizationException('Akun tidak lagi aktif.');
+        }
         $this->authorize($actor, 'grocery.request');
         $this->validateIdempotencyKey($idempotencyKey);
         $this->assertCustomerIsActor($actor, $data['customer_id'] ?? null);
@@ -47,6 +51,8 @@ final readonly class GroceryRequestService
         $payloadHash = $this->payloadHash(['customer_id' => $customer->id, 'rt_id' => $customer->customerProfile?->rt_id, 'service_area_id' => $area->id, 'package_id' => $packageId]);
 
         return DB::transaction(function () use ($actor, $customer, $area, $packageId, $idempotencyKey, $payloadHash): GroceryRedemption {
+            $actor = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
+            $this->authorize($actor, 'grocery.request');
             $existing = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
             if ($existing !== null) {
                 return GroceryRedemption::query()->findOrFail($existing->result_id);
@@ -68,12 +74,12 @@ final readonly class GroceryRequestService
                 'grocery_package_id' => $package->id,
                 'value_snapshot' => $package->value,
                 'package_snapshot' => ['code' => $package->code, 'name' => $package->name, 'contents' => $package->contents, 'value' => $package->value],
-                'status' => GroceryStatus::PendingVerification,
+                'status' => GroceryStatus::Waiting,
             ]);
             $hold = $this->ledger->createHold($customer, $redemption, $package->value, 'grocery:'.$redemption->id.':hold');
             $redemption->forceFill(['balance_hold_id' => $hold->id])->save();
-            $redemption->statusHistory()->create(['old_status' => null, 'new_status' => GroceryStatus::PendingVerification->value, 'actor_id' => $actor->id, 'reason' => 'Pengajuan penukaran sembako dibuat.', 'occurred_at' => now()]);
-            $this->auditLogger->record($actor, 'grocery.requested', $redemption, [], ['status' => GroceryStatus::PendingVerification->value, 'value_snapshot' => $package->value, 'hold_id' => $hold->id], $this->correlationId());
+            $redemption->statusHistory()->create(['old_status' => null, 'new_status' => GroceryStatus::Waiting->value, 'actor_id' => $actor->id, 'reason' => 'Pengajuan penukaran sembako dibuat.', 'occurred_at' => now()]);
+            $this->auditLogger->record($actor, 'grocery.requested', $redemption, [], ['status' => GroceryStatus::Waiting->value, 'value_snapshot' => $package->value, 'hold_id' => $hold->id], $this->correlationId());
             $key->forceFill(['status' => 'succeeded', 'result_type' => GroceryRedemption::class, 'result_id' => $redemption->id])->save();
             $this->notify($redemption, 'Pengajuan sembako diterima', 'Pengajuan '.$redemption->request_number.' telah diterima.', 'grocery.requested');
 
@@ -93,7 +99,7 @@ final readonly class GroceryRequestService
     public function visibleFor(User $actor): Builder
     {
         $this->authorize($actor, 'grocery.view');
-        $query = GroceryRedemption::query()->with(['customer', 'package', 'balanceHold', 'approver', 'preparedBy', 'handoverActor']);
+        $query = GroceryRedemption::query()->with(['customer', 'package', 'balanceHold', 'claimant', 'handoverActor']);
         if ($this->permissions->allows($actor, 'grocery.view') && $this->permissions->allows($actor, 'user.view.all')) {
             return $query;
         }

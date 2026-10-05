@@ -12,6 +12,7 @@ use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
+use App\Domain\Pickups\Services\PickupService;
 use App\Models\User;
 use App\Support\Auth\AuthenticatedUserRedirector;
 use Carbon\CarbonImmutable;
@@ -30,11 +31,19 @@ final class Dashboard extends Component
 
         abort_unless($actor instanceof User && $permissions->allows($actor, 'user.view'), 403);
 
-        if ($actor->hasRole('admin', 'superadmin', 'bendahara', 'warga') && ! $actor->hasRole('petugas')) {
+        if ($actor->hasRole('admin', 'bendahara', 'warga') && ! $actor->hasRole('petugas')) {
             $this->redirect($redirector->dashboardUrl($actor), navigate: true);
 
             return;
         }
+    }
+
+    public function claimPickup(int $id): void
+    {
+        /** @var User $actor */
+        $actor = auth()->user();
+        $pickup = app(PickupService::class)->claim($actor, PickupRequest::findOrFail($id));
+        $this->redirectRoute('officer.pickup.task', ['pickup' => $pickup]);
     }
 
     public function render(PermissionChecker $permissions, GroceryService $groceries): View
@@ -45,7 +54,7 @@ final class Dashboard extends Component
         $pickupStatuses = [PickupStatus::Scheduled, PickupStatus::EnRoute, PickupStatus::PickedUp];
         $canViewPickups = $permissions->allows($actor, 'pickup.view');
         $canOperatePickups = $canViewPickups && $permissions->allows($actor, 'pickup.execute');
-        $pickupScope = PickupRequest::query()
+        $pickupScope = app(PickupService::class)->visibleFor($actor)
             ->with('customer')
             ->where('assigned_staff_id', $actor->id)
             ->whereIn('status', $pickupStatuses);
@@ -66,7 +75,7 @@ final class Dashboard extends Component
         $canViewGroceries = $permissions->allows($actor, 'grocery.view');
         $canHandoverGroceries = $permissions->allows($actor, 'grocery.handover');
         $groceryTasks = $canViewGroceries
-            ? $groceries->visibleFor($actor)->whereIn('status', [GroceryStatus::Approved, GroceryStatus::Preparing, GroceryStatus::ReadyForPickup])->latest()->limit(8)->get()
+            ? $groceries->visibleFor($actor)->whereIn('status', [GroceryStatus::Waiting, GroceryStatus::Processing, GroceryStatus::ReadyForPickup])->latest()->limit(8)->get()
             : ($canHandoverGroceries ? $groceries->readyForHandover($actor)->latest()->limit(8)->get() : collect());
         $canAccessMobileServices = $permissions->allows($actor, 'mobile-service.operate');
         $canViewMobileServices = $permissions->allows($actor, 'mobile-service.view') && $canAccessMobileServices;
@@ -109,6 +118,7 @@ final class Dashboard extends Component
         $canShowGroceryTasks = $canViewGroceries || $canHandoverGroceries;
 
         return view('livewire.officer.dashboard', [
+            'waitingPickups' => app(PickupService::class)->visibleFor($actor)->with('customer')->where('status', PickupStatus::Waiting)->orderBy('selected_date')->get(),
             'canIdentifyCustomers' => $permissions->allows($actor, 'customer.view'),
             'canViewPickups' => $canViewPickups,
             'canOperatePickups' => $canOperatePickups,

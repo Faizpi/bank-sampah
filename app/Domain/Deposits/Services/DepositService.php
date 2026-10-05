@@ -6,7 +6,6 @@ namespace App\Domain\Deposits\Services;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
-use App\Domain\CustomersRegions\Actions\AssistedCustomerService as AssistedCustomerServiceAction;
 use App\Domain\CustomersRegions\Contracts\QrToken;
 use App\Domain\Deposits\Data\DepositItemInput;
 use App\Domain\Deposits\Models\Deposit;
@@ -18,6 +17,7 @@ use App\Domain\MobileServices\Services\MobileDepositGuard;
 use App\Domain\Notifications\Data\NotificationPayload;
 use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Notifications\Support\NotificationDedupeKey;
+use App\Domain\Operations\Services\ServiceTaskGuard;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Platform\Actions\StorePrivateMedia;
 use App\Domain\Platform\Models\Media;
@@ -43,7 +43,6 @@ final readonly class DepositService
         private AuditLogger $auditLogger,
         private StorePrivateMedia $mediaStore,
         private MobileDepositGuard $mobileDepositGuard,
-        private AssistedCustomerServiceAction $assistedServices,
     ) {}
 
     public function createDraft(User $actor, User $customer, string $method = 'langsung', ?string $location = null, ?MobileService $mobileService = null): Deposit
@@ -51,7 +50,11 @@ final readonly class DepositService
         $this->authorize($actor, 'deposit.create');
         $this->assertCustomerScope($actor, $customer, $method, $mobileService);
 
-        return $this->createDraftRecord($actor, $customer, $method, $location, $mobileService);
+        return DB::transaction(function () use ($actor, $customer, $method, $location, $mobileService): Deposit {
+            app(ServiceTaskGuard::class)->forCustomer($actor, $customer);
+
+            return $this->createDraftRecord($actor, $customer, $method, $location, $mobileService);
+        }, 5);
     }
 
     public function createPickupDraft(User $actor, PickupRequest $pickup): Deposit
@@ -154,15 +157,11 @@ final readonly class DepositService
     /**
      * @param  list<DepositItemInput|array<string, mixed>>|null  $items
      */
-    public function finalizeAndLinkAssisted(User $actor, Deposit $deposit, string $idempotencyKey, int $assistedServiceId, ?array $items = null, ?UploadedFile $evidence = null, ?MobileService $mobileService = null): Deposit
-    {
-        return $this->finalizeInternal($actor, $deposit, $idempotencyKey, $items, $evidence, $mobileService, $assistedServiceId);
-    }
 
     /**
      * @param  list<DepositItemInput|array<string, mixed>>|null  $items
      */
-    private function finalizeInternal(User $actor, Deposit $deposit, string $idempotencyKey, ?array $items, ?UploadedFile $evidence, ?MobileService $mobileService, ?int $assistedServiceId = null): Deposit
+    private function finalizeInternal(User $actor, Deposit $deposit, string $idempotencyKey, ?array $items, ?UploadedFile $evidence, ?MobileService $mobileService): Deposit
     {
         $this->authorize($actor, 'deposit.finalize');
         $this->assertDraftOwnerScope($actor, $deposit);
@@ -170,7 +169,6 @@ final readonly class DepositService
             throw ValidationException::withMessages(['mobile_service_id' => 'Jadwal layanan setoran tidak cocok dengan draf.']);
         }
         $this->validateIdempotencyKey($idempotencyKey);
-        $this->assertEvidenceRequired($deposit, $evidence);
         if ($items !== null) {
             $this->authorize($actor, 'deposit.update-draft');
         }
@@ -179,45 +177,42 @@ final readonly class DepositService
             throw ValidationException::withMessages(['evidence' => 'Bukti setoran tidak dapat dibaca.']);
         }
         $payload = ['deposit' => $deposit->id, 'items' => $items, 'evidence_checksum' => $checksum];
-        if ($assistedServiceId !== null) {
-            $payload['assisted_service_id'] = $assistedServiceId;
-        }
         $payloadHash = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
         $media = null;
 
         try {
-            $existing = DB::transaction(function () use ($actor, $idempotencyKey, $payloadHash, $assistedServiceId): ?IdempotencyKey {
-                if ($assistedServiceId !== null) {
-                    $this->assistedServices->lockForDepositLink($actor, $assistedServiceId);
-                }
+            $existing = DB::transaction(function () use ($actor, $deposit, $idempotencyKey, $payloadHash): ?Deposit {
+                $locked = Deposit::query()->whereKey($deposit->id)->lockForUpdate()->firstOrFail();
+                app(ServiceTaskGuard::class)->forCustomer($actor, $locked->customer);
+                $this->assertDraftOwnerScope($actor, $locked);
+                if ($locked->isFinal()) {
+                    if ($locked->idempotency_key !== $idempotencyKey || $locked->getAttribute('finalization_payload_hash') !== $payloadHash) {
+                        throw ValidationException::withMessages(['idempotency_key' => 'Setoran sudah tercatat dengan permintaan berbeda.']);
+                    }
 
-                return $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
-            });
+                    return $locked;
+                }
+                $key = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
+
+                return $key === null ? null : Deposit::query()->findOrFail($key->result_id);
+            }, 5);
             if ($existing !== null) {
-                if ($assistedServiceId === null) {
-                    return Deposit::query()->findOrFail($existing->result_id);
-                }
-
-                return DB::transaction(function () use ($actor, $assistedServiceId, $existing): Deposit {
-                    $record = $this->assistedServices->lockForDepositLink($actor, $assistedServiceId);
-                    $lockedDeposit = Deposit::query()->whereKey($existing->result_id)->lockForUpdate()->firstOrFail();
-                    $this->assistedServices->linkDepositInTransaction($actor, $record, $lockedDeposit);
-
-                    return $lockedDeposit->fresh(['items', 'media']);
-                });
+                return $existing;
             }
             $media = $evidence === null ? null : $this->mediaStore->handleEvidence($evidence, $actor);
 
-            $result = DB::transaction(function () use ($actor, $deposit, $idempotencyKey, $payloadHash, $items, $media, $assistedServiceId): Deposit {
-                $record = $assistedServiceId === null ? null : $this->assistedServices->lockForDepositLink($actor, $assistedServiceId);
+            $result = DB::transaction(function () use ($actor, $deposit, $idempotencyKey, $payloadHash, $items, $media): Deposit {
+                $replay = Deposit::query()->whereKey($deposit->id)->lockForUpdate()->firstOrFail();
+                app(ServiceTaskGuard::class)->forCustomer($actor, $replay->customer);
+                $this->assertDraftOwnerScope($actor, $replay);
+                if ($replay->isFinal()) {
+                    if ($replay->idempotency_key === $idempotencyKey && $replay->getAttribute('finalization_payload_hash') === $payloadHash) {
+                        return $replay;
+                    }
+                    throw ValidationException::withMessages(['idempotency_key' => 'Setoran sudah tercatat dengan permintaan berbeda.']);
+                }
                 $existingKey = $this->existingIdempotency($actor, $idempotencyKey, $payloadHash);
                 if ($existingKey !== null) {
-                    if ($record !== null) {
-                        $existingDeposit = Deposit::query()->whereKey($existingKey->result_id)->lockForUpdate()->firstOrFail();
-                        $this->assistedServices->linkDepositInTransaction($actor, $record, $existingDeposit);
-
-                        return $existingDeposit->fresh(['items', 'media']);
-                    }
 
                     return Deposit::query()->findOrFail($existingKey->result_id);
                 }
@@ -230,6 +225,11 @@ final readonly class DepositService
                     'status' => 'processing',
                 ]);
                 $locked = Deposit::query()->with('items')->whereKey($deposit->id)->lockForUpdate()->firstOrFail();
+                $currentActor = User::query()->lockForUpdate()->findOrFail($actor->id);
+                $this->authorize($currentActor, 'deposit.finalize');
+                $this->assertDraftOwnerScope($currentActor, $locked);
+                app(ServiceTaskGuard::class)->forCustomer($currentActor, $locked->customer);
+                $this->assertCustomerScope($currentActor, $locked->customer, $locked->method, $locked->mobileService);
                 if (! $locked->isDraft()) {
                     throw ValidationException::withMessages(['deposit' => 'Setoran sudah difinalkan atau tidak lagi berupa draf.']);
                 }
@@ -280,35 +280,27 @@ final readonly class DepositService
                 if ($locked->mobile_service_id !== null) {
                     $this->mobileDepositGuard->attachForFinalization($actor, $locked, MobileService::query()->findOrFail($locked->mobile_service_id), $locked->items->map(fn ($item): WasteType => WasteType::query()->findOrFail($item->waste_type_id))->all());
                 }
-                $requiresReview = $this->requiresReview($total);
                 $locked->forceFill([
-                    'status' => $requiresReview ? Deposit::STATUS_PENDING_REVIEW : Deposit::STATUS_FINAL,
+                    'status' => Deposit::STATUS_FINAL,
                     'total_weight_kg' => Weight::fromGrams($totalWeight)->decimal(),
                     'total_value' => $total,
-                    'finalized_at' => $requiresReview ? null : now(),
-                    'review_requested_at' => $requiresReview ? now() : null,
+                    'finalized_at' => now(),
                     'idempotency_key' => $idempotencyKey,
+                    'finalization_payload_hash' => $payloadHash,
                     'verification_token_hash' => $token->hash(),
                     'verification_token_encrypted' => $token->value(),
                 ])->save();
-                if ($requiresReview) {
-                    $this->auditLogger->record($actor, 'deposit.review_requested', $locked, ['status' => Deposit::STATUS_DRAFT], ['status' => Deposit::STATUS_PENDING_REVIEW, 'total_value' => $total, 'review_threshold' => $this->reviewThreshold()], $this->correlationId());
-                } else {
-                    $ledger = $this->ledger->postDeposit($locked, $total, 'deposit:'.$locked->id.':deposit');
-                    $this->auditLogger->record($actor, 'deposit.finalized', $locked, ['status' => Deposit::STATUS_DRAFT], ['status' => Deposit::STATUS_FINAL, 'total_value' => $total, 'ledger_entry_id' => $ledger['entry']->id], $this->correlationId());
-                    NotificationRequested::dispatch(new NotificationPayload(
-                        recipientId: $locked->customer_id,
-                        type: 'deposit.finalized',
-                        title: 'Setoran selesai',
-                        body: 'Setoran '.$locked->deposit_number.' telah selesai diproses.',
-                        reference: '/warga/setoran/'.$locked->id,
-                        dedupeKey: NotificationDedupeKey::for('deposit.finalized:'.$locked->deposit_number, $locked->customer_id, 'deposit-finalized-v1'),
-                    ));
-                }
+                $ledger = $this->ledger->postDeposit($locked, $total, 'deposit:'.$locked->id.':deposit');
+                $this->auditLogger->record($actor, 'deposit.finalized', $locked, ['status' => Deposit::STATUS_DRAFT], ['status' => Deposit::STATUS_FINAL, 'total_value' => $total, 'ledger_entry_id' => $ledger['entry']->id], $this->correlationId());
+                NotificationRequested::dispatch(new NotificationPayload(
+                    recipientId: $locked->customer_id,
+                    type: 'deposit.finalized',
+                    title: 'Setoran selesai',
+                    body: 'Setoran '.$locked->deposit_number.' telah selesai diproses.',
+                    reference: '/warga/setoran/'.$locked->id,
+                    dedupeKey: NotificationDedupeKey::for('deposit.finalized:'.$locked->deposit_number, $locked->customer_id, 'deposit-finalized-v1'),
+                ));
                 $key->forceFill(['status' => 'succeeded', 'result_type' => Deposit::class, 'result_id' => $locked->id])->save();
-                if ($record !== null) {
-                    $this->assistedServices->linkDepositInTransaction($actor, $record, $locked);
-                }
 
                 return $locked->fresh(['items', 'media']);
             });
@@ -330,13 +322,6 @@ final readonly class DepositService
     {
         if (! $this->permissions->allows($actor, $permission)) {
             throw new AuthorizationException('Anda tidak memiliki akses untuk memproses setoran.');
-        }
-    }
-
-    private function assertEvidenceRequired(Deposit $deposit, ?UploadedFile $evidence): void
-    {
-        if ($deposit->method === 'langsung' && $evidence === null) {
-            throw ValidationException::withMessages(['evidence' => 'Bukti setoran wajib diunggah.']);
         }
     }
 
@@ -400,21 +385,6 @@ final readonly class DepositService
         if ($totalGrams > $limit->grams()) {
             throw ValidationException::withMessages(['items' => 'Total berat setoran tidak boleh melebihi '.$limit->decimal().' kg.']);
         }
-    }
-
-    private function requiresReview(int $total): bool
-    {
-        return $total >= $this->reviewThreshold();
-    }
-
-    private function reviewThreshold(): int
-    {
-        $threshold = (int) config('app.deposit_review_threshold');
-        if ($threshold < 1) {
-            throw new \LogicException('Batas persetujuan setoran harus bernilai positif.');
-        }
-
-        return $threshold;
     }
 
     private function number(string $prefix): string

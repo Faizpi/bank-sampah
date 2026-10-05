@@ -7,13 +7,12 @@ namespace Tests\Feature\AuditReconciliation;
 use App\Domain\AuditReconciliation\Models\Reconciliation;
 use App\Domain\AuditReconciliation\Services\FinancialReconciliationService;
 use App\Domain\Deposits\Models\Deposit;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Ledger\Models\LedgerEntry;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\RoleFixtures;
 use Tests\TestCase;
 
 final class FinancialReconciliationTest extends TestCase
@@ -53,10 +52,7 @@ final class FinancialReconciliationTest extends TestCase
     private function userWith(string $permissionName): User
     {
         $user = User::factory()->create();
-        $permission = Permission::query()->firstOrCreate(['name' => $permissionName], ['description' => $permissionName]);
-        $role = Role::query()->create(['name' => 'reconciliation-'.str()->uuid(), 'description' => 'Reconciliation test']);
-        $role->permissions()->attach($permission);
-        $user->roles()->attach($role);
+        $user = RoleFixtures::assign($user, [$permissionName]);
 
         return $user;
     }

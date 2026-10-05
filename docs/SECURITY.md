@@ -15,11 +15,11 @@ Keamanan melindungi saldo, transaksi, identitas warga, bukti privat, operasi pet
 ## 2. Autentikasi dan password
 
 - Password di-hash menggunakan driver Laravel yang tersedia pada PHP 8.3 atau lebih baru, dengan Argon2id bila lingkungan mendukung secara stabil; parameter ditinjau dan rehash saat login bila kebijakan berubah.
-- Password plaintext tidak disimpan, dicatat, dikirim kembali, atau diketahui admin.
-- Minimal 10 karakter, konfirmasi, dan penolakan password umum mengikuti [VALIDATION.md](VALIDATION.md).
+- Password plaintext tidak disimpan atau dicatat. Bantuan admin tidak meminta kata sandi lama; kata sandi baru dimasukkan dalam formulir terlindungi dan disimpan hanya sebagai hash.
+- Minimal 8 karakter, konfirmasi, dan penolakan password umum mengikuti [VALIDATION.md](VALIDATION.md).
 - Perubahan kata sandi hanya melalui dua jalur. Jalur berbantuan langsung hanya untuk pengguna yang benar-benar lupa kata sandi dan tidak dapat login: admin atau superadmin berizin melalui alur PasswordAssistance, dengan `user.reset-password` dan `session.revoke`, mengubah target lain dalam scope sah sesudah verifikasi `tatap_muka` atau `callback_nomor_terdaftar` dan alasan tervalidasi 10–1000 karakter. Aktor berizin tidak dapat menargetkan diri sendiri.
 - Jalur mandiri hanya dari profil pengguna terautentikasi dengan verifikasi kata sandi saat ini, kata sandi baru, dan konfirmasi tervalidasi.
-- Kata sandi tidak disimpan, diketahui admin, diaudit, atau dicatat pada log. Audit hanya mencatat aktor, metode, alasan, dan hasil.
+- Kata sandi plaintext tidak disimpan, diaudit, atau dicatat pada log. Audit hanya mencatat aktor, metode, alasan, dan hasil.
 - Jalur berbantuan menyimpan hash kata sandi baru, mencabut seluruh sesi aktif target, dan mengaudit secara atomik. Jalur mandiri menyimpan hash dan mencabut sesi aktif lain sambil mempertahankan sesi saat ini bila memungkinkan secara teknis, atau mencabut seluruh sesi dan meminta autentikasi ulang bila tidak memungkinkan. Tidak ada reset publik, token, masa berlaku, penyimpanan atau pengiriman token, email, SMS, WhatsApp, rate limit reset, maupun respons permintaan reset.
 - Akun nonaktif/ditolak tidak dapat login. Perubahan status akun mencabut seluruh sesi aktif pengguna.
 - Tidak ada akun bersama; setiap petugas/admin memiliki akun sendiri.
@@ -27,9 +27,9 @@ Keamanan melindungi saldo, transaksi, identitas warga, bukti privat, operasi pet
 ## 3. Keamanan sesi
 
 - Produksi wajib HTTPS; cookie `Secure`, `HttpOnly`, dan `SameSite=Lax` atau lebih ketat setelah uji alur.
-- Session ID diregenerasi saat login/perubahan privilege; logout menginvalidasi sesi dan token CSRF diregenerasi.
+- Session ID diregenerasi saat login. Perubahan role/permission mencabut sesi dan mengharuskan autentikasi ulang; logout menginvalidasi sesi dan token CSRF diregenerasi.
 - Session driver database atau opsi Laravel yang kompatibel shared hosting; record sesi dapat dicabut.
-- Idle timeout dan absolute timeout dibedakan: nilai awal 30 menit idle untuk admin/petugas dan 8 jam absolut; warga dapat disesuaikan berdasarkan UAT tanpa melemahkan tindakan keuangan.
+- Semua portal dan panel menggunakan idle 30 menit dan batas absolut delapan jam, termasuk request Livewire. Remember-me panel dinonaktifkan; sesi yang dipulihkan cookie tanpa waktu autentikasi sah ditolak.
 - Aksi sensitif dapat meminta konfirmasi kata sandi ulang bila risiko menuntut.
 - Halaman autentikasi dan privat memakai `Cache-Control: no-store`.
 
@@ -214,3 +214,7 @@ Khusus dugaan saldo ganda: hentikan pengulangan, periksa idempotency/audit/ledge
 - [DEPLOYMENT.md](DEPLOYMENT.md)
 - [TEST_PLAN.md](TEST_PLAN.md)
 - [OPERATIONS.md](OPERATIONS.md)
+
+## Pengaman audit lokal
+
+Tests/bootstrap.php menolak database operasional: hanya SQLite memori atau database bernama bank_sampah_test dengan suffix uji yang diperbolehkan. Storage, cache konfigurasi, dan berkas maintenance tes terpisah. Uji browser memerlukan URL loopback, database eksplisit, dan token preflight yang cocok dengan server testing. Tidak ada fallback ke .env aplikasi aktif.

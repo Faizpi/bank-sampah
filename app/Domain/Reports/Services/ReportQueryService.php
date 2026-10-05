@@ -53,8 +53,8 @@ final readonly class ReportQueryService
     /** @var array<string, list<string>> */
     private const REPORT_COLUMNS = [
         'deposits' => ['deposit_number', 'occurred_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'staff_name', 'method', 'location', 'status', 'total_weight_kg', 'total_value'],
-        'withdrawals' => ['request_number', 'paid_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'payer_name', 'pickup_location', 'pickup_date', 'recipient_verification', 'recipient_reference', 'status', 'amount'],
-        'groceries' => ['request_number', 'handed_over_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'package_name', 'package_contents', 'prepared_by_name', 'handover_staff_name', 'availability_note', 'recipient_verification', 'recipient_reference', 'status', 'value_snapshot'],
+        'withdrawals' => ['request_number', 'paid_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'payer_name', 'pickup_location', 'pickup_date', 'status', 'amount'],
+        'groceries' => ['request_number', 'handed_over_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'package_name', 'package_contents', 'claimant_name', 'handover_staff_name', 'availability_note', 'status', 'value_snapshot'],
         'pickups' => ['request_number', 'customer_name', 'rt', 'service_area', 'address', 'selected_date', 'scheduled_date', 'assigned_staff_name', 'estimated_weight_kg', 'notes', 'completed_at', 'status'],
         'participation' => ['deposit_number', 'occurred_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'staff_name', 'method', 'location', 'status', 'total_weight_kg', 'total_value'],
     ];
@@ -314,7 +314,7 @@ final readonly class ReportQueryService
         $query = match ($type) {
             ReportType::Deposits, ReportType::Participation => Deposit::query()->with(['correction', 'customer.customerProfile.rt.serviceAreas', 'staff', 'items.wasteType', 'items.condition'])->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED]),
             ReportType::Withdrawals => WithdrawalRequest::query()->with(['customer.customerProfile.rt.serviceAreas', 'payer'])->whereNotNull('paid_at'),
-            ReportType::Groceries => GroceryRedemption::query()->with(['customer.customerProfile.rt.serviceAreas', 'preparedBy', 'handoverActor'])->whereNotNull('handed_over_at'),
+            ReportType::Groceries => GroceryRedemption::query()->with(['customer.customerProfile.rt.serviceAreas', 'claimant', 'handoverActor'])->whereNotNull('handed_over_at'),
             ReportType::Pickups => PickupRequest::query()->with(['customer', 'rt', 'serviceArea', 'assignedStaff'])->whereNotNull('completed_at'),
         };
         $this->applyRecordScope($actor, $type, $query);
@@ -337,6 +337,14 @@ final readonly class ReportQueryService
     /** @param ReportBuilder $query */
     private function applyRecordScope(User $actor, ReportType $type, Builder $query): void
     {
+        if ($actor->hasRole('bendahara')) {
+            if ($type !== ReportType::Withdrawals) {
+                throw new AuthorizationException('Bendahara hanya melihat laporan pembayaran tunai sendiri.');
+            }
+            $query->where('payer_id', $actor->id);
+
+            return;
+        }
         if ($this->permissions->allows($actor, 'user.view.all')) {
             return;
         }

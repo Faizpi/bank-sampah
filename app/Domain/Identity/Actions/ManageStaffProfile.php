@@ -7,13 +7,11 @@ namespace App\Domain\Identity\Actions;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Identity\Enums\UserStatus;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\StaffProfile;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -31,17 +29,18 @@ final readonly class ManageStaffProfile
         Gate::forUser($actor)->authorize('manageUpdate', $subject);
         $assignments = $this->assignmentAttributes($data);
 
-        return DB::transaction(function () use ($actor, $subject, $assignments): User {
+        return app(AdminAvailabilityGuard::class)->run(function () use ($actor, $subject, $assignments): User {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            Gate::forUser($actor)->authorize('manageUpdate', $subject);
             $locked = $this->visibleUsers->queryFor($actor, ...UserStatus::cases())
                 ->whereKey($subject->getKey())
-                ->with('roles')
                 ->lockForUpdate()
                 ->first();
 
             if (! $locked instanceof User) {
                 throw new AuthorizationException('Pengguna berada di luar scope Anda.');
             }
-            if (! $locked->roles->contains(static fn (Role $role): bool => in_array($role->name, ['petugas', 'bendahara'], true))) {
+            if (! $locked->hasRole('petugas', 'bendahara')) {
                 throw ValidationException::withMessages(['role' => 'Profil petugas hanya tersedia untuk pengguna dengan role petugas atau bendahara.']);
             }
 
@@ -63,7 +62,7 @@ final readonly class ManageStaffProfile
             ])->save();
             $this->auditLogger->record($actor, 'identity.staff_profile.'.($old === [] ? 'created' : 'updated'), $locked, ['assignments' => $old], ['staff_number' => $profile->staff_number, 'assignments' => $assignments], $this->correlationId());
 
-            return $locked->fresh(['staffProfile.serviceAreas.serviceArea', 'customerProfile', 'roles']);
+            return $locked->fresh(['staffProfile.serviceAreas.serviceArea', 'customerProfile']);
         });
     }
 

@@ -2,7 +2,6 @@
     @php
         $demoAccounts = config('app.demo_mode') ? [
             'admin'      => 'Admin',
-            'superadmin' => 'Superadmin',
         ] : [];
     @endphp
 
@@ -35,7 +34,7 @@
                         <p class="text-caption font-bold uppercase tracking-widest text-forest-600">Backoffice</p>
                         <h1 class="mt-2 text-h2 font-extrabold leading-tight text-deep-green">Panel pengelolaan bank sampah</h1>
                         <p class="mt-3 text-body-sm leading-relaxed text-text-secondary">
-                            Akses terbatas untuk admin dan superadmin. Kelola data setoran, penjemputan, warga, dan laporan.
+                            Akses terbatas untuk Admin. Kelola data setoran, penjemputan, warga, dan laporan.
                         </p>
                         <a
                             href="{{ route('home') }}"

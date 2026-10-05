@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Auth;
 
 use App\Authorization\PermissionChecker;
+use App\Domain\Identity\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route as RouteFacade;
@@ -80,7 +81,7 @@ final readonly class AuthenticatedUserRedirector
             return null;
         }
 
-        $roleNames = $user->roles()->pluck('name')->all();
+        $roleNames = [$user->role->value];
 
         if (str_starts_with($path, '/warga') && ! in_array('warga', $roleNames, true)) {
             return null;
@@ -94,7 +95,7 @@ final readonly class AuthenticatedUserRedirector
             return null;
         }
 
-        if (str_starts_with($path, '/backoffice') && array_intersect(['admin', 'superadmin'], $roleNames) === []) {
+        if (str_starts_with($path, '/backoffice') && array_intersect(['admin'], $roleNames) === []) {
             return null;
         }
 
@@ -122,37 +123,12 @@ final readonly class AuthenticatedUserRedirector
     /** @return list<array{0: string, 1: string}> */
     private function dashboardCandidates(User $user): array
     {
-        $roleNames = $user->roles()->pluck('name')->all();
-
-        if (in_array('bendahara', $roleNames, true)) {
-            return [
-                ['treasurer.dashboard', 'withdrawal.view'],
-                ['officer.dashboard', 'user.view'],
-                ['citizen.dashboard', 'profile.view'],
-            ];
-        }
-
-        if (array_intersect(['admin', 'superadmin'], $roleNames) !== []) {
-            return [
-                ['filament.backoffice.home', 'backoffice.access'],
-                ['officer.dashboard', 'user.view'],
-                ['citizen.dashboard', 'profile.view'],
-            ];
-        }
-
-        if (in_array('petugas', $roleNames, true)) {
-            return [
-                ['officer.dashboard', 'user.view'],
-                ['treasurer.dashboard', 'withdrawal.view'],
-                ['citizen.dashboard', 'profile.view'],
-            ];
-        }
-
-        return [
-            ['citizen.dashboard', 'profile.view'],
-            ['officer.dashboard', 'user.view'],
-            ['treasurer.dashboard', 'withdrawal.view'],
-        ];
+        return [match ($user->role) {
+            UserRole::Admin => ['filament.backoffice.home', 'backoffice.access'],
+            UserRole::Officer => ['officer.dashboard', 'user.view'],
+            UserRole::Treasurer => ['treasurer.dashboard', 'withdrawal.view'],
+            default => ['citizen.dashboard', 'profile.view'],
+        }];
     }
 
     /**

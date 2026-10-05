@@ -73,8 +73,8 @@ def test_proposal_preserves_current_business_scope() -> None:
         "target pengumpulan",
         "bank sampah keliling",
         "partisipasi rt/rw",
-        "kapasitas harian",
-        "tanggal lain",
+        "tanggal pilihan",
+        "penjadwalan",
         "penimbangan aktual",
     )
     assert not [term for term in required if term not in content]

@@ -30,7 +30,7 @@ final class Dashboard extends Component
 
         abort_unless($actor instanceof User && $permissions->allows($actor, 'profile.view'), 403);
 
-        if ($actor->hasRole('admin', 'superadmin', 'petugas', 'bendahara') && ! $actor->hasRole('warga')) {
+        if ($actor->hasRole('admin', 'petugas', 'bendahara') && ! $actor->hasRole('warga')) {
             $this->redirect($redirector->dashboardUrl($actor), navigate: true);
 
             return;
@@ -80,9 +80,7 @@ final class Dashboard extends Component
             ->where('customer_id', $actor->id)
             ->whereNotIn('status', [
                 WithdrawalStatus::Paid->value,
-                WithdrawalStatus::Rejected->value,
                 WithdrawalStatus::Cancelled->value,
-                WithdrawalStatus::Expired->value,
             ])
             ->latest()
             ->take(3)
@@ -92,9 +90,8 @@ final class Dashboard extends Component
             ->where('customer_id', $actor->id)
             ->whereNotIn('status', [
                 GroceryStatus::Completed->value,
-                GroceryStatus::Rejected->value,
+                GroceryStatus::Unavailable->value,
                 GroceryStatus::Cancelled->value,
-                GroceryStatus::Expired->value,
             ])
             ->latest()
             ->take(3)

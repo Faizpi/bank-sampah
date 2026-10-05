@@ -7,8 +7,6 @@ namespace Tests\Feature\Operations;
 use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\CustomersRegions\Models\Dusun;
 use App\Domain\CustomersRegions\Models\Rw;
-use App\Domain\Identity\Models\Permission;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Operations\Services\PickupPhotoRetentionService;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
@@ -43,7 +41,7 @@ final class PickupPhotoRetentionTest extends TestCase
         $actor = $this->userWithMediaRetentionPermission();
         $oldTerminal = PickupRequest::factory()->create(['status' => PickupStatus::Completed]);
         $oldCancelled = PickupRequest::factory()->create(['status' => PickupStatus::Cancelled]);
-        $active = PickupRequest::factory()->create(['status' => PickupStatus::PendingReview]);
+        $active = PickupRequest::factory()->create(['status' => PickupStatus::Waiting]);
         $recentTerminal = PickupRequest::factory()->create(['status' => PickupStatus::Rejected]);
         $oldDate = now()->subDays(90);
         $cutoff = now()->subDays(60)->toDateString();
@@ -127,13 +125,7 @@ final class PickupPhotoRetentionTest extends TestCase
 
     private function userWithMediaRetentionPermission(): User
     {
-        $permission = Permission::query()->where('name', 'media.retention.execute')->sole();
-        $role = Role::query()->create(['name' => 'media-retention-'.Str::lower(Str::random(8))]);
-        $role->permissions()->attach($permission);
-        $actor = User::factory()->create();
-        $actor->roles()->attach($role);
-
-        return $actor->fresh();
+        return User::factory()->create(['role' => 'admin']);
     }
 
     private function media(

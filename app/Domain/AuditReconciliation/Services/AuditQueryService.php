@@ -100,6 +100,6 @@ final readonly class AuditQueryService
 
     private function isTechnicalViewer(User $actor): bool
     {
-        return $actor->roles()->where('name', 'superadmin')->exists();
+        return $actor->hasRole('admin');
     }
 }

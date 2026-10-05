@@ -42,7 +42,7 @@ final class NotificationCenter extends Component
             'notifications' => $notifications,
         ]);
 
-        if ($actor->roles()->whereIn('name', ['petugas', 'bendahara', 'admin', 'superadmin'])->exists()) {
+        if ($actor->hasRole('petugas', 'bendahara', 'admin')) {
             $view->layout('layouts.officer');
         }
 

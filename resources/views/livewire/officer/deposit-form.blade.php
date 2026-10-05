@@ -16,7 +16,7 @@
     </div>
 
     @php
-        $depositComplete = $draft?->isFinal() || $draft?->isPendingReview();
+        $depositComplete = $draft?->isFinal();
     @endphp
 
     <x-ui.panel title="Konteks setoran" description="Identitas warga dan metode ini tetap digunakan sampai setoran selesai.">
@@ -41,7 +41,7 @@
 
     @if ($depositComplete)
         <x-ui.success-state
-            :title="$draft->isPendingReview() ? 'Setoran menunggu persetujuan' : 'Setoran berhasil dicatat'"
+            :title="'Setoran berhasil dicatat'"
             :reference="(string) $draft->deposit_number"
             :value="'Rp '.number_format((int) $draft->total_value, 0, ',', '.')"
             :time="$draft->occurred_at->setTimezone('Asia/Jakarta')->translatedFormat('d F Y, H:i')"
@@ -142,7 +142,7 @@
          </div>
      </x-ui.panel>
 
-     <x-ui.panel title="Bukti setoran" description="Unggah bukti foto atau PDF. File disimpan privat dan wajib saat pencatatan.">
+     <x-ui.panel title="Lampiran setoran (opsional)" description="Unggah bukti foto atau PDF. File disimpan privat dan wajib saat pencatatan.">
          <x-ui.media-picker
              id="deposit-evidence"
              property="evidence"
@@ -160,7 +160,7 @@
           <p class="text-body-sm text-deep-green">Periksa nama warga, jenis, berat, nilai, dan bukti pada halaman ini sebelum mencatat. Harga mengikuti waktu pembuatan draf jika Anda melanjutkan draf tersimpan.</p>
           <div class="mt-4 flex justify-end">
               <x-ui.button type="button" wire:click="finalize" wire:loading.attr="disabled" wire:target="finalize" data-photo-picker-action>
-                  <span wire:loading.remove wire:target="finalize">{{ $pricePreview['total'] >= config('app.deposit_review_threshold') ? 'Kirim setoran untuk pemeriksaan' : 'Data sudah benar - catat setoran' }}</span>
+                  <span wire:loading.remove wire:target="finalize">{{ 'Data sudah benar - catat setoran' }}</span>
                   <span wire:loading wire:target="finalize">Mencatat...</span>
               </x-ui.button>
           </div>
