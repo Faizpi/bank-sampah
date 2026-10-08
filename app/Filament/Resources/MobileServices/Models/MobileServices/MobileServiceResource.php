@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Resources\MobileServices\Models\MobileServices;
 
 use App\Domain\CustomersRegions\Models\Rt;
-use App\Domain\CustomersRegions\Models\Rw;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
@@ -13,6 +12,7 @@ use App\Domain\MobileServices\Services\MobileServiceService;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Filament\Resources\MobileServices\Models\MobileServices\Pages\ManageMobileServices;
 use App\Models\User;
+use App\Support\RegionOptions;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -57,17 +57,17 @@ final class MobileServiceResource extends Resource
     {
         return $schema->components([
             Section::make('Jadwal')->schema([
-                Select::make('rw_id')->label('RW')->helperText('Opsional. Pilih RW untuk membatasi pilihan RT, atau gunakan RW saja sebagai cakupan layanan.')->options(fn (): array => Rw::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable()->live()->afterStateUpdated(fn (Set $set): mixed => $set('rt_id', null)),
+                Select::make('rw_id')->label('RW')->helperText('Opsional. Pilih RW untuk membatasi pilihan RT, atau gunakan RW saja sebagai cakupan layanan.')->options(fn (): array => RegionOptions::rws())->searchable()->live()->afterStateUpdated(fn (Set $set): mixed => $set('rt_id', null)),
                 Select::make('rt_id')->label('RT')->helperText('Opsional. Tanpa RW, semua RT aktif tersedia; dengan RW, hanya RT dalam RW tersebut yang ditampilkan.')->options(function (Get $get): array {
                     $rwId = $get('rw_id');
 
                     return Rt::query()
-                        ->with('rw:id,name')
+                        ->with('rw.dusun')
                         ->where('is_active', true)
                         ->when(filled($rwId), fn (Builder $query): Builder => $query->where('rw_id', (int) $rwId))
                         ->orderBy('name')
                         ->get()
-                        ->mapWithKeys(fn (Rt $rt): array => [$rt->id => filled($rwId) ? $rt->name : "{$rt->name} — {$rt->rw->name}"])
+                        ->mapWithKeys(fn (Rt $rt): array => [$rt->id => RegionOptions::label($rt)])
                         ->all();
                 })->searchable(),
                 TextInput::make('point')->label('Titik layanan')->required()->minLength(3)->maxLength(255),
@@ -93,7 +93,7 @@ final class MobileServiceResource extends Resource
             TextColumn::make('served_count')->label('Terlayani'),
             TextColumn::make('status')->label('Status')->badge(),
         ])->recordActions([
-            EditAction::make()->modalWidth(Width::SevenExtraLarge)->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->fillForm(fn (MobileService $record): array => [
+            EditAction::make()->modalWidth(Width::SevenExtraLarge)->visible(fn (MobileService $record): bool => $record->status === MobileServiceStatus::Draft)->mutateRecordDataUsing(fn (array $data, MobileService $record): array => [...$data,
                 'staff_ids' => $record->staff()->pluck('users.id')->all(),
                 'waste_type_ids' => $record->wasteTypes()->pluck('waste_types.id')->all(),
             ])->using(fn (MobileService $record, array $data): MobileService => self::service()->update(self::actor(), $record, isset($data['rw_id']) ? (int) $data['rw_id'] : null, isset($data['rt_id']) ? (int) $data['rt_id'] : null, (string) $data['point'], (string) $data['starts_at'], (string) $data['ends_at'], (int) $data['capacity'], (string) ($data['notes'] ?? ''), array_map('intval', $data['staff_ids'] ?? []), array_map('intval', $data['waste_type_ids'] ?? []))),

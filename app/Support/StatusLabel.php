@@ -26,6 +26,7 @@ final class StatusLabel
         'menuju_lokasi' => 'Menuju lokasi',
         'dijemput' => 'Sudah dijemput',
         'selesai' => 'Selesai',
+        'selesai_dengan_selisih' => 'Selesai — selisih dicatat',
         'ditolak' => 'Ditolak',
         'dibatalkan' => 'Dibatalkan',
         'siap_diambil' => 'Siap diambil',

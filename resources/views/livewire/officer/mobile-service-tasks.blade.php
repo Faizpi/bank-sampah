@@ -61,10 +61,12 @@
                                 </button>
                             @endif
                             @elseif ($service->status === \App\Domain\MobileServices\Enums\MobileServiceStatus::Open)
+                            @if ($canOpenNow && ! $isFull)
                             <a href="{{ route('officer.customer-identification', ['mobileServiceId' => $service->id]) }}"
                                 class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
                                 Catat Setoran
                             </a>
+                            @else<p class="text-body-sm">{{ $isFull ? 'Kapasitas sudah penuh.' : 'Jadwal sudah berakhir.' }} Periksa rekap lalu tutup layanan; tidak menerima setoran baru.</p>@endif
                             <button wire:click="recap({{ $service->id }})" wire:loading.attr="disabled"
                                 class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl border-2 border-forest-600 px-5 text-label font-bold text-forest-700 transition hover:bg-success-bg disabled:cursor-wait">
                                 Rekap Layanan

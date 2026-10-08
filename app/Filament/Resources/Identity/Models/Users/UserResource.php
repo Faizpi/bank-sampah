@@ -14,6 +14,7 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Filament\Resources\Identity\Models\Users\Pages\ManageUsers as ManageUsersPage;
 use App\Models\User;
+use App\Support\Auth\PhoneNumber;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -26,6 +27,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
@@ -75,21 +78,21 @@ final class UserResource extends Resource
             Section::make('Akun pengguna')->schema([
                 TextInput::make('name')->label('Nama')->required()->minLength(2)->maxLength(120),
                 TextInput::make('username')->label('Username')->required()->minLength(3)->maxLength(60)->regex('/^[a-z0-9._-]+$/')->unique(ignoreRecord: true),
-                TextInput::make('phone')->label('Nomor telepon (opsional)')->nullable()->regex('/^62[0-9]{8,16}$/')->maxLength(20),
+                TextInput::make('phone')->label('Nomor telepon (opsional)')->helperText('Boleh menggunakan 08, 62, atau +62.')->nullable()->mutateStateForValidationUsing(fn (?string $state): string => PhoneNumber::normalize($state ?? ''))->dehydrateStateUsing(fn (?string $state): string => PhoneNumber::normalize($state ?? ''))->regex('/^62[0-9]{8,16}$/')->maxLength(20),
                 TextInput::make('email')->label('Email')->email()->nullable(),
                 TextInput::make('password')->label('Kata sandi')->visibleOn('create')->password()->revealable()->required(fn (string $operation): bool => $operation === 'create')->minLength(8)->dehydrated(fn (?string $state): bool => filled($state)),
                 TextInput::make('password_confirmation')->label('Konfirmasi kata sandi')->visibleOn('create')->password()->revealable()->required(fn (string $operation): bool => $operation === 'create')->same('password')->dehydrated(fn (string $operation): bool => $operation === 'create'),
-                Select::make('role')->label('Peran')->options(fn (): array => UserRole::options(true))->required(fn (string $operation): bool => $operation === 'create')->visibleOn('create')->dehydrated(fn (string $operation): bool => $operation === 'create'),
+                Select::make('role')->label('Peran')->options(fn (): array => UserRole::options(true))->live()->afterStateUpdated(fn (Set $set): mixed => $set('service_areas', [self::defaultAssignment()]))->required(fn (string $operation): bool => $operation === 'create')->visibleOn('create')->dehydrated(fn (string $operation): bool => $operation === 'create'),
             ])->columns(['default' => 1, 'md' => 2]),
-            Section::make('Area dan masa tugas')->visible(fn (?User $record): bool => $record !== null && $record->hasRole('petugas', 'bendahara'))->schema([
-                Repeater::make('service_areas')->label('Penugasan')->defaultItems(0)->minItems(1)->required()->schema([
+            Section::make('Area dan masa tugas')->visible(fn (Get $get, ?User $record): bool => self::needsAssignments($get, $record))->schema([
+                Repeater::make('service_areas')->label('Penugasan')->default([self::defaultAssignment()])->minItems(1)->required()->schema([
                     Select::make('service_area_id')->label('Area layanan')->options(fn (): array => ServiceArea::where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->required()->distinct(),
                     DatePicker::make('active_from')->label('Mulai bertugas'),
                     DatePicker::make('active_to')->label('Akhir tugas')->afterOrEqual('active_from'),
                 ])->columns(['default' => 1, 'md' => 3]),
             ]),
             Section::make('Perubahan peran')->visible(fn (?User $record): bool => $record !== null && app(PermissionChecker::class)->allows(self::actor(), 'role.manage'))->schema([
-                Select::make('new_role')->label('Peran baru (opsional)')->placeholder('Tetap menggunakan peran saat ini')->options(fn (): array => UserRole::options(true))->live(),
+                Select::make('new_role')->label('Peran baru (opsional)')->placeholder('Tetap menggunakan peran saat ini')->options(fn (): array => UserRole::options(true))->live()->afterStateUpdated(fn (Set $set): mixed => $set('service_areas', [['service_area_id' => null, 'active_from' => null, 'active_to' => null]]))->helperText('Saat peran berubah, tetapkan tugas baru secara eksplisit. Tugas lama tidak diwariskan.'),
                 Textarea::make('role_reason')->label('Alasan perubahan peran')->minLength(10)->maxLength(1000)->requiredWith('new_role'),
             ]),
         ]);
@@ -104,6 +107,17 @@ final class UserResource extends Resource
                 TextColumn::make('status')->label('Status')->badge(),
                 TextColumn::make('customerProfile.customer_number')->label('Nomor nasabah')->placeholder('Belum terbit')->toggleable(),
                 TextColumn::make('role')->label('Peran')->badge()->separator(','),
+                TextColumn::make('readiness')->label('Kesiapan tugas')->state(function (User $record): string {
+                    if (! $record->hasRole('petugas', 'bendahara')) {
+                        return 'Tidak memerlukan tugas area';
+                    }
+                    if ($record->status !== UserStatus::Active) {
+                        return 'Akun belum aktif';
+                    }
+                    $ready = $record->staffProfile?->serviceAreas->contains(fn ($assignment): bool => $assignment->serviceArea->is_active && ($assignment->active_from === null || $assignment->active_from->lessThanOrEqualTo(today())) && ($assignment->active_to === null || $assignment->active_to->greaterThanOrEqualTo(today())));
+
+                    return $ready ? 'Siap bertugas' : 'Area tugas belum aktif';
+                }),
             ])
             ->recordActions([
                 ViewAction::make()->label('Lihat')->modalWidth(Width::FiveExtraLarge)->authorize('manageView')->schema([
@@ -183,5 +197,20 @@ final class UserResource extends Resource
         $actor = auth()->user();
 
         return $actor;
+    }
+
+    private static function needsAssignments(Get $get, ?User $record): bool
+    {
+        $role = $record === null ? $get('role') : ($get('new_role') ?: $record->role->value);
+
+        return in_array($role, ['petugas', 'bendahara'], true);
+    }
+
+    /** @return array{service_area_id: int|null, active_from: string|null, active_to: null} */
+    private static function defaultAssignment(): array
+    {
+        $areas = ServiceArea::query()->where('is_active', true)->limit(2)->pluck('id');
+
+        return ['service_area_id' => $areas->count() === 1 ? (int) $areas->first() : null, 'active_from' => today()->toDateString(), 'active_to' => null];
     }
 }

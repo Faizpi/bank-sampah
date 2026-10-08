@@ -19,6 +19,10 @@ final class Reconciliation extends Model
 
     public const STATUS_REJECTED = 'ditolak';
 
+    public const STATUS_COMPLETED = 'selesai';
+
+    public const STATUS_COMPLETED_WITH_DIFFERENCE = 'selesai_dengan_selisih';
+
     protected $fillable = [
         'uuid', 'business_date', 'service_area_id', 'scope_key', 'status', 'version', 'parent_id',
         'opening_total', 'deposit_total', 'withdrawal_total', 'grocery_total', 'hold_total', 'cash_total', 'closing_total', 'difference',

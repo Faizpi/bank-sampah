@@ -8,6 +8,7 @@ use App\Authorization\PermissionChecker;
 use App\Domain\CustomersRegions\Actions\ManageCustomerIdentity;
 use App\Domain\CustomersRegions\Contracts\CustomerSummary;
 use App\Domain\CustomersRegions\Queries\SearchCustomers;
+use App\Domain\Identity\Queries\VisibleUsers;
 use App\Domain\MobileServices\Enums\MobileServiceStatus;
 use App\Domain\MobileServices\Models\MobileService;
 use App\Livewire\Concerns\InteractsWithMediaPicker;
@@ -42,6 +43,15 @@ final class CustomerIdentification extends Component
     #[Locked]
     public ?int $mobileServiceId = null;
 
+    public string $selectedMobileServiceId = '';
+
+    /** @var list<int> */
+    #[Locked]
+    public array $matchingCustomerIds = [];
+
+    #[Locked]
+    public bool $searched = false;
+
     public function mount(PermissionChecker $permissions): void
     {
         /** @var User|null $actor */
@@ -53,6 +63,7 @@ final class CustomerIdentification extends Component
             $this->mobileServiceId = null;
             $this->addError('mobileServiceId', 'Layanan keliling tidak aktif atau tidak ditugaskan kepada Anda. Pilih konteks lain.');
         }
+        $this->selectedMobileServiceId = $this->mobileServiceId === null ? '' : (string) $this->mobileServiceId;
     }
 
     public function find(SearchCustomers $searchCustomers): void
@@ -61,8 +72,36 @@ final class CustomerIdentification extends Component
         $actor = auth()->user();
         $this->resetCandidate();
         $this->validate(['search' => ['required', 'string', 'max:120']]);
-        $matches = $searchCustomers->search($actor, $this->search, 1, $this->identificationMobileService($actor));
-        $this->candidate = $matches[0] ?? null;
+        $matches = $searchCustomers->search($actor, $this->search, 10, $this->validatedContext($actor));
+        $this->matchingCustomerIds = array_map(static fn (CustomerSummary $match): int => $match->userId, $matches);
+        $this->candidate = count($matches) === 1 ? $matches[0] : null;
+        $this->searched = true;
+    }
+
+    public function chooseCustomer(int $customerId, VisibleUsers $users): void
+    {
+        abort_unless(in_array($customerId, $this->matchingCustomerIds, true), 404);
+        /** @var User $actor */
+        $actor = auth()->user();
+        $service = $this->validatedContext($actor);
+        $query = $service === null ? $users->queryFor($actor) : $users->queryForMobileService($actor, $service);
+        $customer = $query->with('customerProfile')->where('role', 'warga')->findOrFail($customerId);
+        $this->candidate = new CustomerSummary($customer->id, $customer->name, $customer->customerProfile->customerNumber());
+        $this->confirmed = false;
+    }
+
+    public function startDeposit(): void
+    {
+        $this->confirm();
+        $candidate = $this->candidate;
+        abort_unless($candidate instanceof CustomerSummary, 404);
+        /** @var User $actor */
+        $actor = auth()->user();
+        $service = $this->validatedContext($actor);
+        $users = app(VisibleUsers::class);
+        $query = $service === null ? $users->queryFor($actor) : $users->queryForMobileService($actor, $service);
+        abort_unless($query->where('role', 'warga')->whereKey($candidate->userId)->exists(), 404);
+        $this->redirectRoute('officer.deposit-form', ['customerId' => $candidate->userId, 'mobileServiceId' => $this->mobileServiceId], navigate: true);
     }
 
     public function scan(string $rawToken, ManageCustomerIdentity $identity): void
@@ -73,7 +112,7 @@ final class CustomerIdentification extends Component
         $this->scannerOpen = false;
 
         try {
-            $this->candidate = $identity->scan($actor, $rawToken, $this->identificationMobileService($actor));
+            $this->candidate = $identity->scan($actor, $rawToken, $this->validatedContext($actor));
         } catch (Throwable $exception) {
             if ($exception instanceof ValidationException) {
                 $this->scannerOpen = true;
@@ -116,9 +155,13 @@ final class CustomerIdentification extends Component
         $this->selectedService = $service;
     }
 
-    public function updatedMobileServiceId(): void
+    public function updatedSelectedMobileServiceId(): void
     {
         $this->resetValidation('mobileServiceId');
+        $this->mobileServiceId = $this->selectedMobileServiceId === '' ? null : (filter_var($this->selectedMobileServiceId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null);
+        if ($this->selectedMobileServiceId !== '' && $this->mobileServiceId === null) {
+            $this->addError('mobileServiceId', 'Pilih layanan keliling yang tersedia.');
+        }
         if ($this->mobileServiceId !== null) {
             /** @var User $actor */
             $actor = auth()->user();
@@ -127,6 +170,7 @@ final class CustomerIdentification extends Component
                 $this->addError('mobileServiceId', 'Layanan keliling tidak aktif atau tidak ditugaskan kepada Anda. Pilih konteks lain.');
             }
         }
+        $this->selectedMobileServiceId = $this->mobileServiceId === null ? '' : (string) $this->mobileServiceId;
 
         $this->resetCandidate();
     }
@@ -137,6 +181,7 @@ final class CustomerIdentification extends Component
         $actor = auth()->user();
 
         return view('livewire.officer.customer-identification', [
+            'matchingCustomers' => ($this->identificationMobileService($actor) === null ? app(VisibleUsers::class)->queryFor($actor) : app(VisibleUsers::class)->queryForMobileService($actor, $this->identificationMobileService($actor)))->with('customerProfile.rt.rw.dusun')->whereKey($this->matchingCustomerIds)->orderBy('name')->get(),
             'mobileServices' => $permissions->allows($actor, 'mobile-service.operate')
                 ? MobileService::query()->whereHas('staff', static fn (Builder $staff): Builder => $staff->whereKey($actor->id))->where('status', MobileServiceStatus::Open)->where('starts_at', '<=', now())->where('ends_at', '>=', now())->orderBy('starts_at')->get()
                 : collect(),
@@ -160,7 +205,17 @@ final class CustomerIdentification extends Component
 
     private function resetCandidate(): void
     {
-        $this->reset(['candidate', 'confirmed', 'selectedService']);
+        $this->reset(['candidate', 'confirmed', 'selectedService', 'matchingCustomerIds', 'searched']);
         $this->resetErrorBag(['search', 'token']);
+    }
+
+    private function validatedContext(User $actor): ?MobileService
+    {
+        $service = $this->identificationMobileService($actor);
+        if ($this->mobileServiceId !== null && $service === null) {
+            throw ValidationException::withMessages(['mobileServiceId' => 'Layanan keliling tidak lagi aktif atau tidak ditugaskan kepada Anda. Pilih metode lain.']);
+        }
+
+        return $service;
     }
 }

@@ -19,10 +19,9 @@ final class FinancialReconciliationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_daily_snapshot_must_match_then_be_approved_by_a_different_user(): void
+    public function test_one_admin_records_the_daily_check_without_another_approver(): void
     {
         $creator = $this->userWith('reconciliation.create');
-        $approver = $this->userWith('reconciliation.approve');
         $customer = User::factory()->create();
         $account = LedgerAccount::query()->create(['user_id' => $customer->id, 'status' => 'aktif', 'currency' => 'IDR']);
         $deposit = Deposit::query()->create([
@@ -42,11 +41,9 @@ final class FinancialReconciliationTest extends TestCase
         self::assertCount(5, $snapshot->items);
         self::assertTrue($snapshot->items->every(static fn ($item): bool => $item->status === 'sesuai'));
 
-        $submitted = $service->submit($creator, $snapshot);
-        self::assertSame(Reconciliation::STATUS_SUBMITTED, $submitted->status);
-        $approved = $service->approve($approver, $submitted, 'Seluruh pembanding dan kas fisik sudah sesuai.');
-        self::assertSame(Reconciliation::STATUS_APPROVED, $approved->status);
-        self::assertSame($approver->id, $approved->approver_id);
+        $completed = $service->complete($creator, $snapshot);
+        self::assertSame(Reconciliation::STATUS_COMPLETED, $completed->status);
+        self::assertSame($creator->id, $completed->approver_id);
     }
 
     private function userWith(string $permissionName): User

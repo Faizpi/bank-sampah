@@ -15,6 +15,7 @@ use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Services\ResolveWastePrice;
 use App\Livewire\Concerns\InteractsWithMediaPicker;
 use App\Models\User;
+use App\Support\LocalInput;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\UploadedFile;
@@ -157,7 +158,10 @@ final class PickupTask extends Component
 
     public function complete(PickupService $service): void
     {
-
+        foreach ($this->actualItems as &$item) {
+            LocalInput::field($item, 'weight_kg', 'decimal');
+        }
+        unset($item);
         /** @var User $actor */
         $actor = auth()->user();
         $this->assertAssigned($actor);
@@ -310,7 +314,7 @@ final class PickupTask extends Component
         return view('livewire.officer.pickup-task', [
             'types' => $types,
             'conditionsByType' => $conditionsByType,
-            'canComplete' => $this->pickup->status === PickupStatus::PickedUp && $this->pickup->deposit_id === null,
+            'canComplete' => $this->pickup->status === PickupStatus::PickedUp && $this->pickup->deposit_id === null && ! ($this->pickup->exception_reported_at && ! $this->pickup->exception_resolved_at),
             'pricePreview' => $this->pricePreview($types, $conditions),
         ]);
     }

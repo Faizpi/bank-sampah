@@ -45,6 +45,7 @@ use App\Policies\WastePricePolicy;
 use App\Policies\WasteTypePolicy;
 use App\Policies\WasteUnitPolicy;
 use App\Policies\WithdrawalRequestPolicy;
+use Filament\Tables\Table;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -70,6 +71,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Table::configureUsing(static function (Table $table): void {
+            $table->stackedOnMobile();
+        });
         Livewire::addPersistentMiddleware([
             RequireRole::class,
             RequirePermission::class,

@@ -185,7 +185,7 @@ final class OfficerShellTest extends TestCase
     /** @return iterable<string, array{string, array<string, string>, string, string}> */
     public static function invalidNavigationProvider(): iterable
     {
-        yield 'unknown persona' => ['admin', self::OFFICER_DESTINATIONS, 'Tugas', 'Officer navigation persona must be officer or treasurer.'];
+        yield 'unknown persona' => ['unknown', self::OFFICER_DESTINATIONS, 'Tugas', 'Navigation persona must be officer, treasurer, or admin.'];
         yield 'missing core' => ['officer', ['Setoran' => '/setoran', 'Akun' => '/akun'], 'Akun', 'Officer navigation must contain Tugas.'];
         yield 'foreign officer item' => ['officer', ['Tugas' => '/tugas', 'Pembayaran' => '/bayar', 'Akun' => '/akun'], 'Tugas', 'Officer navigation destinations are invalid for persona officer.'];
         yield 'foreign treasurer item' => ['treasurer', ['Tugas' => '/tugas', 'Pindai' => '/pindai', 'Akun' => '/akun'], 'Tugas', 'Officer navigation destinations are invalid for persona treasurer.'];

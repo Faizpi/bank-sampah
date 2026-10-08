@@ -13,6 +13,7 @@ use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Reports\Enums\ReportType;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
+use App\Support\StatusLabel;
 use App\Support\WeightFormatter;
 use BackedEnum;
 use Carbon\CarbonImmutable;
@@ -422,12 +423,7 @@ final readonly class ReportQueryService
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $filters['start']) !== 1 || preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $filters['end']) !== 1 || (string) $filters['start'] >= (string) $filters['end']) {
             throw ValidationException::withMessages(['period' => 'Periode laporan tidak valid.']);
         }
-        $allowedStatuses = match ($type) {
-            ReportType::Deposits, ReportType::Participation => [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED],
-            ReportType::Withdrawals => ['sudah_dibayar'],
-            ReportType::Groceries => ['selesai'],
-            ReportType::Pickups => ['selesai'],
-        };
+        $allowedStatuses = array_keys($this->statusOptions($type->value));
         if (isset($filters['status']) && ! in_array($filters['status'], $allowedStatuses, true)) {
             throw ValidationException::withMessages(['status' => 'Status laporan tidak diizinkan.']);
         }
@@ -436,6 +432,21 @@ final readonly class ReportQueryService
                 throw ValidationException::withMessages([$key => 'Filter laporan tidak valid.']);
             }
         }
+    }
+
+    /** @return array<string, string> */
+    public function statusOptions(string $reportType): array
+    {
+        $type = ReportType::tryFrom($reportType);
+        $statuses = match ($type) {
+            ReportType::Deposits, ReportType::Participation => [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED],
+            ReportType::Withdrawals => ['sudah_dibayar'],
+            ReportType::Groceries => ['selesai'],
+            ReportType::Pickups => ['selesai'],
+            default => throw ValidationException::withMessages(['reportType' => 'Jenis laporan tidak diizinkan.']),
+        };
+
+        return array_combine($statuses, array_map(StatusLabel::for(...), $statuses));
     }
 
     private function displayReference(Model $record, ReportType $type): string

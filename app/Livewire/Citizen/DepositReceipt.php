@@ -11,9 +11,9 @@ use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Deposits\Services\DepositPublicPresenter;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use LogicException;
 
 #[Layout('layouts.citizen')]
 final class DepositReceipt extends Component
@@ -28,17 +28,24 @@ final class DepositReceipt extends Component
         $actor = auth()->user();
         abort_unless($actor instanceof User && $permissions->allows($actor, 'deposit.view'), 403);
         abort_unless($deposit->customer_id === $actor->id, 404);
-        $presenter->present($deposit);
+        try {
+            $presenter->present($deposit);
+        } catch (ValidationException) {
+            abort(404, 'Bukti setoran ini tidak tersedia.');
+        }
         $this->deposit = $deposit->load(['items', 'correction']);
         $token = $deposit->verificationToken();
         if ($token === null) {
-            throw new LogicException('Final deposit must have a verification token.');
+            abort(404, 'Bukti setoran ini tidak tersedia.');
         }
         $this->qrDataUri = $qrPresenter->dataUri(QrToken::fromValue($token));
     }
 
     public function render(DepositPublicPresenter $presenter): View
     {
-        return view('livewire.citizen.deposit-receipt', ['receipt' => $presenter->present($this->deposit)]);
+        $deposit = $this->deposit->fresh(['items', 'correction']);
+        abort_unless($deposit !== null && $deposit->customer_id === auth()->id() && $deposit->isFinal() && $deposit->status !== Deposit::STATUS_REVERSED, 404);
+
+        return view('livewire.citizen.deposit-receipt', ['receipt' => $presenter->present($deposit)]);
     }
 }

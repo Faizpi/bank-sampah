@@ -34,7 +34,7 @@
     </div>
 
     {{-- Package Selection --}}
-     <x-ui.panel title="Paket aktif" description="Periksa isi dan nilai penukaran sebelum memilih. Ketersediaan dikonfirmasi admin.">
+     <x-ui.panel title="Paket aktif" description="Periksa isi dan nilai penukaran sebelum memilih. Petugas mengambil tugas saat paket fisik tersedia.">
         @if ($serviceAreas->count() > 1)
             <label class="mb-5 block">
                 <span class="text-label font-semibold text-deep-green">Area layanan</span>

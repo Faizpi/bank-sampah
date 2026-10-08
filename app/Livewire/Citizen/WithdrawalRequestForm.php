@@ -7,6 +7,7 @@ namespace App\Livewire\Citizen;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
+use App\Support\LocalInput;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -37,6 +38,7 @@ final class WithdrawalRequestForm extends Component
 
     public function updatedAmount(): void
     {
+        $this->amount = LocalInput::rupiah($this->amount);
         $this->resetValidation('amount');
 
         if (! ctype_digit($this->amount)) {
@@ -52,6 +54,7 @@ final class WithdrawalRequestForm extends Component
 
     public function submit(WithdrawalService $service): void
     {
+        $this->amount = LocalInput::rupiah($this->amount);
         $minimumAmount = (int) config('app.withdrawal_minimum_amount', 10_000);
         $validated = $this->validate([
             'amount' => ['required', 'integer', 'min:'.$minimumAmount],

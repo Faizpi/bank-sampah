@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Authorization\PermissionChecker;
+use App\Domain\AuditReconciliation\Services\AuditRetentionPreview;
 use App\Domain\AuditReconciliation\Services\AuditRetentionService;
 use App\Domain\Operations\Models\BackupLog;
 use App\Domain\Operations\Services\BackupArtifact;
@@ -13,14 +14,17 @@ use App\Domain\Operations\Services\BackupLifecycleService;
 use App\Domain\Operations\Services\BackupRequest;
 use App\Domain\Operations\Services\OperationalHealthService;
 use App\Domain\Operations\Services\OperationalSettingsService;
+use App\Domain\Operations\Services\PickupPhotoRetentionPreview;
 use App\Domain\Operations\Services\PickupPhotoRetentionService;
 use App\Models\User;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use UnitEnum;
 
 class OperationsDashboard extends Page
@@ -50,17 +54,27 @@ class OperationsDashboard extends Page
 
     public string $retentionResult = '';
 
+    #[Locked]
     public string $retentionPreviewBefore = '';
 
+    #[Locked]
     public string $retentionPreviewedAt = '';
+
+    #[Locked]
+    public string $auditPreviewToken = '';
 
     public string $mediaRetentionBefore = '';
 
     public string $mediaRetentionResult = '';
 
+    #[Locked]
     public string $mediaRetentionPreviewBefore = '';
 
+    #[Locked]
     public string $mediaRetentionPreviewedAt = '';
+
+    #[Locked]
+    public string $mediaPreviewToken = '';
 
     public int $mediaRetentionCandidateCount = 0;
 
@@ -124,6 +138,7 @@ class OperationsDashboard extends Page
 
     public function saveSettings(): void
     {
+        $this->assertPageOperation(__FUNCTION__);
         try {
             app(OperationalSettingsService::class)->update($this->actor(), [
                 'queue_backlog_threshold' => $this->settings['queue_backlog_threshold'] ?? 0,
@@ -151,6 +166,7 @@ class OperationsDashboard extends Page
 
     public function toggleMaintenance(): void
     {
+        $this->assertPageOperation(__FUNCTION__);
         if (trim($this->maintenanceReason) === '') {
             throw ValidationException::withMessages(['maintenanceReason' => 'Alasan perubahan wajib diisi.']);
         }
@@ -168,14 +184,17 @@ class OperationsDashboard extends Page
 
     public function previewRetention(): void
     {
+        $this->assertPageOperation(__FUNCTION__);
         $preview = app(AuditRetentionService::class)->preview($this->actor(), $this->retentionBefore);
+        $this->rememberPreview('audit', $this->retentionBefore, $preview);
         $this->retentionPreviewBefore = $this->retentionBefore;
         $this->retentionPreviewedAt = now()->toIso8601String();
-        $this->retentionResult = sprintf('Akan dihapus: %d; dilindungi: %d.', $preview->deletableCount, $preview->protectedCount);
+        $this->retentionResult = sprintf('Batch berikutnya: %d dari %d; dilindungi: %d.', count($preview->candidateIds), $preview->deletableCount, $preview->protectedCount);
     }
 
     public function executeRetention(): void
     {
+        $this->assertPageOperation(__FUNCTION__);
         if ($this->retentionPreviewBefore !== $this->retentionBefore || $this->retentionPreviewedAt === '') {
             throw ValidationException::withMessages(['retentionBefore' => 'Jalankan preview dengan batas tanggal yang sama sebelum retensi.']);
         }
@@ -190,7 +209,11 @@ class OperationsDashboard extends Page
             throw ValidationException::withMessages(['retentionBefore' => 'Preview retensi sudah kedaluwarsa. Jalankan preview kembali.']);
         }
 
-        $count = app(AuditRetentionService::class)->execute($this->actor(), $this->retentionBefore);
+        $count = Cache::lock($this->previewKey('audit').':execution', 60)->block(1, function (): int {
+            $ids = $this->consumePreview('audit', $this->retentionBefore, app(AuditRetentionService::class)->preview($this->actor(), $this->retentionBefore));
+
+            return app(AuditRetentionService::class)->execute($this->actor(), $this->retentionBefore, expectedCandidates: $ids);
+        });
         $this->retentionResult = sprintf('Retensi selesai. Baris audit dihapus: %d.', $count);
         $this->retentionPreviewBefore = '';
         $this->retentionPreviewedAt = '';
@@ -199,7 +222,9 @@ class OperationsDashboard extends Page
 
     public function previewMediaRetention(): void
     {
+        $this->assertPageOperation(__FUNCTION__);
         $preview = app(PickupPhotoRetentionService::class)->preview($this->actor(), $this->mediaRetentionBefore);
+        $this->rememberPreview('media', $this->mediaRetentionBefore, $preview);
         $this->mediaRetentionPreviewBefore = $this->mediaRetentionBefore;
         $this->mediaRetentionPreviewedAt = now()->toIso8601String();
         $this->mediaRetentionCandidateCount = $preview->deletableCount;
@@ -213,6 +238,7 @@ class OperationsDashboard extends Page
 
     public function executeMediaRetention(): void
     {
+        $this->assertPageOperation(__FUNCTION__);
         if ($this->mediaRetentionPreviewBefore !== $this->mediaRetentionBefore || $this->mediaRetentionPreviewedAt === '') {
             throw ValidationException::withMessages(['mediaRetentionBefore' => 'Jalankan pratinjau dengan batas tanggal yang sama sebelum menghapus foto.']);
         }
@@ -227,11 +253,11 @@ class OperationsDashboard extends Page
             throw ValidationException::withMessages(['mediaRetentionBefore' => 'Pratinjau retensi foto sudah kedaluwarsa. Jalankan pratinjau kembali.']);
         }
 
-        $result = app(PickupPhotoRetentionService::class)->execute(
-            $this->actor(),
-            $this->mediaRetentionBefore,
-            $this->correlationId(),
-        );
+        $result = Cache::lock($this->previewKey('media').':execution', 60)->block(1, function () {
+            $ids = $this->consumePreview('media', $this->mediaRetentionBefore, app(PickupPhotoRetentionService::class)->preview($this->actor(), $this->mediaRetentionBefore));
+
+            return app(PickupPhotoRetentionService::class)->execute($this->actor(), $this->mediaRetentionBefore, $this->correlationId(), expectedCandidates: $ids);
+        });
         $this->mediaRetentionResult = sprintf(
             'Pembersihan selesai. %d foto (%s) dihapus; %d catatan sudah kehilangan file fisik.',
             $result->deletedCount,
@@ -249,6 +275,7 @@ class OperationsDashboard extends Page
 
     public function recordBackupMetadata(): void
     {
+        $this->assertPageOperation(__FUNCTION__);
         $backup = app(BackupLifecycleService::class)->request(new BackupRequest(
             actor: $this->actor(),
             artifacts: new BackupArtifactPair(
@@ -267,6 +294,7 @@ class OperationsDashboard extends Page
 
     public function recordRestoreVerification(): void
     {
+        $this->assertPageOperation(__FUNCTION__);
         if (! in_array($this->restoreResult, ['passed', 'failed'], true)) {
             throw ValidationException::withMessages(['restoreResult' => 'Pilih hasil verifikasi: lulus atau gagal.']);
         }
@@ -386,7 +414,7 @@ class OperationsDashboard extends Page
     private function actor(): User
     {
         /** @var User $actor */
-        $actor = auth()->user();
+        $actor = User::query()->findOrFail(auth()->id());
 
         return $actor;
     }
@@ -415,5 +443,43 @@ class OperationsDashboard extends Page
         }
 
         return false;
+    }
+
+    private function assertPageOperation(string $operation): void
+    {
+        $allowed = match (static::class) {
+            self::class => ['saveSettings', 'toggleMaintenance', 'previewRetention', 'executeRetention', 'previewMediaRetention', 'executeMediaRetention', 'recordBackupMetadata', 'recordRestoreVerification'],
+            TechnicalSettingsPage::class => ['saveSettings'],
+            TechnicalMaintenancePage::class => ['toggleMaintenance'],
+            TechnicalAuditRetentionPage::class => ['previewRetention', 'executeRetention'],
+            TechnicalMediaRetentionPage::class => ['previewMediaRetention', 'executeMediaRetention'],
+            TechnicalBackupsPage::class => ['recordBackupMetadata', 'recordRestoreVerification'],
+            default => [],
+        };
+        abort_unless(in_array($operation, $allowed, true), 403);
+    }
+
+    private function previewKey(string $kind): string
+    {
+        return 'operations-preview:v2:'.hash('sha256', static::class.':'.$this->getId().':'.auth()->id().':'.$kind);
+    }
+
+    private function rememberPreview(string $kind, string $cutoff, AuditRetentionPreview|PickupPhotoRetentionPreview $preview): void
+    {
+        $token = (string) Str::uuid();
+        $kind === 'audit' ? $this->auditPreviewToken = $token : $this->mediaPreviewToken = $token;
+        Cache::put($this->previewKey($kind), ['cutoff' => $cutoff, 'token' => $token, 'fingerprint' => hash('sha256', json_encode($preview, JSON_THROW_ON_ERROR))], now()->addMinutes(10));
+    }
+
+    /** @return list<int> */
+    private function consumePreview(string $kind, string $cutoff, AuditRetentionPreview|PickupPhotoRetentionPreview $preview): array
+    {
+        $record = Cache::pull($this->previewKey($kind));
+        $token = $kind === 'audit' ? $this->auditPreviewToken : $this->mediaPreviewToken;
+        if (! is_array($record) || ($record['token'] ?? null) !== $token || ($record['cutoff'] ?? null) !== $cutoff || ($record['fingerprint'] ?? null) !== hash('sha256', json_encode($preview, JSON_THROW_ON_ERROR))) {
+            throw ValidationException::withMessages([$kind === 'audit' ? 'retentionBefore' : 'mediaRetentionBefore' => 'Pratinjau belum tersedia, sudah kedaluwarsa, atau kandidat berubah. Jalankan pratinjau kembali.']);
+        }
+
+        return $preview instanceof AuditRetentionPreview ? $preview->candidateIds : array_column($preview->items, 'id');
     }
 }

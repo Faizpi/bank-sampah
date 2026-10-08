@@ -1,211 +1,52 @@
-<x-slot:title>Ajukan penjemputan</x-slot:title>
+<x-slot:title>Minta penjemputan</x-slot:title>
 <x-slot:context>Layanan warga</x-slot:context>
-
-@php
-    $selectedArea = $areas->firstWhere('id', (int) $serviceAreaId);
-    $estimatedWeight = collect($items)->sum(static fn (array $item): float => (float) ($item['estimated_weight_kg'] ?? 0));
-    $steps = [1 => 'Lokasi', 2 => 'Jenis & foto', 3 => 'Tinjau'];
-    $preferredDateMin = today('Asia/Jakarta')->toDateString();
-    $preferredDateMax = today('Asia/Jakarta')->addDays((int) config('app.pickup_booking_horizon_days', 30))->toDateString();
-    $photoPickerInitialFiles = collect($photos)
-        ->map(static fn ($photo): array => [
-            'name' => $photo->getClientOriginalName(),
-            'size' => $photo->getSize(),
-            'mimeType' => (string) ($photo->getMimeType() ?? ''),
-            'previewUrl' => $photo->temporaryUrl(),
-        ])
-        ->values()
-        ->all();
-@endphp
-
-<section
-    aria-labelledby="pickup-request-title"
-    x-data
-    x-on:focus-pickup-errors.window="$nextTick(() => $refs.pickupErrorSummary?.focus())"
-    class="grid gap-6"
->
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-            <p class="text-label font-semibold text-forest-600">Penjemputan sampah</p>
-            <h1 id="pickup-request-title" class="mt-2 text-h1 font-bold text-deep-green">Ajukan penjemputan</h1>
-            <p class="mt-3 max-w-2xl text-body text-text-secondary">
-                Isi tiga langkah singkat. Perkiraan hanya membantu perencanaan; saldo mengikuti penimbangan aktual petugas.
-            </p>
-        </div>
-        <x-ui.mascot variant="4" bubble="Siap jemput sampahmu!" bubblePosition="top" class="h-28 w-auto shrink-0" />
-    </div>
-
-    @if (session('success'))
-        <x-ui.success-state title="Berhasil" :description="session('success')" />
-    @endif
-
+<section aria-labelledby="pickup-request-title" class="grid gap-5" x-data x-on:focus-pickup-errors.window="$nextTick(() => $refs.pickupErrorSummary?.focus())">
+    <h1 id="pickup-request-title" class="text-h1 font-bold text-deep-green">Minta penjemputan sampah</h1>
+    <p>Pilih tanggal, alamat, dan jenis sampah. Petugas mengambil tugas langsung, tanpa persetujuan Admin. Saldo mengikuti timbang aktual, bukan perkiraan.</p>
     @if ($errors->any())
-        <section
-            id="pickup-error-summary"
-            x-ref="pickupErrorSummary"
-            tabindex="-1"
-            role="alert"
-            aria-labelledby="pickup-error-title"
-            class="rounded-lg border border-terracotta bg-danger-bg p-4"
-        >
-            <div class="flex gap-3">
-                <svg viewBox="0 0 24 24" class="mt-0.5 size-5 shrink-0 text-terracotta" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
-                <div>
-                    <h2 id="pickup-error-title" class="text-title font-bold text-deep-green">Periksa pengajuan Anda</h2>
-                    <p class="mt-1 text-body-sm text-text-primary">Perbaiki bagian berikut sebelum melanjutkan.</p>
-                    <ul class="mt-2 list-disc space-y-1 pl-5 text-body-sm text-text-primary">
-                        @foreach ($errors->all() as $message)
-                            <li>{{ $message }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            </div>
-        </section>
-    @endif
-
-    <nav aria-label="Tahap pengajuan penjemputan" class="rounded-lg border border-border bg-surface p-3 shadow-xs">
-        <ol class="grid gap-2 sm:grid-cols-3">
-            @foreach ($steps as $number => $label)
-                <li>
-                    <button
-                        type="button"
-                        wire:click="goToStep({{ $number }})"
-                        @disabled($number >= $step)
-                        @class([
-                            'flex min-h-touch w-full items-center gap-3 rounded-md px-3 text-left transition',
-                            'bg-forest-600 text-white' => $number === $step,
-                            'bg-success-bg text-forest-700' => $number < $step,
-                            'text-text-secondary disabled:cursor-default' => $number > $step,
-                        ])
-                        @if ($number === $step) aria-current="step" @endif
-                    >
-                        <span @class([
-                            'flex size-8 shrink-0 items-center justify-center rounded-full border text-label font-bold',
-                            'border-white/60' => $number === $step,
-                            'border-forest-600 bg-surface text-forest-700' => $number < $step,
-                            'border-border' => $number > $step,
-                        ])>{{ $number }}</span>
-                        <span>
-                            <span class="block text-caption">Langkah {{ $number }}</span>
-                            <span class="block text-label font-bold">{{ $label }}</span>
-                        </span>
-                    </button>
-                </li>
-            @endforeach
-        </ol>
-    </nav>
-
-    <form wire:submit="submit" class="grid gap-6">
-        @if ($step === 1)
-            <x-ui.panel title="Lokasi dan tanggal layanan" description="Pilih area aktif dan tanggal pilihan penjemputan Anda.">
-                <div class="grid gap-4 md:grid-cols-2">
-                    @if ($areas->count() === 1)
-                        <p class="text-body-sm text-text-secondary">Area pelayanan: {{ $areas->first()->name }}</p>
-                        @error('serviceAreaId')<p role="alert" class="text-terracotta">{{ $message }}</p>@enderror
-                    @else
-                        <x-ui.select wire:model.live="serviceAreaId" label="Area pelayanan" name="serviceAreaId" placeholder="Pilih area pelayanan" :options="$areas->pluck('name', 'id')->all()" :error="$errors->first('serviceAreaId')" />
-                    @endif
-                    <x-ui.input
-                        wire:model="selectedDate"
-                        label="Tanggal pilihan"
-                        name="selectedDate"
-                        type="date"
-                        :min="$preferredDateMin"
-                        :max="$preferredDateMax"
-                        hint="Pilih tanggal mulai hari ini sampai 30 hari ke depan."
-                        :error="$errors->first('selectedDate')"
-                    />
-                    <x-ui.textarea wire:model="address" label="Alamat penjemputan" name="address" rows="4" class="md:col-span-2" :error="$errors->first('address')" />
-                    <x-ui.textarea wire:model="notes" label="Catatan akses (opsional)" name="notes" rows="3" class="md:col-span-2"
-                        hint="Contoh: rumah cat biru, masuk gang sebelah masjid" :error="$errors->first('notes')" />
-                </div>
-                <div class="mt-5 rounded-md bg-info-bg px-4 py-3 text-body-sm text-deep-green">
-                    Setelah dikirim, pengajuan akan diverifikasi oleh admin, lalu dijadwalkan dan ditugaskan ke petugas lapangan.
-                </div>
-            </x-ui.panel>
-        @elseif ($step === 2)
-            <x-ui.panel title="Jenis dan perkiraan" description="Pilih minimal satu jenis; perkiraan berat atau jumlah boleh dikosongkan.">
-                <div class="grid gap-3">
-                    @foreach ($items as $index => $item)
-                        <div wire:key="pickup-item-{{ $index }}" class="grid gap-3 rounded-md border border-border bg-warm-canvas p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
-                            <x-ui.select wire:model="items.{{ $index }}.waste_type_id" label="Jenis sampah" name="items.{{ $index }}.waste_type_id" placeholder="Pilih jenis sampah"
-                                :options="$types->pluck('name', 'id')->all()" :error="$errors->first('items.'.$index.'.waste_type_id')" />
-                            <x-ui.input wire:model="items.{{ $index }}.estimated_weight_kg" label="Total berat (kg)" name="items.{{ $index }}.estimated_weight_kg" inputmode="decimal"
-                                :error="$errors->first('items.'.$index.'.estimated_weight_kg')" />
-                            <x-ui.input wire:model="items.{{ $index }}.estimated_quantity" label="Jumlah wadah" name="items.{{ $index }}.estimated_quantity" inputmode="numeric"
-                                :error="$errors->first('items.'.$index.'.estimated_quantity')" />
-                            @if (count($items) > 1)
-                                <div class="md:pt-7">
-                                    <button type="button" wire:click="removeItem({{ $index }})" class="inline-flex min-h-touch w-full items-center justify-center rounded-md border-2 border-terracotta px-4 text-label font-bold text-terracotta transition hover:bg-danger-bg">Hapus</button>
-                                </div>
-                            @endif
-                            <p class="text-body-sm text-text-secondary md:col-span-4">Jumlah wadah opsional, misalnya 2 kantong atau 1 karung.</p>
-                        </div>
-                    @endforeach
-                    <button type="button" wire:click="addItem" class="inline-flex min-h-touch items-center gap-2 justify-self-start rounded-md border-2 border-forest-600 px-4 text-label font-bold text-forest-700 transition hover:bg-success-bg">
-                        <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                        Tambah jenis
-                    </button>
-                </div>
-            </x-ui.panel>
-
-            <x-ui.panel title="Foto opsional" description="Boleh tanpa foto, maksimal dua foto bila diperlukan.">
-                <x-ui.media-picker
-                    id="pickup-photos"
-                    property="photos"
-                    label="Foto sampah"
-                    hint="Ambil atau pilih 1–2 foto sampah."
-                    :max="2"
-                    :multiple="true"
-                    remove-method="removePhoto"
-                    confirm-method="confirmPhotoUploads"
-                    :initial-files="$photoPickerInitialFiles"
-                />
-                @error('photos')<p class="text-body-sm font-semibold text-terracotta">{{ $message }}</p>@enderror
-            </x-ui.panel>
-        @else
-            <x-ui.panel title="Ringkasan pengajuan" description="Periksa kembali detail sebelum pengajuan dikirim.">
-                <dl class="grid gap-4 sm:grid-cols-2">
-                    <div><dt class="text-caption text-text-secondary">Area pelayanan</dt><dd class="mt-1 text-label font-bold text-deep-green">{{ $selectedArea?->name ?? 'Belum dipilih' }}</dd></div>
-                    <div><dt class="text-caption text-text-secondary">Tanggal pilihan</dt><dd class="mt-1 text-label font-bold text-deep-green">{{ $selectedDate !== '' ? \Illuminate\Support\Carbon::parse($selectedDate)->translatedFormat('d F Y') : 'Belum dipilih' }}</dd></div>
-                    <div class="sm:col-span-2"><dt class="text-caption text-text-secondary">Alamat</dt><dd class="mt-1 text-body text-text-primary">{{ $address !== '' ? $address : 'Belum diisi' }}</dd></div>
-                    <div><dt class="text-caption text-text-secondary">Jenis sampah</dt><dd class="mt-1 text-label font-bold text-deep-green">{{ count($items) }} jenis</dd></div>
-                    <div><dt class="text-caption text-text-secondary">Foto</dt><dd class="mt-1 text-label font-bold text-deep-green">{{ count($photos) }} dari 2 foto</dd></div>
-                    <div><dt class="text-caption text-text-secondary">Perkiraan berat</dt><dd class="mt-1 text-label font-bold text-deep-green">{{ \App\Support\WeightFormatter::format($estimatedWeight) }} kg</dd></div>
-                </dl>
-                <div class="mt-5 border-t border-border pt-4">
-                    <h3 class="text-label font-bold text-deep-green">Setelah dikirim</h3>
-                    <ol class="mt-4 grid list-none gap-x-5 gap-y-3 text-body-sm text-text-secondary sm:grid-cols-3">
-                        <li class="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-3">
-                            <span aria-hidden="true" class="flex size-7 items-center justify-center rounded-sm bg-success-bg text-caption font-bold text-forest-700">1</span>
-                            <p class="pt-0.5 leading-5">Pengajuan diverifikasi oleh admin.</p>
-                        </li>
-                        <li class="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-3">
-                            <span aria-hidden="true" class="flex size-7 items-center justify-center rounded-sm bg-success-bg text-caption font-bold text-forest-700">2</span>
-                            <p class="pt-0.5 leading-5">Jadwal dan petugas ditetapkan oleh admin.</p>
-                        </li>
-                        <li class="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-3">
-                            <span aria-hidden="true" class="flex size-7 items-center justify-center rounded-sm bg-success-bg text-caption font-bold text-forest-700">3</span>
-                            <p class="pt-0.5 leading-5">Saldo dicatat dari timbangan aktual.</p>
-                        </li>
-                    </ol>
-                </div>
-            </x-ui.panel>
-        @endif
-
-        <div class="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
-            @if ($step > 1)
-                <x-ui.button type="button" variant="secondary" wire:click="previousStep">Kembali</x-ui.button>
-            @endif
-
-            @if ($step < 3)
-                <x-ui.button type="button" wire:click="nextStep" wire:loading.attr="disabled" wire:target="nextStep" data-photo-picker-action>Lanjut ke {{ $steps[$step + 1] }}</x-ui.button>
-            @else
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="submit">
-                    <span wire:loading.remove wire:target="submit">Kirim pengajuan</span>
-                    <span wire:loading wire:target="submit">Memproses...</span>
-                </x-ui.button>
-            @endif
+        <div x-ref="pickupErrorSummary" id="pickup-error-summary" tabindex="-1" role="alert" class="rounded-xl border border-terracotta bg-danger-bg p-4">
+            <h2 class="font-bold">Periksa pengajuan Anda</h2>
+            @foreach ($errors->all() as $message)<p>{{ $message }}</p>@endforeach
         </div>
+    @endif
+    <form wire:submit="submit" class="grid gap-5">
+        <x-ui.panel title="Lokasi dan tanggal">
+            <div class="grid gap-4 sm:grid-cols-2">
+                @if ($areas->count() === 1)<p>Area pelayanan: {{ $areas->first()->name }}</p>@else
+                    <x-ui.select name="serviceAreaId" label="Area pelayanan" wire:model="serviceAreaId" :options="$areas->pluck('name', 'id')->all()" placeholder="Pilih area" :error="$errors->first('serviceAreaId')" />
+                @endif
+                <x-ui.input name="selectedDate" label="Tanggal pilihan" type="date" wire:model="selectedDate" :min="today()->toDateString()" :max="today()->addDays((int) config('app.pickup_booking_horizon_days', 30))->toDateString()" :error="$errors->first('selectedDate')" hint="Pilih hari ini atau maksimal 30 hari ke depan." />
+                <x-ui.textarea name="address" label="Alamat penjemputan" wire:model="address" rows="3" class="sm:col-span-2" :error="$errors->first('address')" />
+            </div>
+        </x-ui.panel>
+        <x-ui.panel title="Jenis sampah">
+            <div class="space-y-3">
+                @foreach ($items as $index => $item)
+                    <div wire:key="pickup-item-{{ $index }}" class="grid gap-3 border-b border-border pb-4">
+                        <x-ui.select name="items.{{ $index }}.waste_type_id" label="Jenis sampah" wire:model="items.{{ $index }}.waste_type_id" :options="$types->pluck('name', 'id')->all()" placeholder="Pilih jenis sampah" :error="$errors->first('items.'.$index.'.waste_type_id')" />
+                        <details @if ($errors->has('items.'.$index.'.estimated_weight_kg') || $errors->has('items.'.$index.'.estimated_quantity')) open @endif>
+                            <summary class="min-h-touch cursor-pointer font-semibold">Tambahkan perkiraan (opsional)</summary>
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <x-ui.input name="items.{{ $index }}.estimated_weight_kg" label="Perkiraan berat (kg)" inputmode="decimal" wire:model="items.{{ $index }}.estimated_weight_kg" hint="Contoh: 1,25 atau 1.25." :error="$errors->first('items.'.$index.'.estimated_weight_kg')" />
+                                <x-ui.input name="items.{{ $index }}.estimated_quantity" label="Jumlah kantong/karung" inputmode="numeric" wire:model="items.{{ $index }}.estimated_quantity" :error="$errors->first('items.'.$index.'.estimated_quantity')" />
+                            </div>
+                        </details>
+                        @if (count($items) > 1)<x-ui.button type="button" variant="secondary" wire:click="removeItem({{ $index }})">Hapus jenis ini</x-ui.button>@endif
+                    </div>
+                @endforeach
+                <x-ui.button type="button" variant="secondary" wire:click="addItem">Tambah jenis sampah</x-ui.button>
+            </div>
+        </x-ui.panel>
+        <details class="rounded-xl border border-border bg-surface p-4" @if ($errors->has('notes') || $errors->has('photos') || $errors->has('photos.*') || count($photos)) open @endif>
+            <summary class="min-h-touch cursor-pointer font-semibold">Tambahkan catatan atau foto (opsional)</summary>
+            <div class="mt-3 space-y-4">
+                <x-ui.textarea name="notes" label="Catatan akses (opsional)" wire:model="notes" rows="3" hint="Contoh: masuk gang sebelah masjid." :error="$errors->first('notes')" />
+                <x-ui.media-picker id="pickup-photos" property="photos" label="Foto sampah (opsional)" hint="Boleh tanpa foto. Maksimal dua foto." :max="2" :multiple="true" remove-method="removePhoto" confirm-method="confirmPhotoUploads" />
+            </div>
+        </details>
+        <p>Periksa isian sebelum dikirim. Petugas melihat tanggal pilihan dan alamat Anda; timbang aktual tetap melalui web.</p>
+        <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="submit" data-photo-picker-action>
+            <span wire:loading.remove wire:target="submit">Kirim pengajuan</span><span wire:loading wire:target="submit">Mengirim...</span>
+        </x-ui.button>
     </form>
 </section>

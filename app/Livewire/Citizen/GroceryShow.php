@@ -28,13 +28,19 @@ final class GroceryShow extends Component
     {
         /** @var User $actor */
         $actor = auth()->user();
-        $this->redemption = $service->cancel($actor, $this->redemption, 'Warga membatalkan pengajuan sebelum persetujuan.');
+        $this->redemption = $service->cancel($actor, $this->redemption, 'Warga meminta pembatalan penukaran sembako.');
         session()->flash('success', $this->redemption->status->value === 'dibatalkan' ? 'Pengajuan dibatalkan dan saldo tertahan dilepas.' : 'Permintaan batal dikirim. Penyerahan dikunci; saldo tetap ditahan sampai serah fisik dipastikan.');
         $this->dispatch('close-dialog', id: 'cancel-grocery-dialog');
     }
 
-    public function render(): View
+    public function render(GroceryService $service): View
     {
+        $redemption = $this->redemption->fresh(['balanceHold', 'statusHistory.actor', 'claimant', 'receiptLedgerEntry']);
+        /** @var User $actor */
+        $actor = auth()->user();
+        abort_unless($redemption !== null && $redemption->customer_id === $actor->id && $service->canView($actor, $redemption), 404);
+        $this->redemption = $redemption;
+
         return view('livewire.citizen.grocery-show');
     }
 }

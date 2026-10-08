@@ -32,7 +32,7 @@ final class PickupRouteTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'petugas']))->get(route('citizen.pickup.create'))->assertForbidden();
         $this->grant($customer, 'pickup.request', 'pickup.view');
 
-        $this->actingAs($customer)->get(route('citizen.pickup.create'))->assertOk()->assertSee('Ajukan penjemputan');
+        $this->actingAs($customer)->get(route('citizen.pickup.create'))->assertOk()->assertSee('Minta penjemputan');
         $pickup = app(PickupService::class)->submit($customer, ['service_area_id' => $area->id, 'address' => 'Alamat warga route test', 'selected_date' => today()->addDay()->toDateString()], [['waste_type_id' => $type->id, 'estimated_quantity' => 1]], [UploadedFile::fake()->image('route.png')], 'w5-route-owner-0001');
         $other = User::factory()->create();
         $this->grant($other, 'pickup.view');

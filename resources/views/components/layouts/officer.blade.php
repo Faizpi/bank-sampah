@@ -9,12 +9,16 @@
     $can = static fn (string $ability): bool => $actor instanceof \App\Models\User && $access->allows($actor, $ability);
     $isTreasurer = $actor && $actor->hasRole('bendahara');
     $persona = match (true) {
+        $actor && $actor->hasRole('admin') => 'admin',
         str_starts_with($routeName, 'treasurer.') => 'treasurer',
         str_starts_with($routeName, 'officer.') => 'officer',
         default => $isTreasurer ? 'treasurer' : 'officer',
     };
 
-    if ($persona === 'treasurer') {
+    if ($persona === 'admin') {
+        $destinations = ['Panel Admin' => route('filament.backoffice.pages.work-queue-dashboard'), 'Akun' => route('profile.password')];
+        $activeNav = 'Akun';
+    } elseif ($persona === 'treasurer') {
         $destinations = [
             'Tugas'        => route('treasurer.dashboard'),
         ];

@@ -43,32 +43,24 @@ final class Reports extends Component
     public string $serviceAreaId = '';
 
     /** @var array<string, string> */
+    #[Locked]
     public array $reportTypes = [];
 
     /** @var list<array<string, string>> */
+    #[Locked]
     public array $rows = [];
 
     /** @var list<array{key: string, label: string, format: string}> */
+    #[Locked]
     public array $metricDefinitions = [];
 
     /** @var array<string, int|string> */
+    #[Locked]
     public array $metrics = [];
 
     /** @var array<string, string> */
-    public array $statusOptions = [
-        'menunggu_verifikasi' => 'Menunggu verifikasi',
-        'menunggu_pemeriksaan' => 'Menunggu pemeriksaan',
-        'diterima' => 'Diterima',
-        'dijadwalkan' => 'Dijadwalkan',
-        'menuju_lokasi' => 'Menuju lokasi',
-        'dijemput' => 'Sudah dijemput',
-        'selesai' => 'Selesai',
-        'siap_diambil' => 'Siap diambil',
-        'sudah_dibayar' => 'Sudah dibayar',
-        'ditolak' => 'Ditolak',
-        'dibatalkan' => 'Dibatalkan',
-        'kedaluwarsa' => 'Kedaluwarsa',
-    ];
+    #[Locked]
+    public array $statusOptions = [];
 
     public function mount(PermissionChecker $permissions, ReportTypeAccess $reportTypes): void
     {
@@ -87,7 +79,10 @@ final class Reports extends Component
 
     public function refreshReport(ReportQueryService $reports, ReportTypeAccess $reportTypes): void
     {
+        $this->resetValidation();
         $reportTypes->assertAllowed($this->surface, $this->reportType);
+        $this->statusOptions = $reports->statusOptions($this->reportType);
+        $this->validatePeriod();
         /** @var User $actor */
         $actor = auth()->user();
         [$start, $end] = $this->periodRange();
@@ -119,7 +114,9 @@ final class Reports extends Component
 
     public function export(ReportExportService $exports, ReportTypeAccess $reportTypes): void
     {
+        $this->resetValidation();
         $reportTypes->assertAllowed($this->surface, $this->reportType);
+        $this->validatePeriod();
         /** @var User $actor */
         $actor = auth()->user();
         [$start, $end] = $this->periodRange();
@@ -155,6 +152,25 @@ final class Reports extends Component
                 '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
                 '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember',
             ],
+        ]);
+    }
+
+    public function updatedReportType(): void
+    {
+        $this->status = '';
+        $this->refreshReport(app(ReportQueryService::class), app(ReportTypeAccess::class));
+    }
+
+    private function validatePeriod(): void
+    {
+        $this->validate([
+            'period' => ['required', 'in:today,week,month,custom'],
+            'month' => ['required_if:period,month', 'integer', 'between:1,12'],
+            'year' => ['required_if:period,month', 'integer', 'between:2000,2100'],
+            'start' => ['required', 'date_format:Y-m-d'],
+            'end' => ['required', 'date_format:Y-m-d', 'after_or_equal:start'],
+            'search' => ['nullable', 'string', 'max:100'],
+            'serviceAreaId' => ['nullable', 'integer', 'min:1'],
         ]);
     }
 

@@ -39,10 +39,12 @@ final readonly class FinancialReconciliationService
         }
 
         return DB::transaction(function () use ($actor, $businessDate, $cashTotal, $notes): Reconciliation {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            $this->authorize($actor, 'reconciliation.create');
             // This prevents an entry or hold from crossing the snapshot while totals are read.
             LedgerAccount::query()->lockForUpdate()->get(['id']);
             $scope = 'global';
-            $previous = Reconciliation::query()->where('business_date', $businessDate->toDateString())->where('scope_key', $scope)->latest('version')->lockForUpdate()->firstOrNew();
+            $previous = Reconciliation::query()->whereDate('business_date', $businessDate->toDateString())->where('scope_key', $scope)->latest('version')->lockForUpdate()->firstOrNew();
             $snapshot = $this->snapshot($businessDate, $cashTotal);
             $reconciliation = Reconciliation::query()->create([
                 'uuid' => (string) Str::uuid(), 'business_date' => $businessDate->toDateString(), 'scope_key' => $scope,
@@ -54,7 +56,7 @@ final readonly class FinancialReconciliationService
             $this->auditLogger->record($actor, 'reconciliation.created', $reconciliation, [], ['business_date' => $businessDate->toDateString(), 'version' => $reconciliation->version], $this->correlationId());
 
             return $reconciliation->fresh('items');
-        });
+        }, 5);
     }
 
     public function setCashTotal(User $actor, Reconciliation $reconciliation, int $cashTotal): Reconciliation
@@ -65,6 +67,8 @@ final readonly class FinancialReconciliationService
         }
 
         return DB::transaction(function () use ($actor, $reconciliation, $cashTotal): Reconciliation {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            $this->authorize($actor, 'reconciliation.create');
             $locked = Reconciliation::query()->with('items')->whereKey($reconciliation->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== Reconciliation::STATUS_DRAFT || $locked->created_by !== $actor->id) {
                 throw new AuthorizationException('Hanya pembuat yang dapat melengkapi draf rekonsiliasi.');
@@ -82,33 +86,34 @@ final readonly class FinancialReconciliationService
         });
     }
 
-    public function submit(User $actor, Reconciliation $reconciliation): Reconciliation
+    public function complete(User $actor, Reconciliation $reconciliation, string $reason = ''): Reconciliation
     {
-        $this->authorize($actor, 'reconciliation.create');
-
-        return DB::transaction(function () use ($actor, $reconciliation): Reconciliation {
+        return DB::transaction(function () use ($actor, $reconciliation, $reason): Reconciliation {
+            $currentActor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            $this->authorize($currentActor, 'reconciliation.complete');
             $locked = Reconciliation::query()->with('items')->whereKey($reconciliation->id)->lockForUpdate()->firstOrFail();
-            if ($locked->status !== Reconciliation::STATUS_DRAFT || $locked->created_by !== $actor->id) {
-                throw new AuthorizationException('Hanya pembuat yang dapat mengajukan draf rekonsiliasi.');
+            if (in_array($locked->status, [Reconciliation::STATUS_COMPLETED, Reconciliation::STATUS_COMPLETED_WITH_DIFFERENCE], true) && $locked->approver_id === $currentActor->id) {
+                return $locked;
             }
-            if ($locked->items->contains(fn (ReconciliationItem $item): bool => $item->status !== ReconciliationItem::STATUS_VERIFIED)) {
-                throw ValidationException::withMessages(['reconciliation' => 'Semua item harus sesuai sebelum rekonsiliasi dapat diajukan. Periksa selisih dan hitungan kas.']);
+            if (! in_array($locked->status, [Reconciliation::STATUS_DRAFT, Reconciliation::STATUS_SUBMITTED], true)) {
+                throw ValidationException::withMessages(['reconciliation' => 'Catatan pemeriksaan ini sudah ditutup. Buat versi baru bila perlu memeriksa ulang.']);
             }
-            $locked->forceFill(['status' => Reconciliation::STATUS_SUBMITTED, 'submitted_at' => now()])->save();
-            $this->auditLogger->record($actor, 'reconciliation.submitted', $locked, ['status' => Reconciliation::STATUS_DRAFT], ['status' => Reconciliation::STATUS_SUBMITTED], $this->correlationId());
+            if ($locked->cash_total === null || $locked->items->contains(fn (ReconciliationItem $item): bool => $item->status === ReconciliationItem::STATUS_OPEN)) {
+                throw ValidationException::withMessages(['reconciliation' => 'Isi hitungan kas pencairan sebelum mencatat hasil pemeriksaan.']);
+            }
+            $hasDifference = $locked->items->contains(fn (ReconciliationItem $item): bool => $item->difference !== 0);
+            $reason = trim($reason);
+            if (mb_strlen($reason) > 1000 || ($hasDifference && mb_strlen($reason) < 10)) {
+                throw ValidationException::withMessages(['decisionReason' => 'Jika ada selisih, jelaskan hasil pemeriksaan minimal 10 karakter. Catatan maksimal 1000 karakter.']);
+            }
+            $oldStatus = $locked->status;
+            $status = $hasDifference ? Reconciliation::STATUS_COMPLETED_WITH_DIFFERENCE : Reconciliation::STATUS_COMPLETED;
+            // Reuse historical checker columns; this is a recorded check, not an approval chain.
+            $locked->forceFill(['status' => $status, 'approver_id' => $currentActor->id, 'approved_at' => now(), 'notes' => $reason === '' ? $locked->notes : $this->appendNote($locked->notes, 'Hasil pemeriksaan: '.$reason)])->save();
+            $this->auditLogger->record($currentActor, 'reconciliation.completed', $locked, ['status' => $oldStatus], ['status' => $status, 'reason' => $reason, 'has_difference' => $hasDifference], $this->correlationId());
 
             return $locked->fresh('items');
         });
-    }
-
-    public function approve(User $actor, Reconciliation $reconciliation, string $reason): Reconciliation
-    {
-        return $this->decide($actor, $reconciliation, $reason, true);
-    }
-
-    public function reject(User $actor, Reconciliation $reconciliation, string $reason): Reconciliation
-    {
-        return $this->decide($actor, $reconciliation, $reason, false);
     }
 
     /** @return array{totals: array{opening_total: int, deposit_total: int, withdrawal_total: int, grocery_total: int, hold_total: int, cash_total: ?int, closing_total: int, difference: int}, items: list<array<string, int|string|null>>} */
@@ -183,32 +188,6 @@ final readonly class FinancialReconciliationService
     {
         $difference = (int) $reconciliation->items()->sum('difference');
         $reconciliation->forceFill(['difference' => $difference])->save();
-    }
-
-    private function decide(User $actor, Reconciliation $reconciliation, string $reason, bool $approved): Reconciliation
-    {
-        $this->authorize($actor, 'reconciliation.approve');
-        $reason = trim($reason);
-        if (Str::length($reason) < 10 || Str::length($reason) > 1000) {
-            throw ValidationException::withMessages(['reason' => 'Catatan keputusan harus memiliki 10 sampai 1000 karakter.']);
-        }
-
-        return DB::transaction(function () use ($actor, $reconciliation, $reason, $approved): Reconciliation {
-            $locked = Reconciliation::query()->with('items')->whereKey($reconciliation->id)->lockForUpdate()->firstOrFail();
-            if ($locked->status !== Reconciliation::STATUS_SUBMITTED || $locked->created_by === $actor->id) {
-                throw new AuthorizationException('Rekonsiliasi harus diperiksa oleh pengguna lain setelah diajukan.');
-            }
-            if ($approved && $locked->items->contains(fn (ReconciliationItem $item): bool => $item->status !== ReconciliationItem::STATUS_VERIFIED)) {
-                throw ValidationException::withMessages(['reconciliation' => 'Rekonsiliasi dengan item terbuka atau selisih tidak dapat disetujui.']);
-            }
-            $locked->forceFill($approved
-                ? ['status' => Reconciliation::STATUS_APPROVED, 'approver_id' => $actor->id, 'approved_at' => now(), 'notes' => $this->appendNote($locked->notes, 'Persetujuan: '.$reason)]
-                : ['status' => Reconciliation::STATUS_REJECTED, 'rejector_id' => $actor->id, 'rejected_at' => now(), 'notes' => $this->appendNote($locked->notes, 'Penolakan: '.$reason)]
-            )->save();
-            $this->auditLogger->record($actor, $approved ? 'reconciliation.approved' : 'reconciliation.rejected', $locked, ['status' => Reconciliation::STATUS_SUBMITTED], ['status' => $locked->status, 'reason' => $reason], $this->correlationId());
-
-            return $locked->fresh('items');
-        });
     }
 
     private function appendNote(?string $existing, string $line): string

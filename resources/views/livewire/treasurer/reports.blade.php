@@ -1,4 +1,4 @@
-<x-slot:title>Laporan {{ $reportTypes[$reportType] ?? 'Tidak diizinkan' }}</x-slot:title>
+<x-slot:title>{{ $surface === 'treasurer' ? 'Riwayat pembayaran saya' : 'Laporan '.($reportTypes[$reportType] ?? 'Tidak diizinkan') }}</x-slot:title>
 <x-slot:date>{{ now()->translatedFormat('d F Y') }}</x-slot:date>
 <x-slot:connectivity><x-ui.connectivity-status /></x-slot:connectivity>
 
@@ -7,8 +7,8 @@
     <div class="flex items-center gap-4 rounded-2xl border border-border bg-surface p-5 shadow-xs sm:gap-6 sm:p-6">
         <div class="min-w-0 flex-1">
             <p class="text-label font-semibold text-forest-600">Laporan transaksi</p>
-            <h1 id="reports-title" class="mt-1 text-h1 font-bold text-deep-green">Laporan {{ $reportTypes[$reportType] ?? 'Tidak diizinkan' }}</h1>
-            <p class="mt-2 text-body text-text-secondary">Pilih periode, lihat ringkasan, lalu unduh Excel.</p>
+            <h1 id="reports-title" class="mt-1 text-h1 font-bold text-deep-green">{{ $surface === 'treasurer' ? 'Riwayat pembayaran saya' : 'Laporan '.($reportTypes[$reportType] ?? 'Tidak diizinkan') }}</h1>
+            <p class="mt-2 text-body text-text-secondary">{{ $surface === 'treasurer' ? 'Hanya pembayaran tunai yang sudah Anda catat. Pengajuan menunggu tetap berada di menu Pembayaran.' : 'Pilih periode, lihat ringkasan, lalu unduh Excel.' }}</p>
         </div>
         <div class="flex shrink-0 items-center justify-center"><x-ui.mascot variant="5" class="h-16 w-auto sm:h-24 md:h-28" /></div>
     </div>
@@ -33,6 +33,12 @@
     </div>
 
     {{-- Filter Form --}}
+    @if ($errors->any())
+        <div role="alert" class="rounded-xl border border-terracotta bg-danger-bg p-4">
+            <p class="font-bold">Periksa filter laporan</p>
+            @foreach ($errors->all() as $message)<p>{{ $message }}</p>@endforeach
+        </div>
+    @endif
     <x-ui.panel title="Filter laporan" description="Gunakan pilihan cepat atau tentukan tanggal sendiri.">
         <div class="mb-4 flex flex-wrap justify-end gap-2" aria-label="Preset periode">
             <button type="button" wire:click="setPeriod('today')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'today' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Hari ini</button>
@@ -41,7 +47,9 @@
             <button type="button" wire:click="setPeriod('custom')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'custom' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Rentang tanggal</button>
         </div>
         <form wire:submit="refreshReport" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filter laporan">
-            <x-ui.select wire:model="reportType" name="reportType" label="Jenis laporan" :options="$reportTypes" />
+            @if ($surface === 'backoffice')
+            <x-ui.select wire:model.live="reportType" name="reportType" label="Jenis laporan" :options="$reportTypes" :error="$errors->first('reportType')" />
+            @endif
             @if ($period === 'month')
                 <x-ui.select wire:model="month" name="month" label="Bulan" :options="$months" />
                 <x-ui.select wire:model="year" name="year" label="Tahun" :options="$years" />
@@ -54,8 +62,12 @@
                     <p class="mt-1 text-body-sm font-semibold text-deep-green">{{ \Carbon\CarbonImmutable::parse($start)->translatedFormat('d F Y') }} – {{ \Carbon\CarbonImmutable::parse($end)->translatedFormat('d F Y') }}</p>
                 </div>
             @endif
-            <x-ui.select wire:model="serviceAreaId" name="serviceAreaId" label="Area pelayanan (opsional)" :options="$serviceAreas->all()"><option value="">Semua area</option></x-ui.select>
-            <x-ui.select wire:model="status" name="status" label="Status (opsional)" :options="$statusOptions"><option value="">Semua status</option></x-ui.select>
+            @if ($surface === 'backoffice')
+            <x-ui.select wire:model="serviceAreaId" name="serviceAreaId" label="Area pelayanan (opsional)" :options="$serviceAreas->all()" :error="$errors->first('serviceAreaId')"><option value="">Semua area</option></x-ui.select>
+            @if (count($statusOptions) > 1)
+            <x-ui.select wire:model="status" name="status" label="Status (opsional)" :options="$statusOptions" :error="$errors->first('status')"><option value="">Semua status</option></x-ui.select>
+            @endif
+            @endif
             <x-ui.input wire:model="search" name="search" label="Nomor transaksi" placeholder="Contoh: STR-2026-001" />
             <x-ui.button type="submit" wire:loading.attr="disabled" class="justify-self-end lg:self-end">
                 <span wire:loading.remove>Terapkan</span>

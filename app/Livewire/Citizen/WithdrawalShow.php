@@ -33,8 +33,14 @@ final class WithdrawalShow extends Component
         $this->dispatch('close-dialog', id: 'cancel-withdrawal-dialog');
     }
 
-    public function render(): View
+    public function render(WithdrawalService $service): View
     {
+        $withdrawal = $this->withdrawal->fresh(['customer', 'balanceHold', 'statusHistory.actor', 'payer', 'receiptLedgerEntry']);
+        /** @var User $actor */
+        $actor = auth()->user();
+        abort_unless($withdrawal !== null && $withdrawal->customer_id === $actor->id && $service->canView($actor, $withdrawal), 404);
+        $this->withdrawal = $withdrawal;
+
         return view('livewire.citizen.withdrawal-show');
     }
 }

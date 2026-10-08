@@ -124,11 +124,11 @@ final class BackofficePanelTest extends TestCase
         self::assertStringNotContainsString('sm:grid-cols-2 xl:grid-cols-5', $health);
 
         self::assertIsString($reconciliation);
-        self::assertStringContainsString('group mt-6 w-full min-w-0', $reconciliation);
-        self::assertStringContainsString('mt-7 grid w-full min-w-0', $reconciliation);
-        self::assertStringContainsString('w-full min-w-0 rounded-xl', $reconciliation);
-        self::assertStringContainsString('max-w-3xl text-base leading-7', $reconciliation);
-        self::assertStringNotContainsString('grid max-w-3xl gap-x-6', $reconciliation);
+        self::assertStringContainsString('grid gap-4 sm:grid-cols-2', $reconciliation);
+        self::assertStringContainsString('mt-2 grid gap-2 sm:grid-cols-3', $reconciliation);
+        self::assertStringContainsString('Catat hasil pemeriksaan', $reconciliation);
+        self::assertStringNotContainsString('Ajukan pemeriksaan', $reconciliation);
+        self::assertStringNotContainsString('min-w-[46rem]', $reconciliation);
 
         self::assertIsString($directory);
         self::assertStringContainsString('flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center', $directory);
@@ -208,7 +208,6 @@ final class BackofficePanelTest extends TestCase
             'directory.blade.php' => ['Bagian direktori', 'directory-navigation-help', "routeIs('filament.backoffice.resources.identity.models.customers.*')"],
             'waste-catalog.blade.php' => ['Bagian katalog sampah', 'waste-catalog-navigation-help', "routeIs('filament.backoffice.resources.waste-master.models.waste-categories.*')"],
             'operations-dashboard.blade.php' => ['Administrasi sistem', 'operations-navigation-help', "routeIs('filament.backoffice.pages.technical-health-page')"],
-            'reconciliation.blade.php' => ['Bagian rekonsiliasi', 'reconciliation-navigation-help', "routeIs('filament.backoffice.resources.deposits.models.deposits.*')"],
         ] as $view => [$label, $helpId, $routeFamily]) {
             $contents = file_get_contents(resource_path('views/filament/backoffice/'.$view));
 
@@ -224,17 +223,17 @@ final class BackofficePanelTest extends TestCase
         }
     }
 
-    public function test_reconciliation_comparison_has_unique_captioned_keyboard_overflow_regions(): void
+    public function test_reconciliation_comparison_uses_definitions_without_horizontal_overflow(): void
     {
         $contents = file_get_contents(resource_path('views/filament/backoffice/reconciliation.blade.php'));
 
         self::assertIsString($contents);
-        self::assertStringContainsString('id="reconciliation-comparison-help"', $contents);
-        self::assertStringContainsString('tabindex="0"', $contents);
-        self::assertStringContainsString('aria-describedby="reconciliation-comparison-help reconciliation-comparison-caption-', $contents);
-        self::assertStringContainsString('<caption id="reconciliation-comparison-caption-', $contents);
-        self::assertStringContainsString('Rincian pembanding rekonsiliasi', $contents);
-        self::assertStringContainsString('Geser secara horizontal', $contents);
+        self::assertStringContainsString('<dl', $contents);
+        self::assertStringContainsString('<dt>', $contents);
+        self::assertStringContainsString('<dd', $contents);
+        self::assertStringContainsString('wire:key="reconciliation-', $contents);
+        self::assertStringContainsString('aria-label="Rincian keuangan"', $contents);
+        self::assertStringNotContainsString('min-w-[', $contents);
     }
 
     public function test_work_queue_only_renders_queues_with_pending_work(): void

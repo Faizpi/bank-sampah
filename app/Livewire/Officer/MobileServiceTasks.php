@@ -67,7 +67,9 @@ final class MobileServiceTasks extends Component
     {
         $actor = $this->actor();
 
-        return view('livewire.officer.mobile-service-tasks', ['services' => MobileService::query()->with(['rt', 'staff'])->whereHas('staff', fn ($query) => $query->whereKey($actor->id))->whereIn('status', [MobileServiceStatus::Published, MobileServiceStatus::Open])->where('ends_at', '>=', now())->orderBy('starts_at')->get()]);
+        return view('livewire.officer.mobile-service-tasks', ['services' => MobileService::query()->with(['rt', 'staff'])->whereHas('staff', fn ($query) => $query->whereKey($actor->id))
+            ->where(fn (Builder $query): Builder => $query->where('status', MobileServiceStatus::Open)->orWhere(fn (Builder $scheduled): Builder => $scheduled->where('status', MobileServiceStatus::Published)->where('ends_at', '>=', now())))
+            ->orderBy('starts_at')->get()]);
     }
 
     private function actor(): User

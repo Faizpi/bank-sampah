@@ -5,8 +5,8 @@
 ])
 
 @php
-    if (! in_array($persona, ['officer', 'treasurer'], true)) {
-        throw new InvalidArgumentException('Officer navigation persona must be officer or treasurer.');
+    if (! in_array($persona, ['officer', 'treasurer', 'admin'], true)) {
+        throw new InvalidArgumentException('Navigation persona must be officer, treasurer, or admin.');
     }
 
     if (count($destinations) < 1 || count($destinations) > 5) {
@@ -14,14 +14,16 @@
     }
 
     $labels = array_keys($destinations);
-    $requiredLabels = ['Tugas'];
+    $requiredLabels = [$persona === 'admin' ? 'Panel Admin' : 'Tugas'];
     if (array_diff($requiredLabels, $labels) !== []) {
         throw new InvalidArgumentException('Officer navigation must contain Tugas.');
     }
 
-    $canonicalLabels = $persona === 'officer'
-        ? ['Tugas', 'Setoran', 'Layanan', 'Akun']
-        : ['Tugas', 'Pembayaran', 'Laporan', 'Akun'];
+    $canonicalLabels = match ($persona) {
+        'admin' => ['Panel Admin', 'Akun'],
+        'officer' => ['Tugas', 'Setoran', 'Layanan', 'Akun'],
+        default => ['Tugas', 'Pembayaran', 'Laporan', 'Akun'],
+    };
 
     if (array_diff($labels, $canonicalLabels) !== []) {
         throw new InvalidArgumentException("Officer navigation destinations are invalid for persona {$persona}.");
@@ -71,6 +73,7 @@
     }
 
     $icons = [
+        'Panel Admin' => 'layout-dashboard',
         'Tugas' => 'clipboard-list',
         'Setoran' => 'wallet-cards',
         'Layanan' => 'grid-2x2',
@@ -90,4 +93,4 @@
     );
 @endphp
 
-<x-ui.bottom-navigation :items="$items" :label="$persona === 'officer' ? 'Navigasi petugas' : 'Navigasi bendahara'" {{ $attributes }} />
+<x-ui.bottom-navigation :items="$items" :label="match ($persona) { 'admin' => 'Navigasi Admin', 'officer' => 'Navigasi petugas', default => 'Navigasi bendahara' }" {{ $attributes }} />

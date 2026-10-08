@@ -1,176 +1,70 @@
 <x-filament-panels::page>
     <section class="backoffice-page-intro" aria-labelledby="reconciliation-title">
-        <p class="text-sm font-semibold text-forest-700">Pengawasan keuangan</p>
-        <h2 id="reconciliation-title" class="mt-1 text-2xl font-bold text-deep-green">Rekonsiliasi saldo harian</h2>
-        <p class="mt-3 max-w-3xl text-base leading-7 text-text-secondary">Bandingkan transaksi, saldo tersedia, dan kas pencairan sebelum penutupan hari kerja.</p>
+        <h2 id="reconciliation-title" class="text-2xl font-bold text-deep-green">Pemeriksaan saldo harian</h2>
+        <p class="mt-2 text-body">Bandingkan transaksi, saldo, dan total uang tunai yang dibayarkan. Satu Admin mencatat hasilnya; tidak ada persetujuan kedua.</p>
+        <p class="mt-2 text-body-sm">Pemeriksaan tidak membayar transaksi atau mengubah saldo. Kesalahan uang diperbaiki melalui koreksi resmi.</p>
     </section>
-
-    @if (session('reconciliation-success'))
-        <div class="mt-6 rounded-xl border border-success-200 bg-success-50 px-5 py-4 text-base font-medium leading-6 text-success-800" role="status">{{ session('reconciliation-success') }}</div>
-    @endif
-
-    <details class="group mt-6 w-full min-w-0 rounded-xl border border-primary-100 bg-primary-50 p-5 sm:p-6">
-        <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 rounded-md text-lg font-bold text-primary-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">
-            <span>Cara melakukan rekonsiliasi</span>
-            <svg data-disclosure-chevron viewBox="0 0 24 24" class="size-5 shrink-0 text-primary-700 transition-transform group-open:rotate-180 motion-reduce:transition-none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-        </summary>
-        <ol class="mt-5 grid min-w-0 gap-5 text-base leading-7 text-primary-950 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))]">
-            <li class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3">
-                <span aria-hidden="true" class="flex size-8 items-center justify-center rounded-sm bg-surface text-sm font-bold text-primary-800">1</span>
-                <div><p class="font-bold">Simpan kondisi saldo</p><p class="mt-1 text-sm leading-6">Pilih tanggal bisnis. Isi kas pencairan bila uang fisik sudah dihitung.</p></div>
-            </li>
-            <li class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3">
-                <span aria-hidden="true" class="flex size-8 items-center justify-center rounded-sm bg-surface text-sm font-bold text-primary-800">2</span>
-                <div><p class="font-bold">Periksa pembanding</p><p class="mt-1 text-sm leading-6">Pastikan setoran, pencairan, penukaran sembako, kas, dan saldo tersedia semuanya sesuai.</p></div>
-            </li>
-            <li class="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3">
-                <span aria-hidden="true" class="flex size-8 items-center justify-center rounded-sm bg-surface text-sm font-bold text-primary-800">3</span>
-                <div><p class="font-bold">Ajukan dan setujui</p><p class="mt-1 text-sm leading-6">Pembuat mengajukan. Pengguna lain yang berwenang memeriksa lalu menyetujui atau menolak.</p></div>
-            </li>
-        </ol>
-    </details>
-
+    @if (session('reconciliation-success'))<p role="status" class="rounded-xl bg-success-bg p-4">{{ session('reconciliation-success') }}</p>@endif
+    @if ($errors->any())<div role="alert" class="rounded-xl border border-terracotta bg-danger-bg p-4">@foreach ($errors->all() as $message)<p>{{ $message }}</p>@endforeach</div>@endif
     @if ($canCreate)
-        <section class="mt-6 w-full min-w-0 rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-7" aria-labelledby="snapshot-title">
-            <div class="max-w-3xl">
-                <h2 id="snapshot-title" class="text-xl font-bold text-gray-950">Simpan kondisi saldo harian</h2>
-                <p class="mt-2 text-base leading-7 text-gray-600">Catatan ini menyimpan kondisi saldo saat dibuat. Riwayat sebelumnya tetap tersimpan dan tidak dapat diubah.</p>
-            </div>
-
-            <form wire:submit="createSnapshot" class="mt-7 grid w-full min-w-0 gap-x-6 gap-y-6 sm:grid-cols-2">
-                <label class="block text-base font-semibold leading-6 text-gray-800">
-                    <span>Tanggal bisnis</span>
-                    <input wire:model="businessDate" type="date" class="mt-2 backoffice-form-control">
-                    @error('businessDate') <span class="mt-2 block text-sm font-medium text-danger-700">{{ $message }}</span> @enderror
-                </label>
-
-                <label class="block text-base font-semibold leading-6 text-gray-800">
-                    <span>Kas pencairan (Rp)</span>
-                    <input wire:model="cashTotal" inputmode="numeric" type="text" placeholder="Contoh: 150000" class="mt-2 backoffice-form-control">
-                    <span class="mt-2 block text-sm font-normal leading-6 text-gray-600">Kosongkan bila uang fisik belum dihitung.</span>
-                    @error('cashTotal') <span class="mt-2 block text-sm font-medium text-danger-700">{{ $message }}</span> @enderror
-                </label>
-
-                <label class="block text-base font-semibold leading-6 text-gray-800 sm:col-span-2">
-                    <span>Catatan awal</span>
-                    <textarea wire:model="notes" rows="4" maxlength="2000" placeholder="Contoh: Penghitungan dilakukan bersama bendahara dan petugas kas." class="mt-2 backoffice-form-control"></textarea>
-                    <span class="mt-2 block text-sm font-normal leading-6 text-gray-600">Opsional. Gunakan untuk konteks pemeriksaan, bukan untuk data rahasia.</span>
-                    @error('notes') <span class="mt-2 block text-sm font-medium text-danger-700">{{ $message }}</span> @enderror
-                </label>
-
-                <div class="sm:col-span-2">
-                    <button type="submit" class="inline-flex min-h-11 items-center rounded-lg bg-primary-700 px-5 text-base font-semibold text-white transition hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" wire:loading.attr="disabled" wire:target="createSnapshot">Simpan kondisi saldo</button>
-                </div>
+        <section class="rounded-xl border border-border bg-surface p-5" aria-labelledby="snapshot-title">
+            <h2 id="snapshot-title" class="text-title font-bold">Periksa tanggal</h2>
+            <form wire:submit="createSnapshot" class="mt-4 grid gap-4 sm:grid-cols-2">
+                <label class="block"><span>Tanggal bisnis</span><input wire:model="businessDate" type="date" class="mt-2 backoffice-form-control" required></label>
+                <label class="block"><span>Total tunai yang sudah dibayarkan (Rp)</span><input wire:model="cashTotal" inputmode="numeric" type="text" class="mt-2 backoffice-form-control" placeholder="Contoh: 20.000"><span class="mt-1 block text-body-sm">Isi 0 jika tidak ada pembayaran. Boleh dilengkapi pada draf.</span></label>
+                <label class="block sm:col-span-2"><span>Catatan (opsional)</span><textarea wire:model="notes" rows="3" class="mt-2 backoffice-form-control" maxlength="2000"></textarea></label>
+                <button type="submit" wire:loading.attr="disabled" class="min-h-11 justify-self-start rounded-md bg-primary-700 px-5 font-semibold text-white">Tampilkan pembanding</button>
             </form>
         </section>
     @endif
-
-    <p id="reconciliation-comparison-help" class="mt-8 text-sm leading-6 text-gray-600">Gunakan tombol Tab untuk memfokuskan setiap tabel. Geser secara horizontal untuk melihat seluruh kolom pembanding.</p>
-
-    <section class="mt-4" aria-labelledby="history-title">
-        <div class="max-w-3xl">
-            <h2 id="history-title" class="text-xl font-bold text-gray-950">Riwayat rekonsiliasi</h2>
-            <p class="mt-2 text-base leading-7 text-gray-600">Hanya snapshot dengan seluruh pembanding sesuai yang dapat diajukan dan disetujui.</p>
-        </div>
-
-        <div class="mt-5 space-y-5">
-            @forelse ($reconciliations as $reconciliation)
-                <article class="w-full min-w-0 rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div class="min-w-0">
-                            <h3 class="text-lg font-bold text-gray-950">{{ $reconciliation->business_date->format('d M Y') }} <span class="font-medium text-gray-500">· Versi {{ $reconciliation->version }}</span></h3>
-                            <p class="mt-2 text-base leading-7 text-gray-600">Dibuat oleh {{ $reconciliation->creator?->name ?? '—' }}. Saldo tersedia: Rp {{ number_format($reconciliation->opening_total, 0, ',', '.') }} → Rp {{ number_format($reconciliation->closing_total, 0, ',', '.') }}.</p>
-                        </div>
-                        <span @class([
-                            'inline-flex shrink-0 items-center rounded-md px-3 py-1.5 text-sm font-bold',
-                            'bg-success-50 text-success-800' => $reconciliation->status === 'disetujui',
-                            'bg-danger-50 text-danger-800' => $reconciliation->status === 'ditolak',
-                            'bg-primary-50 text-primary-800' => $reconciliation->status === 'diajukan',
-                            'bg-warning-50 text-warning-800' => $reconciliation->status === 'draf',
-                        ])>{{ ucfirst(str_replace('_', ' ', $reconciliation->status)) }}</span>
+    <section aria-labelledby="history-title" class="space-y-4">
+        <h2 id="history-title" class="text-title font-bold">Riwayat pemeriksaan</h2>
+        @forelse ($reconciliations as $reconciliation)
+            <article class="rounded-xl border border-border bg-surface p-5" wire:key="reconciliation-{{ $reconciliation->id }}">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h3 class="font-bold">{{ $reconciliation->business_date->translatedFormat('d M Y') }} · Versi {{ $reconciliation->version }}</h3>
+                        <p class="mt-1 text-body-sm">Dibuat oleh {{ $reconciliation->creator?->name ?? 'Admin' }}</p>
+                        @if ($reconciliation->approved_at)<p class="text-body-sm">Dicatat oleh {{ $reconciliation->approver?->name ?? 'Admin' }} · {{ $reconciliation->approved_at->translatedFormat('d M Y H:i') }}</p>@endif
                     </div>
-
-                    <div class="mt-6 overflow-x-auto rounded-lg border border-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2" role="region" aria-label="Rincian pembanding rekonsiliasi {{ $reconciliation->business_date->format('d M Y') }}" aria-describedby="reconciliation-comparison-help reconciliation-comparison-caption-{{ $reconciliation->id }}" tabindex="0">
-                        <table class="min-w-[46rem] w-full text-left text-sm">
-                            <caption id="reconciliation-comparison-caption-{{ $reconciliation->id }}" class="sr-only">Rincian pembanding rekonsiliasi tanggal {{ $reconciliation->business_date->format('d M Y') }}, versi {{ $reconciliation->version }}.</caption>
-                            <thead class="bg-warm-canvas text-xs font-bold uppercase tracking-wide text-gray-600">
-                                <tr>
-                                    <th scope="col" class="px-4 py-3">Pembanding</th>
-                                    <th scope="col" class="px-4 py-3 text-right">Harapan</th>
-                                    <th scope="col" class="px-4 py-3 text-right">Aktual</th>
-                                    <th scope="col" class="px-4 py-3 text-right">Selisih</th>
-                                    <th scope="col" class="px-4 py-3">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 bg-white text-gray-800">
-                                @foreach ($reconciliation->items as $item)
-                                    <tr>
-                                        <td class="max-w-sm px-4 py-4 font-semibold">{{ str_replace('_', ' ', $item->item_type) }}<span class="mt-1 block text-xs font-normal leading-5 text-gray-600">{{ $item->note }}</span></td>
-                                        <td class="px-4 py-4 text-right font-medium tabular-nums">Rp {{ number_format($item->expected_total, 0, ',', '.') }}</td>
-                                        <td class="px-4 py-4 text-right font-medium tabular-nums">Rp {{ number_format($item->actual_total, 0, ',', '.') }}</td>
-                                        <td @class(['px-4 py-4 text-right font-bold tabular-nums', 'text-success-700' => $item->difference === 0, 'text-danger-700' => $item->difference !== 0])>Rp {{ number_format($item->difference, 0, ',', '.') }}</td>
-                                        <td class="px-4 py-4 text-sm font-semibold">{{ ucfirst($item->status) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                    <span class="rounded-md bg-warm-canvas px-3 py-2 font-semibold">{{ \App\Support\StatusLabel::for($reconciliation->status) }}</span>
+                </div>
+                <p class="mt-3">Saldo tersedia: Rp {{ number_format($reconciliation->opening_total, 0, ',', '.') }} → Rp {{ number_format($reconciliation->closing_total, 0, ',', '.') }}</p>
+                <details class="mt-4 border-t border-border pt-3">
+                    <summary class="min-h-11 cursor-pointer font-semibold">Lihat pembanding dan selisih</summary>
+                    <div class="divide-y divide-border">
+                        @foreach ($reconciliation->items as $item)
+                            <div class="py-3">
+                                <h4 class="font-semibold">{{ match ($item->item_type) { 'deposit_ledger' => 'Setoran', 'withdrawal_ledger' => 'Pencairan tunai', 'grocery_ledger' => 'Sembako', 'cash_disbursement' => 'Uang tunai dibayarkan', 'available_balance' => 'Saldo tersedia', default => $item->item_type } }}</h4>
+                                <dl class="mt-2 grid gap-2 sm:grid-cols-3">
+                                    <div><dt>Seharusnya</dt><dd class="amount-tabular">Rp {{ number_format($item->expected_total, 0, ',', '.') }}</dd></div>
+                                    <div><dt>Tercatat / dihitung</dt><dd class="amount-tabular">Rp {{ number_format($item->actual_total, 0, ',', '.') }}</dd></div>
+                                    <div><dt>Selisih · {{ ucfirst($item->status) }}</dt><dd class="amount-tabular font-semibold">Rp {{ number_format($item->difference, 0, ',', '.') }}</dd></div>
+                                </dl>
+                            </div>
+                        @endforeach
                     </div>
-
-                    @if ($reconciliation->notes)
-                        <p class="mt-5 whitespace-pre-line border-t border-gray-200 pt-4 text-base leading-7 text-gray-600">{{ $reconciliation->notes }}</p>
-                    @endif
-
-                    @if ($reconciliation->status === 'draf' && $canCreate)
-                        <div class="mt-6 border-t border-gray-200 pt-6">
-                            <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
-                                <label class="block w-full max-w-sm text-base font-semibold leading-6 text-gray-800">
-                                    <span>Perbarui kas pencairan (Rp)</span>
-                                    <input wire:model="cashTotal" inputmode="numeric" type="text" class="mt-2 backoffice-form-control">
-                                </label>
-                                <div class="flex flex-wrap gap-3">
-                                    <button wire:click="saveCashCount({{ $reconciliation->id }})" type="button" class="min-h-11 rounded-lg border border-primary-700 px-5 text-base font-semibold text-primary-800 transition hover:bg-primary-50">Simpan kas</button>
-                                    <button wire:click="submitSnapshot({{ $reconciliation->id }})" type="button" class="min-h-11 rounded-lg bg-primary-700 px-5 text-base font-semibold text-white transition hover:bg-primary-800">Ajukan pemeriksaan</button>
-                                </div>
+                </details>
+                @if ($reconciliation->notes)<p class="mt-3 whitespace-pre-line">{{ $reconciliation->notes }}</p>@endif
+                @if (in_array($reconciliation->status, ['draf', 'diajukan'], true) && $canComplete)
+                    <div class="mt-4 grid gap-3 border-t border-border pt-4">
+                        @if ($reconciliation->status === 'draf' && $reconciliation->created_by === auth()->id())
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                <label class="block"><span>Lengkapi/perbarui total tunai (Rp) · {{ $reconciliation->business_date->translatedFormat('d M Y') }} v{{ $reconciliation->version }}</span><input wire:model="cashCounts.{{ $reconciliation->id }}" inputmode="numeric" class="mt-2 backoffice-form-control"></label>
+                                <button type="button" wire:click="saveCashCount({{ $reconciliation->id }})" wire:loading.attr="disabled" class="min-h-11 rounded-md border border-primary-700 px-4 font-semibold">Simpan hitungan</button>
                             </div>
-                        </div>
-                    @endif
-
-                    @if ($reconciliation->status === 'diajukan' && $canApprove)
-                        <div class="mt-6 border-t border-gray-200 pt-6">
-                            <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
-                                <label class="block w-full flex-1 text-base font-semibold leading-6 text-gray-800">
-                                    <span>Catatan keputusan</span>
-                                    <textarea wire:model="decisionReason" rows="3" maxlength="1000" placeholder="Tulis dasar persetujuan atau penolakan." class="mt-2 backoffice-form-control"></textarea>
-                                </label>
-                                <div class="flex flex-wrap gap-3">
-                                    <button wire:click="approveSnapshot({{ $reconciliation->id }})" type="button" class="min-h-11 rounded-lg bg-success-700 px-5 text-base font-semibold text-white transition hover:bg-success-800">Setujui</button>
-                                    <button wire:click="rejectSnapshot({{ $reconciliation->id }})" type="button" class="min-h-11 rounded-lg bg-danger-700 px-5 text-base font-semibold text-white transition hover:bg-danger-800">Tolak</button>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-                </article>
-            @empty
-                <div class="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-base leading-7 text-gray-600">Belum ada catatan kondisi saldo. Buat pemeriksaan untuk menutup rekonsiliasi hari ini.</div>
-            @endforelse
-        </div>
+                        @endif
+                        <label class="block"><span>Hasil pemeriksaan (wajib jika ada selisih)</span><textarea wire:model="decisionReasons.{{ $reconciliation->id }}" rows="3" maxlength="1000" class="mt-2 backoffice-form-control" placeholder="Jelaskan selisih dan tindak lanjutnya."></textarea></label>
+                        <button type="button" wire:click="completeSnapshot({{ $reconciliation->id }})" wire:loading.attr="disabled" class="min-h-11 justify-self-start rounded-md bg-primary-700 px-5 font-semibold text-white">Catat hasil pemeriksaan</button>
+                    </div>
+                @endif
+            </article>
+        @empty<p>Belum ada pemeriksaan. Pilih tanggal untuk melihat pembanding.</p>@endforelse
     </section>
-
-    <p id="reconciliation-navigation-help" class="mt-8 text-sm leading-6 text-gray-600">Gunakan tombol Tab untuk memfokuskan navigasi, lalu geser secara horizontal bila seluruh bagian belum terlihat.</p>
-    <nav class="mt-2 overflow-x-auto border-b border-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2" aria-label="Bagian rekonsiliasi" aria-describedby="reconciliation-navigation-help" tabindex="0">
-        <div class="flex min-w-max gap-6">
-            @if ($canReviewDeposits)
-                <a href="{{ \App\Filament\Resources\Deposits\Models\Deposits\DepositResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.deposits.models.deposits.*'), 'border-transparent text-gray-700 hover:border-primary-500 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.deposits.models.deposits.*')]) @if (request()->routeIs('filament.backoffice.resources.deposits.models.deposits.*')) aria-current="page" @endif>Koreksi setoran</a>
-            @endif
-            @if ($canViewLedger)
-                <a href="{{ \App\Filament\Resources\Ledger\Models\LedgerEntries\LedgerEntryResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.ledger.models.ledger-entries.*'), 'border-transparent text-gray-700 hover:border-primary-500 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.ledger.models.ledger-entries.*')]) @if (request()->routeIs('filament.backoffice.resources.ledger.models.ledger-entries.*')) aria-current="page" @endif>Perubahan saldo</a>
-            @endif
-            @if ($canViewHolds)
-                <a href="{{ \App\Filament\Resources\Ledger\Models\BalanceHolds\BalanceHoldResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.ledger.models.balance-holds.*'), 'border-transparent text-gray-700 hover:border-primary-500 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.ledger.models.balance-holds.*')]) @if (request()->routeIs('filament.backoffice.resources.ledger.models.balance-holds.*')) aria-current="page" @endif>Dana ditahan</a>
-            @endif
-            @if ($canViewAudit)
-                <a href="{{ \App\Filament\Resources\AuditReconciliation\Models\AuditLogs\AuditLogResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center border-b-2 px-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.audit-reconciliation.models.audit-logs.*'), 'border-transparent text-gray-700 hover:border-primary-500 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.audit-reconciliation.models.audit-logs.*')]) @if (request()->routeIs('filament.backoffice.resources.audit-reconciliation.models.audit-logs.*')) aria-current="page" @endif>Audit log</a>
-            @endif
-        </div>
+    <nav aria-label="Rincian keuangan" class="flex flex-wrap gap-3 border-t border-border pt-4">
+        @if ($canReviewDeposits)<a class="min-h-11 rounded-md border border-border px-4 py-3" href="{{ \App\Filament\Resources\Deposits\Models\Deposits\DepositResource::getUrl('index') }}">Koreksi setoran</a>@endif
+        @if ($canViewLedger)<a class="min-h-11 rounded-md border border-border px-4 py-3" href="{{ \App\Filament\Resources\Ledger\Models\LedgerEntries\LedgerEntryResource::getUrl('index') }}">Perubahan saldo</a>@endif
+        @if ($canViewHolds)<a class="min-h-11 rounded-md border border-border px-4 py-3" href="{{ \App\Filament\Resources\Ledger\Models\BalanceHolds\BalanceHoldResource::getUrl('index') }}">Dana disisihkan</a>@endif
+        @if ($canViewAudit)<a class="min-h-11 rounded-md border border-border px-4 py-3" href="{{ \App\Filament\Resources\AuditReconciliation\Models\AuditLogs\AuditLogResource::getUrl('index') }}">Riwayat aktivitas</a>@endif
     </nav>
 </x-filament-panels::page>

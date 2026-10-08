@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Groceries\Models\GroceryPackages;
 use App\Domain\Groceries\Actions\ManageGroceryPackages as ManageGroceryPackageAction;
 use App\Domain\Groceries\Models\GroceryPackage;
 use App\Filament\Resources\Groceries\Models\GroceryPackages\Pages\ManageGroceryPackages;
+use App\Support\LocalInput;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -49,7 +50,7 @@ final class GroceryPackageResource extends Resource
                 TextInput::make('code')->label('Kode')->required()->minLength(2)->maxLength(40)->regex('/^[A-Za-z0-9_-]+$/')->unique(ignoreRecord: true),
                 TextInput::make('name')->label('Nama')->required()->minLength(2)->maxLength(120),
                 Textarea::make('contents')->label('Isi deskriptif')->required()->minLength(3)->maxLength(1000)->rows(5),
-                TextInput::make('value')->label('Nilai penukaran (rupiah)')->required()->numeric()->integer()->minValue(1),
+                TextInput::make('value')->label('Nilai penukaran (rupiah)')->required()->type('text')->inputMode('numeric')->rule('numeric')->mutateStateForValidationUsing(fn (mixed $state): mixed => is_string($state) ? LocalInput::rupiah($state) : $state)->dehydrateStateUsing(fn (mixed $state): mixed => is_string($state) ? LocalInput::rupiah($state) : $state)->rule('integer')->minValue(1),
                 DatePicker::make('active_from')->label('Mulai aktif'),
                 DatePicker::make('active_until')->label('Berakhir aktif'),
             ])->columns(2),

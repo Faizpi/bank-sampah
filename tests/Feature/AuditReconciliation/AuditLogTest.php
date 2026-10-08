@@ -152,21 +152,13 @@ final class AuditLogTest extends TestCase
     /** @param list<string> $columns */
     private function hasIndex(array $columns): bool
     {
-        return collect(DB::select("PRAGMA index_list('audit_logs')"))->contains(function (object $index) use ($columns): bool {
-            $indexColumns = array_column(DB::select("PRAGMA index_info('{$index->name}')"), 'name');
-
-            return $indexColumns === $columns;
-        });
+        return collect(Schema::getIndexes('audit_logs'))->contains(fn (array $index): bool => $index['columns'] === $columns);
     }
 
     /** @param list<string> $columns */
     private function hasUniqueIndex(array $columns): bool
     {
-        return collect(DB::select("PRAGMA index_list('audit_logs')"))->contains(function (object $index) use ($columns): bool {
-            $indexColumns = array_column(DB::select("PRAGMA index_info('{$index->name}')"), 'name');
-
-            return (int) $index->unique === 1 && $indexColumns === $columns;
-        });
+        return collect(Schema::getIndexes('audit_logs'))->contains(fn (array $index): bool => $index['unique'] && $index['columns'] === $columns);
     }
 
     private function logger(): AuditLogger

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Programs\Models\CollectionTargets;
 
-use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\Programs\Enums\TargetStatus;
 use App\Domain\Programs\Models\CollectionTarget;
 use App\Domain\Programs\Services\TargetProgressService;
@@ -13,6 +12,8 @@ use App\Domain\WasteMaster\Models\WasteCategory;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Filament\Resources\Programs\Models\CollectionTargets\Pages\ManageCollectionTargets;
 use App\Models\User;
+use App\Support\LocalInput;
+use App\Support\RegionOptions;
 use App\Support\WeightFormatter;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -62,12 +63,12 @@ final class CollectionTargetResource extends Resource
                 Textarea::make('purpose')->label('Tujuan')->required()->minLength(3)->maxLength(2000)->rows(5),
                 DatePicker::make('period_start')->label('Mulai')->required(),
                 DatePicker::make('period_end')->label('Selesai')->required()->after('period_start'),
-                TextInput::make('target_weight_kg')->label('Target berat (kg)')->numeric()->required()->minValue(0.001),
+                TextInput::make('target_weight_kg')->label('Target berat (kg)')->type('text')->inputMode('decimal')->rule('numeric')->mutateStateForValidationUsing(fn (mixed $state): mixed => is_string($state) ? LocalInput::decimal($state) : $state)->dehydrateStateUsing(fn (mixed $state): mixed => is_string($state) ? LocalInput::decimal($state) : $state)->required()->minValue(0.001)->rule('regex:/^\\d+(?:\\.\\d{1,3})?$/'),
                 Toggle::make('is_public')->label('Tampilkan ke publik'),
                 Repeater::make('scopes')->label('Wilayah dan jenis yang dihitung')->schema([
                     Select::make('waste_type_id')->label('Jenis')->options(fn (): array => WasteType::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable(),
                     Select::make('waste_category_id')->label('Kategori')->options(fn (): array => WasteCategory::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable(),
-                    Select::make('rt_id')->label('RT')->options(fn (): array => Rt::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())->searchable(),
+                    Select::make('rt_id')->label('RT')->options(fn (): array => RegionOptions::rts())->searchable(),
                 ])->columns(['default' => 1, 'xl' => 3])->columnSpanFull()->defaultItems(0),
             ])->columns(['default' => 1, 'md' => 2]),
         ]);
@@ -84,7 +85,9 @@ final class CollectionTargetResource extends Resource
             TextColumn::make('progress')->label('Progres')->formatStateUsing(fn (?string $state): string => WeightFormatter::format($state))->suffix(' kg')->state(fn (CollectionTarget $record): string => app(TargetProgressService::class)->progress($record)),
             TextColumn::make('status')->label('Status')->badge(),
         ])->recordActions([
-            EditAction::make()->modalWidth(Width::SevenExtraLarge)->visible(fn (CollectionTarget $record): bool => $record->status === TargetStatus::Draft)->using(fn (CollectionTarget $record, array $data): CollectionTarget => self::service()->update(self::actor(), $record, (string) $data['name'], (string) $data['purpose'], (string) $data['period_start'], (string) $data['period_end'], (string) $data['target_weight_kg'], (bool) ($data['is_public'] ?? false), $data['scopes'] ?? [])),
+            EditAction::make()->modalWidth(Width::SevenExtraLarge)->visible(fn (CollectionTarget $record): bool => $record->status === TargetStatus::Draft)
+                ->mutateRecordDataUsing(fn (array $data, CollectionTarget $record): array => [...$data, 'scopes' => $record->scopes->map(fn ($scope): array => ['waste_type_id' => $scope->waste_type_id, 'waste_category_id' => $scope->waste_category_id, 'rt_id' => $scope->rt_id])->all()])
+                ->using(fn (CollectionTarget $record, array $data): CollectionTarget => self::service()->update(self::actor(), $record, (string) $data['name'], (string) $data['purpose'], (string) $data['period_start'], (string) $data['period_end'], (string) $data['target_weight_kg'], (bool) ($data['is_public'] ?? false), $data['scopes'] ?? [])),
             Action::make('activate')->label('Terbitkan target')->icon(Heroicon::OutlinedPlay)->color('success')->visible(fn (CollectionTarget $record): bool => $record->status === TargetStatus::Draft)->authorize('activate')->requiresConfirmation()->modalHeading(fn (CollectionTarget $record): string => "Terbitkan target {$record->name}?")->modalDescription('Target akan mulai menerima progres sesuai periode dan cakupan yang ditetapkan.')->modalSubmitActionLabel('Terbitkan target')->action(function (CollectionTarget $record): void {
                 try {
                     self::service()->activate(self::actor(), $record);

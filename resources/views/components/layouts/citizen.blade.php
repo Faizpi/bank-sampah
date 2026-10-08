@@ -32,6 +32,7 @@
         $citizenActiveNav = match(true) {
             $citizenRoute === 'citizen.dashboard' => 'Beranda',
             str_contains($citizenRoute, 'customer-card') => 'Kartu Nasabah',
+            $citizenRoute === 'citizen.services' => 'Layanan',
             str_contains($citizenRoute, 'deposit-receipt') || in_array($citizenRoute, $citizenHistoryRoutes, true) => 'Riwayat',
             str_contains($citizenRoute, 'pickup') || str_contains($citizenRoute, 'grocery') || str_contains($citizenRoute, 'withdrawal') || str_contains($citizenRoute, 'estimate') => 'Layanan',
             default => 'Akun',
@@ -94,7 +95,7 @@
         :destinations="[
             'Beranda'        => $navPath('citizen.dashboard'),
             'Kartu Nasabah' => $navPath('citizen.customer-card'),
-            'Layanan'        => $navPath('citizen.pickup.create'),
+            'Layanan'        => $navPath('citizen.services'),
             'Riwayat'        => $navPath('citizen.deposit-history'),
             'Akun'           => $navPath('profile.password'),
         ]"

@@ -438,10 +438,11 @@ final class AdminOperationsResourceTest extends TestCase
 
     private function createRt(string $prefix): Rt
     {
-        $dusun = Dusun::query()->create(['code' => $prefix.'-DS-'.uniqid(), 'name' => $prefix.' Dusun', 'is_active' => true]);
-        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => $prefix.'-RW-'.uniqid(), 'name' => $prefix.' RW', 'is_active' => true]);
+        $codePrefix = substr(hash('sha256', $prefix), 0, 10);
+        $dusun = Dusun::query()->create(['code' => $codePrefix.'-DS-'.uniqid(), 'name' => $prefix.' Dusun', 'is_active' => true]);
+        $rw = Rw::query()->create(['dusun_id' => $dusun->id, 'code' => $codePrefix.'-RW-'.uniqid(), 'name' => $prefix.' RW', 'is_active' => true]);
 
-        return Rt::query()->create(['rw_id' => $rw->id, 'code' => $prefix.'-RT-'.uniqid(), 'name' => $prefix.' RT', 'is_active' => true]);
+        return Rt::query()->create(['rw_id' => $rw->id, 'code' => $codePrefix.'-RT-'.uniqid(), 'name' => $prefix.' RT', 'is_active' => true]);
     }
 
     private function userWith(string ...$permissions): User

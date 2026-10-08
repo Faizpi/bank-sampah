@@ -38,7 +38,7 @@
 
         <div class="divide-y divide-border pt-4">
             @forelse ($deposits as $deposit)
-                <a href="{{ route('citizen.deposit-receipt', $deposit) }}"
+                <a @if ($deposit->status !== \App\Domain\Deposits\Models\Deposit::STATUS_REVERSED) href="{{ route('citizen.deposit-receipt', $deposit) }}" @else aria-disabled="true" @endif
                     class="flex min-w-0 flex-col gap-3 py-4 transition hover:opacity-80 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                     wire:key="deposit-{{ $deposit->id }}">
                     <div class="min-w-0">

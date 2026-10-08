@@ -17,6 +17,7 @@ use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\WasteMaster\Services\ResolveWastePrice;
 use App\Livewire\Concerns\InteractsWithMediaPicker;
 use App\Models\User;
+use App\Support\LocalInput;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -123,6 +124,10 @@ final class DepositForm extends Component
     {
         if ($key === null) {
             return;
+        }
+
+        if (preg_match('/^(\d+)\.weight_kg$/', $key, $matches) === 1 && isset($this->items[(int) $matches[1]]) && is_string($value)) {
+            $this->items[(int) $matches[1]]['weight_kg'] = LocalInput::decimal($value);
         }
 
         if (preg_match('/^(\d+)\.waste_type_id$/', $key, $matches) === 1) {
@@ -268,6 +273,10 @@ final class DepositForm extends Component
 
     private function validateItems(): void
     {
+        foreach ($this->items as &$item) {
+            LocalInput::field($item, 'weight_kg', 'decimal');
+        }
+        unset($item);
         $this->validate($this->itemRules(), $this->itemMessages());
     }
 

@@ -6,12 +6,13 @@ namespace App\Filament\Resources\Identity\Models\Customers;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\CustomersRegions\Actions\ManageCustomerIdentity;
-use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\Identity\Actions\ManageUsers;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Filament\Resources\Identity\Models\Customers\Pages\ManageCustomers;
 use App\Models\User;
+use App\Support\Auth\PhoneNumber;
+use App\Support\RegionOptions;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -71,9 +72,9 @@ final class CustomerResource extends Resource
             Section::make('Profil nasabah')->schema([
                 TextInput::make('name')->label('Nama')->required()->minLength(2)->maxLength(120),
                 TextInput::make('username')->label('Username')->required()->minLength(3)->maxLength(60)->regex('/^[a-z0-9._-]+$/')->unique(table: 'users', column: 'username', ignoreRecord: true),
-                TextInput::make('phone')->label('Nomor telepon (opsional)')->nullable()->regex('/^62[0-9]{8,16}$/')->maxLength(20),
+                TextInput::make('phone')->label('Nomor telepon (opsional)')->nullable()->mutateStateForValidationUsing(fn (?string $state): string => PhoneNumber::normalize($state ?? ''))->dehydrateStateUsing(fn (?string $state): string => PhoneNumber::normalize($state ?? ''))->helperText('Boleh menggunakan 08, 62, atau +62.')->regex('/^62[0-9]{8,16}$/')->maxLength(20),
                 TextInput::make('email')->label('Email')->email()->nullable(),
-                Select::make('rt_id')->label('RT')->options(fn (): array => Rt::query()->where('is_active', true)->whereHas('rw', fn (Builder $rw): Builder => $rw->where('is_active', true)->whereHas('dusun', fn (Builder $dusun): Builder => $dusun->where('is_active', true)))->orderBy('name')->pluck('name', 'id')->all())->searchable()->preload()->required(),
+                Select::make('rt_id')->label('RT')->options(fn (): array => RegionOptions::rts())->searchable()->preload()->required(),
                 Textarea::make('address')->label('Alamat')->required()->minLength(5)->maxLength(500)->rows(3),
             ])->columns(2),
         ]);
@@ -116,8 +117,8 @@ final class CustomerResource extends Resource
                         'rt_id' => (int) $data['rt_id'],
                         'address' => $data['address'],
                     ])),
-                Action::make('issueIdentity')->label('Terbitkan kartu dan QR')->icon(Heroicon::OutlinedQrCode)->color('success')->authorize(fn (User $record): bool => auth()->user() instanceof User && auth()->user()->can('manageView', $record) && app(PermissionChecker::class)->allows(auth()->user(), 'customer.card.issue'))->visible(fn (User $record): bool => $record->customerProfile?->customer_number === null)->requiresConfirmation()->modalHeading('Terbitkan kartu dan QR?')->modalDescription('Nomor nasabah dan QR baru akan diterbitkan. QR tidak ditampilkan di panel ini.')->modalSubmitActionLabel('Terbitkan kartu dan QR')->action(function (User $record): void {
-                    app(ManageCustomerIdentity::class)->issue(self::actor(), $record);
+                Action::make('issueIdentity')->label('Lengkapi kartu dan QR')->icon(Heroicon::OutlinedQrCode)->color('success')->authorize(fn (User $record): bool => auth()->user() instanceof User && auth()->user()->can('manageView', $record) && app(PermissionChecker::class)->allows(auth()->user(), 'customer.card.issue'))->visible(fn (User $record): bool => $record->customerProfile !== null && (! $record->customerProfile->customer_number || ! $record->customerProfile->qr_token_hash || ! $record->customerProfile->qr_token_encrypted || $record->customerProfile->joined_at === null))->requiresConfirmation()->modalHeading('Terbitkan kartu dan QR?')->modalDescription('Lengkapi identitas yang belum tersedia. Nomor dan QR yang masih sah dipertahankan. QR tidak ditampilkan di panel ini.')->modalSubmitActionLabel('Terbitkan kartu dan QR')->action(function (User $record): void {
+                    app(ManageCustomerIdentity::class)->repair(self::actor(), $record);
                 })->successNotificationTitle('Kartu dan QR nasabah diterbitkan.'),
                 Action::make('rotateQr')->label('Rotasi QR')->icon(Heroicon::OutlinedArrowPath)->color('warning')->authorize(fn (User $record): bool => auth()->user() instanceof User && auth()->user()->can('manageView', $record) && app(PermissionChecker::class)->allows(auth()->user(), 'customer.qr.rotate'))->visible(fn (User $record): bool => $record->customerProfile?->customer_number !== null)->requiresConfirmation()->modalHeading(fn (User $record): string => "Rotasi QR nasabah {$record->name}?")->modalDescription('QR lama langsung tidak aktif. Terbitkan QR baru hanya jika ada alasan pemeriksaan yang jelas.')->modalSubmitActionLabel('Rotasi QR')->schema([Textarea::make('reason')->label('Alasan rotasi')->required()->minLength(10)->maxLength(1000)->rows(3)])->action(function (User $record, array $data): void {
                     app(ManageCustomerIdentity::class)->rotateQr(self::actor(), $record, (string) $data['reason']);

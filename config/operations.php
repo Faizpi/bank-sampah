@@ -19,6 +19,7 @@ return [
         'heartbeat_freshness_seconds' => (int) env('OPERATIONS_SCHEDULER_HEARTBEAT_FRESHNESS_SECONDS', 172800),
     ],
     'retention' => [
+        'audit_batch_size' => (int) env('OPERATIONS_AUDIT_RETENTION_BATCH_SIZE', 500),
         'idempotency_key_hours' => (int) env('OPERATIONS_IDEMPOTENCY_KEY_RETENTION_HOURS', 24),
         'notification_failure_hours' => (int) env('OPERATIONS_NOTIFICATION_FAILURE_RETENTION_HOURS', 168),
         'pickup_photo_minimum_age_days' => (int) env('OPERATIONS_PICKUP_PHOTO_MINIMUM_AGE_DAYS', 30),

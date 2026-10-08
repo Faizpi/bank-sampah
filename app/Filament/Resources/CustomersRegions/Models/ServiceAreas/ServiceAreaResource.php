@@ -8,6 +8,7 @@ use App\Domain\CustomersRegions\Actions\ManageRegions;
 use App\Domain\CustomersRegions\Models\Rt;
 use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Filament\Resources\CustomersRegions\Models\ServiceAreas\Pages\ManageServiceAreas;
+use App\Support\RegionOptions;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -44,7 +45,7 @@ final class ServiceAreaResource extends Resource
     {
         return $schema->components([
             TextInput::make('name')->required()->maxLength(100)->unique(ignoreRecord: true),
-            Select::make('rts')->relationship('rts', 'name', modifyQueryUsing: fn ($query) => $query->where('is_active', true)->whereHas('rw', fn ($rw) => $rw->where('is_active', true)->whereHas('dusun', fn ($dusun) => $dusun->where('is_active', true))))->multiple()->preload(),
+            Select::make('rts')->relationship('rts', 'name', modifyQueryUsing: fn ($query) => $query->with('rw.dusun')->where('is_active', true)->whereHas('rw', fn ($rw) => $rw->where('is_active', true)->whereHas('dusun', fn ($dusun) => $dusun->where('is_active', true))))->getOptionLabelFromRecordUsing(fn (Rt $record): string => RegionOptions::label($record))->multiple()->preload(),
         ]);
     }
 

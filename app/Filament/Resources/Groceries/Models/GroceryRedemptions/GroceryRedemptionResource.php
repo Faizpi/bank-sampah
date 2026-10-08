@@ -75,7 +75,7 @@ final class GroceryRedemptionResource extends Resource
         ])->filters([
             SelectFilter::make('status')->label('Status')->options(collect(GroceryStatus::cases())->mapWithKeys(fn ($status): array => [$status->value => StatusLabel::for($status)])->all()),
             Filter::make('exception')->label('Perlu pemeriksaan Admin')->query(fn (Builder $query): Builder => $query->whereNotNull('exception_reported_at')->whereNull('exception_resolved_at')),
-        ])->recordActions([ResolveServiceException::freeze(), ResolveServiceException::make()]);
+        ])->recordActions([ResolveServiceException::details(), ResolveServiceException::freeze(), ResolveServiceException::make()]);
     }
 
     /** @return Builder<GroceryRedemption> */

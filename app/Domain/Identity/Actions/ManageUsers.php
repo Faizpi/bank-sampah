@@ -41,7 +41,7 @@ final readonly class ManageUsers
             throw ValidationException::withMessages(['role' => 'Pilih Petugas, Bendahara, atau Admin. Warga mendaftar sendiri.']);
         }
 
-        return app(AdminAvailabilityGuard::class)->run(function () use ($actor, $attributes, $password, $role): User {
+        return app(AdminAvailabilityGuard::class)->run(function () use ($actor, $attributes, $password, $role, $data): User {
             $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
             Gate::forUser($actor)->authorize('create', User::class);
             $user = new User;
@@ -51,6 +51,9 @@ final readonly class ManageUsers
                 'status' => UserStatus::Active,
                 'role' => $role,
             ])->save();
+            if (in_array($role, [UserRole::Officer, UserRole::Treasurer], true)) {
+                app(ManageStaffProfile::class)->save($actor, $user, $data);
+            }
             $this->auditLogger->record($actor, 'identity.user.created', $user, [], ['status' => UserStatus::Active->value, 'role' => $role->value], $this->correlationId());
 
             return $user->fresh();

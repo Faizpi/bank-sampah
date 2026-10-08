@@ -13,6 +13,7 @@ use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Platform\Models\Media;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Connection;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -108,7 +109,12 @@ final class PickupPhotoRetentionTest extends TestCase
         $pickup = PickupRequest::factory()->create(['status' => PickupStatus::Completed]);
         $media = $this->media($pickup, 'restore-me.jpg', 'image/jpeg', now()->subDays(90), true);
         $cutoff = now()->subDays(60)->toDateString();
-        DB::unprepared("CREATE TRIGGER prevent_media_retention_delete BEFORE DELETE ON media BEGIN SELECT RAISE(ABORT, 'Simulated media delete failure.'); END");
+        $simulateFailure = true;
+        DB::connection()->beforeExecuting(function (string $query, array $bindings, Connection $connection) use (&$simulateFailure): void {
+            if ($simulateFailure && preg_match('/^delete\\s+from\\s+[`"]?media\\b/i', $query) === 1) {
+                throw new QueryException($connection->getName(), $query, $bindings, new \PDOException('Simulated media delete failure.'));
+            }
+        });
 
         try {
             app(PickupPhotoRetentionService::class)->execute($actor, $cutoff, (string) Str::uuid());
@@ -119,7 +125,7 @@ final class PickupPhotoRetentionTest extends TestCase
             self::assertSame(0, AuditLog::query()->where('action', 'media.pickup_photo_retention.executed')->count());
             self::assertSame([], Storage::disk('media_private')->allFiles('.retention-trash'));
         } finally {
-            DB::unprepared('DROP TRIGGER IF EXISTS prevent_media_retention_delete');
+            $simulateFailure = false;
         }
     }
 

@@ -7,7 +7,7 @@
         @if ($readyPayments->isEmpty())
             <x-ui.empty-state
                 title="Belum ada pencairan siap dibayar"
-                description="Tidak ada pembayaran yang memerlukan tindakan Anda saat ini. Pencairan baru akan muncul setelah disetujui dan masuk cakupan tugas Anda."
+                description="Tidak ada pembayaran yang memerlukan tindakan Anda saat ini. Pengajuan warga langsung masuk antrean sesuai area tugas, tanpa persetujuan Admin."
                 :action-label="$canViewReports ? 'Periksa laporan pencairan' : null"
                 :action-href="$canViewReports ? route('treasurer.reports') : null" />
         @else

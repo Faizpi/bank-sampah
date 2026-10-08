@@ -21,6 +21,7 @@ use App\Livewire\Citizen\GroceryRequestForm;
 use App\Livewire\Citizen\GroceryShow;
 use App\Livewire\Citizen\PickupRequestForm;
 use App\Livewire\Citizen\PickupShow;
+use App\Livewire\Citizen\Services;
 use App\Livewire\Citizen\WithdrawalHistory;
 use App\Livewire\Citizen\WithdrawalReceipt;
 use App\Livewire\Citizen\WithdrawalRequestForm;
@@ -125,6 +126,10 @@ Route::livewire('/petugas/setoran/{customerId}', DepositForm::class)
 Route::livewire('/warga/estimasi', EstimateForm::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:waste.view'])
     ->name('citizen.estimate');
+
+Route::livewire('/warga/layanan', Services::class)
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:profile.view'])
+    ->name('citizen.services');
 
 Route::livewire('/warga/riwayat-setoran', DepositHistory::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:deposit.view'])

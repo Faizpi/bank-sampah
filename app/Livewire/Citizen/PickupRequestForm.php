@@ -8,10 +8,12 @@ use App\Domain\Pickups\Services\PickupService;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Livewire\Concerns\InteractsWithMediaPicker;
 use App\Models\User;
+use App\Support\LocalInput;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -36,9 +38,8 @@ final class PickupRequestForm extends Component
     /** @var list<UploadedFile> */
     public array $photos = [];
 
+    #[Locked]
     public string $idempotencyKey = '';
-
-    public int $step = 1;
 
     public function mount(?PickupService $service = null): void
     {
@@ -105,37 +106,12 @@ final class PickupRequestForm extends Component
         return array_map(static fn (UploadedFile $photo): array => self::mediaPickerMetadata($photo), $this->photos);
     }
 
-    public function nextStep(): void
-    {
-        $valid = match ($this->step) {
-            1 => $this->validateStep($this->locationRules()),
-            2 => $this->validateStep($this->itemRules()),
-            default => true,
-        };
-
-        if ($valid) {
-            $this->step = min(3, $this->step + 1);
-        }
-    }
-
-    public function previousStep(): void
-    {
-        $this->step = max(1, $this->step - 1);
-    }
-
-    public function goToStep(int $step): void
-    {
-        if ($step >= 1 && $step < $this->step) {
-            $this->step = $step;
-        }
-    }
-
     public function submit(PickupService $service): void
     {
-        if ($this->step !== 3) {
-            return;
+        foreach ($this->items as &$item) {
+            LocalInput::field($item, 'estimated_weight_kg', 'decimal');
         }
-
+        unset($item);
         if (! $this->validateStep([...$this->locationRules(), ...$this->itemRules()])) {
             return;
         }

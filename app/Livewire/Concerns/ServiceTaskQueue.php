@@ -18,11 +18,13 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 abstract class ServiceTaskQueue extends Component
 {
     use InteractsWithMediaPicker;
     use WithFileUploads;
+    use WithPagination;
 
     #[Locked]
     public ?int $selectedId = null;
@@ -35,6 +37,8 @@ abstract class ServiceTaskQueue extends Component
     public string $reason = '';
 
     public string $queueSearch = '';
+
+    public string $queueTab = 'waiting';
 
     /** @var array{number: string, value: int, time: string, status: string}|null */
     #[Locked]
@@ -57,6 +61,12 @@ abstract class ServiceTaskQueue extends Component
     {
         abort_unless(auth()->user()?->hasRole($this->isCash() ? 'bendahara' : 'petugas'), 403);
         $this->idempotencyKey = (string) str()->uuid();
+        if ($this->queue()->where($this->isCash() ? 'payer_id' : 'claimed_by_id', auth()->id())->exists()) {
+            $this->queueTab = 'mine';
+        }
+        if (request()->integer('taskId') > 0) {
+            $this->select(request()->integer('taskId'));
+        }
     }
 
     public function select(int $id): void
@@ -73,13 +83,17 @@ abstract class ServiceTaskQueue extends Component
     public function claim(): void
     {
         app(ClaimedServiceWorkflow::class)->claim($this->actor(), $this->selected());
+        $this->queueTab = 'mine';
+        $this->resetPage('serviceTasks');
         session()->flash('success', 'Tugas berhasil diambil. Pastikan penyerahan fisik hanya dilakukan satu kali.');
     }
 
     public function release(): void
     {
+        $this->validateReason();
         app(ClaimedServiceWorkflow::class)->release($this->actor(), $this->selected(), $this->reason);
         $this->selectedId = null;
+        $this->resetPage('serviceTasks');
         session()->flash('success', 'Tugas kembali ke antrean; saldo tetap ditahan.');
     }
 
@@ -93,15 +107,18 @@ abstract class ServiceTaskQueue extends Component
 
     public function unavailable(): void
     {
+        $this->validateReason();
         $request = $this->selected();
         abort_unless($request instanceof GroceryRedemption, 403);
         app(ClaimedServiceWorkflow::class)->cancel($this->actor(), $request, $this->reason, true);
         $this->selectedId = null;
+        $this->resetPage('serviceTasks');
         session()->flash('success', 'Paket tidak tersedia; saldo yang ditahan sudah dilepas.');
     }
 
     public function reportException(): void
     {
+        $this->validateReason();
         app(ClaimedServiceWorkflow::class)->reportException($this->actor(), $this->selected(), $this->reason);
         session()->flash('success', 'Transaksi dikunci untuk pemeriksaan Admin. Jangan serahkan ulang.');
     }
@@ -110,6 +127,7 @@ abstract class ServiceTaskQueue extends Component
     {
         app(ClaimedServiceWorkflow::class)->cancel($this->actor(), $this->selected(), 'Warga meminta batal dan pelaksana memastikan manfaat belum diserahkan.');
         $this->selectedId = null;
+        $this->resetPage('serviceTasks');
         session()->flash('success', 'Pembatalan dikonfirmasi; saldo tertahan sudah dilepas.');
     }
 
@@ -124,6 +142,7 @@ abstract class ServiceTaskQueue extends Component
         $this->receipt = ['number' => $request->request_number, 'value' => $this->isCash() ? $request->amount : $request->value_snapshot, 'time' => $recordedAt->translatedFormat('d F Y H:i'), 'status' => $request->status->value];
         $this->selectedId = null;
         $this->proof = null;
+        $this->resetPage('serviceTasks');
         session()->flash('success', 'Penyerahan sudah tercatat. Jangan lakukan penyerahan kedua.');
     }
 
@@ -133,6 +152,17 @@ abstract class ServiceTaskQueue extends Component
         return $this->isCash()
             ? app(WithdrawalService::class)->payableFor($this->actor())
             : app(GroceryService::class)->readyForHandover($this->actor());
+    }
+
+    /** @return Builder<WithdrawalRequest>|Builder<GroceryRedemption> */
+    private function filteredQueue(): Builder
+    {
+        $query = $this->queue();
+        $claimField = $this->isCash() ? 'payer_id' : 'claimed_by_id';
+        $this->queueTab === 'mine' ? $query->where($claimField, auth()->id()) : $query->whereNull($claimField);
+        $search = mb_substr(trim($this->queueSearch), 0, 100);
+
+        return $query->when($search !== '', fn (Builder $q): Builder => $q->where(fn (Builder $filter): Builder => $filter->where('request_number', 'like', '%'.$search.'%')->orWhereHas('customer', fn (Builder $customer): Builder => $customer->where('name', 'like', '%'.$search.'%'))));
     }
 
     private function selected(): WithdrawalRequest|GroceryRedemption
@@ -162,10 +192,37 @@ abstract class ServiceTaskQueue extends Component
 
     public function render(): View
     {
-        $requests = $this->queue()->with(['customer.customerProfile', 'serviceArea', 'balanceHold'])
-            ->when(trim($this->queueSearch) !== '', fn (Builder $q): Builder => $q->where(fn (Builder $search): Builder => $search->where('request_number', 'like', '%'.trim($this->queueSearch).'%')->orWhereHas('customer', fn (Builder $customer): Builder => $customer->where('name', 'like', '%'.trim($this->queueSearch).'%'))))
-            ->orderBy('created_at')->get();
+        if (! in_array($this->queueTab, ['waiting', 'mine'], true)) {
+            $this->queueTab = 'waiting';
+            $this->addError('queueTab', 'Pilih antrean Menunggu atau Tugas saya.');
+        }
+        $query = $this->filteredQueue()->with(['customer.customerProfile', 'serviceArea', 'balanceHold']);
+        $requests = (clone $query)
+            ->orderBy('created_at')->paginate(10, ['*'], 'serviceTasks');
+        if ($requests->currentPage() > $requests->lastPage()) {
+            $this->setPage($requests->lastPage(), 'serviceTasks');
+            $requests = (clone $query)->orderBy('created_at')->paginate(10, ['*'], 'serviceTasks');
+        }
 
-        return view('livewire.service-task-queue', ['requests' => $requests, 'selected' => $requests->firstWhere('id', $this->selectedId), 'cash' => $this->isCash()]);
+        $selected = $this->selectedId === null ? null : $this->queue()->with(['customer.customerProfile', 'serviceArea', 'balanceHold'])->whereKey($this->selectedId)->first();
+
+        return view('livewire.service-task-queue', ['requests' => $requests, 'selected' => $selected, 'cash' => $this->isCash()]);
+    }
+
+    public function updatedQueueSearch(): void
+    {
+        $this->validateOnly('queueSearch', ['queueSearch' => ['nullable', 'string', 'max:100']]);
+        $this->resetPage('serviceTasks');
+    }
+
+    public function updatedQueueTab(): void
+    {
+        $this->validateOnly('queueTab', ['queueTab' => ['required', 'in:waiting,mine']]);
+        $this->resetPage('serviceTasks');
+    }
+
+    private function validateReason(): void
+    {
+        $this->validate(['reason' => ['required', 'string', 'min:10', 'max:1000']], ['reason.required' => 'Isi alasan kendala.', 'reason.min' => 'Alasan minimal 10 karakter.', 'reason.max' => 'Alasan maksimal 1000 karakter.']);
     }
 }

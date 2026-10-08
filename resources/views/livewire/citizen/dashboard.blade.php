@@ -86,10 +86,10 @@
 </x-slot:quickActions>
 
 {{-- Active Requests --}}
-@if ($activePickups->isNotEmpty() || $activeWithdrawals->isNotEmpty() || $activeGroceries->isNotEmpty())
 <x-slot:activeRequests>
     <div>
-        <h2 class="text-label font-bold text-text-secondary mb-3">Pengajuan Aktif</h2>
+        <h2 id="pengajuan-aktif" class="text-label font-bold text-text-secondary mb-3">Pengajuan Aktif</h2>
+        @if ($activePickups->isEmpty() && $activeWithdrawals->isEmpty() && $activeGroceries->isEmpty())<p>Tidak ada pengajuan aktif. Pilih menu Layanan saat membutuhkan pelayanan.</p>@endif
         <div class="space-y-2">
             @foreach ($activePickups as $pickup)
                 <a href="{{ route('citizen.pickup.show', $pickup) }}" class="flex items-center justify-between rounded-xl border border-border bg-surface p-4 shadow-xs transition hover:border-forest-600 hover:shadow-sm">
@@ -102,7 +102,7 @@
                             <p class="text-caption text-text-secondary">{{ $pickup->request_number ?? 'Menunggu konfirmasi' }}</p>
                         </div>
                     </div>
-                    <x-ui.status-badge :status="$pickup->status?->value ?? 'diajukan'" />
+                    <x-ui.status-badge :status="$pickup->status->value === 'menunggu_petugas' ? 'pending' : 'in_progress'">{{ \App\Support\StatusLabel::for($pickup->status) }}</x-ui.status-badge>
                 </a>
             @endforeach
             @foreach ($activeWithdrawals as $withdrawal)
@@ -116,7 +116,7 @@
                             <p class="text-caption text-text-secondary">Rp{{ number_format($withdrawal->amount ?? 0, 0, ',', '.') }}</p>
                         </div>
                     </div>
-                    <x-ui.status-badge :status="$withdrawal->status?->value ?? 'diajukan'" />
+                    <x-ui.status-badge :status="$withdrawal->payer_id === null ? 'pending' : 'in_progress'">{{ \App\Support\StatusLabel::for($withdrawal->status) }}</x-ui.status-badge>
                 </a>
             @endforeach
             @foreach ($activeGroceries as $redemption)
@@ -130,13 +130,12 @@
                             <p class="text-caption text-text-secondary">{{ $redemption->request_number }}</p>
                         </div>
                     </div>
-                    <x-ui.status-badge :status="$redemption->status->value" />
+                    <x-ui.status-badge :status="$redemption->claimed_by_id === null ? 'pending' : 'in_progress'">{{ \App\Support\StatusLabel::for($redemption->status) }}</x-ui.status-badge>
                 </a>
             @endforeach
         </div>
     </div>
 </x-slot:activeRequests>
-@endif
 
 {{-- Recent Deposits --}}
 <x-slot:recentHistory>

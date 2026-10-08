@@ -7,6 +7,7 @@ namespace App\Livewire\Citizen;
 use App\Domain\Programs\Services\EstimateService;
 use App\Domain\WasteMaster\Models\WasteCondition;
 use App\Domain\WasteMaster\Models\WasteType;
+use App\Support\LocalInput;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -25,6 +26,7 @@ final class EstimateForm extends Component
 
     public function calculate(EstimateService $estimates): void
     {
+        $this->weightKg = LocalInput::decimal($this->weightKg);
         $this->validate(['wasteTypeId' => ['required', 'integer', 'min:1'], 'conditionId' => ['required', 'integer', 'min:1'], 'weightKg' => ['required', 'regex:/^(?:0\.[0-9]{1,3}|[1-9][0-9]*(?:\.[0-9]{1,3})?)$/']]);
         $this->result = $estimates->calculate($this->wasteTypeId, $this->conditionId, $this->weightKg);
     }

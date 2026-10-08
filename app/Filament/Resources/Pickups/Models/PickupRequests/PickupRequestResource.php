@@ -11,6 +11,7 @@ use App\Filament\Actions\PickupExceptionActions;
 use App\Filament\Resources\Pickups\Models\PickupRequests\Pages\ManagePickupRequests;
 use App\Models\User;
 use App\Support\StatusLabel;
+use App\Support\WorkQueue;
 use BackedEnum;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Pages\PageRegistration;
@@ -72,6 +73,7 @@ final class PickupRequestResource extends Resource
 
         ])->filters([
             SelectFilter::make('status')->label('Status')->options(collect(PickupStatus::cases())->mapWithKeys(fn ($status): array => [$status->value => StatusLabel::for($status)])->all()),
+            SelectFilter::make('queue')->label('Antrean')->options(['pickup_today' => 'Penjemputan hari ini', 'pickup_overdue' => 'Penjemputan terlambat'])->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null) ? WorkQueue::apply($query, (string) $data['value']) : $query),
 
         ])->recordActions(PickupExceptionActions::make());
     }

@@ -117,6 +117,36 @@ final readonly class ManageCustomerIdentity
         return new CustomerSummary($profile->user->getKey(), $profile->user->name, $profile->customerNumber());
     }
 
+    /** @return array{number: CustomerNumber, token: QrToken} */
+    public function repair(User $actor, User $customer): array
+    {
+        $this->authorize($actor, 'customer.card.issue');
+
+        return DB::transaction(function () use ($actor, $customer): array {
+            $customer = $this->lockVisibleCustomer($actor, $customer);
+            if ($customer->status !== UserStatus::Active || ! $customer->hasRole('warga')) {
+                throw ValidationException::withMessages(['identity' => 'Kartu hanya tersedia untuk Warga aktif.']);
+            }
+            $profile = $this->customerProfile($customer);
+            $old = ['customer_number' => $profile->customer_number];
+            $number = filled($profile->customer_number) ? $profile->customerNumber() : $this->newCustomerNumber();
+            $token = null;
+            try {
+                $token = QrToken::fromValue((string) $profile->qr_token_encrypted);
+                $tokenValid = is_string($profile->qr_token_hash) && hash_equals($profile->qr_token_hash, $token->hash());
+            } catch (InvalidValue) {
+                $tokenValid = false;
+            }
+            if (! $tokenValid || $token === null) {
+                $token = QrToken::generate();
+            }
+            $profile->forceFill(['customer_number' => $number->value(), 'qr_token_hash' => $token->hash(), 'qr_token_encrypted' => $token->value(), 'qr_rotated_at' => $tokenValid ? $profile->qr_rotated_at : now(), 'joined_at' => $profile->joined_at ?? today()])->save();
+            $this->auditLogger->record($actor, 'identity.customer.card_completed', $customer, $old, ['customer_number' => $number->value(), 'qr_replaced' => ! $tokenValid], $this->correlationId());
+
+            return ['number' => $number, 'token' => $token];
+        });
+    }
+
     private function authorize(User $actor, string $permission): void
     {
         if (! $this->permissions->allows($actor, $permission)) {

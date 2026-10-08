@@ -33,7 +33,6 @@ final class DepositHistory extends Component
 
     /** @var list<string> */
     public array $statuses = [
-        Deposit::STATUS_DRAFT,
         Deposit::STATUS_FINAL,
         Deposit::STATUS_CORRECTED,
         Deposit::STATUS_REVERSED,
@@ -81,6 +80,7 @@ final class DepositHistory extends Component
         $deposits = Deposit::query()
             ->with(['items', 'correction'])
             ->where('customer_id', $actor->id)
+            ->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED, Deposit::STATUS_REVERSED])
             ->when($filters['transactionNumber'], static fn (Builder $query, string $number) => $query->where('deposit_number', 'like', "%{$number}%"))
             ->when($filters['status'], static fn (Builder $query, string $status) => $query->where('status', $status))
             ->when($filters['method'], static fn (Builder $query, string $method) => $query->where('method', $method))

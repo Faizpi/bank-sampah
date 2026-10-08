@@ -27,10 +27,12 @@ final readonly class AuditRetentionService
             before: $before,
             deletableCount: (clone $query)->whereNotIn('action', $protected)->count(),
             protectedCount: (clone $query)->whereIn('action', $protected)->count(),
+            candidateIds: (clone $query)->whereNotIn('action', $protected)->orderBy('id')->limit($this->batchLimit())->pluck('id')->map(fn ($id): int => (int) $id)->all(),
         );
     }
 
-    public function execute(User $actor, string $before, bool $dryRun = false): int
+    /** @param list<int>|null $expectedCandidates */
+    public function execute(User $actor, string $before, bool $dryRun = false, ?array $expectedCandidates = null): int
     {
         $this->authorize($actor);
         $before = $this->validatedBefore($before);
@@ -38,11 +40,20 @@ final readonly class AuditRetentionService
             return $this->preview($actor, $before)->deletableCount;
         }
         $count = 0;
-        DB::transaction(function () use ($actor, $before, &$count): void {
+        DB::transaction(function () use ($actor, $before, &$count, $expectedCandidates): void {
+            $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+            $this->authorize($actor);
             $protected = $this->protectedActions();
+            $query = DB::table('audit_logs')->where('occurred_at', '<', $before.' 00:00:00')->whereNotIn('action', $protected);
+            if ($expectedCandidates !== null) {
+                $actual = (clone $query)->orderBy('id')->limit($this->batchLimit())->lockForUpdate()->get(['id'])->map(fn ($row): int => (int) $row->id)->all();
+                if ($actual !== $expectedCandidates) {
+                    throw ValidationException::withMessages(['retentionBefore' => 'Kandidat retensi berubah. Jalankan pratinjau kembali.']);
+                }
+                $query->whereIn('id', $actual);
+            }
             $token = (string) Str::uuid();
             DB::table('audit_retention_context')->insert(['token' => $token]);
-            $query = DB::table('audit_logs')->where('occurred_at', '<', $before.' 00:00:00')->whereNotIn('action', $protected);
             $count = $query->count();
             $query->whereRaw('? = ?', [$token, $token])->delete();
             $this->auditLogger->record($actor, 'audit.retention.executed', $actor, [], ['deleted_count' => $count, 'before' => $before], $this->correlationId());
@@ -79,5 +90,10 @@ final readonly class AuditRetentionService
         $value = request()->attributes->get('correlation_id');
 
         return is_string($value) && Str::isUuid($value) ? $value : (string) Str::uuid();
+    }
+
+    private function batchLimit(): int
+    {
+        return min(500, max(1, (int) config('operations.retention.audit_batch_size', 500)));
     }
 }

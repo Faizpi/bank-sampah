@@ -4,8 +4,7 @@
 
 @php
     $pickupStages = [
-        ['title' => 'Diajukan', 'description' => 'Permintaan tercatat dan menunggu pemeriksaan petugas.', 'icon' => 'file-check', 'statuses' => ['menunggu_pemeriksaan']],
-        ['title' => 'Diterima', 'description' => 'Permintaan diterima untuk dijadwalkan.', 'icon' => 'clipboard-check', 'statuses' => ['diterima']],
+        ['title' => 'Diajukan', 'description' => 'Permintaan menunggu Petugas mengambil tugas.', 'icon' => 'file-check', 'statuses' => ['menunggu_petugas']],
         ['title' => 'Dijadwalkan', 'description' => 'Tanggal layanan sudah ditetapkan.', 'icon' => 'calendar-days', 'statuses' => ['dijadwalkan']],
         ['title' => 'Menuju lokasi', 'description' => 'Petugas sedang menuju alamat penjemputan.', 'icon' => 'truck', 'statuses' => ['menuju_lokasi']],
         ['title' => 'Dijemput', 'description' => 'Sampah sedang diperiksa dan ditimbang di lokasi.', 'icon' => 'map-pin', 'statuses' => ['dijemput']],
@@ -22,14 +21,14 @@
 @endphp
 
 <section aria-labelledby="pickup-task-title" class="grid gap-6">
-    @if (! $pickup->isTerminal())
+    @if (! $pickup->isTerminal() && ! ($pickup->exception_reported_at && ! $pickup->exception_resolved_at))
         <details class="rounded-xl border border-border p-4"><summary>Kendala yang belum dapat dipastikan?</summary>
             <x-ui.input name="failureReason" label="Alasan pengecualian" wire:model="failureReason" />
             <x-ui.button variant="secondary" wire:click="reportException">Kunci dan laporkan ke Admin</x-ui.button>
         </details>
     @endif
     @if ($pickup->exception_reported_at && ! $pickup->exception_resolved_at)<p role="alert">Pickup dikunci untuk pemeriksaan Admin. Jangan ulangi penjemputan.</p>@endif
-    @if (in_array($pickup->status->value, ['dijadwalkan', 'menuju_lokasi'], true))
+    @if (in_array($pickup->status->value, ['dijadwalkan', 'menuju_lokasi'], true) && ! ($pickup->exception_reported_at && ! $pickup->exception_resolved_at))
         <details class="rounded-xl border border-border p-4"><summary class="font-semibold">Tidak dapat melanjutkan tugas?</summary>
             <x-ui.input name="failureReason" label="Alasan melepas tugas (minimal 10 karakter)" wire:model="failureReason" />
             <x-ui.button variant="secondary" wire:click="releaseTask">Lepas tugas ke antrean</x-ui.button>
@@ -83,21 +82,21 @@
         </div>
 
         <div class="mt-4 flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
-            @if ($pickup->status->value === 'dijadwalkan')
+            @if ($pickup->status->value === 'dijadwalkan' && ! ($pickup->exception_reported_at && ! $pickup->exception_resolved_at))
                 <button type="button" wire:click="begin" wire:loading.attr="disabled"
                     class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-sky-blue px-5 text-label font-bold text-white transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60">
                     <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l19-9-9 19-2-8-8-2Z"/></svg>
                     Menuju Lokasi
                 </button>
             @endif
-            @if ($pickup->status->value === 'menuju_lokasi')
+            @if ($pickup->status->value === 'menuju_lokasi' && ! ($pickup->exception_reported_at && ! $pickup->exception_resolved_at))
                 <button type="button" wire:click="markPickedUp" wire:loading.attr="disabled"
                     class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700 disabled:cursor-wait disabled:opacity-60">
                     <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a4 4 0 0 1 8 0v2M12 7v13"/><path d="M3 13h18"/></svg>
                     Tandai Dijemput
                 </button>
             @endif
-            @if ($pickup->deposit_id === null && in_array($pickup->status->value, ['dijadwalkan', 'menuju_lokasi', 'dijemput'], true))
+            @if ($pickup->deposit_id === null && in_array($pickup->status->value, ['dijadwalkan', 'menuju_lokasi', 'dijemput'], true) && ! ($pickup->exception_reported_at && ! $pickup->exception_resolved_at))
                 <button type="button" wire:click="openFailureReport"
                     class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl border-2 border-terracotta px-5 text-label font-bold text-terracotta transition hover:bg-danger-bg">
                     <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
@@ -139,16 +138,19 @@
                     </button>
                 </div>
 
+                <details class="border-t border-border pt-3" @if ($evidence || $errors->has('evidence')) open @endif>
+                <summary class="min-h-touch cursor-pointer font-semibold">Tambahkan foto penjemputan (opsional)</summary>
                 <x-ui.media-picker
                     id="pickup-evidence"
                     property="evidence"
-                    label="Bukti foto penjemputan"
+                    label="Foto penjemputan (opsional)"
                     hint="Ambil satu foto di lokasi atau pilih dari galeri. Foto dikompres menjadi JPEG maksimal 1 MB; foto pengajuan warga tetap dipakai bila bukti baru tidak ditambahkan."
                     remove-method="clearEvidence"
                     confirm-method="confirmEvidenceUpload"
                     initial-status="Belum ada foto baru dipilih."
                 />
                 @error('evidence')<p class="mt-2 text-body-sm font-semibold text-terracotta">{{ $message }}</p>@enderror
+                </details>
 
                 <div class="rounded-md border border-border bg-surface p-4" aria-live="polite">
                     <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">

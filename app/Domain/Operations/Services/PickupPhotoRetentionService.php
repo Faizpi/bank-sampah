@@ -73,7 +73,8 @@ final readonly class PickupPhotoRetentionService
         );
     }
 
-    public function execute(User $actor, string $before, string $correlationId): PickupPhotoRetentionResult
+    /** @param list<int>|null $expectedCandidates */
+    public function execute(User $actor, string $before, string $correlationId, ?array $expectedCandidates = null): PickupPhotoRetentionResult
     {
         $this->authorize($actor);
         $before = $this->validatedBefore($before);
@@ -84,7 +85,9 @@ final readonly class PickupPhotoRetentionService
 
         try {
             /** @var PickupPhotoRetentionResult $result */
-            $result = DB::transaction(function () use ($actor, $before, $correlationId, $disk, $runUuid, $trashRoot, &$movedFiles): PickupPhotoRetentionResult {
+            $result = DB::transaction(function () use ($actor, $before, $correlationId, $disk, $runUuid, $trashRoot, &$movedFiles, $expectedCandidates): PickupPhotoRetentionResult {
+                $actor = User::query()->lockForUpdate()->findOrFail($actor->id);
+                $this->authorize($actor);
                 $deletedCount = 0;
                 $deletedBytes = 0;
                 $missingFiles = 0;
@@ -92,6 +95,9 @@ final readonly class PickupPhotoRetentionService
                     ->limit($this->batchLimit())
                     ->lockForUpdate()
                     ->get();
+                if ($expectedCandidates !== null && $candidates->map(fn (Media $media): int => (int) $media->id)->all() !== $expectedCandidates) {
+                    throw ValidationException::withMessages(['mediaRetentionBefore' => 'Kandidat foto berubah. Jalankan pratinjau kembali.']);
+                }
 
                 foreach ($candidates as $media) {
                     if (! $this->pathIsSafe($media->path)) {

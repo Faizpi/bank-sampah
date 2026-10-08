@@ -63,12 +63,14 @@ final class Dashboard extends Component
         $recentDeposits = Deposit::query()
             ->with('correction')
             ->where('customer_id', $actor->id)
+            ->whereIn('status', [Deposit::STATUS_FINAL, Deposit::STATUS_CORRECTED])
             ->latest('occurred_at')
             ->take(5)
             ->get();
 
         // Active pickup requests
         $activePickups = PickupRequest::query()
+            ->with('assignedStaff')
             ->where('customer_id', $actor->id)
             ->whereNotIn('status', ['selesai', 'dibatalkan', 'ditolak'])
             ->latest()
@@ -77,6 +79,7 @@ final class Dashboard extends Component
 
         // Active withdrawal requests
         $activeWithdrawals = WithdrawalRequest::query()
+            ->with('payer')
             ->where('customer_id', $actor->id)
             ->whereNotIn('status', [
                 WithdrawalStatus::Paid->value,
@@ -87,6 +90,7 @@ final class Dashboard extends Component
             ->get();
 
         $activeGroceries = GroceryRedemption::query()
+            ->with('claimant')
             ->where('customer_id', $actor->id)
             ->whereNotIn('status', [
                 GroceryStatus::Completed->value,

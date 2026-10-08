@@ -8,11 +8,13 @@ use App\Authorization\PermissionChecker;
 use App\Domain\AuditReconciliation\Models\Reconciliation as ReconciliationModel;
 use App\Domain\AuditReconciliation\Services\FinancialReconciliationService;
 use App\Models\User;
+use App\Support\LocalInput;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 final class Reconciliation extends Page
@@ -23,7 +25,11 @@ final class Reconciliation extends Page
 
     public string $notes = '';
 
-    public string $decisionReason = '';
+    /** @var array<int, string> */
+    public array $cashCounts = [];
+
+    /** @var array<int, string> */
+    public array $decisionReasons = [];
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedScale;
 
@@ -57,53 +63,48 @@ final class Reconciliation extends Page
 
     public function createSnapshot(FinancialReconciliationService $service): void
     {
+        $this->cashTotal = LocalInput::rupiah($this->cashTotal);
         $this->validate([
             'businessDate' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'cashTotal' => ['nullable', 'regex:/^\d+$/'],
+            'cashTotal' => ['nullable', 'integer', 'min:0', 'regex:/^\d+$/'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
         /** @var User $actor */
         $actor = auth()->user();
         $cash = trim($this->cashTotal) === '' ? null : (int) $this->cashTotal;
         $service->create($actor, CarbonImmutable::parse($this->businessDate, 'Asia/Jakarta'), $cash, $this->notes);
-        session()->flash('reconciliation-success', 'Catatan kondisi rekonsiliasi berhasil dibuat. Lengkapi hitungan kas dan pastikan semua item sesuai sebelum diajukan.');
+        session()->flash('reconciliation-success', 'Catatan dibuat. Periksa pembanding dan catat hasilnya; tidak perlu Admin kedua.');
     }
 
     public function saveCashCount(int $reconciliationId, FinancialReconciliationService $service): void
     {
-        $this->validate(['cashTotal' => ['required', 'regex:/^\d+$/']]);
+        $field = 'cashCounts.'.$reconciliationId;
+        LocalInput::field($this->cashCounts, $reconciliationId, 'rupiah');
+        $this->validate([$field => ['required', 'string', 'integer', 'min:0', 'regex:/^\d+$/']]);
         /** @var User $actor */
         $actor = auth()->user();
-        $service->setCashTotal($actor, ReconciliationModel::query()->findOrFail($reconciliationId), (int) $this->cashTotal);
+        $service->setCashTotal($actor, ReconciliationModel::query()->findOrFail($reconciliationId), (int) $this->cashCounts[$reconciliationId]);
         session()->flash('reconciliation-success', 'Hitungan kas diperbarui.');
     }
 
-    public function submitSnapshot(int $reconciliationId, FinancialReconciliationService $service): void
+    public function completeSnapshot(int $reconciliationId, FinancialReconciliationService $service): void
     {
         /** @var User $actor */
         $actor = auth()->user();
-        $service->submit($actor, ReconciliationModel::query()->findOrFail($reconciliationId));
-        session()->flash('reconciliation-success', 'Rekonsiliasi diajukan untuk pemeriksaan pengguna lain.');
-    }
-
-    public function approveSnapshot(int $reconciliationId, FinancialReconciliationService $service): void
-    {
-        $this->validate(['decisionReason' => ['required', 'string', 'min:10', 'max:1000']]);
-        /** @var User $actor */
-        $actor = auth()->user();
-        $service->approve($actor, ReconciliationModel::query()->findOrFail($reconciliationId), $this->decisionReason);
-        $this->decisionReason = '';
-        session()->flash('reconciliation-success', 'Rekonsiliasi disetujui.');
-    }
-
-    public function rejectSnapshot(int $reconciliationId, FinancialReconciliationService $service): void
-    {
-        $this->validate(['decisionReason' => ['required', 'string', 'min:10', 'max:1000']]);
-        /** @var User $actor */
-        $actor = auth()->user();
-        $service->reject($actor, ReconciliationModel::query()->findOrFail($reconciliationId), $this->decisionReason);
-        $this->decisionReason = '';
-        session()->flash('reconciliation-success', 'Rekonsiliasi ditolak dan perlu dibuat ulang.');
+        $field = 'decisionReasons.'.$reconciliationId;
+        $this->validate([$field => ['nullable', 'string', 'max:1000']]);
+        try {
+            $service->complete($actor, ReconciliationModel::query()->findOrFail($reconciliationId), $this->decisionReasons[$reconciliationId] ?? '');
+        } catch (ValidationException $exception) {
+            $messages = [];
+            foreach ($exception->errors() as $key => $errors) {
+                $target = $key === 'reconciliation' ? 'cashCounts.'.$reconciliationId : $field;
+                $messages[$target] = array_merge($messages[$target] ?? [], $errors);
+            }
+            throw ValidationException::withMessages($messages);
+        }
+        $this->decisionReasons[$reconciliationId] = '';
+        session()->flash('reconciliation-success', 'Hasil pemeriksaan tercatat. Pencatatan ini tidak mengubah saldo atau membayar transaksi.');
     }
 
     /** @return array<string, bool|Collection<int, ReconciliationModel>> */
@@ -111,11 +112,18 @@ final class Reconciliation extends Page
     {
         $actor = auth()->user();
         $permissions = app(PermissionChecker::class);
+        $records = ReconciliationModel::query()->with(['items', 'creator', 'approver', 'rejector'])->latest('business_date')->latest('version')->limit(12)->get();
+        foreach ($records as $record) {
+            if (! array_key_exists($record->id, $this->cashCounts)) {
+                $this->cashCounts[$record->id] = $record->cash_total === null ? '' : (string) $record->cash_total;
+            }
+            $this->decisionReasons[$record->id] ??= '';
+        }
 
         return [
-            'reconciliations' => ReconciliationModel::query()->with(['items', 'creator', 'approver', 'rejector'])->latest('business_date')->latest('version')->limit(12)->get(),
+            'reconciliations' => $records,
             'canCreate' => $actor instanceof User && $permissions->allows($actor, 'reconciliation.create'),
-            'canApprove' => $actor instanceof User && $permissions->allows($actor, 'reconciliation.approve'),
+            'canComplete' => $actor instanceof User && $permissions->allows($actor, 'reconciliation.complete'),
             'canReviewDeposits' => $actor instanceof User && $permissions->allows($actor, 'deposit.view'),
             'canViewLedger' => $actor instanceof User && $permissions->allows($actor, 'ledger.view'),
             'canViewHolds' => $actor instanceof User && $permissions->allows($actor, 'ledger.view'),

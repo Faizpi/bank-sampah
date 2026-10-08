@@ -11,18 +11,28 @@ use App\Domain\Shared\InvalidValue;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 #[Layout('layouts.public')]
 final class DepositVerification extends Component
 {
     /** @var array{number: string, date: string, weight_kg: string, value: int, status: string}|null */
+    #[Locked]
     public ?array $receipt = null;
 
-    public function mount(string $token, DepositPublicPresenter $presenter): void
+    #[Locked]
+    public string $token;
+
+    public function mount(string $token): void
+    {
+        $this->token = $token;
+    }
+
+    public function render(DepositPublicPresenter $presenter): View
     {
         try {
-            $qrToken = QrToken::fromValue($token);
+            $qrToken = QrToken::fromValue($this->token);
         } catch (InvalidValue) {
             abort(404);
         }
@@ -37,10 +47,7 @@ final class DepositVerification extends Component
         } catch (ValidationException) {
             abort(404);
         }
-    }
 
-    public function render(): View
-    {
         return view('livewire.public-site.deposit-verification');
     }
 }

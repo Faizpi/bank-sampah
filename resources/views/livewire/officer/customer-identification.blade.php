@@ -4,7 +4,7 @@
     <p>Pindai kartu atau cari nama/nomor nasabah, lalu pastikan namanya sesuai.</p>
     @if ($mobileServices->isNotEmpty())
         <x-ui.panel title="Pilih konteks setoran" description="Tentukan setoran langsung atau layanan keliling aktif sebelum memindai dan mencari warga.">
-            <x-ui.select name="mobileServiceId" label="Metode setoran" wire:model.live="mobileServiceId" :error="$errors->first('mobileServiceId')">
+            <x-ui.select name="selectedMobileServiceId" label="Metode setoran" wire:model.live="selectedMobileServiceId" :error="$errors->first('mobileServiceId')">
                 <option value="">Setoran langsung</option>
                 @foreach ($mobileServices as $mobileService)
                     <option value="{{ $mobileService->id }}">Keliling · {{ $mobileService->point }} · {{ $mobileService->starts_at->format('d M H:i') }}</option>
@@ -101,12 +101,12 @@
     @endif
 
     {{-- Search Form --}}
-    <x-ui.panel title="Cari dengan nomor nasabah" description="Gunakan nomor kartu sebagai alternatif ketika pemindaian tidak tersedia.">
+    <x-ui.panel title="Cari warga" description="Ketik nama atau nomor nasabah. Tidak perlu kamera.">
         <form wire:submit="find" class="space-y-4" aria-describedby="identification-help">
             <x-ui.input
                 name="search"
                 label="Nomor atau nama warga"
-                hint="Masukkan awalan nomor, misalnya CST-1234."
+                hint="Contoh: Siti atau CST-00000001."
                 wire:model="search"
                 autocomplete="off"
                 :error="$errors->first('search')"
@@ -123,13 +123,27 @@
         </form>
     </x-ui.panel>
 
+    @if ($searched && $matchingCustomerIds === [])
+        <x-ui.empty-state title="Warga tidak ditemukan" description="Periksa nama/nomor atau cari warga dalam area tugas Anda." />
+    @elseif (count($matchingCustomerIds) > 1 && ! $candidate)
+        <x-ui.panel title="Pilih warga yang sesuai" description="Ada beberapa hasil. Periksa nomor nasabah dan domisilinya.">
+            <div class="divide-y divide-border">
+                @foreach ($matchingCustomers as $match)
+                    <button type="button" wire:click="chooseCustomer({{ $match->id }})" wire:loading.attr="disabled" class="min-h-touch w-full py-4 text-left" wire:key="customer-match-{{ $match->id }}">
+                        <span class="block font-bold">{{ $match->name }} · {{ $match->customerProfile?->customer_number }}</span>
+                        <span class="text-body-sm text-text-secondary">{{ $match->customerProfile?->serviceRegion() }}</span>
+                    </button>
+                @endforeach
+            </div>
+        </x-ui.panel>
+    @endif
 
     @if ($candidate)
         <x-ui.panel title="Warga yang dipilih">
             <p class="text-h2 font-bold">{{ $candidate->name }}</p>
             <p>{{ $candidate->maskedNumber() }}</p>
             @if (! $confirmed)
-                <x-ui.button wire:click="confirm">Nama sudah sesuai</x-ui.button>
+                <x-ui.button wire:click="startDeposit" wire:loading.attr="disabled">Nama sudah sesuai — catat setoran</x-ui.button>
             @else
                 <a class="inline-flex min-h-touch items-center rounded-xl bg-forest-600 px-5 font-bold text-white" href="{{ route('officer.deposit-form', ['customerId' => $candidate->userId, 'mobileServiceId' => $mobileServiceId]) }}">Catat setoran</a>
             @endif

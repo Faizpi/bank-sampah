@@ -33,8 +33,14 @@ final class PickupShow extends Component
         $this->dispatch('close-dialog', id: 'cancel-pickup-dialog');
     }
 
-    public function render(): View
+    public function render(PickupService $service): View
     {
+        $pickup = $this->pickup->fresh(['items.wasteType', 'media', 'statusHistory.actor', 'assignedStaff']);
+        /** @var User $actor */
+        $actor = auth()->user();
+        abort_unless($pickup !== null && $pickup->customer_id === $actor->id && $service->canView($actor, $pickup), 404);
+        $this->pickup = $pickup;
+
         return view('livewire.citizen.pickup-show');
     }
 }

@@ -23,7 +23,8 @@
 
         <form class="grid gap-4 sm:grid-cols-2" wire:submit="updateProfile">
             <x-ui.input name="profile_name" label="Nama" wire:model="name" autocomplete="name" :error="$errors->first('name')" />
-            <x-ui.input name="profile_phone" label="Nomor telepon" wire:model="phone" inputmode="tel" autocomplete="tel" hint="Format 62xxxxxxxxxx." :error="$errors->first('phone')" />
+            <x-ui.input name="profile_phone" label="Nomor telepon" wire:model="phone" inputmode="tel" autocomplete="tel" hint="Boleh menggunakan 08, 62, atau +62." :error="$errors->first('phone')" />
+            @if (auth()->user()?->hasRole('warga'))
             <x-ui.input name="profile_region" label="Wilayah" wire:model="region" readonly />
             <x-ui.input name="profile_rt" label="RT" wire:model="rt" readonly />
             @if ($canUpdateAddress)
@@ -33,6 +34,7 @@
                     <p class="text-label font-semibold text-deep-green">Alamat</p>
                     <p class="mt-1 rounded-xl border border-border bg-disabled-bg px-4 py-3 text-body text-text-secondary">Alamat dikelola oleh petugas.</p>
                 </div>
+            @endif
             @endif
             <div class="flex justify-end sm:col-span-2">
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="updateProfile">
@@ -54,7 +56,7 @@
             </div>
         @endif
 
-        @if ($errors->any())
+        @if ($errors->hasAny(['current_password', 'password', 'password_confirmation']))
             <div id="password-change-errors"
                 class="mb-4 flex items-center gap-3 rounded-xl border border-terracotta bg-danger-bg px-4 py-3.5"
                 role="alert" tabindex="-1"

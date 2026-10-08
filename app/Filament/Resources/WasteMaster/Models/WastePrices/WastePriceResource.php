@@ -7,6 +7,7 @@ namespace App\Filament\Resources\WasteMaster\Models\WastePrices;
 use App\Domain\WasteMaster\Actions\ManageWastePricing;
 use App\Domain\WasteMaster\Models\WastePrice;
 use App\Filament\Resources\WasteMaster\Models\WastePrices\Pages\ManageWastePrices;
+use App\Support\LocalInput;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -53,7 +54,7 @@ final class WastePriceResource extends Resource
             Section::make('Periode harga')->schema([
                 Select::make('waste_type_id')->label('Jenis sampah')->relationship('wasteType', 'name', modifyQueryUsing: fn ($query) => $query->where('is_active', true)->whereHas('category', fn ($categoryQuery) => $categoryQuery->where('is_active', true)))->required()->searchable()->preload(),
                 Select::make('waste_condition_id')->label('Kondisi')->relationship('condition', 'name', modifyQueryUsing: fn ($query) => $query->where('is_active', true))->required()->searchable()->preload(),
-                TextInput::make('price')->label('Harga per satuan (Rp)')->numeric()->integer()->minValue(0)->maxValue(9_000_000_000_000_000)->required(),
+                TextInput::make('price')->label('Harga per satuan (Rp)')->type('text')->inputMode('numeric')->rule('numeric')->mutateStateForValidationUsing(fn (mixed $state): mixed => is_string($state) ? LocalInput::rupiah($state) : $state)->dehydrateStateUsing(fn (mixed $state): mixed => is_string($state) ? LocalInput::rupiah($state) : $state)->rule('integer')->minValue(0)->maxValue(9_000_000_000_000_000)->required(),
                 Checkbox::make('zero_price_confirmed')->label('Saya menyetujui harga Rp0 karena sampah ini diterima tanpa nilai.')->visible(fn ($get): bool => (int) $get('price') === 0)->accepted(),
                 DateTimePicker::make('effective_from')->label('Berlaku mulai')->seconds(false)->native(false)->required(),
                 DateTimePicker::make('effective_to')->label('Berlaku sampai')->seconds(false)->native(false)->after('effective_from'),
@@ -91,7 +92,7 @@ final class WastePriceResource extends Resource
                 ->modalDescription('Harga lama akan ditutup pada tanggal berlaku baru dan digantikan oleh harga baru.')
                 ->modalSubmitActionLabel('Simpan harga baru')
                 ->schema([
-                    TextInput::make('price')->label('Harga per satuan (Rp)')->numeric()->integer()->minValue(0)->maxValue(9_000_000_000_000_000)->required(),
+                    TextInput::make('price')->label('Harga per satuan (Rp)')->type('text')->inputMode('numeric')->rule('numeric')->mutateStateForValidationUsing(fn (mixed $state): mixed => is_string($state) ? LocalInput::rupiah($state) : $state)->dehydrateStateUsing(fn (mixed $state): mixed => is_string($state) ? LocalInput::rupiah($state) : $state)->rule('integer')->minValue(0)->maxValue(9_000_000_000_000_000)->required(),
                     Checkbox::make('zero_price_confirmed')->label('Saya menyetujui harga Rp0 karena sampah ini diterima tanpa nilai.')->visible(fn ($get): bool => (int) $get('price') === 0)->accepted(),
                     DateTimePicker::make('effective_from')->label('Berlaku mulai')->seconds(false)->native(false)->required(),
                     DateTimePicker::make('effective_to')->label('Berlaku sampai')->seconds(false)->native(false)->after('effective_from'),

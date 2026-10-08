@@ -36,7 +36,7 @@ beforeEach(function (): void {
 });
 
 it('creates internal accounts with exactly one role but never a citizen account on behalf of another person', function (): void {
-    $data = ['name' => 'Pengurus dummy baru', 'username' => 'pengurus.baru', 'password' => 'PasswordOnly#2026', 'password_confirmation' => 'PasswordOnly#2026', 'role' => 'bendahara'];
+    $data = ['name' => 'Pengurus dummy baru', 'username' => 'pengurus.baru', 'password' => 'PasswordOnly#2026', 'password_confirmation' => 'PasswordOnly#2026', 'role' => 'bendahara', 'service_areas' => [['service_area_id' => $this->bendahara->staffProfile->service_area_id, 'active_from' => null, 'active_to' => null]]];
     $user = app(ManageUsers::class)->create($this->admin, $data);
     expect($user->role->value)->toBe('bendahara');
     expect(fn () => app(ManageUsers::class)->create($this->admin, [...$data, 'username' => 'warga.atasnama', 'role' => 'warga']))->toThrow(ValidationException::class);

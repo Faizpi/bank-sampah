@@ -142,7 +142,9 @@
          </div>
      </x-ui.panel>
 
-     <x-ui.panel title="Lampiran setoran (opsional)" description="Unggah bukti foto atau PDF. File disimpan privat dan wajib saat pencatatan.">
+     <details class="rounded-xl border border-border bg-surface p-4" @if ($evidence || $errors->has('evidence')) open @endif>
+     <summary class="min-h-touch cursor-pointer font-semibold">Tambahkan lampiran setoran (opsional)</summary>
+     <div class="mt-3">
          <x-ui.media-picker
              id="deposit-evidence"
              property="evidence"
@@ -155,7 +157,8 @@
          @error('evidence')
              <p class="mt-2 text-body-sm font-semibold text-terracotta">{{ $message }}</p>
          @enderror
-      </x-ui.panel>
+      </div>
+      </details>
       <div class="rounded-xl border border-border bg-warning-bg p-4">
           <p class="text-body-sm text-deep-green">Periksa nama warga, jenis, berat, nilai, dan bukti pada halaman ini sebelum mencatat. Harga mengikuti waktu pembuatan draf jika Anda melanjutkan draf tersimpan.</p>
           <div class="mt-4 flex justify-end">

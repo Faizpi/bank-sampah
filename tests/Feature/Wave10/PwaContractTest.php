@@ -136,7 +136,7 @@ final class PwaContractTest extends TestCase
         self::assertIsString($registerForm);
         self::assertIsString($livewireRuntime);
         self::assertStringContainsString('wire:model', $customerIdentification);
-        self::assertStringContainsString('wire:click="confirm"', $customerIdentification);
+        self::assertStringContainsString('wire:click="startDeposit"', $customerIdentification);
         self::assertStringContainsString('wire:model.blur', $registerForm);
         self::assertStringContainsString('wire:model', $directiveFixture);
         self::assertStringContainsString('wire:model.live', $directiveFixture);

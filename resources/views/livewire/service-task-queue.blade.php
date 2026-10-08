@@ -8,10 +8,11 @@
         <x-ui.panel title="Penyerahan tercatat">
             <p class="font-bold">{{ $receipt['number'] }} · Rp {{ number_format($receipt['value'], 0, ',', '.') }}</p>
             <p>{{ $receipt['time'] }} · {{ str_replace('_', ' ', $receipt['status']) }}</p>
-            <p>Jangan serahkan uang/paket lagi untuk transaksi ini.</p>
+            <p>{{ $cash ? 'Jangan serahkan uang lagi untuk transaksi ini.' : 'Jangan serahkan paket lagi untuk transaksi ini.' }}</p>
         </x-ui.panel>
     @endif
     <x-ui.input name="queueSearch" label="Cari nama atau nomor transaksi" wire:model.live.debounce.300ms="queueSearch" />
+    <x-ui.select name="queueTab" label="Tampilkan tugas" wire:model.live="queueTab" :options="['waiting' => 'Menunggu diambil', 'mine' => 'Tugas saya']" />
     <div class="grid gap-6 lg:grid-cols-2">
         <x-ui.panel title="Antrean layanan">
             <div class="space-y-3">
@@ -20,10 +21,11 @@
                         <span class="block font-bold">{{ $request->customer->name }}</span>
                         <span class="block">{{ $request->request_number }} · Rp {{ number_format($cash ? $request->amount : $request->value_snapshot, 0, ',', '.') }}</span>
                         <span class="block text-body-sm">{{ ucfirst(str_replace('_', ' ', $request->status->value)) }} · {{ $request->serviceArea?->name }}</span>
-                        @if ($request->exception_reported_at && ! $request->exception_resolved_at)<span class="font-bold text-terracotta">Dikunci untuk pemeriksaan Admin</span>@endif
+                        @if ($request->exception_reported_at && ! $request->exception_resolved_at)<span class="font-bold text-terracotta">{{ $request->getAttribute('exception_kind') === 'cancellation_request' ? 'Warga meminta batal — perlu konfirmasi pelaksana' : 'Dikunci untuk pemeriksaan Admin' }}</span>@endif
                     </button>
                 @empty<p>Belum ada tugas yang dapat dikerjakan.</p>@endforelse
             </div>
+            @if ($requests->hasPages())<div class="mt-4">{{ $requests->links('components.ui.pagination') }}</div>@endif
         </x-ui.panel>
         @if ($selected)
             @php($claimant = $cash ? $selected->payer_id : $selected->claimed_by_id)
@@ -47,11 +49,14 @@
                             <x-ui.button variant="secondary" wire:click="unavailable" wire:loading.attr="disabled">Tidak tersedia</x-ui.button>
                         @endif
                     @elseif ($claimant === auth()->id())
-                        <p>Pastikan nama dan nominal/paket sesuai. Klik catat hanya setelah benar-benar diserahkan.</p>
+                        <p>{{ $cash ? 'Pastikan nama penerima dan nominal sesuai. Catat hanya setelah uang tunai diserahkan.' : 'Pastikan nama warga dan paket sesuai. Catat hanya setelah paket diserahkan.' }}</p>
+                        <details class="border-t border-border pt-3" @if ($proof || $errors->has('proof')) open @endif>
+                        <summary class="min-h-touch cursor-pointer font-semibold">Tambahkan foto (opsional)</summary>
                         <x-ui.media-picker id="service-proof" property="proof" label="Lampiran foto (opsional)" hint="Tidak wajib. Foto diperkecil sebelum dikirim dan disimpan privat." remove-method="clearProof" confirm-method="confirmProofUpload" />
+                        </details>
                         <x-ui.button wire:click="complete" wire:loading.attr="disabled">{{ $cash ? 'Uang tunai sudah diserahkan — catat pembayaran' : 'Paket sudah diserahkan' }}</x-ui.button>
                         @if (! $cash && $selected->status->value !== 'siap_diambil')<x-ui.button variant="secondary" wire:click="ready" wire:loading.attr="disabled">Paket siap diambil (opsional)</x-ui.button>@endif
-                        <details class="border-t border-border pt-4">
+                        <details class="border-t border-border pt-4" @if ($errors->has('reason') || $errors->has('workflow')) open @endif>
                             <summary class="cursor-pointer font-semibold">Ada kendala?</summary>
                             <div class="mt-3 space-y-3">
                                 <x-ui.input name="reason" label="Alasan (minimal 10 karakter)" wire:model="reason" />

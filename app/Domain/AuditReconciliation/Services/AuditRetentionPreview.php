@@ -6,10 +6,12 @@ namespace App\Domain\AuditReconciliation\Services;
 
 final readonly class AuditRetentionPreview
 {
+    /** @param list<int> $candidateIds */
     public function __construct(
         public string $before,
         public int $deletableCount,
         public int $protectedCount,
+        public array $candidateIds = [],
     ) {}
 
     /** @return array{before: string, deletable_count: int, protected_count: int} */
