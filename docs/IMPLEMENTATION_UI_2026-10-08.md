@@ -69,4 +69,6 @@ Halaman teknis tambahan ternyata dormant melalui `isDiscovered=false`, bukan men
 
 ## Batas handoff
 
-Telegram, WhatsApp, deployment, ZIP, reset data utama, dan perubahan dokumen skripsi Word asli tidak dilakukan. UAT/SUS, kamera pada perangkat desa, pembaca layar nyata, serta peninjauan video eksternal lama tetap membutuhkan bukti terpisah. Perubahan ada di workspace lokal; belum ada commit/push baru pada tahap ini.
+Pada tahap 8 Oktober, Telegram, WhatsApp, deployment, ZIP, reset data utama, dan perubahan dokumen skripsi Word asli tidak dilakukan. UAT/SUS, kamera pada perangkat desa, pembaca layar nyata, serta peninjauan video eksternal lama tetap membutuhkan bukti terpisah. Saat catatan ini pertama ditulis perubahan belum di-commit/push.
+
+Checkpoint 9 Oktober: implementasi `77776f4` dan dokumentasi `171de88` telah di-commit/push menggunakan identitas Git pemilik tanpa coauthor. Penggantian baseline dummy utama dengan data SQL pemilik adalah tahap terpisah, bukan bagian bukti 8 Oktober; lihat [validasi data utama](VALIDATION_MASTER_DATA_2026-10-09.md).

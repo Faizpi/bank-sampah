@@ -75,6 +75,28 @@ final class StorePrivateMedia
         return $this->store($file, $contents, $mimeType, self::ALLOWED_TYPES[$mimeType]['extension'], $uploader);
     }
 
+    /** Decode/re-encode catalogue photos, stripping EXIF/GPS and other uploaded metadata. */
+    public function sanitizedPhotoContents(UploadedFile $file): string
+    {
+        $this->validate($file, true);
+        $contents = $file->getContent();
+        $dimensions = @getimagesizefromstring($contents);
+        if (! is_array($dimensions) || $dimensions[0] > 10000 || $dimensions[1] > 10000
+            || $dimensions[0] * $dimensions[1] > 20000000) {
+            throw ValidationException::withMessages(['photo' => 'Ukuran foto terlalu besar. Gunakan foto maksimal 20 megapiksel.']);
+        }
+
+        $orientation = 1;
+        if ($dimensions[2] === IMAGETYPE_JPEG && function_exists('exif_read_data')) {
+            $metadata = @exif_read_data($file->getPathname());
+            if (is_array($metadata) && is_int($metadata['Orientation'] ?? null)) {
+                $orientation = $metadata['Orientation'];
+            }
+        }
+
+        return $this->normalizePhoto($contents, $orientation);
+    }
+
     private function store(UploadedFile $file, string $contents, string $mimeType, string $extension, ?User $uploader): Media
     {
         $path = sprintf('%s.%s', (string) Str::uuid(), $extension);
@@ -135,7 +157,7 @@ final class StorePrivateMedia
         }
     }
 
-    private function normalizePhoto(string $contents): string
+    private function normalizePhoto(string $contents, int $orientation = 1): string
     {
         if ($this->normalizationAvailable === false || ! function_exists('imagecreatefromstring') || ! function_exists('imagejpeg')) {
             throw ValidationException::withMessages(['file' => 'Kompresi foto membutuhkan ekstensi GD PHP.']);
@@ -144,6 +166,22 @@ final class StorePrivateMedia
         $source = @imagecreatefromstring($contents);
         if ($source === false) {
             throw ValidationException::withMessages(['file' => 'Foto tidak dapat diproses.']);
+        }
+
+        if (in_array($orientation, [2, 4, 5, 7], true)) {
+            imageflip($source, in_array($orientation, [4, 5], true) ? IMG_FLIP_VERTICAL : IMG_FLIP_HORIZONTAL);
+        }
+        $angle = match ($orientation) {
+            3 => 180, 5, 6, 7 => -90, 8 => 90, default => 0
+        };
+        if ($angle !== 0) {
+            $rotated = imagerotate($source, $angle, 0xFFFFFF);
+            if ($rotated === false) {
+                imagedestroy($source);
+                throw ValidationException::withMessages(['file' => 'Orientasi foto tidak dapat diproses.']);
+            }
+            imagedestroy($source);
+            $source = $rotated;
         }
 
         $sourceWidth = imagesx($source);

@@ -25,7 +25,7 @@ use Illuminate\Validation\ValidationException;
 final readonly class StatisticsService
 {
     /** @var list<string> */
-    private const METRICS = ['active_customers', 'deposit_count', 'total_weight_kg', 'plastic_weight_kg', 'dominant_waste_type', 'target_progress_kg', 'mobile_service_count'];
+    private const METRICS = ['active_customers', 'active_officers', 'deposit_count', 'total_weight_kg', 'plastic_weight_kg', 'dominant_waste_type', 'target_progress_kg', 'mobile_service_count'];
 
     /** @var list<string> */
     private const DIMENSIONS = ['period', 'rt_id'];
@@ -54,6 +54,7 @@ final readonly class StatisticsService
             $aggregate['plastic_weight_kg'] = null;
             $aggregate['dominant_waste_type'] = null;
             $aggregate['active_customers'] = null;
+            $aggregate['active_officers'] = null;
             $aggregate['target_progress_kg'] = null;
             $aggregate['mobile_service_count'] = null;
         }
@@ -157,6 +158,7 @@ final readonly class StatisticsService
             'suppressed' => false,
             'subject_count' => $subjects,
             'active_customers' => $activeCustomers,
+            'active_officers' => app(LandingStatistics::class)->activeOfficers($rtId),
             'deposit_count' => $deposits->count(),
             'total_weight_kg' => number_format($weight, 3, '.', ''),
             'plastic_weight_kg' => number_format($plastic, 3, '.', ''),

@@ -6,10 +6,13 @@
 - Cutover: routine tanpa foto, claim eksklusif, stale claimant/nonaktif/area dicabut, release mempertahankan hold, cancel melepas sekali, tidak tersedia, retry dan payload konflik.
 - Exception: kunci, reautentikasi, bukan pihak transaksi, pemulihan claimant yang dicabut, pengalihan pickup dan konversi tepat sekali.
 - MySQL: fresh migration/seed, counter Admin dan dua koneksi dengan snapshot lama serta klaim bersaing.
+- Seeder: sumber privat literal, referensi/peran/profil, hash dipertahankan, QR baru, sumber hilang/tidak valid tanpa mutasi, penolakan overwrite, bootstrap production tanpa eskalasi, dan fixture hanya pada database disposable.
 - Browser: empat role, mobile/desktop, tidak overflow, pengajuan/claim/final tanpa foto, kuitansi dan panel Admin tanpa approval rutin.
 - Build, formatter, static analysis, generator PDF, validasi layout dan review independen.
 
 Tes memakai storage/cache/sesi terpisah. MySQL dan browser menolak database selain `bank_sampah_test` atau suffix-nya; browser memerlukan loopback dan token preflight yang cocok.
+
+Runner workflow/konkurensi memilih `Tests\Fixtures\WorkflowFixture` secara eksplisit setelah migrasi, bukan `DatabaseSeeder` aplikasi. Konverter: `node --test tests/browser/master-data-extraction.test.mjs`. Impor dataset pemilik di database uji: `tests/mysql/master-data-smoke.php`, dengan bootstrap/target testing loopback dan JSON privat yang tersedia. [Panduan seeder](SEEDING.md), [bukti terbaru](VALIDATION_MASTER_DATA_2026-10-09.md).
 
 ## Penerimaan pengguna
 

@@ -16,4 +16,4 @@ Fasilitas teknis selain Health tetap tidak didaftarkan sebagai menu aktif. Imple
 
 ## Reset demo lokal
 
-`app:reset-demo-baseline --confirm-reset-demo --dry-run` menampilkan sasaran/count tanpa perubahan. Tanpa dry-run command menghapus data dummy dan seed empat akun/master tanpa transaksi. Command menolak production, host non-loopback, database selain tepat `bank_sampah`, flag yang tidak lengkap, dan root media di luar workspace. Simpan backup sebelum menjalankannya.
+`app:reset-demo-baseline --confirm-reset-demo --dry-run` menampilkan sasaran/count dan memvalidasi sumber privat tanpa perubahan. Tanpa dry-run command menghapus baseline dummy dan media dummy, lalu memakai satu `DatabaseSeeder` untuk data utama privat; bukan lagi empat akun contoh. Sumber dibekukan di memori sebelum reset. Command menolak production, host non-loopback, database selain tepat `bank_sampah`, flag yang tidak lengkap, sumber tidak valid, dan root media di luar workspace. Simpan backup sebelum menjalankannya. Lihat [panduan seeder](SEEDING.md).

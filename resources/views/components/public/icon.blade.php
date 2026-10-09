@@ -39,6 +39,7 @@
         'scale'         => 'scale',
         'target'        => 'target',
         'truck'         => 'truck',
+        'users'         => 'users',
         'video'         => 'video',
         'play'          => 'play',
         'search'        => 'search',
@@ -154,6 +155,9 @@
             @break
         @case('truck')
             <path d="M10 17h4V5H2v12h3M14 9h4l4 4v4h-2M5 17a2 2 0 1 0 4 0M16 17a2 2 0 1 0 4 0"/>
+            @break
+        @case('users')
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/><circle cx="9" cy="7" r="4"/>
             @break
         @case('video')
             <path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/>

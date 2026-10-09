@@ -228,7 +228,9 @@ final class StorePrivateMediaTest extends TestCase
     public function test_it_removes_the_stored_file_when_a_real_metadata_constraint_failure_occurs(): void
     {
         Storage::fake('media_private');
-        DB::unprepared(<<<'SQL'
+        $filename = 'metadata-failure.png';
+        if (DB::getDriverName() === 'sqlite') {
+            DB::unprepared(<<<'SQL'
             CREATE TRIGGER media_reject_upload_metadata_insert
             BEFORE INSERT ON media
             WHEN NEW.original_name = 'metadata-failure.png'
@@ -236,11 +238,15 @@ final class StorePrivateMediaTest extends TestCase
                 SELECT RAISE(ABORT, 'forced metadata failure');
             END;
             SQL);
+        } else {
+            // Use MySQL's real varchar constraint, without implicit-commit DDL inside the test transaction.
+            $filename = str_repeat('a', 260).'.png';
+        }
 
         $this->expectException(QueryException::class);
 
         try {
-            app(StorePrivateMedia::class)->handle($this->uploadedFile('metadata-failure.png', self::png()));
+            app(StorePrivateMedia::class)->handle($this->uploadedFile($filename, self::png()));
         } finally {
             self::assertSame(0, Media::query()->count());
             Storage::disk('media_private')->assertDirectoryEmpty('/');

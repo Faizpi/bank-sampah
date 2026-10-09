@@ -52,13 +52,12 @@
                         @foreach ($prices as $price)
                             <article class="grid gap-5 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
                                 <div class="flex min-w-0 gap-3">
-                                    <span class="grid size-10 shrink-0 place-items-center rounded-md bg-success-bg text-forest-700" aria-hidden="true">
-                                        <x-public.icon name="banknote" size="size-5" />
-                                    </span>
+                                    <x-public.waste-photo :waste-type="$price->wasteType" class="size-24 shrink-0 rounded-lg border border-border sm:size-28" />
                                     <div class="min-w-0">
                                         <p class="text-label font-semibold text-forest-600">{{ $price->wasteType->category->name }}</p>
-                                        <h3 class="mt-1 text-h3 text-deep-green">{{ $price->wasteType->name }}</h3>
+                                        <h3 class="mt-1 break-words text-h3 text-deep-green">{{ $price->wasteType->name }}</h3>
                                         <p class="mt-2 text-body-sm text-text-secondary">{{ $price->condition->name }} · {{ $price->wasteType->unit->name }} ({{ $price->wasteType->unit->symbol }})</p>
+                                        <a href="{{ route('public.catalog') }}#jenis-{{ $price->waste_type_id }}" class="mt-2 inline-flex min-h-touch items-center text-body-sm font-semibold text-forest-600 underline underline-offset-4">Panduan pemilahan</a>
                                     </div>
                                 </div>
                                 <div class="sm:text-right">

@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Middleware\AssignCorrelationId;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class CorrelationIdTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_response_receives_a_generated_correlation_id(): void
     {
         $response = $this->get(route('home'));

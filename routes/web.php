@@ -4,9 +4,11 @@ use App\Actions\Auth\LogoutUser;
 use App\Domain\Identity\Queries\VisibleUsers;
 use App\Http\Controllers\GroceryProofController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\OperationalHealthController;
 use App\Http\Controllers\PickupMediaController;
 use App\Http\Controllers\ReportExportController;
+use App\Http\Controllers\WastePhotoController;
 use App\Http\Controllers\WithdrawalProofController;
 use App\Livewire\Auth\LoginForm;
 use App\Livewire\Auth\RegisterCitizenForm;
@@ -84,7 +86,9 @@ Route::get('/operations/health', OperationalHealthController::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:system.maintenance'])
     ->name('operations.health');
 
-Route::view('/', 'welcome')->name('home');
+Route::get('/', LandingController::class)->name('home');
+Route::get('/foto-sampah/{wasteType}/{photoUuid}', WastePhotoController::class)
+    ->whereUuid('photoUuid')->middleware('throttle:public-data')->name('public.waste-photo');
 Route::view('/ketentuan-dan-privasi', 'terms-and-privacy')->name('terms-and-privacy');
 Route::view('/tutorial-penggunaan', 'public.tutorials')->name('public.tutorials');
 Route::livewire('/katalog-sampah', WasteCatalog::class)->name('public.catalog');

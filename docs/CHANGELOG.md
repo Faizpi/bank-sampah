@@ -1,5 +1,14 @@
 # Catatan perubahan
 
+## Data utama 9 Oktober 2026
+
+- Satu `DatabaseSeeder` menggunakan sumber SQL pemilik yang diekstrak menjadi JSON privat, bukan menjalankan dump mentah.
+- Data sumber: 26 akun, 5 RW, 19 RT, empat penugasan, empat jenis sampah/harga. Superadmin menjadi Admin, tanpa rangkap peran.
+- Hash kata sandi tetap; QR diterbitkan ulang dengan kunci lokal. Profil Warga pada akun Petugas lama tidak dibawa.
+- Seeder demo/awal dipangkas; fixture workflow pindah ke `tests/Fixtures`. Bootstrap Admin production tetap terlindungi.
+- Reset lokal memvalidasi dan membekukan sumber sebelum perubahan. Seed biasa menolak database berisi data.
+- Data privat tidak diunggah ke GitHub. [Panduan](SEEDING.md).
+
 ## Penyempurnaan UI 8 Oktober 2026
 
 - Perbaikan pilihan keliling, form edit jadwal/target, bukti publik anti-tamper, kuitansi draf, laporan, navigasi Admin, pickup terkunci, dan penutupan layanan lewat jam.

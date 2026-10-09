@@ -38,6 +38,13 @@ return [
             'report' => false,
         ],
 
+        'waste_photos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/waste-catalog'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         'media_private' => [
             'driver' => 'local',
             'root' => storage_path('app/media'),

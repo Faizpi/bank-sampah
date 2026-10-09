@@ -47,49 +47,9 @@
                     action-href="{{ route('public.prices') }}"
                 />
             @else
-                <div class="mt-10 grid gap-4 md:grid-cols-2">
+                <div class="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                     @foreach ($wasteTypes as $wasteType)
-                        <article class="rounded-lg border border-border bg-surface p-5 md:p-6">
-                            <div class="flex items-start justify-between gap-4">
-                                <div class="flex min-w-0 gap-3">
-                                    <span class="grid size-10 shrink-0 place-items-center rounded-md bg-success-bg text-forest-700" aria-hidden="true">
-                                        <x-public.icon name="package-open" size="size-5" />
-                                    </span>
-                                    <div class="min-w-0">
-                                        <p class="text-label font-semibold text-forest-600">{{ $wasteType->category->name }}</p>
-                                        <h3 class="mt-1 text-h3 text-deep-green">{{ $wasteType->name }}</h3>
-                                        <p class="mt-1 text-body-sm text-text-secondary">Kode {{ $wasteType->code }}</p>
-                                    </div>
-                                </div>
-                                @if ($wasteType->is_plastic)
-                                    <span class="inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-sm bg-info-bg px-2.5 py-1 text-caption font-semibold text-sky-blue">
-                                        <x-public.icon name="recycle" size="size-4" />
-                                        Plastik
-                                    </span>
-                                @endif
-                            </div>
-
-                            <dl class="mt-6 grid grid-cols-2 gap-4 border-y border-border py-4 text-body-sm">
-                                <div>
-                                    <dt class="text-text-secondary">Satuan</dt>
-                                    <dd class="mt-1 font-semibold text-deep-green">{{ $wasteType->unit->name }} ({{ $wasteType->unit->symbol }})</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-text-secondary">Kondisi diterima</dt>
-                                    <dd class="mt-1 font-semibold text-deep-green">{{ $wasteType->conditions->pluck('name')->join(', ') }}</dd>
-                                </div>
-                            </dl>
-
-                            @if ($wasteType->education_description)
-                                <div class="mt-5 border-t border-border pt-4">
-                                    <div class="flex items-center gap-2 text-label font-semibold text-forest-700">
-                                        <x-public.icon name="book-open" size="size-5" />
-                                        <span>Panduan pemilahan</span>
-                                    </div>
-                                    <p class="mt-2 text-body text-text-secondary">{{ $wasteType->education_description }}</p>
-                                </div>
-                            @endif
-                        </article>
+                        <x-public.waste-card :waste-type="$wasteType" :show-education="true" />
                     @endforeach
                 </div>
             @endif

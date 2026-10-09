@@ -64,6 +64,58 @@
         </div>
     </section>
 
+    <section id="ringkasan" class="scroll-mt-24 border-b border-border/60 bg-warm-canvas py-12 sm:py-16" aria-labelledby="summary-title">
+        <div class="public-container">
+            <div class="mb-7 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <h2 id="summary-title" class="text-h2 font-bold text-deep-green">Gerakan desa dalam angka.</h2>
+                <p class="max-w-xl text-body-sm text-text-secondary">Ringkasan seluruh desa sejak pencatatan sistem.</p>
+            </div>
+            @php
+                $weight = $summary['total_weight_kg'] === null ? null : rtrim(rtrim(number_format((float) $summary['total_weight_kg'], 3, ',', '.'), '0'), ',');
+                $summaryCards = [
+                    ['label' => 'Warga aktif', 'value' => $summary['active_customers'], 'icon' => 'users', 'unit' => ''],
+                    ['label' => 'Petugas aktif', 'value' => $summary['active_officers'], 'icon' => 'clipboard-check', 'unit' => ''],
+                    ['label' => 'Setoran tercatat', 'value' => $summary['deposit_count'], 'icon' => 'package-check', 'unit' => ''],
+                    ['label' => 'Sampah terkumpul', 'value' => $weight, 'icon' => 'scale', 'unit' => 'kg'],
+                ];
+            @endphp
+            <dl class="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+                @foreach ($summaryCards as $card)
+                    <div class="flex min-w-0 flex-col items-center rounded-2xl bg-forest-600 px-4 py-7 text-center text-surface sm:px-6 sm:py-9">
+                        <x-public.icon :name="$card['icon']" size="size-8" class="mb-5 text-surface/80" />
+                        <dt class="order-2 mt-3 text-body-sm font-semibold sm:text-body">{{ $card['label'] }}</dt>
+                        <dd class="order-1 max-w-full break-words text-h1 font-extrabold tabular-nums sm:text-display">
+                            {{ $card['value'] === null ? '—' : (is_int($card['value']) ? number_format($card['value'], 0, ',', '.') : $card['value']) }}
+                            @if ($card['value'] !== null && $card['unit'])<span class="text-label font-medium">{{ $card['unit'] }}</span>@endif
+                        </dd>
+                    </div>
+                @endforeach
+            </dl>
+            <p class="mt-5 text-caption leading-relaxed text-text-secondary">Petugas aktif memiliki penugasan berlaku, bukan berarti sedang online. Hanya setoran final yang belum dibalik dihitung. Angka “—” berarti belum dipublikasikan atau dilindungi untuk kelompok kecil.</p>
+        </div>
+    </section>
+
+    <section id="sampah-diterima" class="scroll-mt-24 border-b border-border/60 bg-surface py-16 sm:py-20" aria-labelledby="accepted-waste-title">
+        <div class="public-container">
+            <x-public.section-header id="accepted-waste-title" eyebrow="Kenali sebelum menyetor" title="Sampah terpilah, nilainya jelas." description="Foto, kondisi penerimaan, dan harga aktif bersumber dari katalog yang dikelola Admin.">
+                <x-slot:actions>
+                    <a href="{{ route('public.catalog') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-lg bg-forest-600 px-5 text-label font-semibold text-surface hover:bg-forest-700 focus-visible:ring-2 focus-visible:ring-focus">Katalog lengkap <x-public.icon name="arrow-right" size="size-5" /></a>
+                    <a href="{{ route('public.prices') }}" class="inline-flex min-h-touch items-center justify-center rounded-lg border border-border px-5 text-label font-semibold text-deep-green hover:bg-success-bg focus-visible:ring-2 focus-visible:ring-focus">Lihat semua harga</a>
+                </x-slot:actions>
+            </x-public.section-header>
+            @if ($wasteTypes->isEmpty())
+                <x-ui.empty-state class="mt-8" title="Katalog sedang disiapkan" description="Jenis dan foto sampah akan muncul setelah dilengkapi pengelola." />
+            @else
+                <div class="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                    @foreach ($wasteTypes as $wasteType)
+                        <x-public.waste-card :waste-type="$wasteType" />
+                    @endforeach
+                </div>
+            @endif
+            <p class="mt-5 text-body-sm text-text-secondary">Nilai akhir mengikuti berat aktual dan harga saat setoran. Foto data lama dapat dilengkapi Admin tanpa mengubah transaksi.</p>
+        </div>
+    </section>
+
     {{-- Kepala Desa Section --}}
     <section class="border-b border-border/60 bg-surface py-16 sm:py-20" aria-labelledby="village-head-title">
         <div class="public-container">
@@ -140,7 +192,7 @@
                         </div>
                         <div>
                             <h3 class="text-title font-bold text-deep-green transition-colors group-hover:text-forest-600">Penjemputan yang Terjadwal</h3>
-                            <p class="mt-1.5 text-body-sm leading-relaxed text-text-secondary">Ajukan dengan foto dan pilih tanggal tersedia. Nilai akhir mengikuti penimbangan aktual petugas.</p>
+                            <p class="mt-1.5 text-body-sm leading-relaxed text-text-secondary">Pilih tanggal penjemputan; foto dan catatan opsional. Nilai akhir mengikuti penimbangan aktual Petugas.</p>
                         </div>
                         <span class="inline-flex self-start justify-center rounded-full border border-info-bg bg-info-bg px-3 py-1 text-xs font-bold text-sky-blue sm:self-center">Sesuai Kapasitas</span>
                     </article>
@@ -234,8 +286,8 @@
     <section class="border-t border-border bg-surface py-16 sm:py-20" aria-labelledby="account-cta-title">
         <div class="public-container flex flex-col gap-8 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center lg:flex lg:flex-row lg:justify-between">
             <div class="md:min-w-0 lg:max-w-2xl">
-                <h2 id="account-cta-title" class="text-h2 font-extrabold text-deep-green lg:text-h1">Sudah menjadi warga atau petugas?</h2>
-                <p class="mt-3 text-body leading-relaxed text-text-secondary">Masuk untuk melihat saldo, riwayat transaksi, dan pengajuan penjemputan.</p>
+                <h2 id="account-cta-title" class="text-h2 font-extrabold text-deep-green lg:text-h1">Sudah punya akun?</h2>
+                <p class="mt-3 text-body leading-relaxed text-text-secondary">Masuk ke layanan sesuai peran Anda: Warga, Petugas, Bendahara, atau Admin.</p>
             </div>
             <div class="flex flex-col gap-6 sm:flex-row sm:items-center md:flex-col md:items-stretch lg:flex-row lg:items-center">
                 <x-ui.mascot variant="13" bubble="Siap bantu kamu!" bubblePosition="top" class="h-36 w-auto self-center md:h-28 lg:h-36" />

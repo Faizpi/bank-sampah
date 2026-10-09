@@ -9,6 +9,8 @@ use App\Domain\WasteMaster\Support\GuardedWasteTypeConditionsRelation;
 use Database\Factories\WasteTypeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class WasteType extends WasteMasterModel
 {
@@ -53,6 +55,18 @@ final class WasteType extends WasteMasterModel
     public function media(): BelongsTo
     {
         return $this->belongsTo(Media::class);
+    }
+
+    /** @return HasOne<WasteTypePhoto, $this> */
+    public function publicPhoto(): HasOne
+    {
+        return $this->hasOne(WasteTypePhoto::class);
+    }
+
+    /** @return HasMany<WastePrice, $this> */
+    public function prices(): HasMany
+    {
+        return $this->hasMany(WastePrice::class);
     }
 
     /** @return GuardedWasteTypeConditionsRelation<WasteCondition, $this> */

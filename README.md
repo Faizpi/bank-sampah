@@ -45,10 +45,13 @@ Laravel 13, PHP 8.3+, MySQL 8.0.30-compatible/InnoDB, Livewire 4, Filament 5, Ta
 1. Siapkan PHP, Composer, Node.js/npm dan MySQL lokal, misalnya Laragon.
 2. Jalankan `composer install` dan `npm ci --ignore-scripts`.
 3. Salin `.env.example` ke `.env`; isi koneksi lokal dan URL, lalu jalankan `php artisan key:generate`.
-4. Pada database lokal kosong, jalankan `php artisan migrate --seed`, kemudian `npm run build`.
-5. Document root Laragon harus `public/`; alternatifnya `php artisan serve`.
+4. Siapkan data utama privat dari SQL pemilik mengikuti [panduan seeder](docs/SEEDING.md). Tanpa sumber ini seeder lokal berhenti; tidak menggantinya dengan akun buatan.
+5. Pada database lokal kosong, jalankan `php artisan migrate --seed`, kemudian `npm run build`.
+6. Document root Laragon harus `public/`; alternatifnya `php artisan serve`.
 
-Seed lokal membuat tepat empat akun demo (username `warga`, `petugas`, `bendahara`, `admin`), area tugas, harga, dan paket; tidak ada transaksi/saldo dummy. Kata sandi demo default: `Dev#Sindangheula2026`, kecuali dikonfigurasi sendiri. Akun ini hanya untuk local/testing, bukan akun produksi.
+Hanya ada satu seeder aplikasi: `DatabaseSeeder`. Sumber lokal terbaru memuat 26 akun (20 Warga, 3 Petugas, 1 Bendahara, 2 Admin), 5 RW, 19 RT, penugasan, 4 jenis sampah, dan 4 harga. Superadmin lama menjadi Admin; username dan hash kata sandi sumber dipertahankan. QR dibuat ulang dengan kunci lokal. Transaksi, saldo, sesi, notifikasi, lampiran, dan paket sembako lama tidak diimpor.
+
+Data akun/alamat dan hash kata sandi disimpan privat di `database/data/master-data.json`, diabaikan Git. Akun contoh untuk tes hanya berada di `tests/Fixtures`; tidak dipanggil seeder aplikasi. Tombol isi cepat demo hanya muncul untuk akun sintetis yang benar-benar cocok, bukan semua akun hasil impor. Di production, seeder hanya bootstrap Admin awal sesuai konfigurasi, tanpa mengimpor dataset lokal.
 
 ### Reset baseline dummy yang sudah ada
 
