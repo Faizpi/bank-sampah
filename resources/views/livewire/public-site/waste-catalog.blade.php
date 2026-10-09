@@ -26,9 +26,7 @@
         <div class="public-container section-space">
             <x-public.section-header
                 id="catalog-title"
-                eyebrow="Jenis aktif"
-                title="Yang dapat dipelajari dan disiapkan"
-                description="Periksa satuan, kondisi yang diterima, dan panduan pemilahan sebelum membawa setoran."
+                title="Jenis sampah yang diterima"
             >
                 <x-slot:actions>
                     <a href="{{ route('public.prices') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-label text-deep-green transition duration-180 ease-standard hover:border-forest-600 hover:bg-success-bg active:translate-y-px">

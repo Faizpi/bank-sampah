@@ -62,7 +62,6 @@
 
         <div class="flex flex-col gap-2 border-t border-success-bg/20 py-5 text-body-sm text-success-bg sm:flex-row sm:items-center sm:justify-between">
             <p>Bank Sampah Digital Desa Sindangheula.</p>
-            <p>Informasi publik yang jelas untuk keputusan yang lebih baik.</p>
         </div>
     </div>
 </footer>

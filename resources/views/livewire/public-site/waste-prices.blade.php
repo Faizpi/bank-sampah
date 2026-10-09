@@ -5,9 +5,8 @@
     <section class="border-b border-deep-green bg-deep-green text-surface" aria-labelledby="prices-page-title">
         <div class="public-container grid items-center gap-8 section-space lg:grid-cols-[1fr_auto]">
             <div>
-            <p class="text-label font-semibold tracking-wide text-surface/80">Harga transparan</p>
-            <h1 id="prices-page-title" class="mt-2 max-w-3xl text-h1 lg:text-h1-lg text-surface">Harga aktif yang bisa diperiksa.</h1>
-            <p class="mt-3 max-w-2xl text-body text-surface/80">Harga mengikuti jenis, kondisi, dan waktu transaksi. Nilai akhir tetap mengikuti berat aktual saat setoran.</p>
+            <h1 id="prices-page-title" class="max-w-3xl text-h1 lg:text-h1-lg text-surface">Harga sampah saat ini</h1>
+            <p class="mt-3 max-w-2xl text-body text-surface/80">Harga berdasarkan jenis, kondisi, dan satuan sampah.</p>
             <div class="mt-5 flex flex-wrap gap-2">
                 <a href="{{ route('public.catalog') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md bg-surface px-5 text-label text-deep-green transition duration-180 ease-standard hover:bg-success-bg active:translate-y-px">
                     Pelajari jenis sampah
@@ -26,9 +25,7 @@
         <div class="public-container section-space">
             <x-public.section-header
                 id="prices-title"
-                eyebrow="Periode berjalan"
                 title="Daftar harga penerimaan"
-                description="Gunakan informasi ini sebagai acuan sebelum setoran. Harga transaksi final mengikuti berat aktual dan periode yang berlaku."
             >
                 <x-slot:actions>
                     <a href="{{ route('public.catalog') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-label text-deep-green transition duration-180 ease-standard hover:border-forest-600 hover:bg-success-bg active:translate-y-px">
@@ -71,7 +68,6 @@
                 </div>
             @endif
 
-            <p class="mt-6 max-w-3xl text-body-sm leading-6 text-text-secondary">Harga publik adalah informasi aktif. Harga yang tercatat pada transaksi final disimpan sebagai rekaman saat transaksi dan tidak berubah ketika periode baru dibuat.</p>
         </div>
     </section>
 </div>

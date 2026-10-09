@@ -29,6 +29,43 @@ final class PublicLandingPageTest extends TestCase
         $this->get(route('login'))->assertOk();
     }
 
+    public function test_public_copy_has_no_internal_notes_or_repeated_price_explanations(): void
+    {
+        $this->get(route('home'))->assertOk()
+            ->assertSee('Ringkasan bank sampah')
+            ->assertSee('Sampah yang diterima')
+            ->assertSee('Warga aktif')->assertSee('Petugas aktif')
+            ->assertDontSee('Petugas aktif memiliki penugasan berlaku')
+            ->assertDontSee('Hanya setoran final yang belum dibalik dihitung')
+            ->assertDontSee('berarti belum dipublikasikan atau dilindungi')
+            ->assertDontSee('Foto data lama dapat dilengkapi Admin')
+            ->assertDontSee('bersumber dari katalog yang dikelola Admin')
+            ->assertDontSee('Nilai akhir mengikuti berat aktual dan harga saat setoran')
+            ->assertDontSee('Informasi publik yang jelas untuk keputusan yang lebih baik');
+
+        $this->get(route('public.catalog'))->assertOk()
+            ->assertSee('Jenis sampah yang diterima')
+            ->assertDontSee('Yang dapat dipelajari dan disiapkan')
+            ->assertSee('Lihat harga aktif');
+
+        $this->get(route('public.prices'))->assertOk()
+            ->assertSee('Harga sampah saat ini')
+            ->assertDontSee('Harga publik adalah informasi aktif')
+            ->assertDontSee('Harga yang tercatat pada transaksi final disimpan')
+            ->assertDontSee('Gunakan informasi ini sebagai acuan sebelum setoran');
+    }
+
+    public function test_village_head_section_immediately_follows_the_hero(): void
+    {
+        $this->get(route('home'))->assertOk()->assertSeeInOrder([
+            'aria-labelledby="landing-title"',
+            'aria-labelledby="village-head-title"',
+            'id="ringkasan"',
+            'id="sampah-diterima"',
+            'id="layanan"',
+        ], false);
+    }
+
     public function test_approved_public_pages_have_unique_metadata_and_absolute_self_canonicals(): void
     {
         config()->set('app.url', 'https://bank-sampah.test');

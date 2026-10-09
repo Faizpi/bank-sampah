@@ -21,6 +21,8 @@ Satu akun hanya satu peran. Pengurus tidak merangkap tugas. Admin bukan pelaksan
 
 ## Alur yang ringkas
 
+Landing menampilkan ringkasan seluruh desa dan jenis sampah beserta harga aktif. Foto dikelola lewat **Admin → Data Master → Katalog Sampah → Jenis Sampah → Foto**; perubahan sumber yang sama tampil pada landing, katalog, dan harga saat halaman dimuat ulang. Jenis baru memerlukan foto; data lama tanpa foto ditandai sampai dilengkapi. [Panduan foto dan statistik](docs/LANDING_CATALOG_2026-10-09.md).
+
 - Semua setoran langsung final setelah ringkasan berat/nilai diperiksa.
 - Petugas/Bendahara mengambil tugas sendiri, tanpa persetujuan Admin rutin.
 - Form penjemputan satu layar; foto, catatan, dan perkiraan tambahan dapat dilipat. Lampiran rutin opsional, tervalidasi, dan privat.

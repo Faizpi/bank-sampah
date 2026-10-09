@@ -1,5 +1,14 @@
 # Catatan perubahan
 
+## Landing dan foto katalog 9 Oktober 2026
+
+- Ringkasan Warga aktif, Petugas aktif, setoran final, dan berat seluruh desa, dengan perlindungan kelompok kecil dan penghormatan publikasi Admin.
+- Kartu jenis sampah/harga aktif pada landing; query, foto, dan harga yang sama pada katalog dan harga.
+- Foto melalui aksi khusus Admin atau form jenis; unggahan wajib untuk jenis baru, edit teks mempertahankan foto lama.
+- Foto publik berada di tabel/disk terpisah, dinormalisasi JPEG tanpa EXIF/GPS dan dengan orientasi kamera; bukti privat tidak dibuka.
+- Relasi pilihan Filament disimpan melalui domain, bukan penulis otomatis kedua; label aksesibel/placeholder dirapikan.
+- Migrasi hanya menambah tabel foto, tidak me-reset data utama. [Bukti dan panduan](LANDING_CATALOG_2026-10-09.md).
+
 ## Data utama 9 Oktober 2026
 
 - Satu `DatabaseSeeder` menggunakan sumber SQL pemilik yang diekstrak menjadi JSON privat, bukan menjalankan dump mentah.
