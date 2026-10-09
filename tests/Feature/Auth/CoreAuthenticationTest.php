@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
+use Tests\Fixtures\WorkflowFixture;
 use Tests\RoleFixtures;
 use Tests\TestCase;
 
@@ -362,6 +363,7 @@ final class CoreAuthenticationTest extends TestCase
     public function test_login_form_renders_accessible_autocomplete_and_generic_error_contracts(): void
     {
         config()->set('app.demo_mode', true);
+        $this->seed(WorkflowFixture::class);
 
         Livewire::test(LoginForm::class)
             ->assertSeeHtml('id="login-title"')

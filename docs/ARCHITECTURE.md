@@ -23,3 +23,5 @@ Laravel 13 dan PHP 8.3+ memakai modular monolith: domain mengatur transaksi, que
 Request dikunci sebelum claim/completion. Guard membaca ulang actor, area dan assignment dengan locking read. Completion memeriksa claimant/status, konversi sumber sebelumnya, lalu menulis ledger, hold, kuitansi, dan audit dalam satu transaksi. Payload checksum null konsisten untuk permintaan tanpa foto.
 
 UI Petugas/Bendahara memakai antrean bersama dengan ringkasan sebelum penyerahan. Panel Admin hanya menjalankan administrasi atau pengecualian yang terpisah. Telegram belum diimplementasikan.
+
+Penyempurnaan UI 8 Oktober: selected detail/replay terpisah dari pagination/filter; data bukti/laporan otoritatif tidak dapat diganti melalui state klien; akun+tugas atomik; rekonsiliasi dicatat satu Admin dengan input per record. Tabel Filament memakai stacking native di ponsel. Operasi teknis dormant dibatasi per halaman dan pratinjau server/kandidat yang dikunci. [Bukti](IMPLEMENTATION_UI_2026-10-08.md).

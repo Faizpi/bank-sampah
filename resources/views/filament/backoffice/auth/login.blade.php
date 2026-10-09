@@ -1,6 +1,6 @@
 <x-filament-panels::page.simple>
     @php
-        $demoAccounts = config('app.demo_mode') ? [
+        $demoAccounts = \App\Support\Auth\DemoCredentials::available('admin') ? [
             'admin'      => 'Admin',
         ] : [];
     @endphp

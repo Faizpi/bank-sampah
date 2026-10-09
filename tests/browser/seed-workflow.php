@@ -12,13 +12,15 @@ use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Tests\Fixtures\WorkflowFixture;
 
 $app = require __DIR__.'/bootstrap.php';
 $app->make(Kernel::class)->bootstrap();
 if (DB::getDriverName() !== 'mysql' || DB::connection()->getDatabaseName() !== getenv('DB_DATABASE') || ! in_array(DB::connection()->getConfig('host'), ['127.0.0.1', 'localhost', '::1'], true)) {
     throw new RuntimeException('Resolved browser database is not the requested disposable loopback MySQL.');
 }
-Artisan::call('migrate:fresh', ['--seed' => true, '--force' => true]);
+Artisan::call('migrate:fresh', ['--force' => true]);
+Artisan::call('db:seed', ['--class' => WorkflowFixture::class, '--force' => true]);
 $users = [];
 foreach (['warga', 'petugas', 'bendahara', 'admin'] as $role) {
     $users[$role] = User::where('username', $role)->firstOrFail();

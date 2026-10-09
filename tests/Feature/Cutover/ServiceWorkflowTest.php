@@ -17,17 +17,17 @@ use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
-use Database\Seeders\DeveloperUsersSeeder;
+use App\Support\Auth\DemoCredentials;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
+use Tests\Fixtures\WorkflowFixture;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(DatabaseSeeder::class);
+    $this->seed(WorkflowFixture::class);
     $this->warga = User::where('username', 'warga')->firstOrFail();
     $this->petugas = User::where('username', 'petugas')->firstOrFail();
     $this->bendahara = User::where('username', 'bendahara')->firstOrFail();
@@ -132,7 +132,7 @@ it('locks uncertain handoffs and admin resolves at most one conversion', functio
     $this->workflow->reportException($this->bendahara, $request, 'Respons pencatatan hilang, perlu diperiksa.');
     expect(fn () => $this->workflow->complete($this->bendahara, $request, null, (string) str()->uuid()))->toThrow(ValidationException::class);
     $reason = 'Fakta dikonfirmasi dengan Bendahara dan warga.';
-    $resolved = $this->workflow->resolveException($this->admin, $request, $handed, $reason, DeveloperUsersSeeder::password());
-    $again = $this->workflow->resolveException($this->admin, $request, $handed, $reason, DeveloperUsersSeeder::password());
+    $resolved = $this->workflow->resolveException($this->admin, $request, $handed, $reason, DemoCredentials::password());
+    $again = $this->workflow->resolveException($this->admin, $request, $handed, $reason, DemoCredentials::password());
     expect($again->id)->toBe($resolved->id)->and(LedgerEntry::count())->toBe($handed ? 2 : 1)->and($resolved->status)->toBe($handed ? WithdrawalStatus::Paid : WithdrawalStatus::Waiting);
 })->with([true, false]);

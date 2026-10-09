@@ -2,7 +2,7 @@
 
 ## 1. Status kontrak
 
-Dokumen ini mengikat implementasi UI publik, warga, petugas, bendahara, dan admin. Ini bukan mood board. Semua komponen harus memakai token, pola navigasi, state, breakpoint, aksesibilitas, dan larangan yang ditetapkan di sini.
+Keputusan UI/workflow aktif berada di [DESIGN.md root](../DESIGN.md). Dokumen ini memuat kontrak token dan komponen untuk publik, Warga, Petugas, Bendahara, dan Admin. Ini bukan mood board. Semua komponen harus memakai token, pola navigasi, state, breakpoint, aksesibilitas, dan larangan yang ditetapkan di sini.
 
 Prinsip: mobile-first, sederhana bagi warga, task-first bagi petugas, action-first bagi admin, data-dense secara terkontrol, saldo-first, hangat, jelas, dan dapat diaudit.
 
@@ -236,7 +236,7 @@ Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mo
 
 - Header: konteks tanggal/lokasi, status koneksi, profil.
 - Tugas hari ini sebagai halaman awal.
-- Bottom navigation maksimal lima: `Tugas`, `Setoran`, `Pindai`, `Riwayat`, `Akun`.
+- Petugas memakai empat tujuan: `Tugas`, `Setoran`, `Layanan`, `Akun`. Pemindaian berada dalam identifikasi setoran, bukan menu tambahan.
 - Bendahara dapat mengganti `Setoran/Pindai` dengan `Pembayaran/Laporan` sesuai permission tanpa melebihi lima.
 - Aksi scan memiliki alternatif input nomor nasabah.
 
@@ -263,7 +263,7 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 - Tinggi warga/petugas 48 px; padding horizontal 16–20; ikon 20 px; gap 8.
 - Focus ring 2 px Sky Blue + offset 2.
 - Loading mempertahankan lebar, menampilkan indikator dan teks “Memproses”; disabled bukan opacity terlalu rendah.
-- Aksi finansial destruktif/akhir memakai dialog konfirmasi dengan ringkasan nominal dan akibat.
+- Pencatatan rutin terakhir memakai ringkasan pada layar dan tombol eksplisit bahwa uang/paket sudah diserahkan atau data timbang sudah benar. Tidak ada tinjauan/dialog kedua yang wajib. Koreksi dan pengecualian tetap menjelaskan akibat dan memerlukan pengamanan sesuai domain.
 
 ### Input, select, textarea
 
@@ -372,7 +372,7 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 - Header jelas/sticky pada data panjang; sort memiliki `aria-sort`; checkbox berlabel.
 - Angka rata kanan dan tabular; status teks+ikon; action menu berlabel.
 - Pagination server-side; filter aktif terlihat dan dapat dihapus.
-- Pada 360/390, admin memakai row stack/list untuk tabel kompleks; warga tidak memakai tabel data padat.
+- Pada 360/390, tabel Filament menggunakan stackedOnMobile agar identitas, nilai, status, dan aksi tersedia bersama; desktop tetap tabel lengkap. Warga tidak memakai tabel data padat.
 
 ### Pagination
 
@@ -408,17 +408,17 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 
 1. Identifikasi QR/nomor dan konfirmasi nama.
 2. Daftar item timbang datar, bukan nested card.
-3. Ringkasan subtotal/total sticky pada mobile.
-4. Bukti dan konfirmasi final.
-5. Success receipt dengan QR verifikasi.
+3. Ringkasan subtotal/total terbaca pada mobile.
+4. Lampiran opsional dalam disclosure dan satu tombol pencatatan setelah ringkasan diperiksa.
+5. Status sukses dengan nomor/nilai/waktu; Warga membuka kuitansi dan QR dari riwayat setelah final.
 
 ### Tugas petugas
 
-Filter “Hari ini”, area, status; task row; CTA kontekstual; indikator offline hanya informasi karena transaksi memerlukan koneksi.
+Satu daftar dengan pilihan Menunggu/Tugas saya dan jenis Penjemputan/Sembako/Draf setoran/Layanan keliling. Pagination server-side; panel kosong berulang tidak ditampilkan. Indikator offline hanya informasi, karena transaksi memerlukan koneksi.
 
 ### Dashboard admin
 
-Action queue di atas (verifikasi, pickup, approve), metrik ringkas, trend, operasional hari ini, aktivitas audit. Maksimal satu level panel; grafik tidak mendominasi tindakan.
+Antrean perhatian di atas: verifikasi akun sekali, pengecualian, dan informasi program yang relevan. Tidak ada persetujuan Admin rutin. Pemeriksaan saldo diselesaikan satu Admin; selisih dan alasan dicatat tanpa mengubah uang. Maksimal satu level panel; grafik tidak mendominasi tindakan.
 
 ## 10. Responsif wajib
 

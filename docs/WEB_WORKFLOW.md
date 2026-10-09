@@ -1,14 +1,14 @@
 # Workflow web empat role
 
-Baseline cutover 5 Oktober 2026. Hanya Warga, Petugas, Bendahara, dan Admin; satu role per akun. Semua warga menggunakan smartphone sendiri.
+Baseline empat role 5 Oktober 2026, disempurnakan melalui audit UI 8 Oktober 2026. Hanya Warga, Petugas, Bendahara, dan Admin; satu role per akun. Semua warga menggunakan smartphone sendiri.
 
 ## Setoran
 
-Petugas memilih atau memindai warga aktif, mengisi jenis, kondisi, dan berat aktual, memeriksa total, lalu mencatat setoran. Semua setoran langsung final dan membuat satu mutasi masuk. Foto lampiran opsional. Transaksi final yang salah ditangani melalui koreksi atau pembalikan resmi.
+Petugas mencari nama/nomor atau memindai warga aktif, memilih dari beberapa hasil bila ada, lalu mengonfirmasi nama sekaligus membuka setoran. Petugas mengisi jenis, kondisi, dan berat aktual, memeriksa total, lalu mencatat setoran. Semua setoran langsung final dan membuat satu mutasi masuk. Foto lampiran opsional. Transaksi final yang salah ditangani melalui koreksi atau pembalikan resmi.
 
 ## Pickup
 
-Warga mengisi alamat, tanggal pilihan, dan jenis sampah. Perkiraan dan foto opsional. Petugas searea mengambil tugas; penjadwalan memakai tanggal pilihan, kemudian menuju lokasi, menandai dijemput, dan menyelesaikan penimbangan aktual. Pickup selesai hanya setelah setoran final. Warga membatalkan sebelum klaim; claimant melepas tugas hanya sebelum sampah dijemput.
+Warga membuka Layanan dan mengisi satu form: alamat, tanggal pilihan, dan jenis sampah. Perkiraan dan foto opsional. Petugas searea mengambil tugas; penjadwalan memakai tanggal pilihan, kemudian menuju lokasi, menandai dijemput, dan menyelesaikan penimbangan aktual. Pickup selesai hanya setelah setoran final. Warga membatalkan sebelum klaim; claimant melepas tugas hanya sebelum sampah dijemput.
 
 ## Pencairan tunai
 
@@ -20,7 +20,7 @@ Pengajuan paket aktif langsung menahan saldo dan menunggu Petugas. Petugas menga
 
 ## Kendala dan pengecualian
 
-Claimant boleh melepas klaim hanya jika belum ada serah fisik; hold tetap aktif. Penyerahan yang belum dapat dipastikan dikunci dan dilaporkan ke Admin. Admin memastikan fakta, menulis alasan, dan melakukan autentikasi ulang. Jika sudah diserahkan, penyelesaian memakai sumber mutasi yang unik. Jika belum, tugas kembali ke antrean. Jika belum pasti, tetap terkunci tanpa mutasi keluar.
+Claimant boleh melepas klaim hanya jika belum ada serah fisik; hold tetap aktif. Penyerahan yang belum dapat dipastikan dikunci dan dilaporkan ke Admin. Admin memastikan fakta, menulis alasan, dan melakukan autentikasi ulang. Jika sudah diserahkan, penyelesaian memakai sumber mutasi yang unik. Jika belum dan tidak ada permintaan batal, tugas kembali ke antrean dengan dana tetap disisihkan. Jika Warga meminta batal, transaksi dibatalkan dan hold dilepas. Jika belum pasti, tetap terkunci tanpa mutasi keluar.
 
 ## Saldo
 
@@ -31,7 +31,7 @@ Saldo tersedia adalah mutasi masuk dikurangi mutasi keluar dan hold aktif. Saldo
 - Warga: Akun dan smartphone sendiri; saldo, riwayat, kartu, pengajuan pickup, pencairan tunai, dan sembako.
 - Petugas: Pindai warga, setoran, pickup, layanan keliling, dan sembako pada area tugas aktif. Tidak membayar tunai.
 - Bendahara: Mengambil serta mencatat pembayaran tunai pada area tugas aktif. Laporan hanya pembayaran sendiri.
-- Admin: Akun, verifikasi warga, wilayah, harga, paket, laporan, audit, koreksi resmi, pengecualian, dan Health baca-saja. Bukan pelaksana fisik rutin.
+- Admin: Akun sekaligus area tugas, verifikasi warga, wilayah, harga, paket, laporan, audit, pemeriksaan saldo satu Admin, koreksi resmi, pengecualian, dan Health baca-saja. Bukan pelaksana fisik rutin.
 
 ## Batas implementasi
 

@@ -43,3 +43,7 @@ Thumbs.db
 /qa-*.txt
 *.xlsx
 *.zip
+
+# Private source data contains account hashes, names, phones, and addresses.
+/database/data/*.json
+/database/data/*.sql

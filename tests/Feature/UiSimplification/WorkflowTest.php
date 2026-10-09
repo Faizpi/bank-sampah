@@ -30,20 +30,20 @@ use App\Livewire\Officer\PickupTask;
 use App\Livewire\Treasurer\Reports;
 use App\Livewire\Treasurer\WithdrawalPayments;
 use App\Models\User;
+use App\Support\Auth\DemoCredentials;
 use Carbon\CarbonImmutable;
-use Database\Seeders\DatabaseSeeder;
-use Database\Seeders\DeveloperUsersSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use Tests\Fixtures\WorkflowFixture;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(DatabaseSeeder::class);
+    $this->seed(WorkflowFixture::class);
     $this->admin = User::where('username', 'admin')->firstOrFail();
     $this->officer = User::where('username', 'petugas')->firstOrFail();
     $this->citizen = User::where('username', 'warga')->firstOrFail();
@@ -145,7 +145,7 @@ it('hides pickup execution and release controls while an Admin freeze is unresol
     $service = app(PickupService::class);
     $pickup = $service->submit($this->citizen, ['service_area_id' => $this->officer->staffProfile->service_area_id, 'selected_date' => today()->toDateString(), 'address' => $this->citizen->customerProfile->address], [['waste_type_id' => $this->type->id]], [], (string) str()->uuid());
     $claimed = $service->claim($this->officer, $pickup);
-    $frozen = $service->freezeException($this->admin, $claimed, 'Pemeriksaan klaim penjemputan', DeveloperUsersSeeder::password());
+    $frozen = $service->freezeException($this->admin, $claimed, 'Pemeriksaan klaim penjemputan', DemoCredentials::password());
     $this->actingAs($this->officer);
     Livewire::test(PickupTask::class, ['pickup' => $frozen])->assertSee('dikunci')->assertDontSee('Menuju Lokasi')->assertDontSee('Lepas tugas ke antrean');
 });

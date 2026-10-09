@@ -6,7 +6,7 @@
 
 Website mobile-first untuk setoran, saldo rupiah, penjemputan, pencairan tunai, dan penukaran sembako Desa Sindangheula.
 
-[Workflow](docs/WEB_WORKFLOW.md) · [Dokumentasi](docs/README.md) · [Pengujian](docs/TEST_PLAN.md) · [Validasi cutover](docs/VALIDATION_CUTOVER_2026-10-05.md)
+[Workflow](docs/WEB_WORKFLOW.md) · [Panduan pengguna](docs/USER_FLOWS.md) · [Dokumentasi](docs/README.md) · [Pengujian](docs/TEST_PLAN.md) · [Validasi cutover](docs/VALIDATION_CUTOVER_2026-10-05.md)
 
 ## Empat peran dan tugas yang jelas
 
@@ -23,7 +23,10 @@ Satu akun hanya satu peran. Pengurus tidak merangkap tugas. Admin bukan pelaksan
 
 - Semua setoran langsung final setelah ringkasan berat/nilai diperiksa.
 - Petugas/Bendahara mengambil tugas sendiri, tanpa persetujuan Admin rutin.
-- Foto lampiran rutin opsional; bila dikirim tetap tervalidasi dan privat.
+- Form penjemputan satu layar; foto, catatan, dan perkiraan tambahan dapat dilipat. Lampiran rutin opsional, tervalidasi, dan privat.
+- Antrean Petugas/Bendahara dipaginasi dan memisahkan Menunggu/Tugas saya. Menu Layanan Warga memuat seluruh pilihan layanan.
+- Admin membuat akun pengurus beserta tugas secara atomik. Pemeriksaan saldo selesai dengan satu Admin; selisih dicatat tanpa otomatis mengubah saldo.
+- Form edit mempertahankan data tersimpan; bukti publik selalu diturunkan dari transaksi server, termasuk invalidasi QR.
 - Pembayaran hanya tunai penuh, diambil ketika uang fisik tersedia. Tidak ada transfer, pembayaran sebagian, atau tombol tunda kas.
 - Sembako dapat langsung diserahkan; Paket siap diambil adalah pilihan, bukan tahap wajib.
 - Hold belum merupakan pengeluaran. Pelepasan klaim mempertahankan hold; pembatalan sah melepasnya. Setelah klaim, permintaan batal mengunci penyerahan sampai serah fisik dipastikan.
@@ -31,7 +34,7 @@ Satu akun hanya satu peran. Pengurus tidak merangkap tugas. Admin bukan pelaksan
 
 Claim mengikat pelaksana sebelum uang/barang berpindah. Setelah serah fisik, satu pencatatan atomik membuat mutasi keluar dan kuitansi. Respons hilang tidak boleh memicu serah fisik kedua; ketidakpastian masuk jalur exception Admin beralasan dan terautentikasi ulang.
 
-Bot Telegram belum diimplementasikan dan WhatsApp tidak digunakan. Penimbangan serta serah-terima sembako tetap melalui web. Tes otomatis belum menggantikan UAT peserta desa nyata.
+Bot Telegram belum diimplementasikan dan WhatsApp tidak digunakan. Penimbangan serta serah-terima sembako tetap melalui web. Tes otomatis belum menggantikan UAT peserta desa nyata. Penyempurnaan UI 8 Oktober 2026 dilacak di [catatan pelaksanaan](docs/IMPLEMENTATION_UI_2026-10-08.md).
 
 ## Teknologi
 

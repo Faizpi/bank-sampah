@@ -6,9 +6,9 @@ namespace App\Filament\Auth;
 
 use App\Filament\Auth\Responses\BackofficeLoginResponse;
 use App\Models\User;
+use App\Support\Auth\DemoCredentials;
 use App\Support\Auth\SessionAccess;
 use App\Support\Auth\Username;
-use Database\Seeders\DeveloperUsersSeeder;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
@@ -77,13 +77,13 @@ final class BackofficeLogin extends Login
             return;
         }
 
-        if (! in_array($role, ['admin'], true)) {
+        if (! in_array($role, ['admin'], true) || ! DemoCredentials::available($role)) {
             return;
         }
 
         $this->form->fill([
-            'username' => DeveloperUsersSeeder::username($role),
-            'password' => DeveloperUsersSeeder::password(),
+            'username' => DemoCredentials::username($role),
+            'password' => DemoCredentials::password(),
         ]);
     }
 

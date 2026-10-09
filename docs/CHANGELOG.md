@@ -1,5 +1,14 @@
 # Catatan perubahan
 
+## Penyempurnaan UI 8 Oktober 2026
+
+- Perbaikan pilihan keliling, form edit jadwal/target, bukti publik anti-tamper, kuitansi draf, laporan, navigasi Admin, pickup terkunci, dan penutupan layanan lewat jam.
+- Menu semua layanan, pickup satu form, hasil pencarian warga eksplisit, antrean Menunggu/Tugas saya dengan pagination dan lampiran dilipat.
+- Akun pengurus+tugas atomik, tugas baru saat peran berubah, format angka/telepon lokal, label wilayah lengkap, dan tabel Admin bertumpuk di ponsel.
+- Pemeriksaan saldo satu Admin dengan isian per record, selisih beralasan, tanpa perubahan saldo otomatis.
+- Rincian/akibat pengecualian, kartu baca-saja dan pelengkapan diaudit, pengamanan preview/operasi teknis dormant.
+- Kontrak desain, panduan, tutorial, README, proposal dan flowchart diperbarui. [Bukti pelaksanaan](IMPLEMENTATION_UI_2026-10-08.md).
+
 ## Cutover empat role 5 Oktober 2026
 
 - Role scalar dengan constraint kanonis dan pengaman Admin terakhir.

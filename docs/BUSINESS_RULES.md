@@ -5,6 +5,7 @@
 - Role tetap: `warga`, `petugas`, `bendahara`, `admin`. `users.role` wajib terisi dan database menolak nilai lainnya.
 - Pendaftaran mandiri selalu Warga dan masih memerlukan verifikasi akun oleh Admin. Status akun `menunggu_verifikasi` bukan status pengajuan transaksi.
 - Admin membuat akun pengurus; tidak membuat pengajuan atas nama Warga. Perubahan role, area, dan status diaudit.
+- Akun Petugas/Bendahara dibuat bersama profil dan minimal satu area tugas sah dalam satu transaksi. Jika tugas tidak valid, akun tidak dibuat. Peran baru mengosongkan penugasan lama pada form untuk penetapan ulang eksplisit.
 - Admin terakhir dijaga oleh singleton lock dan counter database. Kredensial/sesi diperiksa ulang; perubahan role membatalkan otorisasi sesi lama.
 
 ## Transaksi
@@ -30,3 +31,9 @@ Warga dapat membatalkan pencairan/sembako sebelum penyerahan, kecuali request se
 ### Race pembatalan dan serah fisik
 
 Pembatalan pengajuan yang belum diklaim langsung selesai. Setelah klaim, `cancellation_requested_at` mengunci penyerahan; hold dipertahankan hingga pelaksana memastikan belum diserahkan. Jika sudah/tidak pasti, exception Admin memutuskan hasil tanpa penyerahan kedua. Waktu serah yang diketahui terpisah dari waktu pencatatan.
+
+## Pemeriksaan saldo dan identitas
+
+Pemeriksaan saldo harian dapat ditutup satu Admin setelah total uang tunai dibayar diisi. Semua pembanding sesuai menghasilkan Selesai; selisih boleh dicatat sebagai Selesai dengan selisih dengan penjelasan minimal 10 karakter. Ini catatan pemeriksaan, bukan izin pembayaran atau koreksi saldo. Catatan yang ditutup tidak diedit; pemeriksaan ulang memakai versi baru.
+
+Membuka kartu nasabah tidak mengubah nomor/QR/tanggal bergabung. Verifikasi akun menerbitkan identitas; kekurangan data dilengkapi melalui aksi Admin yang diaudit. QR sah dipertahankan saat melengkapi data.

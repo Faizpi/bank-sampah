@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Fixtures\WorkflowFixture;
 
 uses(RefreshDatabase::class);
 
 it('renders the current screens for each of the four roles', function (string $role, string $path): void {
-    $this->seed(DatabaseSeeder::class);
+    $this->seed(WorkflowFixture::class);
     $actor = User::where('username', $role)->firstOrFail();
     $this->actingAs($actor)->get($path)->assertOk();
 })->with([
@@ -23,7 +23,7 @@ it('renders the current screens for each of the four roles', function (string $r
 ]);
 
 it('denies other roles routine actor routes', function (string $role, string $path): void {
-    $this->seed(DatabaseSeeder::class);
+    $this->seed(WorkflowFixture::class);
     $this->actingAs(User::where('username', $role)->firstOrFail())->get($path)->assertForbidden();
 })->with([
     ['admin', '/petugas/pindai'], ['admin', '/petugas/sembako'], ['admin', '/bendahara/pencairan'],

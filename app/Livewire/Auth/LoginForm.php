@@ -6,8 +6,8 @@ namespace App\Livewire\Auth;
 
 use App\Actions\Auth\AuthenticateUser;
 use App\Support\Auth\AuthenticatedUserRedirector;
+use App\Support\Auth\DemoCredentials;
 use App\Support\Auth\Username;
-use Database\Seeders\DeveloperUsersSeeder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -41,17 +41,18 @@ final class LoginForm extends Component
         $this->demoAccounts = [
             'warga' => [
                 'label' => 'Warga',
-                'username' => DeveloperUsersSeeder::username('warga'),
+                'username' => DemoCredentials::username('warga'),
             ],
             'petugas' => [
                 'label' => 'Petugas',
-                'username' => DeveloperUsersSeeder::username('petugas'),
+                'username' => DemoCredentials::username('petugas'),
             ],
             'bendahara' => [
                 'label' => 'Bendahara',
-                'username' => DeveloperUsersSeeder::username('bendahara'),
+                'username' => DemoCredentials::username('bendahara'),
             ],
         ];
+        $this->demoAccounts = array_filter($this->demoAccounts, static fn (string $role): bool => DemoCredentials::available($role), ARRAY_FILTER_USE_KEY);
     }
 
     public function fillDemo(string $role): void
@@ -60,12 +61,12 @@ final class LoginForm extends Component
             return;
         }
 
-        if (! array_key_exists($role, $this->demoAccounts)) {
+        if (! array_key_exists($role, $this->demoAccounts) || ! DemoCredentials::available($role)) {
             return;
         }
 
         $this->username = $this->demoAccounts[$role]['username'];
-        $this->password = DeveloperUsersSeeder::password();
+        $this->password = DemoCredentials::password();
     }
 
     public function login(AuthenticateUser $authenticateUser): void

@@ -8,6 +8,8 @@
 - Mutasi/hold memiliki sumber unik, request dikunci dan retry payload berbeda ditolak.
 - Bukti dan ekspor privat; tidak ada tautan storage publik. File divalidasi dan foto diperkecil oleh pemilih bersama.
 - Data publik/QR tidak memuat data pribadi atau saldo individu.
+- Ringkasan bukti publik dan laporan tidak menerima penggantian nilai melalui state klien. Bukti publik diambil ulang dari transaksi pada setiap render; QR yang dirotasi tidak lagi valid pada komponen yang sudah terbuka.
+- Penerbitan/perbaikan kartu dilakukan eksplisit dan diaudit; halaman kartu baca-saja.
 - `.env`, database, backup, token, log, dan hasil lokal tidak masuk GitHub.
 
 Kuitansi/audit adalah catatan sistem, bukan bukti independen serah fisik. Tidak adanya foto wajib memperlemah bukti eksternal; pelaksana harus memeriksa nama dan nominal/paket sebelum memberikan manfaat satu kali.

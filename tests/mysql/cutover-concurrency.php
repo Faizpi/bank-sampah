@@ -20,6 +20,7 @@ use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Tests\Fixtures\WorkflowFixture;
 
 $app = require dirname(__DIR__).'/browser/bootstrap.php';
 $app->make(Kernel::class)->bootstrap();
@@ -117,7 +118,8 @@ function finishWorker($process, array $pipes): void
     }
 }
 
-Artisan::call('migrate:fresh', ['--seed' => true, '--force' => true]);
+Artisan::call('migrate:fresh', ['--force' => true]);
+Artisan::call('db:seed', ['--class' => WorkflowFixture::class, '--force' => true]);
 $first = User::where('username', 'admin')->firstOrFail();
 $second = User::factory()->create(['role' => UserRole::Admin]);
 [$process, $pipes] = worker(['worker-admin', (string) $second->id]);

@@ -18,6 +18,7 @@ return [
     'initial_admin_username' => env('APP_INITIAL_ADMIN_USERNAME'),
     'initial_admin_email' => env('APP_INITIAL_ADMIN_EMAIL'),
     'initial_admin_password' => env('APP_INITIAL_ADMIN_PASSWORD'),
+    'master_seed_path' => env('MASTER_SEED_PATH', base_path('database/data/master-data.json')),
 
     /*
     |--------------------------------------------------------------------------

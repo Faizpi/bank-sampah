@@ -1,5 +1,5 @@
 {
-  "version": "Cutover empat role 5 Oktober 2026",
+  "version": "Empat role dan penyempurnaan UI 8 Oktober 2026",
   "scope": "Website mobile-first Bank Sampah Digital Sindangheula. Data saat cutover adalah dummy. Penerimaan penggunaan di desa tetap memerlukan UAT pengguna nyata.",
   "roles": [
     [
@@ -16,17 +16,17 @@
     ],
     [
       "Admin",
-      "Akun, verifikasi warga, wilayah, harga, paket, laporan, audit, koreksi resmi, pengecualian, dan Health baca-saja. Bukan pelaksana fisik rutin."
+      "Akun beserta area tugas, verifikasi warga, wilayah, harga, paket, laporan, audit, pemeriksaan saldo satu Admin, koreksi resmi, pengecualian, dan Health baca-saja. Bukan pelaksana fisik rutin."
     ]
   ],
   "workflows": [
     [
       "Setoran",
-      "Petugas memilih atau memindai warga aktif, mengisi jenis, kondisi, dan berat aktual, memeriksa total, lalu mencatat setoran. Semua setoran langsung final dan membuat satu mutasi masuk. Foto lampiran opsional. Transaksi final yang salah ditangani melalui koreksi atau pembalikan resmi."
+      "Petugas mencari nama/nomor atau memindai warga aktif, memilih hasil yang sesuai, mengonfirmasi identitas sekaligus membuka setoran, mengisi jenis, kondisi, dan berat aktual, memeriksa total, lalu mencatat setoran. Semua setoran langsung final dan membuat satu mutasi masuk. Foto lampiran opsional. Transaksi final yang salah ditangani melalui koreksi atau pembalikan resmi."
     ],
     [
       "Pickup",
-      "Warga mengisi alamat, tanggal pilihan, dan jenis sampah. Perkiraan dan foto opsional. Petugas searea mengambil tugas; penjadwalan memakai tanggal pilihan, kemudian menuju lokasi, menandai dijemput, dan menyelesaikan penimbangan aktual. Pickup selesai hanya setelah setoran final. Warga membatalkan sebelum klaim; claimant melepas tugas hanya sebelum sampah dijemput."
+      "Warga mengisi satu form alamat, tanggal pilihan, dan jenis sampah dari menu Layanan. Perkiraan dan foto opsional. Petugas searea mengambil tugas; penjadwalan memakai tanggal pilihan, kemudian menuju lokasi, menandai dijemput, dan menyelesaikan penimbangan aktual. Pickup selesai hanya setelah setoran final. Warga membatalkan sebelum klaim; claimant melepas tugas hanya sebelum sampah dijemput."
     ],
     [
       "Pencairan tunai",
@@ -38,11 +38,15 @@
     ],
     [
       "Kendala dan pengecualian",
-      "Claimant boleh melepas klaim hanya jika belum ada serah fisik; hold tetap aktif. Penyerahan yang belum dapat dipastikan dikunci dan dilaporkan ke Admin. Admin memastikan fakta, menulis alasan, dan melakukan autentikasi ulang. Jika sudah diserahkan, penyelesaian memakai sumber mutasi yang unik. Jika belum, tugas kembali ke antrean. Jika belum pasti, tetap terkunci tanpa mutasi keluar. Pembatalan sebelum klaim langsung melepas hold. Setelah klaim, permintaan batal mengunci penyerahan; pelaksana memastikan belum diserahkan sebelum hold dilepas. Jika sudah/tidak pasti, Admin memeriksa sebagai pengecualian. Waktu serah yang diketahui disimpan terpisah dari waktu pencatatan."
+      "Claimant boleh melepas klaim hanya jika belum ada serah fisik; hold tetap aktif. Penyerahan yang belum dapat dipastikan dikunci dan dilaporkan ke Admin. Admin memastikan fakta, menulis alasan, dan melakukan autentikasi ulang. Jika sudah diserahkan, penyelesaian memakai sumber mutasi yang unik. Jika belum dan ada permintaan batal Warga, transaksi dibatalkan dan dana dilepas. Jika belum tanpa permintaan batal, tugas kembali ke antrean dengan dana tetap disisihkan. Jika belum pasti, tetap terkunci tanpa mutasi keluar. Pembatalan sebelum klaim langsung melepas hold. Setelah klaim, permintaan batal mengunci penyerahan; pelaksana memastikan belum diserahkan sebelum hold dilepas. Jika sudah/tidak pasti, Admin memeriksa sebagai pengecualian. Waktu serah yang diketahui disimpan terpisah dari waktu pencatatan."
     ],
     [
       "Saldo",
       "Saldo tersedia adalah mutasi masuk dikurangi mutasi keluar dan hold aktif. Saldo tertahan belum merupakan mutasi keluar. Pembatalan sah atau paket tidak tersedia melepas hold tepat satu kali. Konfirmasi penyerahan membuat mutasi keluar tepat satu kali. Tombol yang dicoba ulang tidak boleh menyebabkan penyerahan fisik kedua."
+    ],
+    [
+      "Pemeriksaan saldo harian",
+      "Satu Admin membuat pembanding harian dan mencatat hasil sendiri tanpa persetujuan kedua. Selisih harus dijelaskan; pemeriksaan tidak otomatis membayar transaksi atau mengubah saldo. Isian tunai dan catatan terikat pada tanggal/versi yang dipilih."
     ]
   ],
   "boundaries": [
@@ -52,7 +56,8 @@
     "Lampiran rutin opsional. Bila diunggah, file tetap tervalidasi dan privat. Kuitansi sistem bukan bukti independen bahwa uang/barang benar-benar berpindah.",
     "Tidak ada modul kas atau stok terperinci. Ketersediaan uang/paket merupakan tanggung jawab pelaksana sebelum mengambil tugas.",
     "Pengumuman, harga publik, estimasi nilai, target pengumpulan, partisipasi RT/RW, dan bank sampah keliling tetap tersedia sesuai role. Statistik publik tidak memuat data pribadi.",
-    "Teknologi utama tetap Laravel 13, PHP 8.3 atau lebih baru, MySQL 8.0.30/InnoDB, Livewire 4, Filament 5, dan Vite."
+    "Teknologi utama tetap Laravel 13, PHP 8.3 atau lebih baru, MySQL 8.0.30/InnoDB, Livewire 4, Filament 5, dan Vite.",
+    "Antrean Petugas/Bendahara dipaginasi dan memisahkan Menunggu/Tugas saya. Foto/catatan tambahan dapat dilipat. Form edit mempertahankan data; bukti publik dibaca ulang dari server termasuk invalidasi QR."
   ],
   "uat": "UAT empat role harus mencatat keberhasilan menyelesaikan tugas, kebutuhan bantuan, salah klik, waktu, dan pemahaman status. Tes otomatis bukan pengukuran usability. Tidak ada klaim nilai SUS atau hasil peserta nyata sebelum sesi tersebut dilakukan."
 }

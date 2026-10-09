@@ -15,16 +15,16 @@ use App\Livewire\Officer\CustomerIdentification;
 use App\Livewire\Officer\MobileServiceTasks;
 use App\Livewire\PublicSite\DepositVerification;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use Tests\Fixtures\WorkflowFixture;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(DatabaseSeeder::class);
+    $this->seed(WorkflowFixture::class);
     $this->admin = User::where('username', 'admin')->firstOrFail();
     $this->officer = User::where('username', 'petugas')->firstOrFail();
     $this->citizen = User::where('username', 'warga')->firstOrFail();

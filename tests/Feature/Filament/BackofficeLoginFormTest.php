@@ -10,6 +10,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
+use Tests\Fixtures\WorkflowFixture;
 use Tests\RoleFixtures;
 use Tests\TestCase;
 
@@ -37,8 +38,9 @@ final class BackofficeLoginFormTest extends TestCase
         );
     }
 
-    public function test_demo_fill_populates_the_username_and_password_fields_for_admin_and_admin(): void
+    public function test_demo_fill_only_populates_an_existing_synthetic_admin_account(): void
     {
+        $this->seed(WorkflowFixture::class);
         Livewire::test(BackofficeLogin::class)
             ->call('fillDemo', 'admin')
             ->assertFormSet([

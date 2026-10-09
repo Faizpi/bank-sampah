@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Support\Seeding\MasterData;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,7 @@ final class ResetDemoBaseline extends Command
 {
     protected $signature = 'app:reset-demo-baseline {--confirm-reset-demo : Hapus data dummy lokal secara sadar} {--dry-run : Tampilkan sasaran tanpa menghapus}';
 
-    protected $description = 'Reset bersih data dummy empat role; hanya database lokal bank_sampah.';
+    protected $description = 'Reset dummy lokal bank_sampah menggunakan data utama privat yang sudah divalidasi.';
 
     public function handle(Filesystem $files): int
     {
@@ -55,17 +56,33 @@ final class ResetDemoBaseline extends Command
         foreach (['users', 'deposits', 'ledger_entries', 'balance_holds', 'pickup_requests', 'withdrawal_requests', 'grocery_redemptions', 'media'] as $table) {
             $this->line($table.': '.(Schema::hasTable($table) ? DB::table($table)->count() : 0).' row');
         }
+        // Validate the source before migrate:fresh can remove anything.
+        try {
+            $master = MasterData::read((string) config('app.master_seed_path'));
+        } catch (\Throwable) {
+            $this->error('Ditolak: data utama privat belum tersedia/valid. Database dan media tidak diubah.');
+
+            return self::FAILURE;
+        }
+        $this->info('Sumber tervalidasi: '.count($master->tables['users']).' akun, '.count($master->tables['rt']).' RT.');
         if ($this->option('dry-run')) {
             $this->info('Dry run: tidak ada data atau media yang dihapus.');
 
             return self::SUCCESS;
         }
-        if ($this->call('migrate:fresh', ['--seed' => true, '--force' => true]) !== self::SUCCESS) {
+        // Freeze the validated data in memory so the seeder cannot read a changed/missing file after reset.
+        app()->instance(MasterData::class, $master);
+        try {
+            $result = $this->call('migrate:fresh', ['--seed' => true, '--force' => true]);
+        } finally {
+            app()->forgetInstance(MasterData::class);
+        }
+        if ($result !== self::SUCCESS) {
             $this->error('Reset gagal; media tidak dihapus. Periksa migrasi dan pulihkan backup bila diperlukan.');
 
             return self::FAILURE;
         }
-        $roles = DB::table('users')->pluck('role')->sort()->values()->all();
+        $roles = DB::table('users')->pluck('role')->unique()->sort()->values()->all();
         if ($roles !== ['admin', 'bendahara', 'petugas', 'warga']) {
             $this->error('Seed tidak sesuai empat role; media tidak dihapus.');
 
@@ -77,7 +94,7 @@ final class ResetDemoBaseline extends Command
             return self::FAILURE;
         }
         $files->ensureDirectoryExists($media);
-        $this->info('Reset selesai: empat akun dummy, area Petugas/Bendahara, master harga/paket; transaksi kosong.');
+        $this->info('Reset selesai: data utama empat peran, wilayah, penugasan, sampah/harga; transaksi kosong.');
 
         return self::SUCCESS;
     }

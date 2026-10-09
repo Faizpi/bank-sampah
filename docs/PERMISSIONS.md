@@ -12,6 +12,7 @@ Sumber kebenaran: `UserRole`, `RoleCapabilities`, `PermissionChecker`, middlewar
 | Akun, area, master, audit | Tidak | Tidak | Tidak | Ya |
 | Koreksi dan penyesuaian resmi | Tidak | Tidak | Tidak | Alasan + autentikasi ulang |
 | Pemulihan klaim bermasalah | Tidak | Lapor tugas sendiri | Lapor tugas sendiri | Pengecualian beralasan |
+| Pemeriksaan saldo harian | Tidak | Tidak | Tidak | Catat hasil sendiri; tanpa Admin kedua |
 
 Admin tidak memiliki capability membuat/finalisasi setoran, menjalankan pickup, membayar tunai, menyiapkan atau menyerahkan sembako. Akses laporan global bukan bypass aksi fisik. Penugasan memakai `staff_service_areas`, tanggal efektif, dan status area terkini.
 

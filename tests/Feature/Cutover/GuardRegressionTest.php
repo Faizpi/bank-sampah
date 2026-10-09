@@ -16,17 +16,17 @@ use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Livewire\Officer\GroceryTasks;
 use App\Livewire\Treasurer\WithdrawalPayments;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
-use Database\Seeders\DeveloperUsersSeeder;
+use App\Support\Auth\DemoCredentials;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
+use Tests\Fixtures\WorkflowFixture;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(DatabaseSeeder::class);
+    $this->seed(WorkflowFixture::class);
     $this->warga = User::where('username', 'warga')->firstOrFail();
     $this->petugas = User::where('username', 'petugas')->firstOrFail();
     $this->bendahara = User::where('username', 'bendahara')->firstOrFail();
@@ -71,7 +71,7 @@ it('freezes a cancellation after claim and preserves funds if physical delivery 
     $pending = $workflow->cancel($this->warga, $request, 'Warga meminta batal saat tugas diproses.');
     expect($pending->balanceHold->isActive())->toBeTrue()->and($pending->status->value)->toBe('diproses_bendahara');
     expect(fn () => $workflow->complete($this->bendahara, $request, null, (string) str()->uuid()))->toThrow(ValidationException::class);
-    $done = $workflow->resolveException($this->admin, $request, true, 'Uang dipastikan sudah diberikan sebelum permintaan batal.', DeveloperUsersSeeder::password(), now()->subMinute()->format('Y-m-d H:i:s'));
+    $done = $workflow->resolveException($this->admin, $request, true, 'Uang dipastikan sudah diberikan sebelum permintaan batal.', DemoCredentials::password(), now()->subMinute()->format('Y-m-d H:i:s'));
     expect($done->status->value)->toBe('sudah_dibayar')->and($done->physical_handed_over_at)->not->toBeNull()->and(LedgerEntry::count())->toBe(2);
 });
 
@@ -95,7 +95,7 @@ it('does not let claimant cancellation override an escalated Admin freeze', func
     $workflow = app(ClaimedServiceWorkflow::class);
     $workflow->claim($claimant, $request);
     $workflow->cancel($this->warga, $request, 'Warga meminta pembatalan setelah klaim.');
-    $workflow->freezeException($this->admin, $request, 'Fakta serah fisik diperselisihkan; jangan lepas hold.', DeveloperUsersSeeder::password());
+    $workflow->freezeException($this->admin, $request, 'Fakta serah fisik diperselisihkan; jangan lepas hold.', DemoCredentials::password());
     expect(fn () => $workflow->cancel($claimant, $request, 'Pelaksana mencoba konfirmasi pembatalan.'))->toThrow(ValidationException::class);
     expect($request->fresh()->balanceHold->isActive())->toBeTrue()->and(LedgerEntry::count())->toBe(1);
 })->with(['cash', 'grocery']);

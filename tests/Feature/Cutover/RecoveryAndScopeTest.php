@@ -13,18 +13,18 @@ use App\Domain\Reports\Services\ReportQueryService;
 use App\Domain\WasteMaster\Models\WasteType;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
-use Database\Seeders\DeveloperUsersSeeder;
+use App\Support\Auth\DemoCredentials;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Tests\Fixtures\WorkflowFixture;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(DatabaseSeeder::class);
+    $this->seed(WorkflowFixture::class);
     $this->warga = User::where('username', 'warga')->firstOrFail();
     $this->petugas = User::where('username', 'petugas')->firstOrFail();
     $this->bendahara = User::where('username', 'bendahara')->firstOrFail();
@@ -71,8 +71,8 @@ it('lets Admin freeze a revoked cash claim and resolve confirmed facts without a
     $workflow = app(ClaimedServiceWorkflow::class);
     $workflow->claim($this->bendahara, $request);
     $this->bendahara->forceFill(['status' => 'nonaktif'])->save();
-    $workflow->freezeException($this->admin, $request, 'Akses pelaksana dicabut saat pembayaran.', DeveloperUsersSeeder::password());
-    $done = $workflow->resolveException($this->admin, $request, true, 'Uang dipastikan sudah diserahkan.', DeveloperUsersSeeder::password());
+    $workflow->freezeException($this->admin, $request, 'Akses pelaksana dicabut saat pembayaran.', DemoCredentials::password());
+    $done = $workflow->resolveException($this->admin, $request, true, 'Uang dipastikan sudah diserahkan.', DemoCredentials::password());
     expect($done->status->value)->toBe('sudah_dibayar')->and($done->payer_id)->toBe($this->bendahara->id)->and(LedgerEntry::count())->toBe(2);
 });
 
@@ -82,8 +82,8 @@ it('recovers a collected pickup only through reasoned Admin exception reassignme
     $this->petugas->forceFill(['status' => 'nonaktif'])->save();
     $replacement = User::factory()->create(['role' => 'petugas']);
     StaffProfile::create(['user_id' => $replacement->id, 'staff_number' => 'REPLACEMENT-OFFICER', 'service_area_id' => $request->service_area_id]);
-    $service->freezeException($this->admin, $request, 'Petugas sebelumnya berhalangan melanjutkan.', DeveloperUsersSeeder::password());
-    $request = $service->reassignException($this->admin, $request, $replacement, 'Sampah dipastikan diterima Petugas pengganti.', DeveloperUsersSeeder::password());
+    $service->freezeException($this->admin, $request, 'Petugas sebelumnya berhalangan melanjutkan.', DemoCredentials::password());
+    $request = $service->reassignException($this->admin, $request, $replacement, 'Sampah dipastikan diterima Petugas pengganti.', DemoCredentials::password());
     $done = $service->complete($replacement, $request, $this->items, (string) str()->uuid());
     expect($done->status)->toBe(PickupStatus::Completed)->and(LedgerEntry::count())->toBe(1);
 });

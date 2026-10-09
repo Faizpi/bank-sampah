@@ -7,17 +7,17 @@ use App\Domain\Identity\Actions\ChangeUserRole;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Tests\Fixtures\WorkflowFixture;
 
 uses(RefreshDatabase::class);
 
 it('seeds exactly four isolated roles and no transactions', function (): void {
-    $this->seed(DatabaseSeeder::class);
+    $this->seed(WorkflowFixture::class);
     expect(User::count())->toBe(4)
         ->and(User::pluck('role')->map(fn ($role) => $role->value)->sort()->values()->all())->toBe(['admin', 'bendahara', 'petugas', 'warga']);
     foreach (['roles', 'permissions', 'role_user', 'permission_role', 'assisted_customer_services'] as $table) {
