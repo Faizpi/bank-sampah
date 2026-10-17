@@ -6,27 +6,37 @@
         <div aria-hidden="true" class="pointer-events-none absolute inset-0 hidden z-0 lg:block">
             <div class="public-hero-photo absolute left-[4%] top-[16%] animate-[hero-photo-1_30s_linear_infinite]">
                 <div class="animate-[hero-float_7s_ease-in-out_infinite]">
-                    <img src="{{ asset('images/landing/2.jpg') }}" alt="" loading="lazy" decoding="async" class="h-28 w-32 -rotate-3 rounded-2xl border border-border bg-surface object-cover shadow-md">
+                    <img src="{{ asset('images/landing/1.jpg') }}" alt="" loading="lazy" decoding="async" class="h-28 w-32 -rotate-3 rounded-2xl border border-border bg-surface object-cover shadow-md">
                 </div>
             </div>
-            <div class="public-hero-photo absolute left-[9%] top-[62%] animate-[hero-photo-2_30s_linear_infinite] [animation-delay:-6s]">
+            <div class="public-hero-photo absolute left-[9%] top-[62%] animate-[hero-photo-2_30s_linear_infinite] [animation-delay:-4.29s]">
                 <div class="animate-[hero-float_7.5s_ease-in-out_infinite]">
-                    <img src="{{ asset('images/landing/3.jpg') }}" alt="" loading="lazy" decoding="async" class="h-36 w-32 rotate-2 rounded-2xl border border-border bg-surface object-cover shadow-md">
+                    <img src="{{ asset('images/landing/2.jpg') }}" alt="" loading="lazy" decoding="async" class="h-36 w-32 rotate-2 rounded-2xl border border-border bg-surface object-cover shadow-md">
                 </div>
             </div>
-            <div class="public-hero-photo absolute right-[5%] top-[24%] animate-[hero-photo-3_30s_linear_infinite] [animation-delay:-12s]">
+            <div class="public-hero-photo absolute right-[5%] top-[24%] animate-[hero-photo-3_30s_linear_infinite] [animation-delay:-8.57s]">
                 <div class="animate-[hero-float_6.5s_ease-in-out_infinite]">
-                    <img src="{{ asset('images/landing/1.jpg') }}" alt="" loading="lazy" decoding="async" class="h-28 w-32 rotate-3 rounded-2xl border border-border bg-surface object-cover shadow-md">
+                    <img src="{{ asset('images/landing/3.jpg') }}" alt="" loading="lazy" decoding="async" class="h-28 w-32 rotate-3 rounded-2xl border border-border bg-surface object-cover shadow-md">
                 </div>
             </div>
-            <div class="public-hero-photo absolute right-[10%] top-[66%] animate-[hero-photo-4_30s_linear_infinite] [animation-delay:-18s]">
+            <div class="public-hero-photo absolute right-[10%] top-[66%] animate-[hero-photo-4_30s_linear_infinite] [animation-delay:-12.86s]">
                 <div class="animate-[hero-float_8s_ease-in-out_infinite]">
                     <img src="{{ asset('images/landing/4.jpg') }}" alt="" loading="lazy" decoding="async" class="h-32 w-32 -rotate-2 rounded-2xl border border-border bg-surface object-cover shadow-md">
                 </div>
             </div>
-            <div class="public-hero-photo absolute left-[21%] top-[72%] animate-[hero-photo-5_30s_linear_infinite] [animation-delay:-24s]">
+            <div class="public-hero-photo absolute left-[21%] top-[72%] animate-[hero-photo-5_30s_linear_infinite] [animation-delay:-17.14s]">
                 <div class="animate-[hero-float_8.5s_ease-in-out_infinite]">
                     <img src="{{ asset('images/landing/5.jpg') }}" alt="" loading="lazy" decoding="async" class="h-28 w-36 rotate-2 rounded-2xl border border-border bg-surface object-cover shadow-md">
+                </div>
+            </div>
+            <div class="public-hero-photo absolute left-[4%] top-[34%] animate-[hero-photo-6_30s_linear_infinite] [animation-delay:-21.43s]">
+                <div class="animate-[hero-float_7.2s_ease-in-out_infinite]">
+                    <img src="{{ asset('images/landing/6.jpg') }}" alt="" loading="lazy" decoding="async" class="h-28 w-28 -rotate-2 rounded-2xl border border-border bg-surface object-cover shadow-md">
+                </div>
+            </div>
+            <div class="public-hero-photo absolute right-[1%] top-[42%] animate-[hero-photo-7_30s_linear_infinite] [animation-delay:-25.71s]">
+                <div class="animate-[hero-float_7.8s_ease-in-out_infinite]">
+                    <img src="{{ asset('images/landing/7.jpg') }}" alt="" loading="lazy" decoding="async" class="h-32 w-32 rotate-3 rounded-2xl border border-border bg-surface object-cover shadow-md">
                 </div>
             </div>
         </div>

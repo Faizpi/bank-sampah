@@ -356,9 +356,9 @@
     0%, 6% { opacity: 0; transform: translate(0, 0); }
     14%, 44% { opacity: 1; transform: translate(0, 0); }
     50% { opacity: 0; transform: translate(0, 0); }
-    66% { opacity: 0; transform: translate(13vw, 12vh); }
-    72%, 82% { opacity: 1; transform: translate(13vw, 12vh); }
-    88% { opacity: 0; transform: translate(13vw, 12vh); }
+    66% { opacity: 0; transform: translate(13vw, min(12vh, 120px)); }
+    72%, 82% { opacity: 1; transform: translate(13vw, min(12vh, 120px)); }
+    88% { opacity: 0; transform: translate(13vw, min(12vh, 120px)); }
     96%, 100% { opacity: 0; transform: translate(3vw, -10vh); }
 }
 
@@ -366,9 +366,9 @@
     0%, 6% { opacity: 0; transform: translate(0, 0); }
     14%, 44% { opacity: 1; transform: translate(0, 0); }
     50% { opacity: 0; transform: translate(0, 0); }
-    66% { opacity: 0; transform: translate(9vw, -20vh); }
-    72%, 82% { opacity: 1; transform: translate(9vw, -20vh); }
-    88% { opacity: 0; transform: translate(9vw, -20vh); }
+    66% { opacity: 0; transform: translate(9vw, max(-14vh, -140px)); }
+    72%, 82% { opacity: 1; transform: translate(9vw, max(-14vh, -140px)); }
+    88% { opacity: 0; transform: translate(9vw, max(-14vh, -140px)); }
     96%, 100% { opacity: 0; transform: translate(-5vw, 6vh); }
 }
 
@@ -376,9 +376,9 @@
     0%, 6% { opacity: 0; transform: translate(0, 0); }
     14%, 44% { opacity: 1; transform: translate(0, 0); }
     50% { opacity: 0; transform: translate(0, 0); }
-    66% { opacity: 0; transform: translate(-9vw, 16vh); }
-    72%, 82% { opacity: 1; transform: translate(-9vw, 16vh); }
-    88% { opacity: 0; transform: translate(-9vw, 16vh); }
+    66% { opacity: 0; transform: translate(-9vw, max(-6vh, -60px)); }
+    72%, 82% { opacity: 1; transform: translate(-9vw, max(-6vh, -60px)); }
+    88% { opacity: 0; transform: translate(-9vw, max(-6vh, -60px)); }
     96%, 100% { opacity: 0; transform: translate(4vw, -10vh); }
 }
 
@@ -386,9 +386,9 @@
     0%, 6% { opacity: 0; transform: translate(0, 0); }
     14%, 44% { opacity: 1; transform: translate(0, 0); }
     50% { opacity: 0; transform: translate(0, 0); }
-    66% { opacity: 0; transform: translate(-8vw, -24vh); }
-    72%, 82% { opacity: 1; transform: translate(-8vw, -24vh); }
-    88% { opacity: 0; transform: translate(-8vw, -24vh); }
+    66% { opacity: 0; transform: translate(-8vw, max(-20vh, -200px)); }
+    72%, 82% { opacity: 1; transform: translate(-8vw, max(-20vh, -200px)); }
+    88% { opacity: 0; transform: translate(-8vw, max(-20vh, -200px)); }
     96%, 100% { opacity: 0; transform: translate(-4vw, 8vh); }
 }
 
@@ -396,11 +396,32 @@
     0%, 6% { opacity: 0; transform: translate(0, 0); }
     14%, 44% { opacity: 1; transform: translate(0, 0); }
     50% { opacity: 0; transform: translate(0, 0); }
-    66% { opacity: 0; transform: translate(7vw, -16vh); }
-    72%, 82% { opacity: 1; transform: translate(7vw, -16vh); }
-    88% { opacity: 0; transform: translate(7vw, -16vh); }
+    66% { opacity: 0; transform: translate(7vw, max(-16vh, -160px)); }
+    72%, 82% { opacity: 1; transform: translate(7vw, max(-16vh, -160px)); }
+    88% { opacity: 0; transform: translate(7vw, max(-16vh, -160px)); }
     96%, 100% { opacity: 0; transform: translate(-15vw, -6vh); }
 }
+
+@keyframes hero-photo-6 {
+    0%, 6% { opacity: 0; transform: translate(0, 0); }
+    14%, 44% { opacity: 1; transform: translate(0, 0); }
+    50% { opacity: 0; transform: translate(0, 0); }
+    66% { opacity: 0; transform: translate(5vw, min(8vh, 80px)); }
+    72%, 82% { opacity: 1; transform: translate(5vw, min(8vh, 80px)); }
+    88% { opacity: 0; transform: translate(5vw, min(8vh, 80px)); }
+    96%, 100% { opacity: 0; transform: translate(3vw, -4vh); }
+}
+
+@keyframes hero-photo-7 {
+    0%, 6% { opacity: 0; transform: translate(0, 0); }
+    14%, 44% { opacity: 1; transform: translate(0, 0); }
+    50% { opacity: 0; transform: translate(0, 0); }
+    66% { opacity: 0; transform: translate(-2vw, min(6vh, 60px)); }
+    72%, 82% { opacity: 1; transform: translate(-2vw, min(6vh, 60px)); }
+    88% { opacity: 0; transform: translate(-2vw, min(6vh, 60px)); }
+    96%, 100% { opacity: 0; transform: translate(2vw, -3vh); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .public-hero-photo,
     .public-hero-photo > div {
