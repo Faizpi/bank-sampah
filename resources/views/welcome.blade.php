@@ -3,62 +3,47 @@
 @section('content')
     {{-- Hero Section --}}
     <section class="public-hero-grid relative isolate overflow-hidden border-b border-border/60 bg-surface" aria-labelledby="landing-title">
-        <div class="public-container grid items-center gap-10 pb-12 pt-28 sm:pb-16 sm:pt-32 md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,.85fr)] md:gap-8 md:pb-16 md:pt-36 lg:grid-cols-[1.05fr_.95fr] lg:gap-12 lg:pb-20 lg:pt-36">
-            <div class="relative z-10 md:min-w-0 lg:max-w-2xl">
-                <h1 id="landing-title" class="text-balance text-display font-extrabold tracking-tight text-deep-green lg:text-display-lg">
-                    Sampah tercatat. <span class="text-forest-600">Nilai terjaga.</span> Desa bergerak bersama.
+        <div class="public-container flex flex-col items-center pb-10 pt-28 text-center sm:pb-12 sm:pt-32 md:pb-14 md:pt-36 lg:pb-16 lg:pt-40">
+            <div class="relative z-10">
+                <h1 id="landing-title" class="text-balance text-display font-extrabold tracking-tight lg:text-display-lg">
+                    <span class="animate-hero-shine">Sampah tercatat. Nilai terjaga. Desa bergerak bersama.</span>
                 </h1>
-                <p class="mt-5 text-body leading-relaxed text-text-secondary lg:max-w-xl">
+                <p class="mx-auto mt-5 max-w-xl text-balance text-body leading-relaxed text-text-secondary">
                     Layanan bank sampah Desa Sindangheula untuk setoran, saldo rupiah, penjemputan, dan program desa yang transparan.
                 </p>
-
-                <div class="mt-8 flex flex-col gap-3.5 sm:flex-row sm:flex-wrap sm:items-center">
-                    @auth
-                        @php
-                            $heroDashboard = app(\App\Support\Auth\AuthenticatedUserRedirector::class)->dashboardUrl();
-                        @endphp
-                        <a href="{{ $heroDashboard }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-6 text-label font-bold text-surface shadow-sm transition duration-200 hover:bg-forest-700 hover:shadow-md active:translate-y-px focus-visible:ring-2 focus-visible:ring-focus">
-                            <x-public.icon name="layout-dashboard" size="size-5" />
-                            Buka Dashboard Saya
-                        </a>
-                    @else
-                        <a href="{{ route('login') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-6 text-label font-bold text-surface shadow-sm transition duration-200 hover:bg-forest-700 hover:shadow-md active:translate-y-px focus-visible:ring-2 focus-visible:ring-focus">
-                            Akses Akun Saya
-                            <x-public.icon name="arrow-right" size="size-5" />
-                        </a>
-                        <a href="{{ route('register') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl border-2 border-forest-600 bg-surface px-6 text-label font-bold text-forest-700 shadow-xs transition duration-200 hover:bg-success-bg active:translate-y-px focus-visible:ring-2 focus-visible:ring-focus">
-                            Daftar Sebagai Warga
-                        </a>
-                        <a href="#cara-kerja" class="inline-flex min-h-touch items-center justify-center gap-1.5 px-4 text-label font-bold text-forest-600 transition duration-180 hover:text-deep-green">
-                            Lihat Cara Kerja
-                            <x-public.icon name="chevron-right" size="size-4" />
-                        </a>
-                    @endauth
-                </div>
-
-                <dl class="mt-10 grid grid-cols-3 gap-3 border-t border-border pt-6 lg:max-w-xl">
-                    <div class="rounded-lg border border-border bg-warm-canvas p-3">
-                        <dt class="text-caption font-medium text-text-secondary">Saldo</dt>
-                        <dd class="mt-0.5 text-label font-bold text-deep-green">Rupiah Langsung</dd>
-                    </div>
-                    <div class="rounded-lg border border-border bg-warm-canvas p-3">
-                        <dt class="text-caption font-medium text-text-secondary">Bukti Digital</dt>
-                        <dd class="mt-0.5 text-label font-bold text-deep-green">Terverifikasi</dd>
-                    </div>
-                    <div class="rounded-lg border border-border bg-warm-canvas p-3">
-                        <dt class="text-caption font-medium text-text-secondary">Pelayanan</dt>
-                        <dd class="mt-0.5 text-label font-bold text-deep-green">Mudah digunakan</dd>
-                    </div>
-                </dl>
             </div>
 
-            <div class="relative z-10 flex justify-center md:justify-end">
+            <div class="relative z-10 mt-8 flex flex-col gap-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
+                @auth
+                    @php
+                        $heroDashboard = app(\App\Support\Auth\AuthenticatedUserRedirector::class)->dashboardUrl();
+                    @endphp
+                    <a href="{{ $heroDashboard }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-6 text-label font-bold text-surface shadow-sm transition duration-200 hover:bg-forest-700 hover:shadow-md active:translate-y-px focus-visible:ring-2 focus-visible:ring-focus">
+                        <x-public.icon name="layout-dashboard" size="size-5" />
+                        Buka Dashboard Saya
+                    </a>
+                @else
+                    <a href="{{ route('login') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-6 text-label font-bold text-surface shadow-sm transition duration-200 hover:bg-forest-700 hover:shadow-md active:translate-y-px focus-visible:ring-2 focus-visible:ring-focus">
+                        Akses Akun Saya
+                        <x-public.icon name="arrow-right" size="size-5" />
+                    </a>
+                    <a href="{{ route('register') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl border-2 border-forest-600 bg-surface px-6 text-label font-bold text-forest-700 shadow-xs transition duration-200 hover:bg-success-bg active:translate-y-px focus-visible:ring-2 focus-visible:ring-focus">
+                        Daftar Sebagai Warga
+                    </a>
+                    <a href="#cara-kerja" class="inline-flex min-h-touch items-center justify-center gap-1.5 px-4 text-label font-bold text-forest-600 transition duration-180 hover:text-deep-green">
+                        Lihat Cara Kerja
+                        <x-public.icon name="chevron-right" size="size-4" />
+                    </a>
+                @endauth
+            </div>
+
+            <div class="relative z-10 mt-10 flex justify-center sm:mt-12">
                 <x-ui.mascot
                     variant="6"
                     animate="true"
                     bubble="Yuk kelola sampah desa kita bersama!"
                     bubblePosition="top"
-                    class="h-64 w-auto sm:h-80 md:h-72 lg:h-96"
+                    class="h-52 w-auto sm:h-64 lg:h-80"
                 />
             </div>
         </div>

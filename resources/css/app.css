@@ -332,6 +332,26 @@
     }
 }
 
+@keyframes hero-shine-sweep {
+    0% { background-position: 220% center; }
+    45% { background-position: -120% center; }
+    100% { background-position: -120% center; }
+}
+
+@utility animate-hero-shine {
+    background-image: linear-gradient(105deg, var(--color-deep-green) 42%, rgba(255, 255, 255, 1) 50%, var(--color-deep-green) 58%);
+    background-size: 220% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: hero-shine-sweep 3.2s ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+        color: var(--color-deep-green);
+    }
+}
+
 @media print {
     body {
         background: #fff !important;

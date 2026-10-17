@@ -205,7 +205,7 @@ final class PublicShellTest extends TestCase
         self::assertMatchesRegularExpression('/Saya menyetujui\s+<a[^>]+>ketentuan operasional dan kebijakan privasi/s', $register);
         self::assertStringContainsString('(terbuka di tab baru)', $register);
         self::assertStringNotContainsString('Saya telah membaca dan menyetujui', $register);
-        self::assertStringContainsString('md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,.85fr)]', $landing);
+        self::assertStringContainsString('animate-hero-shine', $landing);
         self::assertStringContainsString('md:grid-cols-[minmax(0,1fr)_auto]', $landing);
         self::assertStringContainsString('pt-28', $landing);
         self::assertStringContainsString('sm:pt-32', $landing);
