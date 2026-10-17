@@ -533,6 +533,86 @@ window.addEventListener('livewire:navigated', scheduleCustomerCardPreviews);
 document.addEventListener('livewire:navigated', scheduleCustomerCardPreviews);
 window.addEventListener('load', () => window.setTimeout(scheduleCustomerCardPreviews, 250));
 
+const SUMMARY_COUNT_DURATION_MS = 1600;
+const SUMMARY_COUNT_SELECTOR = '[data-summary-count]';
+
+function prefersReducedMotion() {
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+}
+
+function formatSummaryNumber(value, decimals) {
+    const safeDecimals = Number.isFinite(decimals) && decimals >= 0 ? decimals : 0;
+
+    return new Intl.NumberFormat('id-ID', {
+        minimumFractionDigits: safeDecimals,
+        maximumFractionDigits: safeDecimals,
+    }).format(value);
+}
+
+function animateSummaryCounter(counter) {
+    if (counter.dataset.summaryCountState === 'done') {
+        return;
+    }
+
+    counter.dataset.summaryCountState = 'done';
+
+    const target = Number.parseFloat(counter.dataset.summaryTarget ?? '');
+    if (!Number.isFinite(target) || prefersReducedMotion()) {
+        // Reduced-motion visitors keep the server-rendered value unchanged.
+        return;
+    }
+
+    const decimals = Number.parseInt(counter.dataset.summaryDecimals ?? '0', 10);
+    const startedAt = performance.now();
+
+    const tick = (now) => {
+        const progress = Math.min(1, (now - startedAt) / SUMMARY_COUNT_DURATION_MS);
+        const eased = 1 - Math.pow(1 - progress, 3);
+
+        counter.textContent = formatSummaryNumber(target * eased, decimals);
+
+        if (progress < 1) {
+            window.requestAnimationFrame(tick);
+        }
+    };
+
+    window.requestAnimationFrame(tick);
+}
+
+function hydrateSummaryCounters(root = document) {
+    const counters = root instanceof Element && root.matches(SUMMARY_COUNT_SELECTOR)
+        ? [root]
+        : Array.from(root.querySelectorAll(SUMMARY_COUNT_SELECTOR));
+
+    if (counters.length === 0 || !('IntersectionObserver' in window)) {
+        return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                observer.unobserve(entry.target);
+                animateSummaryCounter(entry.target);
+            }
+        });
+    }, { threshold: 0.4 });
+
+    counters.forEach((counter) => {
+        if (counter.dataset.summaryCountObserver !== 'true') {
+            counter.dataset.summaryCountObserver = 'true';
+            observer.observe(counter);
+        }
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => hydrateSummaryCounters(), { once: true });
+} else {
+    hydrateSummaryCounters();
+}
+
+document.addEventListener('livewire:navigated', () => hydrateSummaryCounters());
+
 function customerCardDownloadFilename(card) {
     const number = card.querySelector('[data-customer-card-number]')?.textContent?.trim() ?? 'nasabah';
     const safeNumber = number.replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'nasabah';

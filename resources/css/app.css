@@ -312,6 +312,26 @@
     }
 }
 
+@keyframes summary-shine-sweep {
+    0% { background-position: 220% center; }
+    45% { background-position: -120% center; }
+    100% { background-position: -120% center; }
+}
+
+@utility animate-summary-shine {
+    background-image: linear-gradient(105deg, var(--color-surface) 42%, rgb(255 255 255 / 0.5) 50%, var(--color-surface) 58%);
+    background-size: 220% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: summary-shine-sweep 2.8s ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+        color: var(--color-surface);
+    }
+}
+
 @media print {
     body {
         background: #fff !important;
