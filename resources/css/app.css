@@ -312,19 +312,19 @@
     }
 }
 
-@keyframes summary-shine-sweep {
-    0% { background-position: 220% center; }
-    45% { background-position: -120% center; }
-    100% { background-position: -120% center; }
+@keyframes shine-sweep {
+    0% { background-position: 200% center; }
+    100% { background-position: -200% center; }
 }
 
 @utility animate-summary-shine {
-    background-image: linear-gradient(105deg, var(--color-surface) 42%, rgb(255 255 255 / 0.5) 50%, var(--color-surface) 58%);
-    background-size: 220% 100%;
+    background-image: linear-gradient(105deg, var(--color-surface) 40%, rgb(255 255 255 / 0.75) 50%, var(--color-surface) 60%);
+    background-size: 200% 100%;
+    background-repeat: repeat;
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
-    animation: summary-shine-sweep 2.8s ease-in-out infinite;
+    animation: shine-sweep 3.6s linear infinite;
 
     @media (prefers-reduced-motion: reduce) {
         animation: none;
@@ -332,23 +332,79 @@
     }
 }
 
-@keyframes hero-shine-sweep {
-    0% { background-position: 220% center; }
-    45% { background-position: -120% center; }
-    100% { background-position: -120% center; }
-}
-
 @utility animate-hero-shine {
-    background-image: linear-gradient(105deg, var(--color-deep-green) 42%, rgba(255, 255, 255, 1) 50%, var(--color-deep-green) 58%);
-    background-size: 220% 100%;
+    background-image: linear-gradient(105deg, var(--color-deep-green) 40%, rgba(255, 255, 255, 1) 50%, var(--color-deep-green) 60%);
+    background-size: 200% 100%;
+    background-repeat: repeat;
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
-    animation: hero-shine-sweep 3.2s ease-in-out infinite;
+    animation: shine-sweep 5s linear infinite;
 
     @media (prefers-reduced-motion: reduce) {
         animation: none;
         color: var(--color-deep-green);
+    }
+}
+
+@keyframes hero-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes hero-photo-1 {
+    0%, 6% { opacity: 0; transform: translate(0, 0); }
+    14%, 44% { opacity: 1; transform: translate(0, 0); }
+    50% { opacity: 0; transform: translate(0, 0); }
+    66% { opacity: 0; transform: translate(13vw, 12vh); }
+    72%, 82% { opacity: 1; transform: translate(13vw, 12vh); }
+    88% { opacity: 0; transform: translate(13vw, 12vh); }
+    96%, 100% { opacity: 0; transform: translate(3vw, -10vh); }
+}
+
+@keyframes hero-photo-2 {
+    0%, 6% { opacity: 0; transform: translate(0, 0); }
+    14%, 44% { opacity: 1; transform: translate(0, 0); }
+    50% { opacity: 0; transform: translate(0, 0); }
+    66% { opacity: 0; transform: translate(9vw, -20vh); }
+    72%, 82% { opacity: 1; transform: translate(9vw, -20vh); }
+    88% { opacity: 0; transform: translate(9vw, -20vh); }
+    96%, 100% { opacity: 0; transform: translate(-5vw, 6vh); }
+}
+
+@keyframes hero-photo-3 {
+    0%, 6% { opacity: 0; transform: translate(0, 0); }
+    14%, 44% { opacity: 1; transform: translate(0, 0); }
+    50% { opacity: 0; transform: translate(0, 0); }
+    66% { opacity: 0; transform: translate(-9vw, 16vh); }
+    72%, 82% { opacity: 1; transform: translate(-9vw, 16vh); }
+    88% { opacity: 0; transform: translate(-9vw, 16vh); }
+    96%, 100% { opacity: 0; transform: translate(4vw, -10vh); }
+}
+
+@keyframes hero-photo-4 {
+    0%, 6% { opacity: 0; transform: translate(0, 0); }
+    14%, 44% { opacity: 1; transform: translate(0, 0); }
+    50% { opacity: 0; transform: translate(0, 0); }
+    66% { opacity: 0; transform: translate(-8vw, -24vh); }
+    72%, 82% { opacity: 1; transform: translate(-8vw, -24vh); }
+    88% { opacity: 0; transform: translate(-8vw, -24vh); }
+    96%, 100% { opacity: 0; transform: translate(-4vw, 8vh); }
+}
+
+@keyframes hero-photo-5 {
+    0%, 6% { opacity: 0; transform: translate(0, 0); }
+    14%, 44% { opacity: 1; transform: translate(0, 0); }
+    50% { opacity: 0; transform: translate(0, 0); }
+    66% { opacity: 0; transform: translate(7vw, -16vh); }
+    72%, 82% { opacity: 1; transform: translate(7vw, -16vh); }
+    88% { opacity: 0; transform: translate(7vw, -16vh); }
+    96%, 100% { opacity: 0; transform: translate(-15vw, -6vh); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .public-hero-photo,
+    .public-hero-photo > div {
+        animation: none;
     }
 }
 
