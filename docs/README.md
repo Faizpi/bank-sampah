@@ -11,5 +11,6 @@ Dokumentasi aktif mengikuti cutover empat role 5 Oktober 2026 dan penyempurnaan 
 - [Validasi data utama 9 Oktober](VALIDATION_MASTER_DATA_2026-10-09.md): backup, impor MySQL, pemisahan fixture, dan batas testing manual.
 - [Rencana pengujian](TEST_PLAN.md), [bukti UI terbaru](IMPLEMENTATION_UI_2026-10-08.md), [bukti validasi cutover terdahulu](VALIDATION_CUTOVER_2026-10-05.md), [UAT](UAT_EVIDENCE.md).
 - [Keputusan](DECISIONS.md), [perubahan](CHANGELOG.md), [roadmap](ROADMAP.md).
+- [Kaitan skripsi](SKRIPSI.md): judul, lokasi dokumen di `C:\Skripsi`, pemetaan bab ke repo, dan urutan pengembangan.
 
 PDF proposal dan sembilan flowchart berada di `documents/`; keduanya dibuat dari sumber yang tersimpan di repository. Dokumen validasi checkpoint terdahulu tetap arsip, bukan hasil cutover.

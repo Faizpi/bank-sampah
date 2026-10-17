@@ -1,5 +1,12 @@
 # Catatan perubahan
 
+## Perapian copy publik dan urutan landing 9 Oktober 2026
+
+- Catatan teknis statistik/foto di bawah kartu, penjelasan harga berulang, dan slogan footer generik dihapus dari UI publik.
+- Judul ringkasan/katalog/harga dibuat langsung; petunjuk pemilahan, status foto/harga, angka dan tautan tetap ada.
+- Kepala Desa dipindahkan utuh tepat sesudah hero, sebelum ringkasan dan sampah.
+- Backend, hak akses, privasi, database, dan pengelolaan foto tidak diubah. [Bukti cleanup](PUBLIC_COPY_CLEANUP_2026-10-09.md).
+
 ## Landing dan foto katalog 9 Oktober 2026
 
 - Ringkasan Warga aktif, Petugas aktif, setoran final, dan berat seluruh desa, dengan perlindungan kelompok kecil dan penghormatan publikasi Admin.

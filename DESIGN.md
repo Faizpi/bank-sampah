@@ -23,6 +23,8 @@ Pengguna dapat mengetahui status, pelaksana, dan tindakan berikutnya tanpa memin
 
 Navigasi Warga: Beranda, Kartu, Layanan, Riwayat, Akun. Layanan menyediakan semua layanan, bukan hanya penjemputan. Petugas: Tugas, Setoran, Layanan, Akun; Tugas memisahkan Menunggu dan Tugas saya dengan filter jenis. Bendahara: Tugas, Pembayaran, Laporan, Akun. Admin kembali ke pusat kerja dari layar bersama; master/teknis ada di kelompok lanjutan yang dapat dilipat.
 
+Urutan landing: hero → Kepala Desa → ringkasan → sampah yang diterima → layanan → cara kerja → konten maskot → akses akun → footer. Bagian Kepala Desa dipindahkan utuh sesudah hero sesuai permintaan pengguna, bukan diubah isinya.
+
 ## Design principles
 
 Satu layar memiliki satu tujuan utama. Tampilkan tindakan yang memang sah sekarang. Catatan, estimasi, foto, dan riwayat detail dapat dilipat. Foto rutin opsional. Pemeriksaan identitas tetap dilakukan tetapi dapat digabung dengan tombol mulai setoran. Rekonsiliasi menjadi pencatatan hasil pemeriksaan oleh satu Admin, bukan pengajuan kepada Admin kedua.
@@ -52,6 +54,8 @@ Bedakan kosong, tidak ditemukan, menunggu, diklaim, terkunci, selesai, dan gagal
 ## Content voice
 
 Gunakan Penjemputan, Warga, Ambil tugas, Uang sudah diserahkan, dan Riwayat pembayaran saya. Jelaskan dana yang disisihkan belum dibayar tanpa membebani pengguna dengan jargon ledger/hold. Jangan menyebut persetujuan Admin pada transaksi rutin. Verifikasi akun sekali, pengaturan awal tugas, dan pengecualian adalah konteks berbeda.
+
+Halaman publik memakai judul langsung, angka, dan petunjuk seperlunya. Definisi teknis statistik, cara penyimpanan foto/harga, serta catatan untuk Admin tetap dalam dokumentasi, bukan paragraf di bawah kartu. Hindari tumpukan eyebrow/judul/deskripsi yang mengulang pesan yang sama. Status foto kosong/gagal, harga belum tersedia, kondisi, satuan, tanggal harga, dan aksesibilitas tetap dipertahankan.
 
 ## Implementation constraints
 
