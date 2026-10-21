@@ -10,12 +10,11 @@
         </div>
     </section>
 
-    <p id="operations-navigation-help" class="mt-6 text-sm leading-6 text-text-secondary">Gunakan tombol Tab untuk memfokuskan navigasi, lalu geser secara horizontal bila seluruh bagian belum terlihat.</p>
-    <nav class="mt-2 overflow-x-auto border-b border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2" aria-label="Administrasi sistem" aria-describedby="operations-navigation-help" tabindex="0">
-        <div class="flex min-w-max gap-2 sm:gap-4">
-            <a href="{{ \App\Filament\Pages\TechnicalHealthPage::getUrl() }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.pages.technical-health-page'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.pages.technical-health-page')]) @if (request()->routeIs('filament.backoffice.pages.technical-health-page')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-heart" class="size-5 shrink-0" aria-hidden="true" /><span>Health</span></a>
-        </div>
-    </nav>
+    <x-backoffice.section-navigation label="Administrasi sistem">
+        <x-backoffice.section-link :href="\App\Filament\Pages\TechnicalHealthPage::getUrl()" :active="request()->routeIs('filament.backoffice.pages.technical-health-page')" icon="heroicon-o-heart">
+            Health
+        </x-backoffice.section-link>
+    </x-backoffice.section-navigation>
 
     <p class="mt-4 max-w-2xl text-sm leading-6 text-gray-600">Health menyajikan informasi kondisi aplikasi secara baca-saja.</p>
 </x-filament-panels::page>

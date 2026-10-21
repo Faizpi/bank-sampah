@@ -204,21 +204,20 @@ final class BackofficePanelTest extends TestCase
     public function test_audited_backoffice_section_navigation_is_native_focusable_and_route_aware(): void
     {
         foreach ([
-            'regions.blade.php' => ['Bagian wilayah', 'regions-navigation-help', "routeIs('filament.backoffice.resources.customers-regions.models.service-areas.*')"],
-            'directory.blade.php' => ['Bagian direktori', 'directory-navigation-help', "routeIs('filament.backoffice.resources.identity.models.customers.*')"],
-            'waste-catalog.blade.php' => ['Bagian katalog sampah', 'waste-catalog-navigation-help', "routeIs('filament.backoffice.resources.waste-master.models.waste-categories.*')"],
-            'operations-dashboard.blade.php' => ['Administrasi sistem', 'operations-navigation-help', "routeIs('filament.backoffice.pages.technical-health-page')"],
-        ] as $view => [$label, $helpId, $routeFamily]) {
+            'regions.blade.php' => ['Bagian wilayah', "routeIs('filament.backoffice.resources.customers-regions.models.service-areas.*')"],
+            'directory.blade.php' => ['Bagian direktori', "routeIs('filament.backoffice.resources.identity.models.customers.*')"],
+            'waste-catalog.blade.php' => ['Bagian katalog sampah', "routeIs('filament.backoffice.resources.waste-master.models.waste-categories.*')"],
+            'operations-dashboard.blade.php' => ['Administrasi sistem', "routeIs('filament.backoffice.pages.technical-health-page')"],
+        ] as $view => [$label, $routeFamily]) {
             $contents = file_get_contents(resource_path('views/filament/backoffice/'.$view));
 
             self::assertIsString($contents);
-            self::assertStringContainsString('<nav', $contents);
-            self::assertStringContainsString('aria-label="'.$label.'"', $contents);
-            self::assertStringContainsString('tabindex="0"', $contents);
-            self::assertStringContainsString('aria-describedby="'.$helpId.'"', $contents);
-            self::assertStringContainsString('id="'.$helpId.'"', $contents);
+            self::assertStringContainsString('<x-backoffice.section-navigation label="'.$label.'"', $contents);
+            self::assertStringContainsString('<x-backoffice.section-link', $contents);
+            self::assertStringNotContainsString('overflow-x-auto', $contents);
+            self::assertStringNotContainsString('Gunakan tombol Tab', $contents);
             self::assertStringContainsString($routeFamily, $contents);
-            self::assertStringContainsString('aria-current="page"', $contents);
+            self::assertStringContainsString(':active=', $contents);
             self::assertStringNotContainsString('role="tab', $contents);
         }
     }

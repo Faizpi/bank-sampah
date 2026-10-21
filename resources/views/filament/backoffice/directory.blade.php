@@ -10,20 +10,23 @@
         </div>
     </section>
 
-    <p id="directory-navigation-help" class="mt-6 text-sm leading-6 text-text-secondary">Gunakan tombol Tab untuk memfokuskan navigasi, lalu geser secara horizontal bila seluruh bagian belum terlihat.</p>
-    <nav class="mt-2 overflow-x-auto border-b border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2" aria-label="Bagian direktori" aria-describedby="directory-navigation-help" tabindex="0">
-        <div class="flex min-w-max gap-2 sm:gap-4">
-            @if ($canViewCustomers)
-                <a href="{{ \App\Filament\Resources\Identity\Models\Customers\CustomerResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.identity.models.customers.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.identity.models.customers.*')]) @if (request()->routeIs('filament.backoffice.resources.identity.models.customers.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-users" class="size-5 shrink-0" aria-hidden="true" /><span>Nasabah</span></a>
-            @endif
-            @if ($canViewUsers)
-                <a href="{{ \App\Filament\Resources\Identity\Models\Users\UserResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.identity.models.users.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.identity.models.users.*')]) @if (request()->routeIs('filament.backoffice.resources.identity.models.users.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-user-circle" class="size-5 shrink-0" aria-hidden="true" /><span>Pengguna &amp; peran</span></a>
-            @endif
-            @if ($canVerifyCitizens)
-                <a href="{{ \App\Filament\Resources\Identity\Models\CitizenVerifications\CitizenVerificationResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.identity.models.citizen-verifications.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.identity.models.citizen-verifications.*')]) @if (request()->routeIs('filament.backoffice.resources.identity.models.citizen-verifications.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-check-badge" class="size-5 shrink-0" aria-hidden="true" /><span>Verifikasi warga</span></a>
-            @endif
-        </div>
-    </nav>
+    <x-backoffice.section-navigation label="Bagian direktori">
+        @if ($canViewCustomers)
+            <x-backoffice.section-link :href="\App\Filament\Resources\Identity\Models\Customers\CustomerResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.identity.models.customers.*')" icon="heroicon-o-users">
+                Nasabah
+            </x-backoffice.section-link>
+        @endif
+        @if ($canViewUsers)
+            <x-backoffice.section-link :href="\App\Filament\Resources\Identity\Models\Users\UserResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.identity.models.users.*')" icon="heroicon-o-user-circle">
+                Pengguna &amp; peran
+            </x-backoffice.section-link>
+        @endif
+        @if ($canVerifyCitizens)
+            <x-backoffice.section-link :href="\App\Filament\Resources\Identity\Models\CitizenVerifications\CitizenVerificationResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.identity.models.citizen-verifications.*')" icon="heroicon-o-check-badge">
+                Verifikasi warga
+            </x-backoffice.section-link>
+        @endif
+    </x-backoffice.section-navigation>
 
     <div class="mt-4 flex items-start gap-3 rounded-lg border border-info-200 bg-info-50 px-4 py-3 text-sm leading-6 text-info-950">
         <x-filament::icon icon="heroicon-o-information-circle" class="mt-0.5 size-5 shrink-0" aria-hidden="true" />

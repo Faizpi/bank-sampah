@@ -5,6 +5,7 @@
 @source '../../../../app/Providers/Filament/BackofficePanelProvider.php';
 @source '../../../../resources/views/filament/**/*.blade.php';
 @source '../../../../resources/views/components/ui/**/*.blade.php';
+@source '../../../../resources/views/components/backoffice/**/*.blade.php';
 @source '../../../../resources/views/livewire/treasurer/**/*.blade.php';
 
 @theme {
@@ -111,4 +112,59 @@
 .fi-simple-page {
     max-width: 58rem !important;
     width: 100%;
+}
+
+@layer components {
+    .backoffice-section-navigation {
+        margin-top: 1.5rem;
+    }
+
+    .backoffice-section-navigation-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+        gap: 0.75rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .backoffice-section-link {
+        display: flex;
+        min-height: 3.5rem;
+        width: 100%;
+        align-items: center;
+        gap: 0.75rem;
+        border: 2px solid var(--color-forest-600);
+        border-radius: 0.625rem;
+        background: var(--color-surface);
+        padding: 0.875rem 1rem;
+        color: var(--color-forest-700);
+        font-size: var(--text-body);
+        font-weight: 700;
+        line-height: 1.5;
+        text-decoration: none;
+        transition: background-color 180ms, border-color 180ms, color 180ms;
+    }
+
+    .backoffice-section-link:hover {
+        border-color: var(--color-forest-600);
+        background: var(--color-success-bg);
+    }
+
+    .backoffice-section-link[aria-current='page'] {
+        border-color: var(--color-forest-600);
+        background: var(--color-forest-600);
+        color: var(--color-surface);
+    }
+
+    .backoffice-section-link:focus-visible {
+        outline: 2px solid var(--color-focus);
+        outline-offset: 3px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .backoffice-section-link {
+            transition: none;
+        }
+    }
 }

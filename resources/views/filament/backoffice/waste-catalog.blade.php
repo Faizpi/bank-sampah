@@ -10,14 +10,31 @@
         </div>
     </section>
 
-    <p id="waste-catalog-navigation-help" class="mt-6 text-sm leading-6 text-text-secondary">Gunakan tombol Tab untuk memfokuskan navigasi, lalu geser secara horizontal bila seluruh bagian belum terlihat.</p>
-    <nav class="mt-2 overflow-x-auto border-b border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2" aria-label="Bagian katalog sampah" aria-describedby="waste-catalog-navigation-help" tabindex="0">
-        <div class="flex min-w-max gap-2 sm:gap-4">
-            @if ($canViewCategories)<a href="{{ \App\Filament\Resources\WasteMaster\Models\WasteCategories\WasteCategoryResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.waste-master.models.waste-categories.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.waste-master.models.waste-categories.*')]) @if (request()->routeIs('filament.backoffice.resources.waste-master.models.waste-categories.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-squares-2x2" class="size-5 shrink-0" aria-hidden="true" /><span>Kategori</span></a>@endif
-            @if ($canViewTypes)<a href="{{ \App\Filament\Resources\WasteMaster\Models\WasteTypes\WasteTypeResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.waste-master.models.waste-types.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.waste-master.models.waste-types.*')]) @if (request()->routeIs('filament.backoffice.resources.waste-master.models.waste-types.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-tag" class="size-5 shrink-0" aria-hidden="true" /><span>Jenis</span></a>@endif
-            @if ($canViewConditions)<a href="{{ \App\Filament\Resources\WasteMaster\Models\WasteConditions\WasteConditionResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.waste-master.models.waste-conditions.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.waste-master.models.waste-conditions.*')]) @if (request()->routeIs('filament.backoffice.resources.waste-master.models.waste-conditions.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-clipboard-document-check" class="size-5 shrink-0" aria-hidden="true" /><span>Kondisi</span></a>@endif
-            @if ($canViewPrices)<a href="{{ \App\Filament\Resources\WasteMaster\Models\WastePrices\WastePriceResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.waste-master.models.waste-prices.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.waste-master.models.waste-prices.*')]) @if (request()->routeIs('filament.backoffice.resources.waste-master.models.waste-prices.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-banknotes" class="size-5 shrink-0" aria-hidden="true" /><span>Harga</span></a>@endif
-            @if ($canViewUnits)<a href="{{ \App\Filament\Resources\WasteMaster\Models\WasteUnits\WasteUnitResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.waste-master.models.waste-units.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.waste-master.models.waste-units.*')]) @if (request()->routeIs('filament.backoffice.resources.waste-master.models.waste-units.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-scale" class="size-5 shrink-0" aria-hidden="true" /><span>Satuan</span></a>@endif
-        </div>
-    </nav>
+    <x-backoffice.section-navigation label="Bagian katalog sampah">
+        @if ($canViewCategories)
+            <x-backoffice.section-link :href="\App\Filament\Resources\WasteMaster\Models\WasteCategories\WasteCategoryResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.waste-master.models.waste-categories.*')" icon="heroicon-o-squares-2x2">
+                Kategori
+            </x-backoffice.section-link>
+        @endif
+        @if ($canViewTypes)
+            <x-backoffice.section-link :href="\App\Filament\Resources\WasteMaster\Models\WasteTypes\WasteTypeResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.waste-master.models.waste-types.*')" icon="heroicon-o-tag">
+                Jenis
+            </x-backoffice.section-link>
+        @endif
+        @if ($canViewConditions)
+            <x-backoffice.section-link :href="\App\Filament\Resources\WasteMaster\Models\WasteConditions\WasteConditionResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.waste-master.models.waste-conditions.*')" icon="heroicon-o-clipboard-document-check">
+                Kondisi
+            </x-backoffice.section-link>
+        @endif
+        @if ($canViewPrices)
+            <x-backoffice.section-link :href="\App\Filament\Resources\WasteMaster\Models\WastePrices\WastePriceResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.waste-master.models.waste-prices.*')" icon="heroicon-o-banknotes">
+                Harga
+            </x-backoffice.section-link>
+        @endif
+        @if ($canViewUnits)
+            <x-backoffice.section-link :href="\App\Filament\Resources\WasteMaster\Models\WasteUnits\WasteUnitResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.waste-master.models.waste-units.*')" icon="heroicon-o-scale">
+                Satuan
+            </x-backoffice.section-link>
+        @endif
+    </x-backoffice.section-navigation>
 </x-filament-panels::page>

@@ -10,13 +10,26 @@
         </div>
     </section>
 
-    <p id="regions-navigation-help" class="mt-6 text-sm leading-6 text-text-secondary">Gunakan tombol Tab untuk memfokuskan navigasi, lalu geser secara horizontal bila seluruh bagian belum terlihat.</p>
-    <nav class="mt-2 overflow-x-auto border-b border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2" aria-label="Bagian wilayah" aria-describedby="regions-navigation-help" tabindex="0">
-        <div class="flex min-w-max gap-2 sm:gap-4">
-            @if ($canViewAreas)<a href="{{ \App\Filament\Resources\CustomersRegions\Models\ServiceAreas\ServiceAreaResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.customers-regions.models.service-areas.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.customers-regions.models.service-areas.*')]) @if (request()->routeIs('filament.backoffice.resources.customers-regions.models.service-areas.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-map" class="size-5 shrink-0" aria-hidden="true" /><span>Area pelayanan</span></a>@endif
-            @if ($canViewDusuns)<a href="{{ \App\Filament\Resources\CustomersRegions\Models\Dusuns\DusunResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.customers-regions.models.dusuns.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.customers-regions.models.dusuns.*')]) @if (request()->routeIs('filament.backoffice.resources.customers-regions.models.dusuns.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-home-modern" class="size-5 shrink-0" aria-hidden="true" /><span>Dusun</span></a>@endif
-            @if ($canViewRws)<a href="{{ \App\Filament\Resources\CustomersRegions\Models\Rws\RwResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.customers-regions.models.rws.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.customers-regions.models.rws.*')]) @if (request()->routeIs('filament.backoffice.resources.customers-regions.models.rws.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-building-office-2" class="size-5 shrink-0" aria-hidden="true" /><span>RW</span></a>@endif
-            @if ($canViewRts)<a href="{{ \App\Filament\Resources\CustomersRegions\Models\Rts\RtResource::getUrl('index') }}" @class(['inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2', 'border-primary-600 bg-primary-50 text-primary-800' => request()->routeIs('filament.backoffice.resources.customers-regions.models.rts.*'), 'border-transparent text-text-secondary hover:border-primary-500 hover:bg-primary-50 hover:text-primary-800' => ! request()->routeIs('filament.backoffice.resources.customers-regions.models.rts.*')]) @if (request()->routeIs('filament.backoffice.resources.customers-regions.models.rts.*')) aria-current="page" @endif><x-filament::icon icon="heroicon-o-map-pin" class="size-5 shrink-0" aria-hidden="true" /><span>RT</span></a>@endif
-        </div>
-    </nav>
+    <x-backoffice.section-navigation label="Bagian wilayah">
+        @if ($canViewAreas)
+            <x-backoffice.section-link :href="\App\Filament\Resources\CustomersRegions\Models\ServiceAreas\ServiceAreaResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.customers-regions.models.service-areas.*')" icon="heroicon-o-map">
+                Area pelayanan
+            </x-backoffice.section-link>
+        @endif
+        @if ($canViewDusuns)
+            <x-backoffice.section-link :href="\App\Filament\Resources\CustomersRegions\Models\Dusuns\DusunResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.customers-regions.models.dusuns.*')" icon="heroicon-o-home-modern">
+                Dusun
+            </x-backoffice.section-link>
+        @endif
+        @if ($canViewRws)
+            <x-backoffice.section-link :href="\App\Filament\Resources\CustomersRegions\Models\Rws\RwResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.customers-regions.models.rws.*')" icon="heroicon-o-building-office-2">
+                RW
+            </x-backoffice.section-link>
+        @endif
+        @if ($canViewRts)
+            <x-backoffice.section-link :href="\App\Filament\Resources\CustomersRegions\Models\Rts\RtResource::getUrl('index')" :active="request()->routeIs('filament.backoffice.resources.customers-regions.models.rts.*')" icon="heroicon-o-map-pin">
+                RT
+            </x-backoffice.section-link>
+        @endif
+    </x-backoffice.section-navigation>
 </x-filament-panels::page>
