@@ -6,6 +6,7 @@ namespace App\Livewire\Concerns;
 
 use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Groceries\Services\GroceryService;
+use App\Domain\Operations\Queries\OfficerWorkHistory;
 use App\Domain\Operations\Services\ClaimedServiceWorkflow;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Domain\Withdrawals\Services\WithdrawalService;
@@ -71,6 +72,11 @@ abstract class ServiceTaskQueue extends Component
 
     public function select(int $id): void
     {
+        if (! $this->isCash() && app(OfficerWorkHistory::class)->groceries($this->actor())->whereKey($id)->exists()) {
+            $this->redirectRoute('officer.history', ['type' => 'grocery', 'recordId' => $id]);
+
+            return;
+        }
         abort_unless($this->queue()->whereKey($id)->exists(), 404);
         $this->selectedId = $id;
         $this->proof = null;

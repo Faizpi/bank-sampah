@@ -11,6 +11,20 @@
         ['title' => 'Selesai', 'description' => 'Penjemputan selesai dan setoran aktual dicatat.', 'icon' => 'circle-check', 'statuses' => ['selesai']],
     ];
     $pickupStatus = $pickup->status->value;
+    $pickupLocked = $pickup->exception_reported_at && ! $pickup->exception_resolved_at;
+    $pickupBubble = $pickupLocked ? 'Tugas perlu diperiksa' : match ($pickupStatus) {
+        'selesai' => 'Penjemputan selesai!',
+        'dibatalkan', 'ditolak' => 'Penjemputan tidak dilanjutkan',
+        'dijemput' => 'Saatnya timbang sampah!',
+        'menuju_lokasi' => 'Menuju lokasi!',
+        default => 'Siap menjemput!',
+    };
+    $pickupBadge = $pickupLocked ? 'error' : match ($pickupStatus) {
+        'selesai' => 'success',
+        'dibatalkan', 'ditolak' => 'cancelled',
+        'menuju_lokasi', 'dijemput' => 'in_progress',
+        default => 'pending',
+    };
     $pickupTerminalStep = in_array($pickupStatus, ['ditolak', 'dibatalkan'], true)
         ? [
             'status' => $pickupStatus,
@@ -44,7 +58,7 @@
                 {{ $pickup->address }}
             </p>
         </div>
-        <x-ui.mascot variant="8" bubble="Menuju lokasi!" bubblePosition="top" class="h-28 w-auto shrink-0" />
+        <x-ui.mascot variant="8" :bubble="$pickupBubble" bubblePosition="top" class="h-28 w-auto shrink-0" />
     </div>
 
     @if ($errors->any())
@@ -69,16 +83,15 @@
                 @endforeach
             </ul>
         @endif
-        <p class="mt-4 text-body-sm text-text-secondary">Media pengajuan tersimpan privat dan tersedia melalui akses rekam penjemputan yang terotorisasi. {{ $pickup->media->count() }} media tercatat.</p>
+        @if ($pickup->media->isNotEmpty())<p class="mt-4 text-body-sm text-text-secondary">{{ $pickup->media->count() }} foto terlampir pada pengajuan.</p>@endif
     </x-ui.panel>
 
     {{-- Status Panel --}}
     <x-ui.panel title="Status tugas" description="Urutan status harus diikuti. Estimasi tidak digunakan untuk saldo.">
         <div class="flex items-center gap-3">
-            <span class="inline-flex items-center gap-1.5 rounded-full border border-info-bg bg-info-bg px-4 py-1.5 text-label font-bold text-sky-blue">
-                <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <x-ui.status-badge :status="$pickupBadge">
                 {{ \App\Support\StatusLabel::for($pickup->status) }}
-            </span>
+            </x-ui.status-badge>
         </div>
 
         <div class="mt-4 flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
@@ -111,24 +124,27 @@
         <x-ui.panel title="Timbang aktual" description="Berat aktual ini menjadi sumber setoran dan saldo." state="success">
             <div class="grid gap-4">
                 @foreach ($actualItems as $index => $item)
-                    <div wire:key="actual-item-{{ $index }}" class="grid gap-3 rounded-xl border border-border bg-warm-canvas p-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
+                    <fieldset wire:key="actual-item-{{ $index }}" class="grid grid-cols-2 gap-3 border-b border-border pb-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
+                        <legend class="sr-only">Timbangan {{ $index + 1 }}</legend>
+                        <div class="col-span-2 md:col-span-1">
                         <x-ui.select wire:model.live="actualItems.{{ $index }}.waste_type_id"
                             label="Jenis sampah" name="actualItems.{{ $index }}.waste_type_id"
                             placeholder="Pilih jenis sampah"
                             :error="$errors->first('actualItems.'.$index.'.waste_type_id')"
                             :options="$types->pluck('name', 'id')->all()" />
-                        <x-ui.select wire:model="actualItems.{{ $index }}.condition_id"
+                        </div>
+                        <x-ui.select wire:model.live="actualItems.{{ $index }}.condition_id"
                             label="Kondisi" name="actualItems.{{ $index }}.condition_id"
                             placeholder="Pilih kondisi"
                             :error="$errors->first('actualItems.'.$index.'.condition_id')"
                             :options="$conditionsByType->get((int) $item['waste_type_id'], collect())->pluck('name', 'id')->all()" />
-                        <x-ui.input wire:model="actualItems.{{ $index }}.weight_kg"
+                        <x-ui.input wire:model.live.debounce.400ms="actualItems.{{ $index }}.weight_kg"
                             label="Berat aktual (kg)" name="actualItems.{{ $index }}.weight_kg"
                             inputmode="decimal" :error="$errors->first('actualItems.'.$index.'.weight_kg')" />
                         @if (count($actualItems) > 1)
-                            <button type="button" wire:click="removeActualItem({{ $index }})" class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-4 text-label font-bold text-terracotta transition hover:bg-danger-bg">Hapus</button>
+                            <button type="button" wire:click="removeActualItem({{ $index }})" aria-label="Hapus timbangan {{ $index + 1 }}" class="col-span-2 inline-flex min-h-touch items-center justify-center justify-self-end rounded-md px-4 text-label font-semibold text-terracotta transition hover:bg-danger-bg md:col-span-1">Hapus</button>
                         @endif
-                    </div>
+                    </fieldset>
                 @endforeach
 
                 <div class="flex flex-col items-end">
@@ -155,8 +171,8 @@
                 <div class="rounded-md border border-border bg-surface p-4" aria-live="polite">
                     <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                         <div>
-                            <h3 class="text-label font-bold text-deep-green">Review nilai setoran</h3>
-                            <p class="text-body-sm text-text-secondary">Harga aktif dan subtotal akan dihitung ulang server saat penyelesaian.</p>
+                            <h3 class="text-label font-bold text-deep-green">Ringkasan nilai setoran</h3>
+                            <p class="text-body-sm text-text-secondary">Periksa berat dan nilai sebelum mencatat setoran.</p>
                         </div>
                         @if ($pricePreview['complete'])
                             <strong class="amount-tabular text-title text-forest-700">Rp {{ number_format($pricePreview['total'], 0, ',', '.') }}</strong>
@@ -186,15 +202,24 @@
         </x-ui.panel>
     @endif
 
-    @if ($receipt)
+    @if ($receipt && $receipt['status'] === 'dibalik')
+        <x-ui.panel title="Setoran sudah dibalik" state="error">
+            <x-ui.status-badge status="cancelled">Dibatalkan melalui pembalikan</x-ui.status-badge>
+            <p class="mt-3 break-all font-semibold">{{ $receipt['number'] }}</p>
+            <p class="mt-2">Nilai asli Rp {{ number_format($receipt['value'], 0, ',', '.') }} tidak lagi menambah saldo warga.</p>
+            <a href="{{ route('officer.history', ['type' => 'deposit', 'recordId' => $pickup->deposit_id]) }}" class="mt-3 inline-flex min-h-touch items-center font-semibold text-forest-700 underline">Lihat riwayat setoran</a>
+        </x-ui.panel>
+    @elseif ($receipt)
         <x-ui.success-state
-            title="Setoran pickup berhasil"
+            :title="$receipt['status'] === 'dikoreksi' ? 'Setoran penjemputan dikoreksi' : 'Setoran pickup berhasil'"
             :reference="$receipt['number']"
             :value="'Rp '.number_format($receipt['value'], 0, ',', '.')"
             :time="$receipt['occurredAt']"
             :status="$receipt['status']"
-            :description="session('success')"
-        />
+            :description="$receipt['status'] === 'dikoreksi' ? 'Nilai akhir mengikuti koreksi resmi.' : session('success')"
+        >
+            <x-slot:actions><a href="{{ route('officer.history', ['type' => 'deposit', 'recordId' => $pickup->deposit_id]) }}" class="inline-flex min-h-touch items-center font-semibold text-forest-700 underline">Lihat riwayat setoran</a></x-slot:actions>
+        </x-ui.success-state>
     @endif
     {{-- Status History --}}
     <x-ui.panel title="Tahapan penjemputan" description="Semua tahapan ditampilkan; tahapan berikutnya tetap redup sampai status tugas berubah.">

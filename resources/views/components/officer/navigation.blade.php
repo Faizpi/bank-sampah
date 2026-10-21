@@ -21,7 +21,7 @@
 
     $canonicalLabels = match ($persona) {
         'admin' => ['Panel Admin', 'Akun'],
-        'officer' => ['Tugas', 'Setoran', 'Layanan', 'Akun'],
+        'officer' => ['Tugas', 'Setoran', 'Layanan', 'Riwayat', 'Akun'],
         default => ['Tugas', 'Pembayaran', 'Laporan', 'Akun'],
     };
 
@@ -77,6 +77,7 @@
         'Tugas' => 'clipboard-list',
         'Setoran' => 'wallet-cards',
         'Layanan' => 'grid-2x2',
+        'Riwayat' => 'history',
         'Pembayaran' => 'wallet-cards',
         'Laporan' => 'layout-dashboard',
         'Akun' => 'user-round',

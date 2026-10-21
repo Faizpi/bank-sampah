@@ -36,6 +36,7 @@ use App\Livewire\Officer\DepositForm;
 use App\Livewire\Officer\GroceryTasks;
 use App\Livewire\Officer\MobileServiceTasks;
 use App\Livewire\Officer\PickupTask;
+use App\Livewire\Officer\WorkHistory;
 use App\Livewire\Profile\Password as ProfilePassword;
 use App\Livewire\PublicSite\Announcements;
 use App\Livewire\PublicSite\DepositVerification;
@@ -121,6 +122,10 @@ Route::livewire('/dashboard/warga', CitizenDashboard::class)
 Route::livewire('/dashboard/petugas', OfficerDashboard::class)
     ->middleware(['role:petugas', 'auth', 'session.fresh:30', 'permission:user.view'])
     ->name('officer.dashboard');
+
+Route::livewire('/petugas/riwayat', WorkHistory::class)
+    ->middleware(['role:petugas', 'auth', 'session.fresh:30', 'permission:user.view'])
+    ->name('officer.history');
 
 Route::livewire('/statistik/internal', InternalDashboard::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:statistics.internal.view'])

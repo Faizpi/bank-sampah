@@ -54,7 +54,22 @@
                         <summary class="min-h-touch cursor-pointer font-semibold">Tambahkan foto (opsional)</summary>
                         <x-ui.media-picker id="service-proof" property="proof" label="Lampiran foto (opsional)" hint="Tidak wajib. Foto diperkecil sebelum dikirim dan disimpan privat." remove-method="clearProof" confirm-method="confirmProofUpload" />
                         </details>
-                        <x-ui.button wire:click="complete" wire:loading.attr="disabled">{{ $cash ? 'Uang tunai sudah diserahkan — catat pembayaran' : 'Paket sudah diserahkan' }}</x-ui.button>
+                        <x-ui.button type="button" x-on:click="$dispatch('open-dialog', { id: 'service-completion-confirmation', invoker: $el })" wire:loading.attr="disabled" data-photo-picker-action>{{ $cash ? 'Uang tunai sudah diserahkan — catat pembayaran' : 'Paket sudah diserahkan' }}</x-ui.button>
+                        <x-ui.dialog id="service-completion-confirmation" name="service-completion" :title="$cash ? 'Catat pembayaran tunai?' : 'Catat penyerahan sembako?'">
+                            <p class="font-bold text-deep-green">{{ $selected->customer->name }}</p>
+                            <p class="mt-2 amount-tabular text-amount font-bold text-forest-700">Rp {{ number_format($cash ? $selected->amount : $selected->value_snapshot, 0, ',', '.') }}</p>
+                            <p class="mt-2 break-all text-body-sm text-text-secondary">{{ $selected->request_number }}</p>
+                            @unless ($cash)<p class="mt-2 font-semibold">{{ data_get($selected->package_snapshot, 'name') }}</p>@endunless
+                            <p class="mt-3">{{ $cash ? 'Konfirmasi hanya jika uang tunai sudah diterima warga.' : 'Konfirmasi hanya jika paket sudah diterima warga.' }} Nilai ini akan dicatat sebagai saldo keluar.</p>
+                            @if ($errors->any())<div role="alert" class="mt-3 text-terracotta">@foreach ($errors->all() as $message)<p>{{ $message }}</p>@endforeach</div>@endif
+                            <x-slot:actions>
+                                <x-ui.button type="button" variant="secondary" x-on:click="closeModal()">Periksa lagi</x-ui.button>
+                                <x-ui.button type="button" wire:click="complete" wire:loading.attr="disabled" wire:target="complete" data-photo-picker-action>
+                                    <span wire:loading.remove wire:target="complete">{{ $cash ? 'Ya, catat pembayaran' : 'Ya, catat penyerahan' }}</span>
+                                    <span wire:loading wire:target="complete">Mencatat...</span>
+                                </x-ui.button>
+                            </x-slot:actions>
+                        </x-ui.dialog>
                         @if (! $cash && $selected->status->value !== 'siap_diambil')<x-ui.button variant="secondary" wire:click="ready" wire:loading.attr="disabled">Paket siap diambil (opsional)</x-ui.button>@endif
                         <details class="border-t border-border pt-4" @if ($errors->has('reason') || $errors->has('workflow')) open @endif>
                             <summary class="cursor-pointer font-semibold">Ada kendala?</summary>

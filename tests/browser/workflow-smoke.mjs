@@ -59,6 +59,11 @@ try {
     await page.locator('button').filter({hasText:fixture.withdrawalNumber}).click();
     await page.getByRole('button',{name:'Ambil pembayaran',exact:true}).click();
     await page.getByRole('button',{name:'Uang tunai sudah diserahkan — catat pembayaran',exact:true}).click();
+    await capture(page,'cash-confirmation');
+    await page.getByRole('dialog', { name: 'Catat pembayaran tunai?' }).getByRole('button', { name: 'Periksa lagi', exact: true }).click();
+    await expect(page.getByText('Penyerahan tercatat',{exact:true})).toHaveCount(0);
+    await page.getByRole('button',{name:'Uang tunai sudah diserahkan — catat pembayaran',exact:true}).click();
+    await page.getByRole('dialog', { name: 'Catat pembayaran tunai?' }).getByRole('button', { name: 'Ya, catat pembayaran', exact: true }).click();
     await expect(page.getByText('Penyerahan tercatat',{exact:true})).toBeVisible();
     await capture(page,'cash-completed');
   });
@@ -67,6 +72,8 @@ try {
     await page.locator('button').filter({hasText:fixture.groceryNumber}).click();
     await page.getByRole('button',{name:'Ambil sembako',exact:true}).click();
     await page.getByRole('button',{name:'Paket sudah diserahkan',exact:true}).click();
+    await capture(page,'grocery-confirmation');
+    await page.getByRole('dialog', { name: 'Catat penyerahan sembako?' }).getByRole('button', { name: 'Ya, catat penyerahan', exact: true }).click();
     await expect(page.getByText('Penyerahan tercatat',{exact:true})).toBeVisible();
     await capture(page,'groceries-completed');
   });
@@ -75,17 +82,43 @@ try {
     await page.goto(baseUrl+'/warga/pencairan/'+fixture.withdrawalId+'/bukti');await expect(page.getByRole('heading',{name:'Pencairan berhasil',exact:true}).first()).toBeVisible();await capture(page,'cash-receipt');
     await page.goto(baseUrl+'/warga/sembako/'+fixture.groceryId+'/bukti');await capture(page,'grocery-receipt');
   });
+  await run('officer completed grocery bookmark opens read-only own history', async()=>{
+    const page=pages.petugas;
+    await page.goto(baseUrl+'/petugas/sembako?taskId='+fixture.groceryId);
+    await expect(page).toHaveURL(new RegExp('/petugas/riwayat\\?type=grocery&recordId='+fixture.groceryId));
+    await expect(page.getByRole('heading', {name:fixture.groceryNumber,exact:true})).toBeVisible();
+    await expect(page.getByRole('button', {name:'Paket sudah diserahkan',exact:true})).toHaveCount(0);
+    await expect(page.locator('nav[aria-label="Navigasi petugas"] [data-nav-item]')).toHaveCount(5);
+    for (const width of [360,390,768,1280]) {
+      await page.setViewportSize({width,height:900});
+      await capture(page,'officer-grocery-history-'+width);
+    }
+    await page.setViewportSize({width:390,height:844});
+  });
   await run('officer claims and finishes pickup with one final click',async()=>{
     const page=pages.petugas;await page.goto(baseUrl+'/dashboard/petugas');
     await page.getByRole('button',{name:'Ambil tugas',exact:true}).click();
     await page.getByRole('button',{name:'Menuju Lokasi',exact:true}).click();
     await page.getByRole('button',{name:'Tandai Dijemput',exact:true}).click();
-    await page.locator('[name="actualItems.0.waste_type_id"]').selectOption(String(fixture.typeId));
-    await page.locator('[name="actualItems.0.condition_id"]').selectOption(String(fixture.conditionId));
-    await page.locator('[name="actualItems.0.weight_kg"]').fill('1.000');
-    await page.locator('[name="actualItems.0.weight_kg"]').blur();
+    expect(fixture.wasteTypes).toHaveLength(4);
+    for (const [index,waste] of fixture.wasteTypes.entries()) {
+      if (index>0) await page.getByRole('button',{name:'Tambah Detail Timbang',exact:true}).click();
+      await page.locator(`[name="actualItems.${index}.waste_type_id"]`).selectOption(String(waste.id));
+      await page.locator(`[name="actualItems.${index}.condition_id"]`).selectOption(String(waste.conditionId));
+      await page.locator(`[name="actualItems.${index}.weight_kg"]`).fill('1.000');
+      await page.locator(`[name="actualItems.${index}.weight_kg"]`).blur();
+    }
+    await expect(page.getByText('Rp 5.000', {exact:true})).toBeVisible();
+    for (const width of [360,390,768,1280]) {
+      await page.setViewportSize({width,height:900});
+      await capture(page,'four-waste-weighing-'+width);
+    }
+    await page.setViewportSize({width:390,height:844});
     await page.getByRole('button',{name:'Catat setoran dan selesaikan pickup',exact:true}).click();
     await expect(page.getByText('Penjemputan selesai dan setoran aktual telah dibuat.')).toBeVisible();
+    await page.reload();
+    await expect(page.getByText('Penjemputan selesai!', {exact:true})).toBeVisible();
+    await expect(page.getByText('Lihat riwayat setoran', {exact:true})).toBeVisible();
     await capture(page,'pickup-completed');
   });
   await run('citizen cancels an unclaimed withdrawal and releases hold',async()=>{

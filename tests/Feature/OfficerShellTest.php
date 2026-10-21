@@ -16,6 +16,7 @@ final class OfficerShellTest extends TestCase
         'Tugas' => '/dashboard/petugas',
         'Setoran' => '/petugas/pindai',
         'Layanan' => '/petugas/layanan-keliling',
+        'Riwayat' => '/petugas/riwayat',
         'Akun' => '/profil/kata-sandi',
     ];
 

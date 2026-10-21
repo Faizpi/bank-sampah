@@ -68,8 +68,10 @@
     <x-ui.panel title="Item setoran" description="Berat dalam kilogram dengan maksimal tiga angka desimal.">
         <div class="space-y-3">
             @forelse ($items as $index => $item)
-                <div class="grid gap-3 rounded-xl border border-border bg-warm-canvas p-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end"
+                <fieldset class="grid grid-cols-2 gap-3 border-b border-border pb-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end"
                     wire:key="deposit-item-{{ $index }}">
+                    <legend class="sr-only">Item setoran {{ $index + 1 }}</legend>
+                    <div class="col-span-2 md:col-span-1">
                     <x-ui.select name="items.{{ $index }}.waste_type_id" label="Jenis sampah"
                          wire:model.live="items.{{ $index }}.waste_type_id"
                         :error="$errors->first('items.'.$index.'.waste_type_id')">
@@ -78,6 +80,7 @@
                             <option value="{{ $type->id }}">{{ $type->name }}</option>
                         @endforeach
                     </x-ui.select>
+                    </div>
 
                     <x-ui.select name="items.{{ $index }}.condition_id" label="Kondisi"
                          wire:model.live="items.{{ $index }}.condition_id"
@@ -92,11 +95,11 @@
                          inputmode="decimal" wire:model.live.debounce.400ms="items.{{ $index }}.weight_kg"
                         :error="$errors->first('items.'.$index.'.weight_kg')" />
 
-                    <button type="button" wire:click="removeItem({{ $index }})"
-                        class="inline-flex min-h-touch items-center justify-center rounded-xl border-2 border-terracotta px-4 text-label font-bold text-terracotta transition hover:bg-danger-bg">
+                    <button type="button" wire:click="removeItem({{ $index }})" aria-label="Hapus item setoran {{ $index + 1 }}"
+                        class="col-span-2 inline-flex min-h-touch items-center justify-center justify-self-end rounded-md px-4 text-label font-semibold text-terracotta transition hover:bg-danger-bg md:col-span-1">
                         Hapus
                     </button>
-                </div>
+                </fieldset>
             @empty
                 <div class="rounded-xl border border-dashed border-border bg-warm-canvas p-6 text-center">
                     <x-ui.mascot variant="9" class="mx-auto h-16 w-auto" />

@@ -47,6 +47,9 @@
         if ($can('mobile-service.operate')) {
             $destinations['Layanan'] = route('officer.mobile-services');
         }
+        if ($can('user.view')) {
+            $destinations['Riwayat'] = route('officer.history');
+        }
         if ($can('profile.view')) {
             $destinations['Akun'] = route('profile.password');
         }
@@ -54,6 +57,7 @@
             in_array($routeName, ['officer.dashboard', 'officer.pickup.task', 'officer.grocery.tasks'], true) => 'Tugas',
             in_array($routeName, ['officer.customer-identification', 'officer.deposit-form'], true) => 'Setoran',
             $routeName === 'officer.mobile-services' => 'Layanan',
+            $routeName === 'officer.history' => 'Riwayat',
             default => 'Akun',
         };
     }

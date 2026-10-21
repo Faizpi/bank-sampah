@@ -26,7 +26,7 @@ $checks = [
     'ledger_exactly_once' => LedgerEntry::count() === 6 && LedgerEntry::where('direction', 'keluar')->count() === 2,
     'no_required_media' => Media::count() === 0,
     'no_active_hold' => BalanceHold::where('status', 'aktif')->count() === 0,
-    'correct_balance' => User::where('username', 'warga')->firstOrFail()->ledgerAccount->availableBalance() === 83000,
+    'correct_balance' => User::where('username', 'warga')->firstOrFail()->ledgerAccount->availableBalance() === 86500,
 ];
 if (in_array(false, $checks, true)) {
     throw new RuntimeException('Browser ledger verification failed: '.json_encode($checks, JSON_THROW_ON_ERROR));

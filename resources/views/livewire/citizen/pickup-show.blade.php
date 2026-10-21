@@ -64,7 +64,13 @@
                 <div class="rounded-lg bg-warm-canvas px-3 py-2">
                     <p class="font-semibold text-deep-green">{{ $item->wasteType?->name ?? 'Jenis sampah' }}</p>
                     <p class="mt-0.5 text-caption text-text-secondary">
-                        {{ $item->estimated_weight_kg !== null ? \App\Support\WeightFormatter::format($item->estimated_weight_kg).' kg' : ($item->estimated_quantity ?? 0).' item' }}
+                        @if ($item->estimated_weight_kg !== null)
+                            {{ \App\Support\WeightFormatter::format($item->estimated_weight_kg) }} kg
+                        @elseif ($item->estimated_quantity > 0)
+                            {{ $item->estimated_quantity }} kantong/karung
+                        @else
+                            Perkiraan belum diisi
+                        @endif
                     </p>
                 </div>
             @endforeach

@@ -55,6 +55,7 @@ final class PickupTask extends Component
         $this->pickup = $pickup->load(['customer', 'items.wasteType', 'media', 'statusHistory.actor']);
         $this->idempotencyKey = (string) str()->uuid();
         $this->actualItems = [['waste_type_id' => '', 'condition_id' => '', 'weight_kg' => '']];
+        $this->loadReceipt();
     }
 
     public function reportException(PickupService $service): void
@@ -233,15 +234,22 @@ final class PickupTask extends Component
 
     private function completeSuccessState(): void
     {
-        $deposit = $this->pickup->deposit()->first();
+        $this->loadReceipt();
+        $this->evidence = null;
+        session()->flash('success', 'Penjemputan selesai dan setoran aktual telah dibuat.');
+    }
+
+    private function loadReceipt(): void
+    {
+        $deposit = $this->pickup->status === PickupStatus::Completed
+            ? $this->pickup->deposit()->where('pickup_request_id', $this->pickup->id)->first()
+            : null;
         if ($deposit instanceof Deposit) {
             $this->pickup->setRelation('deposit', $deposit);
         }
-        $this->receipt = $deposit instanceof Deposit
-            ? ['number' => (string) $deposit->deposit_number, 'value' => (int) $deposit->total_value, 'occurredAt' => $deposit->occurred_at->setTimezone('Asia/Jakarta')->translatedFormat('d F Y, H:i'), 'status' => (string) $deposit->status]
+        $this->receipt = $deposit instanceof Deposit && $deposit->isFinal()
+            ? ['number' => (string) $deposit->deposit_number, 'value' => $deposit->effectiveTotalValue(), 'occurredAt' => $deposit->occurred_at->setTimezone('Asia/Jakarta')->translatedFormat('d F Y, H:i'), 'status' => (string) $deposit->status]
             : null;
-        $this->evidence = null;
-        session()->flash('success', 'Penjemputan selesai dan setoran aktual telah dibuat.');
     }
 
     /** @return array<string, list<string|\Closure>> */
