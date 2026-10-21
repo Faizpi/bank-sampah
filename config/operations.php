@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 return [
     'deployment' => [
+        'layout' => env('DEPLOYMENT_LAYOUT', 'standard'),
         'release_root' => env('DEPLOYMENT_RELEASE_ROOT', base_path()),
         'document_root' => env('DEPLOYMENT_DOCUMENT_ROOT', public_path()),
         'vite_manifest' => env('VITE_MANIFEST_PATH', public_path('build/manifest.json')),
         'exposed_paths' => array_values(array_filter(explode(',', (string) env('DEPLOYMENT_EXPOSED_PATHS', '')))),
+    ],
+    'hosting_demo' => [
+        'enabled' => (bool) env('HOSTING_DEMO_INSTALL_ENABLED', false),
+        'database' => env('HOSTING_DEMO_DATABASE', ''),
     ],
     'queue' => [
         'worker_mode' => env('OPERATIONS_QUEUE_WORKER_MODE', 'none'),

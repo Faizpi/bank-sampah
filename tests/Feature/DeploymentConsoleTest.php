@@ -70,6 +70,7 @@ it('provides focused read-only diagnostics for hosted deployment failures', func
         ->and($console)->toContain("str_contains(\$assetContents, 'compressed-upload-v2')")
         ->and($console)->toContain("str_contains(\$assetContents, 'Mengompres foto')")
         ->and($console)->toContain('isDownForMaintenance')
+        ->and($console)->toContain("'Landing photo assets current' => deployLandingPhotosAreCurrent(\$projectPath)")
         ->and($console)->toContain("config('session.driver')")
         ->and($console)->toContain('$kernel->bootstrap()')
         ->and($console)->toContain("config('session.table', 'sessions')")
@@ -102,6 +103,7 @@ it('provides practical bounded maintenance actions without worker daemon control
         ->and($console)->toContain("['view:cache', []]")
         ->and($console)->toContain("['down', ['--retry' => 60]]")
         ->and($console)->toContain("['up', []]")
+        ->and($console)->toContain("['filament:clear-cached-components', []]")
         ->and($console)->toContain("['schedule:list', []]")
         ->and($console)->toContain("['schedule:run', []]")
         ->and($console)->not->toContain("['queue:work'")
@@ -134,26 +136,30 @@ it('shows confirmation controls only when the selected action is dangerous', fun
         ->and($console)->toContain('confirmationInput.required = confirmationPhrase !==');
 });
 
-it('keeps arbitrary Tinker disabled by default behind the existing deploy token gate', function (): void {
+it('limits the temporary console to four primary actions without arbitrary code execution', function (): void {
     $console = file_get_contents(base_path('public/deploy.php'));
 
     expect($console)->not->toBeFalse()
-        ->and($console)->toContain("deployConsoleEnvironment('DEPLOY_CONSOLE_TINKER_ENABLED') === 'true'")
-        ->and($console)->toContain("'tinker' => [")
-        ->and($console)->toContain("'confirmation' => 'RUN ARBITRARY TINKER CODE'")
-        ->and($console)->toContain('if (! hash_equals($configuredToken, $submittedToken))')
-        ->and(strpos((string) $console, 'if (! hash_equals($configuredToken, $submittedToken))'))->toBeLessThan(strpos((string) $console, '$selectedAction === \'tinker\''));
+        ->and($console)->toContain("\$quickActions = ['deployment-readiness', 'hosting-demo-reset', 'release', 'maintenance-up'];")
+        ->and($console)->toContain('<details')
+        ->and($console)->not->toContain("'tinker' => [")
+        ->and($console)->not->toContain('tinker_code')
+        ->and($console)->not->toContain('DEPLOY_CONSOLE_TINKER_ENABLED')
+        ->and($console)->toContain('Hapus <strong>deploy.php</strong> setelah selesai.');
 });
 
-it('invokes confirmed bounded Tinker source through an Artisan option without repopulating it', function (): void {
+it('requires a strong token CSRF and explicit target backup and reset confirmation', function (): void {
     $console = file_get_contents(base_path('public/deploy.php'));
 
     expect($console)->not->toBeFalse()
-        ->and($console)->toContain('DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH')
-        ->and($console)->toContain('mb_strlen($tinkerCode) > DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH')
-        ->and($console)->toContain("(string) (\$_POST['confirm_tinker'] ?? '')")
-        ->and($console)->toContain("(string) (\$_POST['tinker_code'] ?? '')")
-        ->and($console)->toContain("\$kernel->call('tinker', ['--execute' => \$tinkerCode])")
-        ->and($console)->not->toContain('name="tinker_code" value=')
-        ->and($console)->not->toContain('<?= escapeDeployConsole($tinkerCode) ?>');
+        ->and($console)->toContain('strlen($configuredToken) < 32')
+        ->and($console)->toContain('Dotenv::create(Env::getRepository(), $projectPath)->safeLoad()')
+        ->and($console)->toContain('if (! hash_equals($configuredToken, $submittedToken))')
+        ->and($console)->toContain("hash_equals(\$csrfToken, (string) (\$_POST['csrf_token'] ?? ''))")
+        ->and($console)->toContain("'confirmation' => 'INSTALL HOSTING DUMMY'")
+        ->and($console)->toContain("\$parameters['--database'] = (string) (\$_POST['target_database'] ?? '')")
+        ->and($console)->toContain("\$parameters['--backup-confirmed'] = (\$_POST['backup_confirmed'] ?? '') === 'yes'")
+        ->and($console)->toContain("'httponly' => true, 'samesite' => 'Strict'")
+        ->and($console)->toContain('Gunakan HTTPS untuk konsol deployment.')
+        ->and($console)->not->toContain('<?= escapeDeployConsole($submittedToken) ?>');
 });

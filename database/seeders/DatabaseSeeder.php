@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Domain\CustomersRegions\Contracts\QrToken;
 use App\Domain\Identity\Enums\UserStatus;
-use App\Domain\Identity\Models\CustomerProfile;
 use App\Models\User;
 use App\Support\Auth\Username;
 use App\Support\Seeding\MasterData;
+use App\Support\Seeding\MasterDataImporter;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -33,28 +32,7 @@ final class DatabaseSeeder extends Seeder
         $master = app()->bound(MasterData::class)
             ? app(MasterData::class)
             : MasterData::read((string) config('app.master_seed_path'));
-        DB::transaction(function () use ($master): void {
-            foreach ([...array_keys(MasterData::COLUMNS), 'deposits', 'ledger_entries', 'balance_holds', 'pickup_requests', 'withdrawal_requests', 'grocery_redemptions'] as $table) {
-                if (DB::table($table)->exists()) {
-                    throw new LogicException('Seed utama hanya untuk database kosong. Data yang ada tidak akan ditimpa; backup dan gunakan reset lokal yang eksplisit.');
-                }
-            }
-            // Use canonical dependency order, not the order of JSON keys.
-            foreach (array_keys(MasterData::COLUMNS) as $table) {
-                if ($master->tables[$table] !== []) {
-                    DB::table($table)->insert($master->tables[$table]);
-                }
-            }
-            // Source QR ciphertext belongs to another APP_KEY and must never be reused.
-            foreach (CustomerProfile::query()->get() as $profile) {
-                $token = QrToken::generate();
-                $profile->forceFill([
-                    'qr_token_hash' => $token->hash(),
-                    'qr_token_encrypted' => $token->value(),
-                    'qr_rotated_at' => now(),
-                ])->save();
-            }
-        });
+        app(MasterDataImporter::class)->install($master);
         $this->command?->info('Data utama pengguna/wilayah/sampah/harga selesai; transaksi lama tidak diimpor.');
     }
 

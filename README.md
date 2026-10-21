@@ -53,7 +53,7 @@ Laravel 13, PHP 8.3+, MySQL 8.0.30-compatible/InnoDB, Livewire 4, Filament 5, Ta
 
 Hanya ada satu seeder aplikasi: `DatabaseSeeder`. Sumber lokal terbaru memuat 26 akun (20 Warga, 3 Petugas, 1 Bendahara, 2 Admin), 5 RW, 19 RT, penugasan, 4 jenis sampah, dan 4 harga. Superadmin lama menjadi Admin; username dan hash kata sandi sumber dipertahankan. QR dibuat ulang dengan kunci lokal. Transaksi, saldo, sesi, notifikasi, lampiran, dan paket sembako lama tidak diimpor.
 
-Data akun/alamat dan hash kata sandi disimpan privat di `database/data/master-data.json`, diabaikan Git. Akun contoh untuk tes hanya berada di `tests/Fixtures`; tidak dipanggil seeder aplikasi. Tombol isi cepat demo hanya muncul untuk akun sintetis yang benar-benar cocok, bukan semua akun hasil impor. Di production, seeder hanya bootstrap Admin awal sesuai konfigurasi, tanpa mengimpor dataset lokal.
+Data akun/alamat dan hash kata sandi disimpan privat di `database/data/master-data.json`, diabaikan Git. Akun contoh untuk tes hanya berada di `tests/Fixtures`; tidak dipanggil seeder aplikasi. Tombol isi cepat demo hanya muncul untuk akun sintetis yang benar-benar cocok, bukan semua akun hasil impor. Di production, seeder biasa hanya bootstrap Admin awal sesuai konfigurasi. Update **hosting dummy lama** melalui File Manager menggunakan installer sementara yang diaktifkan eksplisit; lihat [panduan cPanel dan daftar upload](docs/HOSTING_CPANEL_2026-10-20.md). Installer bukan jalur reset untuk data operasional.
 
 ### Reset baseline dummy yang sudah ada
 

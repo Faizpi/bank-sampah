@@ -18,7 +18,8 @@ final class DeploymentTopologyValidator
         $appUrl = (string) config('app.url', '');
         $sessionSecure = (bool) config('session.secure', false);
 
-        if ($documentRoot !== $publicRoot) {
+        $splitLayout = config('operations.deployment.layout', 'standard') === 'split';
+        if ($splitLayout ? ! $this->validSplitRoot($releaseRoot, $documentRoot, $publicRoot) : $documentRoot !== $publicRoot) {
             $issues[] = 'document_root_outside_public';
         }
         if (config('app.env') !== 'production') {
@@ -50,6 +51,32 @@ final class DeploymentTopologyValidator
         }
 
         return new DeploymentValidationResult(array_values(array_unique($issues)));
+    }
+
+    private function validSplitRoot(string $releaseRoot, string $documentRoot, string $sourcePublic): bool
+    {
+        $release = realpath($releaseRoot);
+        $document = realpath($documentRoot);
+        if ($release === false || $document === false || $release === $document
+            || str_starts_with($release.DIRECTORY_SEPARATOR, $document.DIRECTORY_SEPARATOR)
+            || str_starts_with($document.DIRECTORY_SEPARATOR, $release.DIRECTORY_SEPARATOR)) {
+            return false;
+        }
+        // The sibling public_html must use this exact release's front controller and manifest.
+        foreach (['index.php', 'build/manifest.json'] as $file) {
+            if (! is_file($sourcePublic.'/'.$file) || ! is_file($document.'/'.$file)
+                || ! is_readable($sourcePublic.'/'.$file) || ! is_readable($document.'/'.$file)
+                || hash_file('sha256', $sourcePublic.'/'.$file) !== hash_file('sha256', $document.'/'.$file)) {
+                return false;
+            }
+        }
+        foreach (['.env', '.git', 'app', 'bootstrap', 'config', 'database', 'storage', 'vendor', 'artisan', 'composer.json'] as $sensitive) {
+            if (file_exists($document.'/'.$sensitive)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function hasExposedSensitivePath(): bool

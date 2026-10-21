@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Dotenv\Dotenv;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Env;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -40,7 +41,7 @@ chdir($projectPath);
 require $projectPath.'/vendor/autoload.php';
 
 // Read the deployment token even when Laravel config has already been cached.
-Dotenv::createImmutable($projectPath)->safeLoad();
+Dotenv::create(Env::getRepository(), $projectPath)->safeLoad();
 
 /** @var Application $app */
 $app = require $projectPath.'/bootstrap/app.php';
@@ -121,10 +122,46 @@ function deployFrontendAssetIsCurrent(string $projectPath): bool
 
     $assetContents = file_get_contents($assetPath);
 
+    if (config('operations.deployment.layout') === 'split') {
+        $servedBuild = realpath((string) config('operations.deployment.document_root').'/build');
+        if ($servedBuild === false || ! is_file($servedBuild.'/manifest.json')
+            || hash_file('sha256', $manifestPath) !== hash_file('sha256', $servedBuild.'/manifest.json')) {
+            return false;
+        }
+        foreach ($manifest as $entry) {
+            if (! is_array($entry) || ! is_array($entry['css'] ?? []) || ! is_array($entry['assets'] ?? [])) {
+                return false;
+            }
+            foreach ([$entry['file'] ?? null, ...($entry['css'] ?? []), ...($entry['assets'] ?? [])] as $file) {
+                if (! is_string($file) || str_contains($file, '..') || str_starts_with($file, '/')
+                    || ! is_file($buildPath.'/'.$file) || ! is_file($servedBuild.'/'.$file)
+                    || hash_file('sha256', $buildPath.'/'.$file) !== hash_file('sha256', $servedBuild.'/'.$file)) {
+                    return false;
+                }
+            }
+        }
+    }
+
     return is_string($assetContents)
         && str_contains($assetContents, 'data-photo-picker-input')
         && str_contains($assetContents, 'compressed-upload-v2')
         && str_contains($assetContents, 'Mengompres foto');
+}
+
+function deployLandingPhotosAreCurrent(string $projectPath): bool
+{
+    $source = $projectPath.'/public/images/landing';
+    $served = (string) config('operations.deployment.document_root', $projectPath.'/public').'/images/landing';
+    foreach (range(1, 7) as $number) {
+        $file = '/'.$number.'.jpg';
+        if (! is_file($source.$file) || ! is_readable($source.$file)
+            || ! is_file($served.$file) || ! is_readable($served.$file)
+            || hash_file('sha256', $source.$file) !== hash_file('sha256', $served.$file)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function deployReadinessStatus(string $projectPath, Application $app): string
@@ -135,11 +172,20 @@ function deployReadinessStatus(string $projectPath, Application $app): string
     $requirements = [
         'PHP >= 8.3' => version_compare(PHP_VERSION, '8.3.0', '>='),
         'pdo_mysql extension' => extension_loaded('pdo_mysql'),
+        'intl extension' => extension_loaded('intl'),
+        'zip extension' => extension_loaded('zip'),
+        'fileinfo extension' => extension_loaded('fileinfo'),
+        'OpenSSL extension' => extension_loaded('openssl'),
+        'DOM/XMLReader extensions' => extension_loaded('dom') && extension_loaded('xmlreader'),
+        'GD image processing' => extension_loaded('gd'),
+        'production environment' => config('app.env') === 'production',
+        'debug disabled' => config('app.debug') === false,
+        'APP_KEY configured' => is_string(config('app.key')) && config('app.key') !== '',
         'Vite app asset current' => deployFrontendAssetIsCurrent($projectPath),
+        'Landing photo assets current' => deployLandingPhotosAreCurrent($projectPath),
         'storage writable' => is_writable($projectPath.'/storage'),
         'views writable' => is_writable($projectPath.'/storage/framework/views'),
         'cache path writable' => is_writable($projectPath.'/bootstrap/cache'),
-        'maintenance disabled' => ! $app->isDownForMaintenance(),
         'database connection' => false,
         'session-table' => false,
         'cache-table' => false,
@@ -166,6 +212,7 @@ function deployReadinessStatus(string $projectPath, Application $app): string
     foreach ($requirements as $label => $passes) {
         $lines[] = sprintf('[%s] %s', $passes ? 'OK' : 'FAIL', $label);
     }
+    $lines[] = '[INFO] Maintenance: '.($app->isDownForMaintenance() ? 'aktif; buka setelah pemeriksaan' : 'tidak aktif');
 
     return implode("\n", $lines);
 }
@@ -213,9 +260,9 @@ function latestDeployLogLines(string $logFile, int $lineLimit = 200): string
 
 $configuredToken = deployConsoleEnvironment('DEPLOY_CONSOLE_TOKEN');
 
-if ($configuredToken === '') {
+if (strlen($configuredToken) < 32) {
     http_response_code(503);
-    exit('Deploy console is disabled. Set DEPLOY_CONSOLE_TOKEN in the private .env file to enable it.');
+    exit('Deploy console is disabled. Set DEPLOY_CONSOLE_TOKEN (32+ characters) in the private .env file to enable it.');
 }
 
 $allowedIps = array_values(array_filter(array_map(
@@ -228,6 +275,22 @@ if ($allowedIps !== [] && ! in_array((string) ($_SERVER['REMOTE_ADDR'] ?? ''), $
     exit('This IP address is not authorised to use the deploy console.');
 }
 
+$https = ! empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+if (! $https && ! in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true)) {
+    http_response_code(403);
+    exit('Gunakan HTTPS untuk konsol deployment.');
+}
+session_name('bank_sampah_deploy');
+session_set_cookie_params(['secure' => $https, 'httponly' => true, 'samesite' => 'Strict']);
+if (! session_start()) {
+    http_response_code(503);
+    exit('Sesi konsol tidak tersedia.');
+}
+if (! is_string($_SESSION['deploy_csrf'] ?? null)) {
+    $_SESSION['deploy_csrf'] = bin2hex(random_bytes(32));
+}
+$csrfToken = $_SESSION['deploy_csrf'];
+
 header('Cache-Control: no-store, private');
 header('Pragma: no-cache');
 header('Referrer-Policy: no-referrer');
@@ -235,13 +298,6 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 $cspNonce = base64_encode(random_bytes(18));
 header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; script-src 'nonce-{$cspNonce}'; font-src https://fonts.gstatic.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
-
-$configuredTinkerCodeLength = filter_var(
-    deployConsoleEnvironment('DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH'),
-    FILTER_VALIDATE_INT,
-    ['options' => ['min_range' => 1, 'max_range' => 12000]],
-);
-define('DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH', is_int($configuredTinkerCodeLength) ? $configuredTinkerCodeLength : 4000);
 
 $actionGroups = [
     'diagnostics' => 'Diagnostik read-only',
@@ -286,6 +342,19 @@ $actions = [
             ['migrate:status', []],
         ],
     ],
+    'hosting-demo-preview' => [
+        'label' => 'Cek data dummy sebelum dipasang',
+        'description' => 'Validasi sumber privat dan database sasaran tanpa mengubah data.',
+        'group' => 'data', 'risk' => 'read-only',
+        'commands' => [['app:install-hosting-demo', ['--dry-run' => true]]],
+    ],
+    'hosting-demo-reset' => [
+        'label' => 'Reset & isi data dummy',
+        'description' => 'Hapus database dummy yang dikonfirmasi, buat skema terbaru, lalu isi pengguna, wilayah, sampah dan harga dari sumber privat. Bukan untuk data operasional.',
+        'group' => 'destructive', 'risk' => 'dangerous',
+        'confirmation' => 'INSTALL HOSTING DUMMY',
+        'commands' => [['app:install-hosting-demo', ['--reset' => true]]],
+    ],
     'migrate' => [
         'label' => 'Jalankan migrasi biasa',
         'description' => 'Menerapkan migration yang tertunda tanpa menghapus tabel atau data yang sudah ada.',
@@ -303,10 +372,17 @@ $actions = [
         'commands' => [
             ['migrate', ['--force' => true]],
             ['optimize:clear', []],
+            ['filament:clear-cached-components', []],
             ['config:cache', []],
             ['route:cache', []],
             ['view:cache', []],
         ],
+    ],
+    'clear-config' => [
+        'label' => 'Baca ulang .env',
+        'description' => 'Hapus cache konfigurasi setelah .env diperbarui. Pilihan berikutnya membaca konfigurasi baru.',
+        'group' => 'maintenance', 'risk' => 'routine',
+        'commands' => [['config:clear', []]],
     ],
     'clear-cache' => [
         'label' => 'Kosongkan cache aplikasi',
@@ -354,7 +430,7 @@ $actions = [
         ],
     ],
     'maintenance-up' => [
-        'label' => 'Nonaktifkan maintenance',
+        'label' => 'Buka website',
         'description' => 'Membuka aplikasi kembali dari mode maintenance.',
         'group' => 'maintenance',
         'risk' => 'routine',
@@ -401,23 +477,10 @@ $actions = [
     ],
 ];
 
-if (deployConsoleEnvironment('DEPLOY_CONSOLE_TINKER_ENABLED') === 'true') {
-    $tinkerAction = [
-        'tinker' => [
-            'label' => 'Jalankan kode Tinker arbitrer',
-            'description' => 'Sangat berbahaya: menjalankan kode PHP dalam konteks aplikasi production.',
-            'group' => 'destructive',
-            'risk' => 'dangerous',
-            'confirmation' => 'RUN ARBITRARY TINKER CODE',
-            'commands' => [],
-        ],
-    ];
-    $actions += $tinkerAction;
-}
-
 $results = [];
 $message = null;
-$selectedAction = (string) ($_POST['action'] ?? 'status');
+$selectedAction = (string) ($_POST['action'] ?? 'deployment-readiness');
+$quickActions = ['deployment-readiness', 'hosting-demo-reset', 'release', 'maintenance-up'];
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $submittedToken = (string) ($_POST['token'] ?? '');
@@ -425,52 +488,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if (! hash_equals($configuredToken, $submittedToken)) {
         http_response_code(403);
         $message = ['error', 'Token deploy tidak valid.'];
+    } elseif (! hash_equals($csrfToken, (string) ($_POST['csrf_token'] ?? ''))) {
+        http_response_code(419);
+        $message = ['error', 'Halaman kedaluwarsa. Muat ulang konsol dan coba kembali.'];
     } elseif (! isset($actions[$selectedAction])) {
         http_response_code(422);
         $message = ['error', 'Aksi deployment tidak dikenal.'];
-    } elseif ($selectedAction === 'tinker' && ! hash_equals(
-        $actions[$selectedAction]['confirmation'],
-        (string) ($_POST['confirm_tinker'] ?? ''),
-    )) {
-        http_response_code(422);
-        $message = ['error', 'Konfirmasi kode Tinker berbahaya belum tepat.'];
-    } elseif ($selectedAction === 'tinker') {
-        $tinkerCode = (string) ($_POST['tinker_code'] ?? '');
-
-        if (trim($tinkerCode) === '') {
-            http_response_code(422);
-            $message = ['error', 'Kode Tinker tidak boleh kosong.'];
-        } elseif (mb_strlen($tinkerCode) > DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH) {
-            http_response_code(422);
-            $message = ['error', 'Kode Tinker melebihi batas yang diizinkan.'];
-        } else {
-            /** @var Kernel $kernel */
-            $kernel = $app->make(Kernel::class);
-            $startedAt = microtime(true);
-
-            try {
-                $exitCode = $kernel->call('tinker', ['--execute' => $tinkerCode]);
-                $output = $kernel->output();
-                $results[] = [
-                    'command' => 'tinker',
-                    'success' => $exitCode === 0,
-                    'output' => $output === '' ? '(Tidak ada output.)' : $output,
-                    'duration' => microtime(true) - $startedAt,
-                ];
-                $message = $exitCode === 0
-                    ? ['success', 'Kode Tinker selesai dijalankan.']
-                    : ['error', 'Kode Tinker gagal dijalankan.'];
-            } catch (Throwable $exception) {
-                report($exception);
-                $results[] = [
-                    'command' => 'tinker',
-                    'success' => false,
-                    'output' => deployConsoleFailureMessage($exception)."\n\nPeriksa log aplikasi melalui aksi Lihat log aplikasi untuk detail internal.",
-                    'duration' => microtime(true) - $startedAt,
-                ];
-                $message = ['error', 'Kode Tinker gagal dijalankan.'];
-            }
-        }
     } elseif (isset($actions[$selectedAction]['confirmation']) && ! hash_equals(
         $actions[$selectedAction]['confirmation'],
         (string) ($_POST['confirm_reset'] ?? ''),
@@ -507,6 +530,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $kernel = $app->make(Kernel::class);
 
         foreach ($actions[$selectedAction]['commands'] as [$command, $parameters]) {
+            if (in_array($selectedAction, ['hosting-demo-preview', 'hosting-demo-reset'], true)) {
+                $parameters['--database'] = (string) ($_POST['target_database'] ?? '');
+                if ($selectedAction === 'hosting-demo-reset') {
+                    $parameters['--backup-confirmed'] = ($_POST['backup_confirmed'] ?? '') === 'yes';
+                    $parameters['--confirm'] = (string) ($_POST['confirm_reset'] ?? '');
+                }
+            }
             $startedAt = microtime(true);
 
             try {
@@ -555,8 +585,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 </head>
 <body>
 <main>
-    <h1>Deploy workspace</h1>
-    <p>Console terbatas untuk <strong>Bank Sampah Sindangheula</strong>. Pilih satu aksi yang sesuai; log tetap tersedia untuk dibaca, tetapi tidak bisa dihapus dari sini.</p>
+    <h1>Deployment Bank Sampah</h1>
+    <p>Cek kesiapan → reset &amp; isi data dummy → selesaikan deployment → buka website. Hapus <strong>deploy.php</strong> setelah selesai.</p>
+    <p class="muted">Pertahankan .env dan APP_KEY hosting. Backup sebelum reset; izin dummy dinyalakan sementara melalui .env, bukan APP_ENV=local.</p>
     <p class="muted">Project: <?= escapeDeployConsole($projectPath) ?></p>
 
     <?php if ($message !== null) { ?>
@@ -564,19 +595,33 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     <?php } ?>
 
     <form method="post" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="<?= escapeDeployConsole($csrfToken) ?>">
         <label for="token">Token deploy</label>
         <input id="token" name="token" type="password" required autocomplete="current-password">
 
         <div style="margin-top:18px">
             <label>Pilih aksi</label>
-            <?php foreach ($actionGroups as $group => $groupLabel) { ?>
+            <div class="action-grid">
+                <?php foreach ($quickActions as $key) {
+                    $action = $actions[$key]; ?>
+                    <label class="action-card" data-risk="<?= escapeDeployConsole($action['risk']) ?>">
+                        <input type="radio" name="action" value="<?= escapeDeployConsole($key) ?>" data-confirmation="<?= escapeDeployConsole($action['confirmation'] ?? '') ?>" <?= $selectedAction === $key ? 'checked' : '' ?> required>
+                        <span><strong><?= escapeDeployConsole($action['label']) ?></strong><span><?= escapeDeployConsole($action['description']) ?></span></span>
+                    </label>
+                <?php } ?>
+            </div>
+            <details style="margin-top:18px" <?= in_array($selectedAction, $quickActions, true) ? '' : 'open' ?>>
+            <summary>Aksi tambahan: pratinjau data, baca ulang .env, log, dan maintenance</summary>
+            <?php foreach ($actionGroups as $group => $groupLabel) {
+                $groupActions = array_filter($actions, static fn (array $action, string $key): bool => $action['group'] === $group && ! in_array($key, $quickActions, true), ARRAY_FILTER_USE_BOTH);
+                if ($groupActions === []) {
+                    continue;
+                }
+                ?>
                 <fieldset class="action-group" data-group="<?= escapeDeployConsole($group) ?>">
                     <legend><?= escapeDeployConsole($groupLabel) ?></legend>
                     <div class="action-grid">
-                        <?php foreach ($actions as $key => $action) { ?>
-                            <?php if ($action['group'] !== $group) {
-                                continue;
-                            } ?>
+                        <?php foreach ($groupActions as $key => $action) { ?>
                             <label class="action-card" data-risk="<?= escapeDeployConsole($action['risk']) ?>">
                                 <input type="radio" name="action" value="<?= escapeDeployConsole($key) ?>" data-confirmation="<?= escapeDeployConsole($action['confirmation'] ?? '') ?>" <?= $selectedAction === $key ? 'checked' : '' ?> required>
                                 <span><strong><?= escapeDeployConsole($action['label']) ?></strong><span><?= escapeDeployConsole($action['description']) ?></span></span>
@@ -585,6 +630,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     </div>
                 </fieldset>
             <?php } ?>
+            </details>
         </div>
 
         <div class="confirmation" hidden>
@@ -593,15 +639,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             <small>Tindakan ini dapat menghapus atau menambahkan data. Pastikan database yang dipilih benar.</small>
         </div>
 
-        <?php if (isset($actions['tinker'])) { ?>
-            <div class="confirmation tinker-fields" hidden>
-                <label for="tinker_code">Kode Tinker</label>
-                <textarea id="tinker_code" name="tinker_code" rows="8" maxlength="<?= DEPLOY_CONSOLE_MAX_TINKER_CODE_LENGTH ?>" autocomplete="off" spellcheck="false"></textarea>
-                <label for="confirm_tinker">Ketik <strong>RUN ARBITRARY TINKER CODE</strong> untuk melanjutkan</label>
-                <input id="confirm_tinker" name="confirm_tinker" type="text" autocomplete="off">
-                <small>Bahaya: kode ini berjalan dengan akses aplikasi production. Jangan aktifkan tanpa <code>DEPLOY_CONSOLE_TINKER_ENABLED=true</code> pada .env privat. Kode yang dikirim tidak ditampilkan kembali.</small>
-            </div>
-        <?php } ?>
+        <div class="hosting-fields" hidden style="margin-top:14px">
+            <label for="target_database">Nama database hosting (ketik persis dari DB_DATABASE)</label>
+            <input id="target_database" name="target_database" type="text" autocomplete="off" maxlength="64">
+            <label class="backup-check" hidden><input type="checkbox" name="backup_confirmed" value="yes"> Saya sudah menyimpan backup database, .env, dan berkas hosting.</label>
+        </div>
+
 
         <button type="submit">Jalankan aksi</button>
     </form>
@@ -611,24 +654,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         const confirmation = document.querySelector('.confirmation');
         const confirmationInput = document.querySelector('#confirm_reset');
         const confirmationLabel = document.querySelector('[data-confirmation-phrase]');
-        const tinkerFields = document.querySelector('.tinker-fields');
-        const tinkerCode = document.querySelector('#tinker_code');
-        const tinkerConfirmation = document.querySelector('#confirm_tinker');
+        const hostingFields = document.querySelector('.hosting-fields');
+        const databaseInput = document.querySelector('#target_database');
+        const backupCheck = document.querySelector('.backup-check');
+        const backupInput = document.querySelector('[name="backup_confirmed"]');
         const updateConfirmation = () => {
             const selected = document.querySelector('input[name="action"]:checked');
             const confirmationPhrase = selected?.dataset.confirmation ?? '';
-            const isTinker = selected?.value === 'tinker';
-            confirmation.hidden = confirmationPhrase === '' || isTinker;
-            confirmationInput.required = confirmationPhrase !== '' && !isTinker;
+            confirmation.hidden = confirmationPhrase === '';
+            confirmationInput.required = confirmationPhrase !== '';
             confirmationInput.value = '';
             confirmationLabel.textContent = confirmationPhrase;
-            if (tinkerFields !== null && tinkerCode !== null && tinkerConfirmation !== null) {
-                tinkerFields.hidden = !isTinker;
-                tinkerCode.required = isTinker;
-                tinkerConfirmation.required = isTinker;
-                tinkerCode.value = '';
-                tinkerConfirmation.value = '';
-            }
+            const isHosting = ['hosting-demo-preview', 'hosting-demo-reset'].includes(selected?.value);
+            const isReset = selected?.value === 'hosting-demo-reset';
+            hostingFields.hidden = !isHosting;
+            databaseInput.required = isHosting;
+            backupCheck.hidden = !isReset;
+            backupInput.required = isReset;
+            backupInput.checked = false;
         };
         actionInputs.forEach((input) => input.addEventListener('change', updateConfirmation));
         updateConfirmation();

@@ -49,6 +49,8 @@ php artisan app:reset-demo-baseline --confirm-reset-demo
 
 Tanpa dry-run schema/data dummy dan folder media dummy diganti. Jangan gunakan untuk produksi/data nyata. Untuk produksi `DatabaseSeeder` hanya melakukan bootstrap Admin awal dari konfigurasi privat dan tidak menaikkan hak/menonaktifkan ulang akun yang sudah ada.
 
+Untuk **hosting dummy lama yang belum dipakai**, tersedia installer sementara berkonfirmasi yang memakai importer yang sama, tanpa mengubah aturan `db:seed` produksi biasa. Ikuti [panduan hosting cPanel](HOSTING_CPANEL_2026-10-20.md). Reset hosting tidak menyalin transaksi/database lokal dan tidak menghapus berkas media; foto katalog/paket yang dibuat melalui panel perlu dipasang kembali sesudah reset. Izin installer dinonaktifkan secara default dan harus dimatikan kembali setelah selesai.
+
 ## Alamat: bukti dan batas
 
 Alamat pada sumber diperiksa terhadap RT/RW terpilih: tidak ditemukan pertentangan pada 17 alamat Warga yang mencantumkan nomor RT/RW. Tiga alamat lainnya tidak memiliki kedua nomor itu dalam teks; wilayah terstruktur tetap ada. Seluruh 19 RT tercakup area layanan. Ini pemeriksaan konsistensi data, bukan verifikasi kunjungan rumah.
