@@ -29,6 +29,33 @@ final class PublicLandingPageTest extends TestCase
         $this->get(route('login'))->assertOk();
     }
 
+    public function test_admin_access_is_a_full_width_white_button_with_a_green_border(): void
+    {
+        $html = $this->get(route('login'))->assertOk()->getContent();
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
+        $xpath = new \DOMXPath($document);
+        $links = $xpath->query('//a[@href="'.route('filament.backoffice.auth.login').'"]');
+        self::assertSame(1, $links->length);
+        $link = $links->item(0);
+        self::assertStringContainsString('Akses Panel Admin', $link->textContent);
+        foreach (['w-full', 'min-h-touch', 'border-2', 'border-forest-600', 'bg-surface', 'text-forest-700', 'focus-visible:ring-2'] as $class) {
+            self::assertContains($class, explode(' ', $link->getAttribute('class')));
+        }
+        self::assertNotContains('underline', explode(' ', $link->getAttribute('class')));
+    }
+
+    public function test_all_seven_hero_photos_refer_to_existing_readable_jpegs(): void
+    {
+        $response = $this->get(route('home'))->assertOk();
+        foreach (range(1, 7) as $number) {
+            $path = 'images/landing/'.$number.'.jpg';
+            $response->assertSee('src="'.asset($path).'"', false);
+            self::assertFileIsReadable(public_path($path));
+            self::assertSame('image/jpeg', getimagesize(public_path($path))['mime']);
+        }
+    }
+
     public function test_public_copy_has_no_internal_notes_or_repeated_price_explanations(): void
     {
         $this->get(route('home'))->assertOk()

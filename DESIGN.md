@@ -39,6 +39,8 @@ Gunakan komponen Blade ui yang ada. Antrean dipaginasi, hasil pencarian warga ti
 
 Landing menambah empat kartu ringkasan hijau: Warga aktif, Petugas aktif, setoran tercatat, dan kg terkumpul; empat kolom desktop, dua pada ponsel. Tidak memakai istilah Driver atau mengartikan penugasan sebagai status online. Bagian sampah memakai kartu foto 4:3 dan harga aktif. `public.waste-card`/`public.waste-photo` serta `PublicWasteCatalog` dipakai bersama oleh landing, katalog, dan harga. Foto kosong/gagal harus diberi keterangan, bukan foto palsu. Aksi Foto Admin tidak meminta perubahan harga atau kondisi.
 
+Penyempurnaan 21 Oktober 2026: tautan Akses Panel Admin pada login tampil sebagai tombol sekunder selebar tombol Masuk ke Akun, dengan latar putih, teks/border hijau, target sentuh dan fokus keyboard yang jelas. Gunakan token yang sama dengan tombol Daftar Sebagai Warga. Peran tetap dikelola melalui Pengguna; tidak ada CRUD role/permission dinamis. URL lama diarahkan ke Pengguna hanya setelah autentikasi dan pemeriksaan akses Admin.
+
 ## Accessibility
 
 Label, error, loading, fokus, dan accessible name berbahasa Indonesia. Tidak ada aksi sah yang hanya dapat dilakukan melalui kamera, hover, atau warna. Kegagalan validasi terlihat pada field/ringkasan. Target sentuh mengikuti kontrak komponen; pemeriksaan pembaca layar nyata tetap belum boleh diklaim selesai tanpa bukti.

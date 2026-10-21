@@ -2,6 +2,7 @@
 
 use App\Actions\Auth\LogoutUser;
 use App\Domain\Identity\Queries\VisibleUsers;
+use App\Filament\Resources\Identity\Models\Users\UserResource;
 use App\Http\Controllers\GroceryProofController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\LandingController;
@@ -100,6 +101,13 @@ Route::livewire('/verifikasi/setoran/{token}', DepositVerification::class)->midd
 Route::livewire('/daftar', RegisterCitizenForm::class)->middleware(['guest', 'throttle:registration'])->name('register');
 
 Route::livewire('/login', LoginForm::class)->middleware('guest')->name('login');
+
+// Fixed-role cutover: old bookmarks must not query the removed roles/permissions tables.
+Route::get('/backoffice/identity/models/{legacyAccessPage}', static fn (): RedirectResponse => redirect(UserResource::getUrl('index', panel: 'backoffice')))
+    ->whereIn('legacyAccessPage', ['roles', 'permissions'])
+    ->middleware(['auth', 'session.fresh:30', 'permission:backoffice.access'])
+    ->name('backoffice.legacy-access');
+
 Route::post('/logout', function (Request $request, LogoutUser $logoutUser): RedirectResponse {
     $logoutUser->handle($request);
 

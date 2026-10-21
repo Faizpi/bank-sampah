@@ -345,12 +345,12 @@ final class BackofficePanelTest extends TestCase
         self::assertSame(['Kondisi sistem'], $this->navigationLabelsForGroup($panel, 'Administrasi sistem'));
     }
 
-    public function test_backoffice_panel_discovers_only_the_regional_resources(): void
+    public function test_backoffice_panel_registers_only_current_resources_without_scanning_stale_files(): void
     {
         $panel = Filament::getPanel('backoffice');
 
-        self::assertSame([app_path('Filament/Resources')], $panel->getResourceDirectories());
-        self::assertSame(['App\\Filament\\Resources'], $panel->getResourceNamespaces());
+        self::assertSame([], $panel->getResourceDirectories());
+        self::assertSame([], $panel->getResourceNamespaces());
         self::assertEqualsCanonicalizing([
             AnnouncementResource::class,
             CitizenVerificationResource::class,

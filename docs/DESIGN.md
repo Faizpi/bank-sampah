@@ -248,7 +248,7 @@ Filament 5 dengan custom theme. Sidebar dikelompokkan:
 2. **Data Master:** pengguna/nasabah/petugas, wilayah, jenis/kategori/satuan/kondisi, harga, paket.
 3. **Program:** target, layanan keliling, pengumuman, statistik publik/partisipasi.
 4. **Pengawasan:** laporan/ekspor Excel, rekonsiliasi, ledger/hold, dan audit log sesuai permission.
-5. **Keamanan & Akses:** bantuan kata sandi, sesi pengguna, peran, dan izin sesuai permission.
+5. **Keamanan & Akses:** bantuan kata sandi dan sesi pengguna. Empat peran tetap ditetapkan lewat Pengguna; tidak ada menu penyunting role/permission dinamis.
 6. **Administrasi sistem:** Health baca-saja untuk Admin dengan `system.maintenance`; tidak ada item teknis aktif lain.
 
 Sidebar menampilkan item sesuai permission. Tabel admin tidak dipaksakan ke layout kartu pada desktop; mobile memakai list/stack atau horizontal region yang diberi label dan fokus terkelola hanya bila tak terhindarkan.

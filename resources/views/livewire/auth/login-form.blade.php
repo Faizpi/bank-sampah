@@ -118,9 +118,12 @@
                 </div>
             @endif
 
-            <p class="mx-auto mt-6 max-w-form text-center text-caption text-text-secondary">
-                <a href="{{ route('filament.backoffice.auth.login') }}" class="inline-flex items-center rounded-md font-bold text-forest-600 underline underline-offset-4 hover:text-forest-700">Akses Panel Admin</a>
-            </p>
+            <div class="mx-auto mt-4 max-w-form">
+                <a href="{{ route('filament.backoffice.auth.login') }}" class="inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-md border-2 border-forest-600 bg-surface px-5 text-label font-bold text-forest-700 shadow-xs transition duration-180 hover:bg-success-bg active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
+                    <x-public.icon name="layout-dashboard" size="size-5" />
+                    Akses Panel Admin
+                </a>
+            </div>
         </div>
     </section>
 </div>

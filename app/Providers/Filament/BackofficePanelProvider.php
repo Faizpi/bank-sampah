@@ -6,6 +6,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Auth\BackofficeLogin;
 use App\Filament\Auth\Responses\BackofficeLoginResponse;
+use App\Filament\BackofficeResources;
 use App\Http\Middleware\EnsureSessionIsFresh;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Http\Middleware\Authenticate;
@@ -76,7 +77,7 @@ final class BackofficePanelProvider extends PanelProvider
             ->themeSwitcher(false)
             ->maxContentWidth('max-w-[100rem]')
             ->viteTheme('resources/css/filament/backoffice/theme.css')
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
+            ->resources(BackofficeResources::all())
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->navigationGroups([
                 NavigationGroup::make('Operasional'),
