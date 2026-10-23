@@ -1,16 +1,18 @@
 <x-slot:title>Beranda</x-slot:title>
-<x-slot:context>Akun warga</x-slot:context>
+
+<div class="grid gap-6">
 
 {{-- Balance Card --}}
-<x-slot:balance>
-    <div class="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-6">
+<section aria-label="Saldo Anda">
+    <div class="rounded-lg border border-border bg-surface p-5 shadow-xs sm:p-6">
+        <div class="mb-4 flex items-center justify-between gap-4">
+            <h1 id="citizen-dashboard-title" class="min-w-0 break-words text-h2 font-bold text-deep-green">Halo, {{ $actorName }}!</h1>
+            <div class="shrink-0" aria-hidden="true"><x-ui.mascot variant="2" class="size-16" /></div>
+        </div>
         <div class="flex items-start justify-between gap-4">
             <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                    <img src="{{ asset('images/landing/mascot-3.png') }}" alt="" class="size-7 object-contain" aria-hidden="true">
-                    <span class="text-caption font-bold uppercase tracking-wide text-forest-600">Bank Sampah Sindangheula</span>
-                </div>
-                <p class="mt-3 text-caption font-medium text-text-secondary">Saldo tersedia</p>
+
+                <p class="text-body font-medium text-text-secondary">Saldo tersedia</p>
                 @if ($hasLedger)
                     <p class="mt-1 amount-tabular text-amount-lg font-extrabold leading-none text-deep-green">
                         Rp{{ number_format($availableBalance, 0, ',', '.') }}
@@ -26,70 +28,41 @@
         </div>
 
         @if ($hasLedger)
-            <div class="mt-5 grid grid-cols-3 gap-2 border-t border-border pt-4">
-                <div class="rounded-lg bg-warm-canvas px-3 py-2">
-                    <p class="text-caption font-medium text-text-secondary">Tertahan</p>
-                    <p class="mt-0.5 amount-tabular text-label font-bold text-deep-green">Rp{{ number_format($heldBalance, 0, ',', '.') }}</p>
+            <div class="mt-5 grid gap-3 border-t border-border pt-4 sm:grid-cols-3">
+                <div class="flex items-baseline justify-between gap-3 sm:block">
+                    <p class="text-body-sm font-medium text-text-secondary">Tertahan</p>
+                    <p class="mt-0.5 amount-tabular text-body font-bold text-deep-green">Rp{{ number_format($heldBalance, 0, ',', '.') }}</p>
                 </div>
-                <div class="rounded-lg bg-warm-canvas px-3 py-2">
-                    <p class="text-caption font-medium text-text-secondary">Total Masuk</p>
-                    <p class="mt-0.5 amount-tabular text-label font-bold text-forest-700">Rp{{ number_format($totalIn, 0, ',', '.') }}</p>
+                <div class="flex items-baseline justify-between gap-3 sm:block">
+                    <p class="text-body-sm font-medium text-text-secondary">Total Masuk</p>
+                    <p class="mt-0.5 amount-tabular text-body font-bold text-forest-700">Rp{{ number_format($totalIn, 0, ',', '.') }}</p>
                 </div>
-                <div class="rounded-lg bg-warm-canvas px-3 py-2">
-                    <p class="text-caption font-medium text-text-secondary">Total Keluar</p>
-                    <p class="mt-0.5 amount-tabular text-label font-bold text-deep-green">Rp{{ number_format($totalOut, 0, ',', '.') }}</p>
+                <div class="flex items-baseline justify-between gap-3 sm:block">
+                    <p class="text-body-sm font-medium text-text-secondary">Total Keluar</p>
+                    <p class="mt-0.5 amount-tabular text-body font-bold text-deep-green">Rp{{ number_format($totalOut, 0, ',', '.') }}</p>
                 </div>
             </div>
         @endif
     </div>
-</x-slot:balance>
+</section>
 
 {{-- Quick Actions --}}
 
-<x-slot:quickActions>
-    <div>
-        <h2 class="text-label font-bold text-text-secondary mb-3">Tindakan cepat</h2>
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <a href="{{ route('citizen.pickup.create') }}"
-                class="group flex flex-col items-center gap-2.5 rounded-xl border border-border bg-surface p-4 text-center shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-forest-600 hover:shadow-sm">
-                <div class="flex size-11 items-center justify-center rounded-xl bg-success-bg text-forest-600 transition-colors group-hover:bg-forest-600 group-hover:text-white">
-                <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
-            </div>
-                <span class="text-caption font-semibold text-deep-green">Penjemputan</span>
-            </a>
-
-            <a href="{{ $groceryHref }}"
-                class="group flex flex-col items-center gap-2.5 rounded-xl border border-border bg-surface p-4 text-center shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-harvest-gold hover:shadow-sm">
-                <div class="flex size-11 items-center justify-center rounded-xl bg-warning-bg text-harvest-gold transition-colors group-hover:bg-harvest-gold group-hover:text-white">
-                <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
-            </div>
-                <span class="text-caption font-semibold text-deep-green">Tukar Sembako</span>
-            </a>
-
-            <a href="{{ route('citizen.estimate') }}"
-                class="group flex flex-col items-center gap-2.5 rounded-xl border border-border bg-surface p-4 text-center shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-sky-blue hover:shadow-sm">
-                <div class="flex size-11 items-center justify-center rounded-xl bg-info-bg text-sky-blue transition-colors group-hover:bg-sky-blue group-hover:text-white">
-                <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
-            </div>
-                <span class="text-caption font-semibold text-deep-green">Estimasi</span>
-            </a>
-
-            <a href="{{ route('citizen.withdrawal.create') }}"
-                class="group flex flex-col items-center gap-2.5 rounded-xl border border-border bg-surface p-4 text-center shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-harvest-gold hover:shadow-sm">
-                <div class="flex size-11 items-center justify-center rounded-xl bg-warning-bg text-harvest-gold transition-colors group-hover:bg-harvest-gold group-hover:text-deep-green">
-                <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h.01M17 12h.01"/><path d="M12 9v6M10 10.5c.4-.35 1.05-.55 1.8-.55 1.1 0 1.9.45 1.9 1.2 0 1.85-3.65.65-3.65 2.4 0 .75.8 1.2 1.9 1.2.75 0 1.4-.2 1.8-.55"/></svg>
-            </div>
-                <span class="text-caption font-semibold text-deep-green">Cairkan Saldo</span>
-            </a>
-        </div>
+<section aria-labelledby="citizen-quick-actions">
+    <h2 id="citizen-quick-actions" class="mb-3 text-body font-semibold text-text-secondary">Tindakan cepat</h2>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <x-ui.action-card :href="route('citizen.pickup.create')" icon="truck" title="Penjemputan" compact />
+        <x-ui.action-card :href="$groceryHref" icon="package-open" title="Tukar Sembako" compact />
+        <x-ui.action-card :href="route('citizen.estimate')" icon="scale" title="Estimasi" compact />
+        <x-ui.action-card :href="route('citizen.withdrawal.create')" icon="banknote" title="Cairkan Saldo" compact />
     </div>
-</x-slot:quickActions>
+</section>
 
 {{-- Active Requests --}}
-<x-slot:activeRequests>
+<section aria-label="Pengajuan aktif">
     <div>
         <h2 id="pengajuan-aktif" class="text-label font-bold text-text-secondary mb-3">Pengajuan Aktif</h2>
-        @if ($activePickups->isEmpty() && $activeWithdrawals->isEmpty() && $activeGroceries->isEmpty())<p>Tidak ada pengajuan aktif. Pilih menu Layanan saat membutuhkan pelayanan.</p>@endif
+        @if ($activePickups->isEmpty() && $activeWithdrawals->isEmpty() && $activeGroceries->isEmpty())<p>Tidak ada pengajuan aktif.</p>@endif
         <div class="space-y-2">
             @foreach ($activePickups as $pickup)
                 <a href="{{ route('citizen.pickup.show', $pickup) }}" class="flex items-center justify-between rounded-xl border border-border bg-surface p-4 shadow-xs transition hover:border-forest-600 hover:shadow-sm">
@@ -135,10 +108,10 @@
             @endforeach
         </div>
     </div>
-</x-slot:activeRequests>
+</section>
 
 {{-- Recent Deposits --}}
-<x-slot:recentHistory>
+<section aria-label="Setoran terbaru">
     <div>
         <div class="mb-3 flex items-center justify-between">
             <h2 class="text-label font-bold text-text-secondary">Setoran Terbaru</h2>
@@ -148,7 +121,7 @@
             <div class="rounded-xl border border-border bg-surface p-6 text-center shadow-xs">
                 <x-ui.mascot variant="9" class="mx-auto h-20 w-auto" />
                 <p class="mt-3 text-label font-semibold text-deep-green">Belum ada setoran</p>
-                <p class="mt-1 text-caption text-text-secondary">Setoran pertamamu akan muncul di sini.</p>
+
             </div>
         @else
             <div class="divide-y divide-border rounded-xl border border-border bg-surface shadow-xs">
@@ -164,25 +137,5 @@
             </div>
         @endif
     </div>
-</x-slot:recentHistory>
-
-{{-- Welcome Section --}}
-<section aria-labelledby="citizen-dashboard-title"
-    class="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-6">
-    <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-        <div class="space-y-2">
-            <div class="flex items-center gap-2 text-label text-forest-600">
-                <img src="{{ asset('images/landing/mascot-3.png') }}" alt="" class="size-7 object-contain" aria-hidden="true" />
-                <span>Beranda Warga</span>
-            </div>
-            <h1 id="citizen-dashboard-title" class="text-h2 font-bold text-deep-green">
-                Halo, {{ $actorName }}!
-            </h1>
-            <p class="text-body-sm text-text-secondary">Kelola pemilahan sampah dan ajukan layanan dari sini.</p>
-        </div>
-        <div class="flex shrink-0 items-center justify-center">
-            <x-ui.mascot variant="2" bubble="Yuk pilah sampahmu hari ini!" bubblePosition="top"
-                class="h-24 w-auto shrink-0 sm:h-28" animate />
-        </div>
-    </div>
 </section>
+</div>

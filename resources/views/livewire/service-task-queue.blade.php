@@ -1,9 +1,8 @@
 <x-slot:title>{{ $cash ? 'Pembayaran tunai' : 'Layanan sembako' }}</x-slot:title>
-<section class="space-y-6">
-    <h1 class="text-h1 font-bold text-deep-green">{{ $cash ? 'Pembayaran tunai' : 'Layanan sembako' }}</h1>
-    <p class="text-body text-text-secondary">{{ $cash ? 'Ambil pembayaran hanya jika uang tunai fisik tersedia. Tidak perlu persetujuan Admin.' : 'Ambil tugas hanya jika paket fisik tersedia. Paket dapat langsung diserahkan atau ditandai siap diambil.' }}</p>
-    @if (session('success'))<p role="status" class="rounded-xl bg-forest-50 p-4">{{ session('success') }}</p>@endif
-    @if ($errors->any())<div role="alert" class="rounded-xl bg-red-50 p-4"><ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+<section class="space-y-6" aria-labelledby="service-queue-title">
+    <x-ui.page-heading id="service-queue-title" :title="$cash ? 'Pembayaran tunai' : 'Layanan sembako'" :description="$cash ? 'Ambil pembayaran saat uang tunai tersedia.' : 'Ambil tugas saat paket sembako tersedia.'" :mascot="$cash ? '12' : '3'" />
+    @if (session('success'))<p role="status" class="rounded-lg border border-forest-600 bg-success-bg p-4">{{ session('success') }}</p>@endif
+    @if ($errors->any())<div role="alert" class="rounded-lg border border-terracotta bg-danger-bg p-4"><ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     @if ($receipt)
         <x-ui.panel title="Penyerahan tercatat">
             <p class="font-bold">{{ $receipt['number'] }} · Rp {{ number_format($receipt['value'], 0, ',', '.') }}</p>
@@ -11,19 +10,21 @@
             <p>{{ $cash ? 'Jangan serahkan uang lagi untuk transaksi ini.' : 'Jangan serahkan paket lagi untuk transaksi ini.' }}</p>
         </x-ui.panel>
     @endif
-    <x-ui.input name="queueSearch" label="Cari nama atau nomor transaksi" wire:model.live.debounce.300ms="queueSearch" />
-    <x-ui.select name="queueTab" label="Tampilkan tugas" wire:model.live="queueTab" :options="['waiting' => 'Menunggu diambil', 'mine' => 'Tugas saya']" />
+    <div class="grid gap-4 rounded-lg border border-border bg-surface p-4 sm:grid-cols-2 sm:p-5">
+        <x-ui.input name="queueSearch" label="Cari nama atau nomor transaksi" placeholder="Contoh: nama warga atau nomor pengajuan" wire:model.live.debounce.300ms="queueSearch" />
+        <x-ui.select name="queueTab" label="Tampilkan tugas" wire:model.live="queueTab" :options="['waiting' => 'Menunggu diambil', 'mine' => 'Tugas saya']" />
+    </div>
     <div class="grid gap-6 lg:grid-cols-2">
         <x-ui.panel title="Antrean layanan">
             <div class="space-y-3">
                 @forelse ($requests as $request)
-                    <button type="button" wire:click="select({{ $request->id }})" class="w-full rounded-xl border border-border p-4 text-left focus-visible:ring-2 focus-visible:ring-focus" wire:key="task-{{ $request->id }}">
+                    <button type="button" wire:click="select({{ $request->id }})" aria-pressed="{{ $selected?->id === $request->id ? 'true' : 'false' }}" class="app-row-action min-h-touch w-full space-y-2 rounded-md border border-border p-4 text-left focus-visible:ring-2 focus-visible:ring-focus aria-pressed:border-forest-600 aria-pressed:bg-success-bg" wire:key="task-{{ $request->id }}">
                         <span class="block font-bold">{{ $request->customer->name }}</span>
                         <span class="block">{{ $request->request_number }} · Rp {{ number_format($cash ? $request->amount : $request->value_snapshot, 0, ',', '.') }}</span>
                         <span class="block text-body-sm">{{ ucfirst(str_replace('_', ' ', $request->status->value)) }} · {{ $request->serviceArea?->name }}</span>
                         @if ($request->exception_reported_at && ! $request->exception_resolved_at)<span class="font-bold text-terracotta">{{ $request->getAttribute('exception_kind') === 'cancellation_request' ? 'Warga meminta batal — perlu konfirmasi pelaksana' : 'Dikunci untuk pemeriksaan Admin' }}</span>@endif
                     </button>
-                @empty<p>Belum ada tugas yang dapat dikerjakan.</p>@endforelse
+                @empty<x-ui.empty-state title="Belum ada tugas yang dapat dikerjakan" description="Coba pilihan Tugas saya atau cari nama warga lain." />@endforelse
             </div>
             @if ($requests->hasPages())<div class="mt-4">{{ $requests->links('components.ui.pagination') }}</div>@endif
         </x-ui.panel>
@@ -45,14 +46,14 @@
                     @elseif ($claimant === null)
                         <x-ui.button wire:click="claim" wire:loading.attr="disabled">{{ $cash ? 'Ambil pembayaran' : 'Ambil sembako' }}</x-ui.button>
                         @if (! $cash)
-                            <x-ui.input name="reason" label="Alasan jika paket tidak tersedia" wire:model="reason" />
+                            <x-ui.input name="reason" label="Alasan jika paket tidak tersedia" placeholder="Contoh: persediaan beras belum datang" wire:model="reason" />
                             <x-ui.button variant="secondary" wire:click="unavailable" wire:loading.attr="disabled">Tidak tersedia</x-ui.button>
                         @endif
                     @elseif ($claimant === auth()->id())
                         <p>{{ $cash ? 'Pastikan nama penerima dan nominal sesuai. Catat hanya setelah uang tunai diserahkan.' : 'Pastikan nama warga dan paket sesuai. Catat hanya setelah paket diserahkan.' }}</p>
                         <details class="border-t border-border pt-3" @if ($proof || $errors->has('proof')) open @endif>
                         <summary class="min-h-touch cursor-pointer font-semibold">Tambahkan foto (opsional)</summary>
-                        <x-ui.media-picker id="service-proof" property="proof" label="Lampiran foto (opsional)" hint="Tidak wajib. Foto diperkecil sebelum dikirim dan disimpan privat." remove-method="clearProof" confirm-method="confirmProofUpload" />
+                        <x-ui.media-picker id="service-proof" property="proof" label="Lampiran foto (opsional)" hint="Maksimal satu foto." remove-method="clearProof" confirm-method="confirmProofUpload" />
                         </details>
                         <x-ui.button type="button" x-on:click="$dispatch('open-dialog', { id: 'service-completion-confirmation', invoker: $el })" wire:loading.attr="disabled" data-photo-picker-action>{{ $cash ? 'Uang tunai sudah diserahkan — catat pembayaran' : 'Paket sudah diserahkan' }}</x-ui.button>
                         <x-ui.dialog id="service-completion-confirmation" name="service-completion" :title="$cash ? 'Catat pembayaran tunai?' : 'Catat penyerahan sembako?'">
@@ -72,9 +73,9 @@
                         </x-ui.dialog>
                         @if (! $cash && $selected->status->value !== 'siap_diambil')<x-ui.button variant="secondary" wire:click="ready" wire:loading.attr="disabled">Paket siap diambil (opsional)</x-ui.button>@endif
                         <details class="border-t border-border pt-4" @if ($errors->has('reason') || $errors->has('workflow')) open @endif>
-                            <summary class="cursor-pointer font-semibold">Ada kendala?</summary>
+                            <summary class="app-row-action min-h-touch cursor-pointer rounded-md py-3 font-semibold">Ada kendala?</summary>
                             <div class="mt-3 space-y-3">
-                                <x-ui.input name="reason" label="Alasan (minimal 10 karakter)" wire:model="reason" />
+                                <x-ui.input name="reason" label="Alasan (minimal 10 karakter)" placeholder="Jelaskan kendala atau alasan melepas tugas" wire:model="reason" />
                                 <x-ui.button variant="secondary" wire:click="release" wire:loading.attr="disabled">Belum diserahkan — lepas tugas</x-ui.button>
                                 <x-ui.button variant="secondary" wire:click="reportException" wire:loading.attr="disabled">Penyerahan tidak pasti — minta pemeriksaan Admin</x-ui.button>
                             </div>

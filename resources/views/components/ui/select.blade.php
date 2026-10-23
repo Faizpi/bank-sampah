@@ -5,6 +5,7 @@
     'error' => null,
     'placeholder' => null,
     'options' => [],
+    'wrapperClass' => null,
 ])
 
 @php
@@ -14,7 +15,7 @@
     $describedBy = collect([$hintId, $errorId])->filter()->implode(' ');
 @endphp
 
-<div class="space-y-2">
+<div @class(['space-y-2', $wrapperClass])>
     <label for="{{ $selectId }}" class="block text-label text-text-primary">{{ $label }}</label>
     <select
         id="{{ $selectId }}"

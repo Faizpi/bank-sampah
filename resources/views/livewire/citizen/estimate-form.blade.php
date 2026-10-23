@@ -1,21 +1,10 @@
 <x-slot:title>Estimasi nilai</x-slot:title>
-<x-slot:context>Informasi sebelum setor</x-slot:context>
 
 <section aria-labelledby="estimate-title" class="grid gap-6">
-    {{-- Page header --}}
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-            <p class="text-label font-semibold text-forest-600">Kalkulator Informasi</p>
-            <h1 id="estimate-title" class="mt-2 text-h1 font-bold text-deep-green">Perkirakan nilai setoran.</h1>
-            <p class="mt-3 text-body text-text-secondary">
-                Hasil hanya panduan. Estimasi tidak membuat transaksi, menahan saldo, atau menjamin nilai akhir.
-            </p>
-        </div>
-        <x-ui.mascot variant="7" bubble="Berapa kira-kira nilainya?" class="h-28 w-auto shrink-0" />
-    </div>
+    <x-ui.page-heading id="estimate-title" title="Perkirakan nilai setoran" description="Nilai akhir mengikuti hasil penimbangan." mascot="7" />
 
     {{-- Calculator Form --}}
-    <x-ui.panel title="Hitung estimasi" description="Pilih jenis, kondisi, dan masukkan perkiraan berat Anda.">
+    <x-ui.panel title="Hitung estimasi">
         <form wire:submit="calculate" class="grid gap-5">
             <x-ui.select wire:model="wasteTypeId" label="Jenis sampah" name="wasteTypeId" placeholder="Pilih jenis sampah"
                 :options="$types->pluck('name', 'id')->all()"
@@ -26,7 +15,7 @@
                 :error="$errors->first('conditionId')" />
 
             <x-ui.input wire:model="weightKg" label="Perkiraan berat (kg)" name="weightKg"
-                inputmode="decimal" placeholder="Contoh: 1.250"
+                inputmode="decimal" placeholder="Contoh: 1,25"
                 :error="$errors->first('weightKg')" />
 
             <div class="flex justify-end">

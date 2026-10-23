@@ -3,6 +3,7 @@
     'label',
     'hint' => null,
     'error' => null,
+    'wrapperClass' => null,
 ])
 
 @php
@@ -12,7 +13,7 @@
     $describedBy = collect([$hintId, $errorId])->filter()->implode(' ');
 @endphp
 
-<div class="space-y-2">
+<div @class(['space-y-2', $wrapperClass])>
     <label for="{{ $textareaId }}" class="block text-label text-text-primary">{{ $label }}</label>
     <textarea
         id="{{ $textareaId }}"

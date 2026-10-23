@@ -1,6 +1,6 @@
 <x-slot:title>Pencairan tunai</x-slot:title>
-<section class="space-y-5">
-    <h1 class="text-h1 font-bold">Status pencairan tunai</h1>
+<section class="grid gap-6" aria-labelledby="withdrawal-status-title">
+    <x-ui.page-heading id="withdrawal-status-title" title="Status pencairan tunai" mascot="5" />
     @if (session('success'))<p role="status" class="rounded-xl bg-success-bg p-4">{{ session('success') }}</p>@endif
     @if ($errors->any())<div role="alert">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
     @php($locked = $withdrawal->exception_reported_at && ! $withdrawal->exception_resolved_at)
@@ -12,7 +12,7 @@
         @if ($locked)
             <p role="alert" class="mt-3">{{ $withdrawal->exception_kind === 'cancellation_request' ? 'Bendahara perlu memastikan uang belum diserahkan sebelum pembatalan dan pengembalian saldo.' : 'Admin sedang memastikan penyerahan uang. Jangan meminta penyerahan kedua.' }}</p>
         @elseif ($withdrawal->status->value === 'menunggu_bendahara')
-            <p class="mt-3">Menunggu Bendahara mengambil pembayaran saat uang tunai tersedia. Tidak perlu persetujuan Admin.</p>
+            <p class="mt-3">Menunggu Bendahara mengambil pembayaran saat uang tunai tersedia.</p>
         @elseif ($withdrawal->status->value === 'diproses_bendahara')
             <p class="mt-3">Pembayaran ditangani {{ $withdrawal->payer?->name ?? 'Bendahara' }}. Pastikan nama penerima dan nominal sesuai saat mengambil uang.</p>
         @endif

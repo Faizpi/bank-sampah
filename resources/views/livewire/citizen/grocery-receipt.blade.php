@@ -5,7 +5,7 @@
     <div>
         <p class="text-label text-forest-600">Bukti {{ $redemption->request_number }}</p>
         <h1 id="grocery-receipt-title" class="mt-2 text-h1 text-deep-green">Penyerahan berhasil</h1>
-        <p class="mt-3 text-body text-text-secondary">Bukti privat ini hanya dapat dilihat pemilik penukaran dan pihak berwenang yang memiliki hak akses.</p>
+        <p class="mt-3 text-body text-text-secondary">Bukti penukaran pribadi Anda.</p>
     </div>
 
     <x-ui.success-state

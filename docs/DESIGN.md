@@ -200,7 +200,7 @@ Tidak memakai radius di atas 16 px untuk panel umum.
 
 | Nama | Lebar | Kontrak |
 |---|---:|---|
-| compact | 360 px | Semua alur kritis satu kolom, padding 16, tanpa scroll horizontal |
+| compact | 360 px | Alur kritis satu kolom, kecuali pasangan kondisi/berat timbang yang tetap terbaca; padding 16, tanpa scroll horizontal |
 | mobile | 390 px | Ruang nyaman 16–20, bottom nav tetap |
 | tablet | 768 px | Grid 2 kolom bila membantu, sheet dapat menjadi dialog |
 | desktop | 1280 px | Admin sidebar, container luas, tabel responsif |
@@ -236,7 +236,7 @@ Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mo
 
 - Header: konteks tanggal/lokasi, status koneksi, profil.
 - Tugas hari ini sebagai halaman awal.
-- Petugas memakai empat tujuan: `Tugas`, `Setoran`, `Layanan`, `Akun`. Pemindaian berada dalam identifikasi setoran, bukan menu tambahan.
+- Petugas memakai lima tujuan: `Tugas`, `Setoran`, `Layanan`, `Riwayat`, `Akun`. Pemindaian berada dalam identifikasi setoran, bukan menu tambahan. Riwayat hanya-baca memisahkan pekerjaan sendiri yang selesai dari antrean aktif.
 - Bendahara dapat mengganti `Setoran/Pindai` dengan `Pembayaran/Laporan` sesuai permission tanpa melebihi lima.
 - Aksi scan memiliki alternatif input nomor nasabah.
 
@@ -263,7 +263,7 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 - Tinggi warga/petugas 48 px; padding horizontal 16–20; ikon 20 px; gap 8.
 - Focus ring 2 px Sky Blue + offset 2.
 - Loading mempertahankan lebar, menampilkan indikator dan teks “Memproses”; disabled bukan opacity terlalu rendah.
-- Pencatatan rutin terakhir memakai ringkasan pada layar dan tombol eksplisit bahwa uang/paket sudah diserahkan atau data timbang sudah benar. Tidak ada tinjauan/dialog kedua yang wajib. Koreksi dan pengecualian tetap menjelaskan akibat dan memerlukan pengamanan sesuai domain.
+- Pencatatan setoran memakai ringkasan pada layar dan tombol eksplisit bahwa data timbang sudah benar. Pembayaran tunai dan penyerahan sembako menambahkan satu konfirmasi ringkas nama/nominal; pilihan Periksa lagi tidak mengubah saldo. Tidak ada persetujuan Admin rutin atau foto wajib. Koreksi dan pengecualian tetap menjelaskan akibat dan memerlukan pengamanan sesuai domain.
 
 ### Input, select, textarea
 
@@ -407,7 +407,7 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 ### Setoran petugas
 
 1. Identifikasi QR/nomor dan konfirmasi nama.
-2. Daftar item timbang datar, bukan nested card.
+2. Daftar item timbang datar, bukan nested card. Jenis selebar baris; kondisi/berat boleh berdampingan pada ponsel dengan label lengkap dan target 48 px.
 3. Ringkasan subtotal/total terbaca pada mobile.
 4. Lampiran opsional dalam disclosure dan satu tombol pencatatan setelah ringkasan diperiksa.
 5. Status sukses dengan nomor/nilai/waktu; Warga membuka kuitansi dan QR dari riwayat setelah final.

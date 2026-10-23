@@ -1,10 +1,7 @@
 <x-slot:title>Riwayat pekerjaan saya</x-slot:title>
 <x-slot:date>{{ now()->translatedFormat('d F Y') }}</x-slot:date>
 <section class="grid gap-5" aria-labelledby="work-history-title">
-    <div>
-        <h1 id="work-history-title" class="text-h1 font-bold text-deep-green">Riwayat pekerjaan saya</h1>
-        <p class="mt-2 text-text-secondary">Setoran dan layanan yang sudah Anda kerjakan. Tugas aktif tetap di menu Tugas.</p>
-    </div>
+    <x-ui.page-heading id="work-history-title" title="Riwayat pekerjaan saya" description="Setoran dan layanan yang sudah Anda kerjakan." mascot="5" />
     <nav aria-label="Jenis riwayat pekerjaan" class="grid grid-cols-3 gap-2 rounded-lg border border-border bg-surface p-2">
         @foreach (['deposit' => 'Setoran', 'pickup' => 'Penjemputan', 'grocery' => 'Sembako'] as $key => $label)
             <a href="{{ route('officer.history', ['type' => $key]) }}" @if ($type === $key) aria-current="page" @endif
@@ -14,7 +11,7 @@
     @if ($recordId !== null)
         <a href="{{ route('officer.history', ['type' => $type]) }}" class="inline-flex min-h-touch items-center font-semibold text-forest-700 underline">Lihat semua riwayat jenis ini</a>
     @else
-        <x-ui.input name="search" label="Cari nama warga atau nomor transaksi" wire:model.live.debounce.300ms="search" :error="$errors->first('search')" />
+        <x-ui.input name="search" label="Cari nama warga atau nomor transaksi" placeholder="Contoh: nama warga atau nomor transaksi" wire:model.live.debounce.300ms="search" :error="$errors->first('search')" />
     @endif
     <div class="divide-y divide-border rounded-lg border border-border bg-surface px-4 sm:px-5">
         @forelse ($records as $record)

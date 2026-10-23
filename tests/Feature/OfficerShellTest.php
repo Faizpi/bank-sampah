@@ -45,7 +45,8 @@ final class OfficerShellTest extends TestCase
         self::assertStringContainsString('max-w-officer', $html);
         self::assertStringContainsString('pb-[calc(5.75rem+env(safe-area-inset-bottom))]', $html);
         self::assertSame(1, substr_count($html, '<header'));
-        self::assertSame(1, substr_count($html, '<h1'));
+        self::assertSame(0, substr_count($html, '<h1'));
+        self::assertStringContainsString('data-shell-title', $html);
         self::assertSame(1, substr_count($html, '<main'));
 
         $source = file_get_contents(resource_path('views/components/layouts/officer.blade.php'));
@@ -69,8 +70,8 @@ final class OfficerShellTest extends TestCase
         $html = Blade::render('<x-layouts.officer :title="$title">Isi</x-layouts.officer>', compact('title'));
 
         self::assertStringContainsString($title, $html);
-        self::assertMatchesRegularExpression('/<h1[^>]*class="[^"]*break-words[^"]*"[^>]*>'.$title.'<\/h1>/', $html);
-        self::assertDoesNotMatchRegularExpression('/<h1[^>]*class="[^"]*truncate[^"]*"/', $html);
+        self::assertMatchesRegularExpression('/<p[^>]*data-shell-title[^>]*class="[^"]*break-words[^"]*"[^>]*>'.$title.'<\/p>/', $html);
+        self::assertDoesNotMatchRegularExpression('/<p[^>]*data-shell-title[^>]*class="[^"]*truncate[^"]*"/', $html);
     }
 
     public function test_header_optional_slots_are_caller_owned_visible_and_omitted_when_absent(): void

@@ -77,10 +77,10 @@
                             <h2 id="registration-personal-title" class="text-title font-bold text-deep-green">Data Diri Warga</h2>
                         </div>
                         <div class="grid gap-5 md:grid-cols-2">
-                            <x-ui.input name="name" label="Nama lengkap" wire:model.blur="name" autocomplete="name" required :error="$errors->first('name')" />
-                            <x-ui.input name="phone" label="Nomor telepon (opsional)" type="tel" wire:model.blur="phone" autocomplete="tel" inputmode="tel" hint="Boleh dikosongkan. Gunakan nomor Indonesia yang aktif." :error="$errors->first('phone')" />
+                            <x-ui.input name="name" placeholder="Contoh: Siti Aminah" label="Nama lengkap" wire:model.blur="name" autocomplete="name" required :error="$errors->first('name')" />
+                            <x-ui.input name="phone" placeholder="Contoh: 081234567890" label="Nomor telepon (opsional)" type="tel" wire:model.blur="phone" autocomplete="tel" inputmode="tel" hint="Boleh dikosongkan. Gunakan nomor Indonesia yang aktif." :error="$errors->first('phone')" />
                         </div>
-                        <x-ui.input name="username" label="Username" wire:model.blur="username" autocomplete="username" inputmode="text" hint="Digunakan untuk masuk. Huruf kecil, angka, titik, garis bawah, atau tanda hubung tanpa spasi." required :error="$errors->first('username')" />
+                        <x-ui.input name="username" placeholder="Contoh: siti.aminah" label="Username" wire:model.blur="username" autocomplete="username" inputmode="text" hint="Digunakan untuk masuk. Huruf kecil, angka, titik, garis bawah, atau tanda hubung tanpa spasi." required :error="$errors->first('username')" />
                     </section>
 
                     <section class="space-y-4" aria-labelledby="registration-security-title">
@@ -95,7 +95,7 @@
                                     <input
                                         id="password"
                                         name="password"
-                                        type="password"
+                                        type="password" placeholder="Buat kata sandi minimal 10 karakter"
                                         wire:model="password"
                                         x-bind:type="showPassword ? 'text' : 'password'"
                                         autocomplete="new-password"
@@ -121,7 +121,7 @@
                                     <input
                                         id="password_confirmation"
                                         name="password_confirmation"
-                                        type="password"
+                                        type="password" placeholder="Ulangi kata sandi Anda"
                                         wire:model="password_confirmation"
                                         x-bind:type="showPassword ? 'text' : 'password'"
                                         autocomplete="new-password"
@@ -161,7 +161,7 @@
                                 @enderror
                             </div>
 
-                            <x-ui.textarea name="address" label="Alamat lengkap" wire:model.blur="address" autocomplete="street-address" required :error="$errors->first('address')" />
+                            <x-ui.textarea name="address" placeholder="Contoh: Kp. Sukamaju RT 01/RW 02, dekat masjid" label="Alamat lengkap" wire:model.blur="address" autocomplete="street-address" required :error="$errors->first('address')" />
                         </div>
                     </section>
 

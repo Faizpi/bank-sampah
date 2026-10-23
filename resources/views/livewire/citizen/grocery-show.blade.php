@@ -1,6 +1,6 @@
 <x-slot:title>Penukaran sembako</x-slot:title>
-<section class="space-y-5">
-    <h1 class="text-h1 font-bold">Status penukaran sembako</h1>
+<section class="grid gap-6" aria-labelledby="grocery-status-title">
+    <x-ui.page-heading id="grocery-status-title" title="Status penukaran sembako" mascot="3" />
     @if (session('success'))<p role="status" class="rounded-xl bg-success-bg p-4">{{ session('success') }}</p>@endif
     @if ($errors->any())<div role="alert">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
     @php($locked = $redemption->exception_reported_at && ! $redemption->exception_resolved_at)
@@ -13,7 +13,7 @@
         @if ($locked)
             <p role="alert" class="mt-3">{{ $redemption->exception_kind === 'cancellation_request' ? 'Petugas memastikan paket belum diserahkan sebelum pembatalan dan pengembalian saldo.' : 'Admin sedang memastikan penyerahan paket. Jangan meminta penyerahan kedua.' }}</p>
         @elseif ($redemption->status->value === 'menunggu_petugas')
-            <p class="mt-3">Menunggu Petugas mengambil tugas saat paket tersedia. Tidak perlu persetujuan Admin.</p>
+            <p class="mt-3">Menunggu Petugas mengambil tugas saat paket tersedia.</p>
         @elseif ($redemption->status->value === 'siap_diambil')
             <p class="mt-3">Paket siap diambil. Temui {{ $redemption->claimant?->name ?? 'Petugas' }} dan pastikan nama serta isi paket sesuai.</p>
         @elseif ($redemption->status->value === 'diproses_petugas')

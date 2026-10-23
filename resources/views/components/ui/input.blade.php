@@ -4,6 +4,7 @@
     'type' => 'text',
     'hint' => null,
     'error' => null,
+    'wrapperClass' => null,
 ])
 
 @php
@@ -13,7 +14,7 @@
     $describedBy = collect([$hintId, $errorId])->filter()->implode(' ');
 @endphp
 
-<div class="space-y-2">
+<div @class(['space-y-2', $wrapperClass])>
     <label for="{{ $inputId }}" class="block text-label text-text-primary">{{ $label }}</label>
     <input
         id="{{ $inputId }}"

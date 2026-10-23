@@ -2,7 +2,7 @@
 
 ## Source of truth
 
-Status: Active. Diperbarui 9 Oktober 2026. Berlaku untuk publik, Warga, Petugas, Bendahara, dan Admin. Kontrak token/komponen ada di [docs/DESIGN.md](docs/DESIGN.md); aturan workflow di [docs/WEB_WORKFLOW.md](docs/WEB_WORKFLOW.md). Keputusan di bawah menggantikan penjelasan pra-cutover yang bertentangan. Sumber keputusan: audit Filament/Blade 8 Oktober 2026 serta permintaan statistik landing dan katalog berfoto pada 9 Oktober 2026.
+Status: Active. Diperbarui 21 Oktober 2026. Berlaku untuk publik, Warga, Petugas, Bendahara, dan Admin. Kontrak token/komponen ada di [docs/DESIGN.md](docs/DESIGN.md); aturan workflow di [docs/WEB_WORKFLOW.md](docs/WEB_WORKFLOW.md). Keputusan di bawah menggantikan penjelasan pra-cutover yang bertentangan. Sumber keputusan: audit Filament/Blade 8 Oktober, katalog berfoto 9 Oktober, serta perbaikan keterlacakan dan konfirmasi transaksi yang disetujui 21 Oktober 2026.
 
 ## Brand
 
@@ -21,7 +21,7 @@ Pengguna dapat mengetahui status, pelaksana, dan tindakan berikutnya tanpa memin
 
 ## Information architecture
 
-Navigasi Warga: Beranda, Kartu, Layanan, Riwayat, Akun. Layanan menyediakan semua layanan, bukan hanya penjemputan. Petugas: Tugas, Setoran, Layanan, Akun; Tugas memisahkan Menunggu dan Tugas saya dengan filter jenis. Bendahara: Tugas, Pembayaran, Laporan, Akun. Admin kembali ke pusat kerja dari layar bersama; master/teknis ada di kelompok lanjutan yang dapat dilipat.
+Navigasi Warga: Beranda, Kartu, Layanan, Riwayat, Akun. Layanan menyediakan semua layanan, bukan hanya penjemputan. Petugas: Tugas, Setoran, Layanan, Riwayat, Akun; Tugas memisahkan Menunggu dan Tugas saya yang aktif, sedangkan Riwayat memuat Setoran/Penjemputan/Sembako yang sudah dikerjakan sendiri dan hanya-baca. Bendahara: Tugas, Pembayaran, Laporan, Akun. Admin kembali ke pusat kerja dari layar bersama; master/teknis ada di kelompok lanjutan yang dapat dilipat.
 
 Urutan landing: hero → Kepala Desa → ringkasan → sampah yang diterima → layanan → cara kerja → konten maskot → akses akun → footer. Bagian Kepala Desa dipindahkan utuh sesudah hero sesuai permintaan pengguna, bukan diubah isinya.
 
@@ -41,13 +41,15 @@ Landing menambah empat kartu ringkasan hijau: Warga aktif, Petugas aktif, setora
 
 Penyempurnaan 21 Oktober 2026: tautan Akses Panel Admin pada login tampil sebagai tombol sekunder selebar tombol Masuk ke Akun, dengan latar putih, teks/border hijau, target sentuh dan fokus keyboard yang jelas. Gunakan token yang sama dengan tombol Daftar Sebagai Warga. Peran tetap dikelola melalui Pengguna; tidak ada CRUD role/permission dinamis. URL lama diarahkan ke Pengguna hanya setelah autentikasi dan pemeriksaan akses Admin.
 
+Setoran memakai baris timbang datar: jenis selebar baris, kondisi dan berat berdampingan pada ponsel, tetap berlabel dan bertarget sentuh 48 px. Total diperbarui dari server setelah perubahan input. Perkiraan yang dilewati bukan nol. Status maskot/badge dan bukti setelah pemuatan ulang mengikuti transaksi tersimpan. Pembayaran tunai dan penyerahan sembako memakai satu dialog ringkas nama/nominal sebelum pencatatan akhir; Periksa lagi menutup dialog tanpa mutasi. Ini konfirmasi pelaksana, bukan persetujuan Admin atau kewajiban foto baru.
+
 ## Accessibility
 
 Label, error, loading, fokus, dan accessible name berbahasa Indonesia. Tidak ada aksi sah yang hanya dapat dilakukan melalui kamera, hover, atau warna. Kegagalan validasi terlihat pada field/ringkasan. Target sentuh mengikuti kontrak komponen; pemeriksaan pembaca layar nyata tetap belum boleh diklaim selesai tanpa bukti.
 
 ## Responsive behavior
 
-Validasi 360/390/768/1280. Form ponsel satu kolom; nominal/nama/status/aksi tidak mengharuskan geser horizontal pada layar operasional utama. Desktop Admin tetap mendukung tabel lengkap.
+Validasi 360/390/768/1280. Form ponsel satu kolom; pasangan kondisi/berat pada baris timbang boleh dua kolom jika tetap terbaca tanpa overflow. Nominal/nama/status/aksi tidak mengharuskan geser horizontal pada layar operasional utama. Desktop Admin tetap mendukung tabel lengkap.
 
 ## Interaction states
 

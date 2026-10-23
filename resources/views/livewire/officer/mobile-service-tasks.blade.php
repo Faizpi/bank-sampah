@@ -3,24 +3,10 @@
 <x-slot:connectivity><x-ui.connectivity-status /></x-slot:connectivity>
 
 <section aria-labelledby="mobile-task-title" class="grid gap-6">
-    {{-- Page header --}}
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-            <p class="text-label font-semibold text-forest-600">Operasi Petugas</p>
-            <h1 id="mobile-task-title" class="mt-2 text-h1 font-bold text-deep-green">Jadwal Layanan Keliling</h1>
-            <p class="mt-3 text-body text-text-secondary">
-                Hanya jadwal yang menugaskan Anda yang tampil. Status layanan menentukan apakah setoran keliling dapat dicatat.
-            </p>
-        </div>
-        <x-ui.mascot variant="8" class="h-28 w-auto shrink-0" />
-    </div>
+    <x-ui.page-heading id="mobile-task-title" title="Jadwal Layanan Keliling" description="Buka jadwal tugas dan catat setoran keliling." mascot="8" />
 
     @if ($services->isEmpty())
-        <div class="rounded-xl border border-border bg-surface p-6 text-center shadow-xs">
-            <x-ui.mascot variant="9" class="mx-auto h-24 w-auto" />
-            <p class="mt-3 text-label font-bold text-deep-green">Belum ada jadwal ditugaskan</p>
-            <p class="mt-1.5 text-body-sm text-text-secondary">Jadwal layanan keliling yang ditugaskan kepada Anda akan muncul di sini.</p>
-        </div>
+        <x-ui.panel><x-ui.empty-state title="Belum ada jadwal ditugaskan" description="Jadwal tugas Anda akan muncul di sini." /></x-ui.panel>
     @else
         <div class="grid gap-4">
             @foreach ($services as $service)

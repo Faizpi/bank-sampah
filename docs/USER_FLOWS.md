@@ -1,6 +1,6 @@
 # Panduan pengguna web
 
-Acuan aktif: [workflow empat role](WEB_WORKFLOW.md) dan [kontrak UI](../DESIGN.md), diperbarui 8 Oktober 2026. Tidak ada bot Telegram atau WhatsApp yang digunakan.
+Acuan aktif: [workflow empat role](WEB_WORKFLOW.md) dan [kontrak UI](../DESIGN.md), diperbarui 21 Oktober 2026. Tidak ada bot Telegram atau WhatsApp yang digunakan.
 
 ## Warga
 
@@ -19,13 +19,14 @@ Acuan aktif: [workflow empat role](WEB_WORKFLOW.md) dan [kontrak UI](../DESIGN.m
 2. Ambil penjemputan searea, lanjutkan perjalanan/pengumpulan, masukkan timbang aktual, lalu catat selesai. Tugas terkunci tidak menyediakan operasi biasa.
 3. Setoran: cari nama/nomor atau pindai QR. Jika hasil lebih dari satu, pilih warga berdasarkan nomor/domisili. Klik Nama sudah sesuai — catat setoran untuk membuka form.
 4. Pilih konteks keliling hanya dari layanan aktif yang ditugaskan. Isi jenis/kondisi/berat, periksa subtotal/total, lalu satu pencatatan akhir. Draf dapat dilanjutkan dari Tugas saya.
-5. Ambil sembako jika paket fisik tersedia; serahkan satu kali dan catat. Foto ada dalam Tambahkan foto opsional. Jika paket tidak tersedia sebelum klaim, beri alasan; dana dilepas tanpa pengeluaran.
+5. Ambil sembako jika paket fisik tersedia; serahkan satu kali dan catat. Periksa nama/paket/nominal pada dialog, lalu konfirmasi pencatatan. Periksa lagi kembali tanpa mutasi. Foto ada dalam Tambahkan foto opsional. Jika paket tidak tersedia sebelum klaim, beri alasan; dana dilepas tanpa pengeluaran.
 6. Layanan keliling lewat jam tetapi belum ditutup tetap muncul. Lihat rekap lalu tutup; tidak menerima setoran baru setelah jam atau kapasitas berakhir.
+7. Buka Riwayat untuk Setoran/Penjemputan/Sembako yang sudah Anda kerjakan. Cari nama/nomor dan buka rinciannya. Ini hanya-baca; tidak dapat mencatat ulang transaksi atau melihat pekerjaan Petugas lain.
 
 ## Bendahara
 
 1. Pengajuan sesuai area langsung masuk pembayaran. Pilih baris/rincian warga; ambil pembayaran hanya ketika tunai tersedia.
-2. Pastikan nama dan nominal, serahkan uang satu kali, lalu klik Uang tunai sudah diserahkan — catat pembayaran. Lampiran foto tidak wajib.
+2. Pastikan nama dan nominal, serahkan uang satu kali, lalu klik Uang tunai sudah diserahkan — catat pembayaran. Periksa ringkasan dialog dan pilih Ya, catat pembayaran. Periksa lagi kembali tanpa mutasi. Lampiran foto tidak wajib.
 3. Tugas saya berisi klaim yang diambil sendiri. Lepas tugas hanya jika uang belum diberikan. Permintaan batal Warga dapat dikonfirmasi jika uang dipastikan belum diberikan; ketidakpastian masuk pemeriksaan Admin.
 4. Riwayat pembayaran saya hanya memuat pembayaran yang sudah Anda catat, bukan pengajuan menunggu. Pilih periode dan unduh Excel; tidak ada pilihan jenis/status yang mustahil.
 

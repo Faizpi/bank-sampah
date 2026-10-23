@@ -43,6 +43,17 @@ final class FormPrimitivesTest extends TestCase
         self::assertStringContainsString('required="required"', $html);
     }
 
+    public function test_grid_placement_applies_to_the_field_wrapper_not_the_control(): void
+    {
+        foreach (['input', 'select', 'textarea'] as $component) {
+            $html = Blade::render('<x-ui.'.$component.' name="field" label="Isian" wrapper-class="sm:col-span-2" class="control-only" />');
+            self::assertMatchesRegularExpression('/<div class="[^"]*sm:col-span-2[^"]*">/', $html);
+            self::assertMatchesRegularExpression('/<(?:input|select|textarea)[\s\S]*?class="[^"]*control-only[^"]*"/', $html);
+            self::assertSame(1, substr_count($html, 'sm:col-span-2'));
+            self::assertStringNotContainsString('wrapper-class=', $html);
+        }
+    }
+
     public function test_select_and_textarea_render_labels_and_content(): void
     {
         $select = Blade::render(<<<'BLADE'

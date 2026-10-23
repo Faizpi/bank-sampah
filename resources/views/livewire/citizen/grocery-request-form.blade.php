@@ -1,18 +1,7 @@
 <x-slot:title>Ajukan sembako</x-slot:title>
-<x-slot:context>Layanan warga</x-slot:context>
 
 <section aria-labelledby="grocery-request-title" class="grid gap-6">
-    {{-- Page header --}}
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-            <p class="text-label font-semibold text-forest-600">Penukaran Saldo</p>
-            <h1 id="grocery-request-title" class="mt-2 text-h1 font-bold text-deep-green">Pilih Paket Sembako</h1>
-            <p class="mt-3 text-body text-text-secondary">
-                Nilai paket dicatat sebagai rekaman pengajuan. Dana ditahan sementara dan baru menjadi saldo keluar setelah paket diserahkan secara sah.
-            </p>
-        </div>
-        <x-ui.mascot variant="3" bubble="Tukar saldo dengan sembako!" bubblePosition="top" class="h-28 w-auto shrink-0" />
-    </div>
+    <x-ui.page-heading id="grocery-request-title" title="Pilih Paket Sembako" description="Saldo disisihkan sampai paket diterima." mascot="3" />
 
     @if (session('success'))
         <x-ui.success-state title="Berhasil" :description="session('success')" />
@@ -34,20 +23,9 @@
     </div>
 
     {{-- Package Selection --}}
-     <x-ui.panel title="Paket aktif" description="Periksa isi dan nilai penukaran sebelum memilih. Petugas mengambil tugas saat paket fisik tersedia.">
+    <x-ui.panel title="Paket aktif" description="Periksa isi dan nilai penukaran sebelum memilih.">
         @if ($serviceAreas->count() > 1)
-            <label class="mb-5 block">
-                <span class="text-label font-semibold text-deep-green">Area layanan</span>
-                <select wire:model.live="serviceAreaId" class="mt-2 block w-full rounded-xl border-border bg-warm-canvas text-body text-deep-green">
-                    <option value="">Pilih area layanan</option>
-                    @foreach ($serviceAreas as $serviceArea)
-                        <option value="{{ $serviceArea->id }}">{{ $serviceArea->name }}</option>
-                    @endforeach
-                </select>
-                @error('serviceAreaId')
-                    <p role="alert" class="mt-2 text-body-sm text-terracotta">{{ $message }}</p>
-                @enderror
-            </label>
+            <x-ui.select name="serviceAreaId" label="Area layanan" wire:model.live="serviceAreaId" :options="$serviceAreas->pluck('name', 'id')->all()" placeholder="Pilih area layanan" wrapper-class="mb-5" :error="$errors->first('serviceAreaId')" />
         @endif
         <fieldset>
             <legend class="text-label font-semibold text-deep-green">Pilih paket sembako</legend>
@@ -72,7 +50,7 @@
                             <span class="flex items-start justify-between gap-4">
                                 <span class="text-body font-bold text-deep-green">{{ $package->name }}</span>
                                 <span class="flex shrink-0 items-center gap-2">
-                                    <span class="rounded-full bg-harvest-gold px-2.5 py-1 text-caption font-bold text-deep-green">Rp{{ number_format($package->value, 0, ',', '.') }}</span>
+                                    <span class="amount-tabular text-body font-bold text-forest-700">Rp{{ number_format($package->value, 0, ',', '.') }}</span>
                                     <input
                                         type="radio"
                                         wire:model.live="packageId"
@@ -86,7 +64,7 @@
                                 </span>
                             </span>
                             <span class="mt-3 block text-caption font-semibold uppercase tracking-wide text-text-secondary">Isi paket</span>
-                            <span class="mt-1 block whitespace-pre-line text-body-sm leading-relaxed text-text-secondary">{{ $package->contents }}</span>
+                            <span class="mt-1 block whitespace-pre-line text-body leading-relaxed text-text-secondary">{{ $package->contents }}</span>
                             <span class="mt-4 block text-label font-semibold" @class([
                                 'text-forest-700' => $isSelected && $isAffordable,
                                 'text-text-secondary' => ! $isSelected && $isAffordable,

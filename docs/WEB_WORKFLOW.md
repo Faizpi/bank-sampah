@@ -1,6 +1,6 @@
 # Workflow web empat role
 
-Baseline empat role 5 Oktober 2026, disempurnakan melalui audit UI 8 Oktober 2026. Hanya Warga, Petugas, Bendahara, dan Admin; satu role per akun. Semua warga menggunakan smartphone sendiri.
+Baseline empat role 5 Oktober 2026, disempurnakan melalui audit UI 8 dan 21 Oktober 2026. Hanya Warga, Petugas, Bendahara, dan Admin; satu role per akun. Semua warga menggunakan smartphone sendiri.
 
 ## Setoran
 
@@ -25,6 +25,12 @@ Claimant boleh melepas klaim hanya jika belum ada serah fisik; hold tetap aktif.
 ## Saldo
 
 Saldo tersedia adalah mutasi masuk dikurangi mutasi keluar dan hold aktif. Saldo tertahan belum merupakan mutasi keluar. Pembatalan sah atau paket tidak tersedia melepas hold tepat satu kali. Konfirmasi penyerahan membuat mutasi keluar tepat satu kali. Tombol yang dicoba ulang tidak boleh menyebabkan penyerahan fisik kedua.
+
+Sebelum pencatatan pembayaran tunai atau penyerahan sembako, pelaksana melihat satu dialog nama, nomor, dan nominal. Periksa lagi hanya menutup dialog, tanpa mutasi. Konfirmasi tetap memanggil layanan domain yang memeriksa klaim, status, area, dan idempotensi; bukan approval Admin.
+
+## Riwayat pekerjaan Petugas
+
+Menu Riwayat memuat setoran final (termasuk yang kemudian dikoreksi/dibalik), penjemputan terminal yang ditugaskan kepadanya, dan sembako selesai yang diklaim/diserahkan sendiri. Daftar dipaginasi dan dapat dicari dengan nama atau nomor. Riwayat tidak menyediakan aksi finansial dan tidak menampilkan pekerjaan Petugas lain walaupun searea. Tugas aktif tetap berada di Tugas saya. Tautan tugas sembako yang sudah selesai dialihkan ke riwayat berotorisasi, bukan 404 bagi pelaksananya. Bukti setoran penjemputan dapat dibuka lagi setelah pemuatan ulang tanpa membuat mutasi baru.
 
 ## Akun dan batas akses
 

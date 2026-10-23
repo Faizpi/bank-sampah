@@ -91,7 +91,7 @@
                         @endforeach
                     </x-ui.select>
 
-                    <x-ui.input name="items.{{ $index }}.weight_kg" label="Berat (kg)"
+                    <x-ui.input name="items.{{ $index }}.weight_kg" label="Berat (kg)" placeholder="Contoh: 1,25"
                          inputmode="decimal" wire:model.live.debounce.400ms="items.{{ $index }}.weight_kg"
                         :error="$errors->first('items.'.$index.'.weight_kg')" />
 

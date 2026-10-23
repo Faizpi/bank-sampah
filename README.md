@@ -13,7 +13,7 @@ Website mobile-first untuk setoran, saldo rupiah, penjemputan, pencairan tunai, 
 | Peran | Tugas utama |
 | --- | --- |
 | Warga | Menggunakan akun/smartphone sendiri; saldo, kartu, riwayat, dan pengajuan layanan. |
-| Petugas | Setoran, pickup, layanan keliling, dan sembako pada area tugas aktif. |
+| Petugas | Setoran, pickup, layanan keliling, sembako pada area tugas aktif, serta riwayat pekerjaan sendiri. |
 | Bendahara | Mengambil dan mencatat pembayaran tunai searea; laporan pembayaran sendiri. |
 | Admin | Akun, wilayah, master, laporan, audit, koreksi resmi, dan pengecualian. |
 
@@ -27,6 +27,8 @@ Landing menampilkan ringkasan seluruh desa dan jenis sampah beserta harga aktif.
 - Petugas/Bendahara mengambil tugas sendiri, tanpa persetujuan Admin rutin.
 - Form penjemputan satu layar; foto, catatan, dan perkiraan tambahan dapat dilipat. Lampiran rutin opsional, tervalidasi, dan privat.
 - Antrean Petugas/Bendahara dipaginasi dan memisahkan Menunggu/Tugas saya. Menu Layanan Warga memuat seluruh pilihan layanan.
+- Menu Riwayat Petugas memisahkan pekerjaan selesai dari antrean aktif, dengan pencarian dan rincian hanya-baca. Tautan sembako selesai tetap dapat dibuka oleh pelaksananya.
+- Pencatatan tunai/sembako menampilkan satu konfirmasi nama/nominal. Periksa lagi tidak mengubah saldo; foto tetap opsional dan tidak ada persetujuan Admin rutin.
 - Admin membuat akun pengurus beserta tugas secara atomik. Pemeriksaan saldo selesai dengan satu Admin; selisih dicatat tanpa otomatis mengubah saldo.
 - Form edit mempertahankan data tersimpan; bukti publik selalu diturunkan dari transaksi server, termasuk invalidasi QR.
 - Pembayaran hanya tunai penuh, diambil ketika uang fisik tersedia. Tidak ada transfer, pembayaran sebagian, atau tombol tunda kas.

@@ -158,13 +158,14 @@ final class ChangePasswordTest extends TestCase
         $this->actingAs($citizen)->get(route('profile.password'))
             ->assertOk()
             ->assertSee('max-w-citizen')
-            ->assertSee('Keamanan akun');
+            ->assertSee('aria-label="Navigasi warga"', false);
 
-        foreach ([$officer, $treasurer, $admin] as $staffActor) {
+        foreach ([[$officer, 'Navigasi petugas'], [$treasurer, 'Navigasi bendahara'], [$admin, 'Navigasi Admin']] as [$staffActor, $navigation]) {
             $this->actingAs($staffActor)->get(route('profile.password'))
                 ->assertOk()
                 ->assertSee('max-w-officer')
-                ->assertDontSee('Keamanan akun');
+                ->assertSee('aria-label="'.$navigation.'"', false)
+                ->assertDontSee('aria-label="Navigasi warga"', false);
         }
     }
 

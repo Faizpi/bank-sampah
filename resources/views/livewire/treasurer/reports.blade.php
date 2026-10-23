@@ -3,15 +3,7 @@
 <x-slot:connectivity><x-ui.connectivity-status /></x-slot:connectivity>
 
 <section class="space-y-6" aria-labelledby="reports-title">
-    {{-- Page Header --}}
-    <div class="flex items-center gap-4 rounded-2xl border border-border bg-surface p-5 shadow-xs sm:gap-6 sm:p-6">
-        <div class="min-w-0 flex-1">
-            <p class="text-label font-semibold text-forest-600">Laporan transaksi</p>
-            <h1 id="reports-title" class="mt-1 text-h1 font-bold text-deep-green">{{ $surface === 'treasurer' ? 'Riwayat pembayaran saya' : 'Laporan '.($reportTypes[$reportType] ?? 'Tidak diizinkan') }}</h1>
-            <p class="mt-2 text-body text-text-secondary">{{ $surface === 'treasurer' ? 'Hanya pembayaran tunai yang sudah Anda catat. Pengajuan menunggu tetap berada di menu Pembayaran.' : 'Pilih periode, lihat ringkasan, lalu unduh Excel.' }}</p>
-        </div>
-        <div class="flex shrink-0 items-center justify-center"><x-ui.mascot variant="5" class="h-16 w-auto sm:h-24 md:h-28" /></div>
-    </div>
+    <x-ui.page-heading id="reports-title" :title="$surface === 'treasurer' ? 'Riwayat pembayaran saya' : 'Laporan '.($reportTypes[$reportType] ?? 'Tidak diizinkan')" description="Pilih periode, lihat ringkasan, lalu unduh Excel." mascot="5" />
 
     {{-- Metric Cards --}}
     <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
@@ -97,7 +89,7 @@
         </div>
     </x-ui.panel>
 
-    <x-ui.panel title="Hasil laporan" description="Data yang tampil mengikuti hak akses dan filter yang dipilih.">
+    <x-ui.panel title="Hasil laporan">
         <p wire:loading wire:target="refreshReport,setPeriod" role="status" aria-live="polite" class="mb-4 text-body-sm font-semibold text-text-secondary">Memuat hasil laporan sesuai filter...</p>
         <div wire:loading wire:target="refreshReport,setPeriod" class="grid gap-3" aria-hidden="true">
             @for ($item = 0; $item < 3; $item++)

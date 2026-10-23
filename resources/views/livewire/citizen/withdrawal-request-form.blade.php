@@ -1,18 +1,7 @@
 <x-slot:title>Ajukan pencairan</x-slot:title>
-<x-slot:context>Layanan warga</x-slot:context>
 
 <section aria-labelledby="withdrawal-request-title" class="grid gap-6">
-    {{-- Page header --}}
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-            <p class="text-label font-semibold text-forest-600">Pencairan Saldo</p>
-            <h1 id="withdrawal-request-title" class="mt-2 text-h1 font-bold text-deep-green">Ajukan Pencairan</h1>
-            <p class="mt-3 text-body text-text-secondary">
-                Saldo akan ditahan sementara. Nominal tidak dapat diubah setelah pengajuan dan baru menjadi saldo keluar setelah pembayaran sah.
-            </p>
-        </div>
-        <x-ui.mascot variant="5" bubble="Cairkan saldo dengan aman!" bubblePosition="top" class="h-28 w-auto shrink-0" />
-    </div>
+    <x-ui.page-heading id="withdrawal-request-title" title="Ajukan Pencairan" description="Saldo disisihkan sampai uang tunai diterima." mascot="5" />
 
     @if (session('success'))
         <x-ui.success-state title="Berhasil" :description="session('success')" />
@@ -39,32 +28,20 @@
     @endisset
 
     {{-- Withdrawal Form --}}
-    <x-ui.panel title="Detail pengambilan" description="Pastikan lokasi dan tanggal mudah diverifikasi petugas.">
+    <x-ui.panel title="Detail pengambilan">
         <div class="grid gap-4 md:grid-cols-2">
             @if ($serviceAreas->count() > 1)
-                <label class="block md:col-span-2">
-                    <span class="text-label font-semibold text-deep-green">Area layanan</span>
-                    <select wire:model.live="serviceAreaId" class="mt-2 block w-full rounded-xl border-border bg-warm-canvas text-body text-deep-green">
-                        <option value="">Pilih area layanan</option>
-                        @foreach ($serviceAreas as $serviceArea)
-                            <option value="{{ $serviceArea->id }}">{{ $serviceArea->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('serviceAreaId')
-                        <p role="alert" class="mt-2 text-body-sm text-terracotta">{{ $message }}</p>
-                    @enderror
-                </label>
+                <x-ui.select name="serviceAreaId" label="Area layanan" wire:model.live="serviceAreaId" :options="$serviceAreas->pluck('name', 'id')->all()" placeholder="Pilih area layanan" wrapper-class="md:col-span-2" :error="$errors->first('serviceAreaId')" />
             @endif
             <x-ui.input wire:model.live.debounce.300ms="amount" label="Nominal (rupiah)" name="amount"
-                inputmode="numeric" placeholder="Minimal Rp10.000"
+                inputmode="numeric" placeholder="Contoh: 25000"
                 :hint="$isAmountOverBalance ? 'Nominal melebihi saldo tersedia.' : 'Nominal final tidak dapat diubah setelah diajukan.'"
                 :error="$errors->first('amount')" />
             <x-ui.input wire:model="pickupDate" label="Tanggal pengambilan" name="pickupDate"
                 type="date"
                 :error="$errors->first('pickupDate')" />
             <x-ui.textarea wire:model="pickupLocation" label="Lokasi pengambilan" name="pickupLocation"
-                rows="3" class="md:col-span-2"
-                hint="Contoh: Kantor Desa Sindangheula, RT 03 RW 01"
+                rows="3" wrapper-class="md:col-span-2" placeholder="Contoh: Kantor Desa Sindangheula"
                 :error="$errors->first('pickupLocation')" />
         </div>
     </x-ui.panel>

@@ -1,9 +1,8 @@
 <x-slot:title>Identifikasi warga</x-slot:title>
 <section class="space-y-6">
-    <h1 class="text-h1 font-bold text-deep-green">Pilih warga untuk setoran</h1>
-    <p>Pindai kartu atau cari nama/nomor nasabah, lalu pastikan namanya sesuai.</p>
+    <x-ui.page-heading id="identification-title" title="Pilih warga untuk setoran" description="Cari nama warga atau pindai kartu nasabah." mascot="7" />
     @if ($mobileServices->isNotEmpty())
-        <x-ui.panel title="Pilih konteks setoran" description="Tentukan setoran langsung atau layanan keliling aktif sebelum memindai dan mencari warga.">
+        <x-ui.panel title="Metode setoran">
             <x-ui.select name="selectedMobileServiceId" label="Metode setoran" wire:model.live="selectedMobileServiceId" :error="$errors->first('mobileServiceId')">
                 <option value="">Setoran langsung</option>
                 @foreach ($mobileServices as $mobileService)
@@ -101,19 +100,16 @@
     @endif
 
     {{-- Search Form --}}
-    <x-ui.panel title="Cari warga" description="Ketik nama atau nomor nasabah. Tidak perlu kamera.">
-        <form wire:submit="find" class="space-y-4" aria-describedby="identification-help">
+    <x-ui.panel title="Cari warga">
+        <form wire:submit="find" class="space-y-4">
             <x-ui.input
                 name="search"
                 label="Nomor atau nama warga"
-                hint="Contoh: Siti atau CST-00000001."
+                placeholder="Contoh: Siti atau CST-00000001"
                 wire:model="search"
                 autocomplete="off"
                 :error="$errors->first('search')"
             />
-            <p id="identification-help" class="text-body-sm text-text-secondary">
-                Data warga hanya tampil dalam wilayah dan layanan yang menjadi tanggung jawab Anda.
-            </p>
             <div class="flex flex-col items-end">
                 <x-ui.button type="submit" wire:loading.attr="disabled">
                     <span wire:loading.remove>Cari Nasabah</span>

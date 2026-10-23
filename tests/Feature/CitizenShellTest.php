@@ -38,7 +38,8 @@ final class CitizenShellTest extends TestCase
         self::assertStringContainsString('pb-[calc(5.75rem+env(safe-area-inset-bottom))]', $html);
         self::assertStringContainsString('Ringkasan akun', $html);
         self::assertSame(1, substr_count($html, '<header'));
-        self::assertSame(1, substr_count($html, '<h1'));
+        self::assertSame(0, substr_count($html, '<h1'));
+        self::assertStringContainsString('data-shell-title', $html);
         self::assertSame(1, substr_count($html, '<main'));
         $source = file_get_contents(resource_path('views/components/layouts/citizen.blade.php'));
         self::assertIsString($source);

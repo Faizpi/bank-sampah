@@ -48,7 +48,7 @@
     <header class="sticky top-0 z-sticky border-b border-border bg-surface shadow-xs">
         <div class="mx-auto flex min-h-16 max-w-citizen items-center gap-3 px-4 sm:px-5">
             <div class="min-w-0 flex-1">
-                <h1 class="truncate text-title font-bold text-deep-green">{{ $title }}</h1>
+                <p data-shell-title class="truncate text-title font-bold text-deep-green">{{ $title }}</p>
                 @if ($context)
                     <p class="truncate text-caption text-text-secondary">{{ $context }}</p>
                 @endif

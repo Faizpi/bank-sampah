@@ -1,14 +1,13 @@
 <x-slot:title>Layanan</x-slot:title>
-<x-slot:context>Pilih yang Anda perlukan</x-slot:context>
-<section class="space-y-4" aria-labelledby="services-title">
-    <h1 id="services-title" class="text-h1 font-bold text-deep-green">Apa yang ingin Anda lakukan?</h1>
+<section class="grid gap-6" aria-labelledby="services-title">
+    <x-ui.page-heading id="services-title" title="Layanan untuk Anda" description="Pilih layanan yang Anda perlukan." mascot="3" />
     <div class="grid gap-3 sm:grid-cols-2">
-        @foreach ([['citizen.pickup.create', 'Minta penjemputan', 'Pilih tanggal, alamat, dan jenis sampah.'], ['citizen.withdrawal.create', 'Cairkan saldo tunai', 'Ajukan nominal untuk diambil dari Bendahara.'], ['citizen.grocery.create', 'Tukar saldo dengan sembako', 'Pilih paket sesuai saldo yang tersedia.'], ['citizen.estimate', 'Hitung perkiraan nilai', 'Lihat perkiraan sebelum sampah ditimbang.']] as [$destination, $label, $description])
-            <a href="{{ route($destination) }}" class="min-h-touch rounded-xl border border-border bg-surface p-5 focus-visible:ring-2 focus-visible:ring-focus">
-                <span class="block text-title font-bold text-deep-green">{{ $label }}</span><span class="mt-2 block">{{ $description }}</span>
-            </a>
+        @foreach ([['citizen.pickup.create', 'truck', 'Minta penjemputan', 'Atur tanggal dan lokasi penjemputan.'], ['citizen.withdrawal.create', 'banknote', 'Cairkan saldo tunai', 'Ambil uang tunai dari tabungan sampah.'], ['citizen.grocery.create', 'package-open', 'Tukar saldo dengan sembako', 'Pilih paket sesuai saldo Anda.'], ['citizen.estimate', 'scale', 'Hitung perkiraan nilai', 'Cek perkiraan nilai sampah Anda.']] as [$destination, $icon, $label, $description])
+            <x-ui.action-card :href="route($destination)" :icon="$icon" :title="$label" :description="$description" />
         @endforeach
     </div>
-    <a href="{{ route('citizen.dashboard') }}#pengajuan-aktif" class="inline-flex min-h-touch items-center rounded-md border border-border px-4 font-semibold">Lihat pengajuan aktif</a>
-    <a href="{{ route('public.mobile-schedule') }}" class="inline-flex min-h-touch items-center rounded-md border border-border px-4 font-semibold">Jadwal layanan keliling</a>
+    <div class="grid gap-3 border-t border-border pt-6 sm:grid-cols-2">
+        <x-ui.action-card :href="route('citizen.dashboard').'#pengajuan-aktif'" icon="clipboard-check" title="Lihat pengajuan aktif" />
+        <x-ui.action-card :href="route('public.mobile-schedule')" icon="calendar-days" title="Jadwal layanan keliling" />
+    </div>
 </section>

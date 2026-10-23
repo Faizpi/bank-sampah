@@ -18,7 +18,7 @@
 <button
     type="{{ $type }}"
     {{ $attributes->class([
-        'inline-flex min-h-touch items-center justify-center gap-2 rounded-md px-5 text-label transition duration-180 ease-standard disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-text-secondary disabled:shadow-none disabled:translate-y-0',
+        'inline-flex min-h-touch items-center justify-center gap-2 rounded-md px-5 py-3 text-body font-semibold transition duration-180 ease-standard motion-safe:enabled:hover:-translate-y-0.5 enabled:hover:shadow-xs disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-text-secondary disabled:shadow-none disabled:translate-y-0',
         $variants[$variant] ?? $variants['primary'],
     ])->merge(['disabled' => $loading ? true : null]) }}
     @if ($loading) aria-busy="true" @endif

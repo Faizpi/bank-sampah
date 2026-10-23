@@ -53,7 +53,7 @@
             @endif
 
             <form class="mx-auto mt-4 max-w-form space-y-5" wire:submit="login" wire:loading.attr="aria-busy" wire:target="login" @if ($errors->any()) aria-describedby="login-errors" @endif>
-                <x-ui.input name="username" label="Username" type="text" wire:model.blur="username" autocomplete="username" inputmode="text" required :error="$errors->first('username')" />
+                <x-ui.input name="username" placeholder="Contoh: siti.aminah" label="Username" type="text" wire:model.blur="username" autocomplete="username" inputmode="text" required :error="$errors->first('username')" />
 
                 <div class="space-y-2" x-data="{ showPassword: false }">
                     <label for="password" class="block text-label font-semibold text-text-primary">Kata sandi</label>
@@ -61,7 +61,7 @@
                         <input
                             id="password"
                             name="password"
-                            type="password"
+                            type="password" placeholder="Masukkan kata sandi Anda"
                             wire:model="password"
                             x-bind:type="showPassword ? 'text' : 'password'"
                             autocomplete="current-password"

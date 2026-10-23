@@ -37,14 +37,14 @@
 <section aria-labelledby="pickup-task-title" class="grid gap-6">
     @if (! $pickup->isTerminal() && ! ($pickup->exception_reported_at && ! $pickup->exception_resolved_at))
         <details class="rounded-xl border border-border p-4"><summary>Kendala yang belum dapat dipastikan?</summary>
-            <x-ui.input name="failureReason" label="Alasan pengecualian" wire:model="failureReason" />
+            <x-ui.input name="failureReason" label="Alasan pengecualian" placeholder="Jelaskan kejadian yang perlu diperiksa" wire:model="failureReason" />
             <x-ui.button variant="secondary" wire:click="reportException">Kunci dan laporkan ke Admin</x-ui.button>
         </details>
     @endif
     @if ($pickup->exception_reported_at && ! $pickup->exception_resolved_at)<p role="alert">Pickup dikunci untuk pemeriksaan Admin. Jangan ulangi penjemputan.</p>@endif
     @if (in_array($pickup->status->value, ['dijadwalkan', 'menuju_lokasi'], true) && ! ($pickup->exception_reported_at && ! $pickup->exception_resolved_at))
         <details class="rounded-xl border border-border p-4"><summary class="font-semibold">Tidak dapat melanjutkan tugas?</summary>
-            <x-ui.input name="failureReason" label="Alasan melepas tugas (minimal 10 karakter)" wire:model="failureReason" />
+            <x-ui.input name="failureReason" label="Alasan melepas tugas (minimal 10 karakter)" placeholder="Contoh: kendaraan rusak sebelum berangkat" wire:model="failureReason" />
             <x-ui.button variant="secondary" wire:click="releaseTask">Lepas tugas ke antrean</x-ui.button>
         </details>
     @endif
@@ -140,7 +140,7 @@
                             :options="$conditionsByType->get((int) $item['waste_type_id'], collect())->pluck('name', 'id')->all()" />
                         <x-ui.input wire:model.live.debounce.400ms="actualItems.{{ $index }}.weight_kg"
                             label="Berat aktual (kg)" name="actualItems.{{ $index }}.weight_kg"
-                            inputmode="decimal" :error="$errors->first('actualItems.'.$index.'.weight_kg')" />
+                            inputmode="decimal" placeholder="Contoh: 1,25" :error="$errors->first('actualItems.'.$index.'.weight_kg')" />
                         @if (count($actualItems) > 1)
                             <button type="button" wire:click="removeActualItem({{ $index }})" aria-label="Hapus timbangan {{ $index + 1 }}" class="col-span-2 inline-flex min-h-touch items-center justify-center justify-self-end rounded-md px-4 text-label font-semibold text-terracotta transition hover:bg-danger-bg md:col-span-1">Hapus</button>
                         @endif
@@ -246,7 +246,7 @@
                     </button>
                 </div>
                 <form wire:submit="reportFailure" class="mt-5 grid gap-4">
-                    <x-ui.textarea name="failureReason" label="Jelaskan kendala" wire:model="failureReason" rows="4" hint="Minimal 10 karakter. Contoh: alamat tidak dapat diakses setelah dua kali percobaan." :error="$errors->first('failureReason')" />
+                    <x-ui.textarea name="failureReason" label="Jelaskan kendala" placeholder="Contoh: alamat tidak dapat diakses setelah dua kali percobaan" wire:model="failureReason" rows="4" hint="Minimal 10 karakter." :error="$errors->first('failureReason')" />
                     <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                         <x-ui.button type="button" variant="secondary" wire:click="closeFailureReport">Kembali</x-ui.button>
                         <x-ui.button type="submit" variant="danger" wire:loading.attr="disabled" wire:target="reportFailure">

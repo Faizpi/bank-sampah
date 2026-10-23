@@ -24,4 +24,6 @@ Gunakan [lembar UAT](UAT_EVIDENCE.md); peserta desa nyata belum dapat digantikan
 
 Tambahan: input/error dua record rekonsiliasi, error tindakan setelah render/filter, akhir halaman dua antrean, kandidat retensi berubah walau count sama, token preview yang sudah dipakai, dan nominal paket 20.000 tersimpan 20000.
 
+Regresi 21 Oktober: riwayat Petugas hanya pekerjaan sendiri (bukan seluruh area), pembatasan role/ID/jenis riwayat, pagination dan pencarian, tautan sembako selesai, bukti pickup setelah reload tanpa mutasi baru, perkiraan opsional bukan nol, status maskot/badge, dan satu konfirmasi nama/nominal sebelum pencatatan tunai/sembako. Pengujian dialog browser mencakup Periksa lagi tanpa pencatatan dan konfirmasi yang berhasil. Perbaikan ini tidak mengklaim foto katalog yang belum diunggah telah tersedia.
+
 Browser tambahan: `tests/browser/seed-ui.php` membuat fixture pada database uji yang diminta, tanpa reset; `ui-simplification-smoke.mjs` memeriksa empat breakpoint, hub layanan, satu form, konteks keliling, edit data tersimpan, dan pemeriksaan satu Admin. Jalankan sesudah fixture baseline atau nyatakan prasyarat cash dari fixture aktual. [Hasil](IMPLEMENTATION_UI_2026-10-08.md).

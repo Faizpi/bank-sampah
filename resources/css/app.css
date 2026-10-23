@@ -270,6 +270,29 @@
     font-feature-settings: 'tnum';
 }
 
+/* Navigation cards lift; task rows highlight without moving the data. */
+@utility app-interactive {
+    transition: transform 180ms var(--ease-standard), border-color 180ms var(--ease-standard), background-color 180ms var(--ease-standard), box-shadow 180ms var(--ease-standard);
+    @media (hover: hover) {
+        &:hover {
+            transform: translateY(-2px);
+            border-color: var(--color-forest-600);
+            box-shadow: var(--shadow-sm);
+        }
+    }
+    &:active { transform: translateY(0); }
+    @media (prefers-reduced-motion: reduce) { transform: none !important; }
+}
+
+@utility app-row-action {
+    transition: background-color 120ms var(--ease-standard), border-color 120ms var(--ease-standard);
+    &:hover,
+    &:focus-visible {
+        border-color: var(--color-forest-600);
+        background-color: var(--color-success-bg);
+    }
+}
+
 @utility z-content {
     z-index: var(--z-content);
 }
