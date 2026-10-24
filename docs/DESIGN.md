@@ -268,6 +268,8 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 ### Input, select, textarea
 
 - Label selalu terlihat di atas; placeholder bukan label.
+- Input teks, nominal, berat, pencarian, dan alasan memiliki contoh spesifik pada placeholder. Jangan memberi placeholder palsu pada input tanggal native. Aturan wajib/minimum dan error tetap terlihat saat diperlukan.
+- `wrapper-class` mengatur grid/spacing seluruh field; `class` tetap mengatur kontrol. Contoh: textarea alamat `wrapper-class="sm:col-span-2"`.
 - Untuk warga, petugas, dan bendahara, tinggi input/select 48 px; textarea minimum 120 px.
 - Untuk field custom back-office desktop, tinggi kontrol minimum 44 px, padding horizontal 16 px, dan jarak label-ke-kontrol minimum 8 px. Kontrol tanggal/waktu tetap menyisakan ruang untuk ikon bawaannya.
 - Border default, hover lebih gelap, focus ring, disabled surface abu, error Terracotta + ikon `circle-alert` + teks.
@@ -299,6 +301,8 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 
 - Satu surface, border, radius-lg, padding 16–24.
 - Tidak menaruh card di dalam card. Gunakan divider, section, atau inset datar.
+- Antarmuka akun memakai `ui.page-heading` untuk satu judul utama dengan maskot dekoratif dan `ui.action-card` untuk layanan berikon. Mode `compact` digunakan pada tindakan cepat. Judul pada shell bukan heading utama kedua.
+- `app-interactive` memberi lift 2 px/180 ms hanya pada perangkat hover dan tanpa reduced motion. `app-row-action` hanya mengubah latar/border; angka dan baris transaksi tidak meloncat saat ditunjuk.
 
 ### Disclosure dan panduan berurutan
 

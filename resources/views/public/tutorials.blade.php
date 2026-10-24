@@ -42,7 +42,7 @@
                         <span class="inline-block size-1 rounded-full bg-surface/40"></span>
                         <span class="inline-flex items-center gap-1.5">
                             <x-public.icon name="circle-check" size="size-4" class="text-harvest-gold" />
-                            Akses Google Drive Langsung
+                            Video panduan langsung
                         </span>
                     </div>
                 </div>
@@ -62,7 +62,10 @@
             x-data="{
                 activeRole: 'all',
                 searchQuery: '',
+                activeVideo: null,
                 items: {{ Js::from($tutorials) }},
+                openVideo(item) { this.activeVideo = item; },
+                closeVideo() { this.activeVideo = null; },
                 filterMatches(item) {
                     const roleOk = this.activeRole === 'all' || item.role === this.activeRole;
                     if (!roleOk) return false;
@@ -266,10 +269,19 @@
                                 </div>
                             </div>
 
-                            {{-- Google Drive Video CTA Button --}}
+                            {{-- Video CTA Button --}}
                             <div class="mt-6 border-t border-border/70 pt-4">
                                 @if (filled($item['video_url']))
-                                    <a href="{{ $item['video_url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-touch items-center font-bold text-forest-700">Tonton video panduan</a>
+                                    <button
+                                        type="button"
+                                        x-on:click="openVideo({{ Js::from($item) }})"
+                                        class="inline-flex min-h-touch items-center gap-2 font-bold text-forest-700 transition hover:text-deep-green"
+                                    >
+                                        <span class="flex size-8 items-center justify-center rounded-full bg-forest-600/10 text-forest-700">
+                                            <x-public.icon name="play" size="size-4" />
+                                        </span>
+                                        Tonton video panduan
+                                    </button>
                                 @else
                                     <p class="text-caption text-text-secondary">Panduan teks tersedia. Video belum tersedia.</p>
                                 @endif
@@ -325,6 +337,45 @@
                             </a>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {{-- Video player modal --}}
+            <div
+                x-show="activeVideo"
+                x-cloak
+                x-on:keydown.escape.window="closeVideo()"
+                x-effect="document.body.style.overflow = activeVideo ? 'hidden' : ''"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 sm:p-6"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="tutorial-video-title"
+            >
+                <div class="absolute inset-0" x-on:click="closeVideo()" aria-hidden="true"></div>
+
+                <div class="relative z-10 w-full max-w-4xl">
+                    <div class="mb-3 flex items-center justify-between gap-3 text-surface">
+                        <p id="tutorial-video-title" class="text-body-sm font-semibold" x-text="activeVideo?.title"></p>
+                        <button
+                            type="button"
+                            x-on:click="closeVideo()"
+                            class="inline-flex min-h-touch items-center gap-1.5 rounded-full bg-surface/15 px-4 text-label font-bold text-surface transition hover:bg-surface/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-harvest-gold"
+                        >
+                            <x-public.icon name="x" size="size-4" />
+                            Tutup
+                        </button>
+                    </div>
+
+                    <video
+                        x-ref="tutorialPlayer"
+                        x-effect="if (! activeVideo && $refs.tutorialPlayer) { $refs.tutorialPlayer.pause(); $refs.tutorialPlayer.currentTime = 0; }"
+                        :src="activeVideo?.video_url"
+                        controls
+                        playsinline
+                        preload="metadata"
+                        class="mx-auto block max-w-full rounded-xl bg-black shadow-2xl"
+                        style="max-height: 80vh;"
+                    ></video>
                 </div>
             </div>
         </section>
