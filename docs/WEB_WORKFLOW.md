@@ -1,22 +1,22 @@
-# Workflow web empat role
+# Workflow web dan Telegram empat role
 
-Baseline empat role 5 Oktober 2026, disempurnakan melalui audit UI 8 dan 21 Oktober 2026. Hanya Warga, Petugas, Bendahara, dan Admin; satu role per akun. Semua warga menggunakan smartphone sendiri.
+Baseline empat role 5 Oktober 2026, disempurnakan melalui audit UI 8 dan 21 Oktober 2026. Hanya Warga, Petugas, Bendahara, dan Admin; satu role per akun. Semua warga menggunakan smartphone sendiri. Web tetap tersedia sebagai kanal utama; Telegram adalah kanal opsional yang memakai layanan domain dan pembukuan yang sama.
 
 ## Setoran
 
-Petugas mencari nama/nomor atau memindai warga aktif, memilih dari beberapa hasil bila ada, lalu mengonfirmasi nama sekaligus membuka setoran. Petugas mengisi jenis, kondisi, dan berat aktual, memeriksa total, lalu mencatat setoran. Semua setoran langsung final dan membuat satu mutasi masuk. Foto lampiran opsional. Transaksi final yang salah ditangani melalui koreksi atau pembalikan resmi.
+Petugas mencari nama/nomor atau memindai warga aktif, memilih dari beberapa hasil bila ada, lalu mengonfirmasi nama sekaligus membuka setoran. Petugas mengisi jenis, kondisi, dan berat aktual, memeriksa total, lalu mencatat setoran. Alur yang sama tersedia melalui Telegram setelah akun Petugas tertaut dan otorisasinya masih berlaku. Semua setoran langsung final dan membuat satu mutasi masuk. Foto lampiran opsional. Transaksi final yang salah ditangani melalui koreksi atau pembalikan resmi.
 
 ## Pickup
 
-Warga membuka Layanan dan mengisi satu form: alamat, tanggal pilihan, dan jenis sampah. Perkiraan dan foto opsional. Petugas searea mengambil tugas; penjadwalan memakai tanggal pilihan, kemudian menuju lokasi, menandai dijemput, dan menyelesaikan penimbangan aktual. Pickup selesai hanya setelah setoran final. Warga membatalkan sebelum klaim; claimant melepas tugas hanya sebelum sampah dijemput.
+Warga membuka Layanan di web atau menu Telegram dan mengisi bertahap: alamat, tanggal pilihan, dan jenis sampah. Perkiraan dan foto opsional. Petugas searea mengambil tugas melalui web atau Telegram; penjadwalan memakai tanggal pilihan, kemudian menuju lokasi, menandai dijemput, dan menyelesaikan penimbangan aktual. Pickup selesai hanya setelah setoran final. Warga membatalkan sebelum klaim; claimant melepas tugas hanya sebelum sampah dijemput.
 
 ## Pencairan tunai
 
-Pengajuan Warga langsung menahan saldo dan menunggu Bendahara. Bendahara mengambil pembayaran hanya jika uang tunai fisik tersedia. Setelah uang diberikan satu kali, claimant mencatat pembayaran. Mutasi keluar, konversi hold, waktu, pelaksana, dan kuitansi disimpan atomik. Tidak ada transfer bank, approval Admin, pembayaran sebagian, tombol tunda kas, atau expiry otomatis.
+Pengajuan Warga melalui web atau Telegram langsung menahan saldo dan menunggu Bendahara. Bendahara mengambil pembayaran hanya jika uang tunai fisik tersedia. Setelah uang diberikan satu kali, claimant mencatat pembayaran dari web atau Telegram. Mutasi keluar, konversi hold, waktu, pelaksana, dan kuitansi disimpan atomik. Tidak ada transfer bank, approval Admin, pembayaran sebagian, tombol tunda kas, atau expiry otomatis.
 
 ## Sembako
 
-Pengajuan paket aktif langsung menahan saldo dan menunggu Petugas. Petugas mengambil tugas hanya bila paket tersedia, lalu dapat langsung menyerahkan dan mencatat penyerahan. Paket siap diambil merupakan pilihan untuk pengambilan kemudian, bukan tahap wajib. Tidak tersedia sebelum klaim memerlukan alasan dan melepas hold tanpa mutasi keluar.
+Pengajuan paket aktif melalui web atau Telegram langsung menahan saldo dan menunggu Petugas. Petugas mengambil tugas hanya bila paket tersedia, lalu dapat langsung menyerahkan dan mencatat penyerahan dari web atau Telegram. Paket siap diambil merupakan pilihan untuk pengambilan kemudian, bukan tahap wajib. Tidak tersedia sebelum klaim memerlukan alasan dan melepas hold tanpa mutasi keluar.
 
 ## Kendala dan pengecualian
 
@@ -42,7 +42,8 @@ Menu Riwayat memuat setoran final (termasuk yang kemudian dikoreksi/dibalik), pe
 ## Batas implementasi
 
 - Satu akun memiliki tepat satu dari empat role tetap. Izin tidak dapat diedit melalui panel. Admin aktif terakhir dilindungi pada layanan dan database.
-- Penimbangan/finalisasi setoran serta penyiapan pilihan dan serah-terima sembako tetap melalui web. Bot Telegram belum diimplementasikan. WhatsApp tidak digunakan.
+- Penimbangan/finalisasi setoran serta pencatatan persiapan dan serah-terima sembako dapat dilakukan melalui web atau bot Telegram; kegiatan fisiknya tetap dilakukan langsung. Kedua kanal memakai guard dan layanan domain yang sama. Admin tetap memakai web. WhatsApp tidak digunakan.
+- Bot Telegram nonaktif secara default. Sebelum aktivasi, siapkan token privat, HTTPS/webhook, scheduler, dokumentasi privasi yang disetujui, dan UAT terpisah. Satu akun web tertaut ke maksimal satu Telegram aktif dan satu akun Telegram ke maksimal satu akun web.
 - Semua warga diasumsikan mempunyai smartphone; tidak ada pengajuan oleh pengurus atas nama Warga.
 - Lampiran rutin opsional. Bila diunggah, file tetap tervalidasi dan privat. Kuitansi sistem bukan bukti independen bahwa uang/barang benar-benar berpindah.
 - Tidak ada modul kas atau stok terperinci. Ketersediaan uang/paket merupakan tanggung jawab pelaksana sebelum mengambil tugas.

@@ -219,7 +219,7 @@ Tailwind breakpoint dapat memakai `sm 640`, `md 768`, `lg 1024`, `xl 1280`, teta
 
 ### Shell publik
 
-Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mobile menggunakan menu dialog/sheet yang dapat dioperasikan keyboard. Halaman: beranda, harga, edukasi, jadwal/keliling, target/statistik, pengumuman, QR verifikasi, serta [Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0](TERMS_AND_PRIVACY.md). Dokumen ketentuan/privasi tersedia tanpa login dari footer dan halaman pendaftaran.
+Header logo/nama, navigasi ringkas, CTA masuk/daftar, konten, footer layanan. Mobile menggunakan menu dialog/sheet yang dapat dioperasikan keyboard. Halaman: beranda, harga, edukasi, jadwal/keliling, target/statistik, pengumuman, QR verifikasi, serta [Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0](TERMS_AND_PRIVACY.md). Dokumen ketentuan/privasi tersedia tanpa login dari footer dan halaman pendaftaran.
 
 ### Shell warga
 
@@ -276,7 +276,7 @@ Setiap komponen memiliki state relevan: default, hover, active/pressed, focus-vi
 - Hint dan error terhubung `aria-describedby`.
 - Rupiah dan berat memakai input mode sesuai, pemformatan visual, nilai canonical di server.
 - Select native untuk pilihan sederhana; combobox accessible untuk data panjang.
-- Pada pendaftaran, kontrol penerimaan ketentuan berupa checkbox kosong secara awal, dengan label eksplisit dan tautan ke [Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0](TERMS_AND_PRIVACY.md). Kontrol wajib dapat dioperasikan keyboard, memiliki nama aksesibel, dan tidak boleh dicentang otomatis. Jika belum diterima saat kirim, tampilkan error inline yang terhubung ke kontrol serta ringkasan kesalahan.
+- Pada pendaftaran, kontrol penerimaan ketentuan berupa checkbox kosong secara awal, dengan label eksplisit dan tautan ke [Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0](TERMS_AND_PRIVACY.md). Kontrol wajib dapat dioperasikan keyboard, memiliki nama aksesibel, dan tidak boleh dicentang otomatis. Jika belum diterima saat kirim, tampilkan error inline yang terhubung ke kontrol serta ringkasan kesalahan.
 
 ### Upload
 
@@ -488,4 +488,4 @@ Untuk setiap komponen/halaman, review wajib memastikan:
 
 ## Penyelarasan workflow 5 Oktober 2026
 
-Alur aktif mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md). Empat role tetap dan tidak rangkap tugas; foto rutin opsional, tanpa approval Admin rutin. Antrean klaim dan ringkasan nama/nilai harus terlihat jelas. WhatsApp tidak digunakan; Telegram belum diimplementasikan. Kapasitas layanan keliling tetap berlaku.
+Alur aktif mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md). Empat role tetap dan tidak rangkap tugas; foto rutin opsional, tanpa approval Admin rutin. Antrean klaim dan ringkasan nama/nilai harus terlihat jelas. WhatsApp tidak digunakan. Telegram adalah adaptor percakapan terpisah untuk tiga role operasional dan nonaktif secara default; Admin tetap menggunakan web. Kapasitas layanan keliling tetap berlaku. Lihat [cakupan kanal Telegram](TELEGRAM_CHANNEL.md).

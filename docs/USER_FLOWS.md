@@ -1,6 +1,6 @@
 # Panduan pengguna web
 
-Acuan aktif: [workflow empat role](WEB_WORKFLOW.md) dan [kontrak UI](../DESIGN.md), diperbarui 21 Oktober 2026. Tidak ada bot Telegram atau WhatsApp yang digunakan.
+Acuan aktif: [workflow empat role](WEB_WORKFLOW.md) dan [kontrak UI](../DESIGN.md), diperbarui 25 Oktober 2026. Telegram merupakan kanal opsional nonaktif secara default; WhatsApp tidak digunakan.
 
 ## Warga
 
@@ -39,6 +39,15 @@ Acuan aktif: [workflow empat role](WEB_WORKFLOW.md) dan [kontrak UI](../DESIGN.m
 5. Sebelum memutuskan pengecualian, lihat rincian klaim/paket/dana/riwayat. Pastikan fakta, isi alasan, dan autentikasi ulang. Jika Warga meminta batal dan manfaat belum diberikan, transaksi dibatalkan serta dana dilepas; jika tidak ada permintaan batal, tugas kembali ke antrean dengan dana masih disisihkan.
 6. Kartu Warga baca-saja. Penerbitan saat verifikasi atau pelengkapan kartu dilakukan melalui aksi yang diaudit; bukan otomatis saat halaman kartu dibuka.
 7. Health adalah menu teknis aktif. Fasilitas teknis internal lain tidak diaktifkan menjadi menu baru oleh perbaikan ini.
+
+## Telegram (opsional)
+
+1. Masuk ke web, buka Profil → Telegram, masukkan kata sandi di website, lalu buka tautan sekali pakai ke bot. Kembali ke web dan cocokkan nama serta empat digit akhir ID sebelum mengonfirmasi.
+2. Satu akun web hanya dapat tertaut ke satu akun Telegram aktif, dan sebaliknya. Admin tetap mengelola akun serta pengecualian di panel web.
+3. Setelah otorisasi tindakan habis, tautan dan notifikasi yang dipilih tetap aktif, tetapi tindakan perlu diotorisasi ulang dari web. /keluar mengakhiri otorisasi tindakan; putuskan tautan menghentikan akses bot.
+4. Warga dapat melihat saldo/riwayat/kartu dan mengajukan pickup, pencairan, serta sembako. Petugas dapat menangani pickup, timbang/finalisasi setoran, sembako, dan layanan keliling. Bendahara dapat mengambil, mencatat pembayaran tunai, serta mengirim laporan sendiri.
+5. Menu Informasi umum tidak perlu login. Pilihan info transaksi, pengingat, ringkasan, dan pengumuman mati sampai dipilih sendiri; frekuensi ringkasan dapat diubah. Pesan yang sudah terkirim tetap tersimpan di Telegram.
+6. Gunakan web jika kanal Telegram belum aktif atau ada perubahan akun/area/akses. Kedua kanal memakai layanan domain yang sama; setelah serah fisik jangan mengulang penyerahan karena balasan bot terlambat.
 
 ## Format dan pengaman
 

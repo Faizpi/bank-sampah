@@ -27,7 +27,7 @@ Folder utama: `C:\Skripsi` (di luar repo, privat).
 | 3.3.4 | Verifikasi akun dan sesi | `app/Support/Auth/*`, `app/Actions/Auth/*`, `docs/SECURITY.md` |
 | 3.3.5 | Alur layanan dan konsistensi transaksi | `app/Domain/*`, `app/Livewire/{Citizen,Officer,Treasurer}/*`, `docs/BUSINESS_RULES.md` |
 | 3.3.6 | Disaster Recovery Plan | `docs/DEPLOYMENT.md`, `docs/OPERATIONS.md` |
-| 3.4 | Desain antarmuka Bot Telegram | Rancangan berada di skripsi; implementasi belum ada di repo |
+| 3.4 | Desain dan integrasi Bot Telegram | `app/Domain/Telegram/*`, `app/Http/Controllers/TelegramWebhookController.php`, `docs/TELEGRAM_CHANNEL.md`, `tests/Feature/Telegram/*` |
 | 3.5.1 | Pengujian fungsional dan integrasi | `docs/TEST_PLAN.md`, `tests/`, `npm run test:browser` |
 | 3.5.2–3.5.6 | UAT, prosedur perbandingan, SUS, analisis data | `docs/UAT_EVIDENCE.md`; instrumen SUS ada di lampiran skripsi |
 | Lampiran | Kuitansi/audit, kartu warga | `app/Livewire/Citizen/CustomerCard.php`, bukti kuitansi bawaan transaksi |
@@ -36,13 +36,13 @@ Folder utama: `C:\Skripsi` (di luar repo, privat).
 
 Urutan kerja mengikuti `ROADMAP.md` dan bab 3 skripsi:
 
-1. **UAT web dengan peserta nyata** (20 warga, pengurus Desa Sindangheula) → sumber data Bab 4.
-2. **Implementasi Bot Telegram** sesuai rancangan Bab 3.4: verifikasi akun, menu per peran, saldo/riwayat, pengajuan penjemputan/pencairan/sembako, tugas petugas, penanganan sesi kadaluarsa. Penimbangan dan serah fisik tetap lewat web.
-3. **Pengukuran SUS dan perbandingan antarmuka Web vs Bot** pada peserta yang sama → inti kontribusi penelitian.
-4. **Deployment dan DRP** sesuai Bab 3.3.6 ketika penerapan disetujui.
+1. **Automated verification lokal** atas web dan alur Telegram tiga role. Ini bukti teknis, bukan UAT atau ketersediaan bot pada hosting.
+2. **Selaraskan Bab III dan prototipe penelitian** dengan penautan 1:1, consent notifikasi, finalisasi setoran/serah fisik via bot, serta cakupan tambahan yang kini ada pada kode.
+3. **UAT dan pengukuran SUS/perbandingan Web vs Bot** bersama peserta desa yang sama setelah prototype disetujui; hasilnya menjadi sumber Bab IV, tidak dapat digantikan tes otomatis.
+4. **Aktivasi dan deployment** hanya setelah pemberitahuan privasi disetujui, token/webhook/scheduler siap, dan penerapan disetujui.
 
 ## Batas
 
-- Bot Telegram belum diimplementasikan; jangan mengklaim bot tersedia di luar skripsi.
+- Kode Telegram tersedia di working copy, tetapi `TELEGRAM_ENABLED=false` secara default; token, webhook, produksi, dan UAT belum dibuktikan.
 - Bukti UAT dikumpulkan di `UAT_EVIDENCE.md`, bukan dari pengujian otomatis.
 - Data akun dan identitas peserta adalah data sensitif skripsi; tetap di luar repo atau diimport lewat alur `SEEDING.md`.

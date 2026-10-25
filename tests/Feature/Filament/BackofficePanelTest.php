@@ -267,6 +267,8 @@ final class BackofficePanelTest extends TestCase
 
     public function test_every_registered_backoffice_resource_and_page_renders_for_admin(): void
     {
+        config()->set('telegram.enabled', true);
+
         $admin = User::factory()->create();
         $admin->forceFill(['role' => 'admin'])->save();
 

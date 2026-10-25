@@ -99,7 +99,7 @@ final class PublicLandingPageTest extends TestCase
 
         $pages = [
             'home' => ['Bank Sampah Digital Sindangheula', 'Layanan bank sampah digital Desa Sindangheula untuk pencatatan setoran, saldo rupiah, penjemputan, dan informasi program desa yang transparan.'],
-            'terms-and-privacy' => ['Ketentuan Operasional dan Kebijakan Privasi | Bank Sampah Digital Sindangheula', 'Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0 Bank Sampah Digital Sindangheula.'],
+            'terms-and-privacy' => ['Ketentuan Operasional dan Kebijakan Privasi | Bank Sampah Digital Sindangheula', 'Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0 Bank Sampah Digital Sindangheula, termasuk kanal opsional Telegram.'],
             'public.catalog' => ['Katalog Sampah dan Edukasi', 'Pelajari jenis sampah yang diterima, satuan, kondisi, dan panduan pemilahannya di Bank Sampah Digital Sindangheula.'],
             'public.prices' => ['Harga Sampah Aktif', 'Lihat harga sampah aktif per kondisi dan satuan di Bank Sampah Digital Sindangheula.'],
             'public.announcements' => ['Pengumuman', 'Pengumuman resmi Bank Sampah Digital Desa Sindangheula.'],

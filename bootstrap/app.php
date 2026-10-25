@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Middleware\ApplyResponseSecurityHeaders;
 use App\Http\Middleware\AssignCorrelationId;
 use App\Http\Middleware\EnsureSessionIsFresh;
@@ -10,6 +11,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -17,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: null,
+        then: static function (): void {
+            // No web session or CSRF exemption shared with any other endpoint.
+            Route::post('/telegram/webhook', TelegramWebhookController::class)->name('telegram.webhook');
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
@@ -32,7 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*', 'telegram/webhook'),
         );
         $exceptions->respond(
             static fn (Response $response): Response => ApplyResponseSecurityHeaders::apply(request(), $response),

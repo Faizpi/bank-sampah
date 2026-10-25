@@ -77,7 +77,12 @@ final readonly class MobileServiceService
         $this->authorize($actor, $next === MobileServiceStatus::Open || $next === MobileServiceStatus::Closed ? 'mobile-service.operate' : 'mobile-service.manage');
 
         return DB::transaction(function () use ($actor, $service, $next): MobileService {
+            $actor = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
+            $this->authorize($actor, in_array($next, [MobileServiceStatus::Open, MobileServiceStatus::Closed], true) ? 'mobile-service.operate' : 'mobile-service.manage');
             $locked = MobileService::query()->with(['staff', 'wasteTypes'])->whereKey($service->id)->lockForUpdate()->firstOrFail();
+            if (in_array($next, [MobileServiceStatus::Open, MobileServiceStatus::Closed], true) && ! $this->canOperate($actor, $locked)) {
+                throw new AuthorizationException('Layanan keliling tidak ditugaskan kepada Petugas ini.');
+            }
             $current = $locked->status;
             if (! $current->canTransitionTo($next)) {
                 throw ValidationException::withMessages(['status' => 'Perubahan status layanan keliling tidak valid.']);

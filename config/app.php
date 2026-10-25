@@ -61,7 +61,7 @@ return [
 
     'google_site_verification' => env('GOOGLE_SITE_VERIFICATION'),
 
-    'terms_version' => env('TERMS_VERSION', 'v1.0'),
+    'terms_version' => env('TERMS_VERSION', 'v2.0'),
 
     // Temporary demo data switch. It defaults to enabled outside production so
     // local development remains convenient, while production must opt in

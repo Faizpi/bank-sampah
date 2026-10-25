@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Domain\Notifications\Support\NotificationTemplateRegistry;
+use Carbon\CarbonImmutable;
 use Database\Factories\NotificationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/** @property CarbonImmutable|null $scheduled_at */
 final class Notification extends Model
 {
     /** @use HasFactory<NotificationFactory> */

@@ -2,6 +2,9 @@
 
 <section aria-labelledby="profile-password-title" class="grid gap-6">
     <x-ui.page-heading id="profile-password-title" title="Profil dan Keamanan" description="Perbarui data kontak atau kata sandi Anda." mascot="6" />
+    @if (\App\Domain\Telegram\Services\TelegramAccess::configured() && auth()->user()?->hasRole('warga', 'petugas', 'bendahara'))
+        <x-ui.action-card :href="route('telegram.settings')" icon="log-in" title="Telegram" description="Hubungkan akun dan atur notifikasi." />
+    @endif
 
     <x-ui.panel title="Data profil" description="Nama dan nomor telepon dapat diperbarui sendiri. Wilayah dan RT ditetapkan oleh pengelola.">
         @if ($profileChanged)

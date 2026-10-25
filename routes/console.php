@@ -10,6 +10,12 @@ Artisan::command('inspire', function (): void {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+if (config('telegram.enabled')) {
+    Schedule::command('telegram:work --limit=25')->everyMinute()->withoutOverlapping(2);
+    Schedule::command('telegram:notify')->everyFiveMinutes()->withoutOverlapping(5);
+    Schedule::command('telegram:prune')->dailyAt('02:45')->timezone('Asia/Jakarta')->withoutOverlapping(30);
+}
+
 Schedule::command('operations:expire')
     ->everyFiveMinutes()
     ->timezone('Asia/Jakarta')

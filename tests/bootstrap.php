@@ -35,3 +35,10 @@ foreach ([
     putenv($name.'='.$value);
     $_ENV[$name] = $_SERVER[$name] = $value;
 }
+
+// TestCase loads ".env.testing" by name; give it a guaranteed-empty file in the
+// isolated runtime so a missing project-level ".env.testing" never warns and the
+// developer's real ".env" is never consulted by the test suite.
+file_put_contents($runtime.'/.env.testing', '');
+putenv('BANK_SAMPAH_TEST_ENV_DIR='.$runtime);
+$_ENV['BANK_SAMPAH_TEST_ENV_DIR'] = $_SERVER['BANK_SAMPAH_TEST_ENV_DIR'] = $runtime;

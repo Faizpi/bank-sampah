@@ -3,6 +3,7 @@
 Dokumentasi aktif mengikuti cutover empat role 5 Oktober 2026 dan penyempurnaan UI 8 Oktober 2026. Kode, constraint database, dan hasil pengujian aktual menjadi bukti implementasi; catatan checkpoint lama bukan bukti keadaan terbaru.
 
 - [Workflow](WEB_WORKFLOW.md), [panduan tiap pengguna](USER_FLOWS.md), dan [aturan bisnis](BUSINESS_RULES.md).
+- [Kanal Telegram](TELEGRAM_CHANNEL.md): fitur, penautan, consent, operasi, tes, serta syarat sebelum aktivasi.
 - [Kontrak desain aktif](../DESIGN.md) dan [pelaksanaan audit UI](IMPLEMENTATION_UI_2026-10-08.md).
 - [Role dan akses](PERMISSIONS.md), [arsitektur](ARCHITECTURE.md), [model data](DATA_MODEL.md).
 - [Keamanan](SECURITY.md), [operasional](OPERATIONS.md), [deployment](DEPLOYMENT.md).

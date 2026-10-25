@@ -38,6 +38,7 @@ use App\Livewire\Officer\MobileServiceTasks;
 use App\Livewire\Officer\PickupTask;
 use App\Livewire\Officer\WorkHistory;
 use App\Livewire\Profile\Password as ProfilePassword;
+use App\Livewire\Profile\TelegramSettings;
 use App\Livewire\PublicSite\Announcements;
 use App\Livewire\PublicSite\DepositVerification;
 use App\Livewire\PublicSite\MobileSchedule;
@@ -253,6 +254,10 @@ Route::livewire('/bendahara/laporan', Reports::class)
 Route::livewire('/profil/kata-sandi', ProfilePassword::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:profile.view'])
     ->name('profile.password');
+
+Route::livewire('/profil/telegram', TelegramSettings::class)
+    ->middleware(['auth', 'session.fresh:30', 'permission:profile.view'])
+    ->name('telegram.settings');
 
 Route::livewire('/notifikasi', NotificationCenter::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:notification.view'])

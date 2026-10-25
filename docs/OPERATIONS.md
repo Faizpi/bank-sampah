@@ -14,6 +14,10 @@ Layanan keliling yang masih Dibuka tetap terlihat oleh Petugas setelah jam berak
 
 Fasilitas teknis selain Health tetap tidak didaftarkan sebagai menu aktif. Implementasi internal membatasi operasi menurut halaman dan mengikat pratinjau retensi pada server, pengguna, komponen, tanggal, kandidat, dan batas 10 menit. Eksekusi membutuhkan pratinjau baru jika kandidat berubah. Cache server harus persisten antar-request; driver array hanya cocok untuk tes dalam satu proses.
 
+## Telegram
+
+Telegram tetap mati sampai persetujuan privasi dan konfigurasi host siap. Setelah diaktifkan, scheduler menjalankan `telegram:work` tiap menit, `telegram:notify` tiap lima menit, dan `telegram:prune` harian. Scheduler host harus memanggil `php artisan schedule:run` setiap menit. Worker memproses batch terbatas; konfigurasi awal tidak membutuhkan daemon terpisah. Gunakan `telegram:diagnose` untuk pemeriksaan tanpa menampilkan token. Detail setup, webhook, rotasi, dan uji ada di [TELEGRAM_CHANNEL.md](TELEGRAM_CHANNEL.md).
+
 ## Reset demo lokal
 
 `app:reset-demo-baseline --confirm-reset-demo --dry-run` menampilkan sasaran/count dan memvalidasi sumber privat tanpa perubahan. Tanpa dry-run command menghapus baseline dummy dan media dummy, lalu memakai satu `DatabaseSeeder` untuk data utama privat; bukan lagi empat akun contoh. Sumber dibekukan di memori sebelum reset. Command menolak production, host non-loopback, database selain tepat `bank_sampah`, flag yang tidak lengkap, sumber tidak valid, dan root media di luar workspace. Simpan backup sebelum menjalankannya. Lihat [panduan seeder](SEEDING.md).

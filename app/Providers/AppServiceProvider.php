@@ -17,6 +17,7 @@ use App\Domain\Notifications\Listeners\PersistNotification;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Programs\Models\CollectionTarget;
 use App\Domain\Statistics\Models\StatisticPublication;
+use App\Domain\Telegram\Services\QueueTelegramNotification;
 use App\Domain\WasteMaster\Models\WasteCategory;
 use App\Domain\WasteMaster\Models\WasteCondition;
 use App\Domain\WasteMaster\Models\WastePrice;
@@ -118,6 +119,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Event::listen(NotificationRequested::class, PersistNotification::class);
+        Event::listen(NotificationRequested::class, QueueTelegramNotification::class);
 
         RateLimiter::for('registration', static fn (Request $request): Limit => Limit::perMinute((int) config('app.registration_max_attempts_per_minute'))
             ->by((string) $request->ip()));

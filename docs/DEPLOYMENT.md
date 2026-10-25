@@ -14,6 +14,12 @@ Migration transaksi cutover sengaja menolak data transaksi yang tidak kosong. Un
 
 `db:seed` produksi biasa tetap hanya bootstrap Admin dari `APP_INITIAL_ADMIN_*`; tidak mengganti sandi, menaikkan role, atau mengaktifkan kembali akun yang ada. Installer hosting dummy adalah jalur eksplisit terpisah yang memakai importer data utama yang sama, bukan seeder aplikasi kedua. Hapus konsol dan matikan izin installer setelah selesai.
 
+## Telegram (aktivasi terpisah)
+
+Kode bot nonaktif secara default dan migration-nya hanya menambah tabel. Jangan aktifkan pada hosting sebelum pemberitahuan privasi versi Telegram disetujui/dipublikasikan, backup tersedia, token disimpan privat, domain HTTPS dapat dijangkau Telegram, dan UAT disetujui. Admin tetap memakai panel web.
+
+Setelah persetujuan, isi `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, dan secret acak minimal 32 karakter di `.env` server saja; set `TELEGRAM_ENABLED=true`, bersihkan config cache, jalankan migration yang additive, lalu `php artisan telegram:diagnose` dan `php artisan telegram:webhook`. Pastikan scheduler cron setiap menit tetap aktif agar update, pemberitahuan, dan retensi diproses. Jangan meletakkan token di URL, command argument, log, repo, atau chat. Untuk mematikan dengan tertib, jalankan `telegram:webhook --remove` saat konfigurasi masih tersedia, kemudian matikan fitur dan bersihkan cache konfigurasi. Langkah lengkap ada di [TELEGRAM_CHANNEL.md](TELEGRAM_CHANNEL.md).
+
 ## Rollback
 
 Cutover schema bersifat irreversible. Pulihkan kode checkpoint dan backup database/media yang cocok bersama-sama; jangan rollback sebagian migration atau menghapus transaksi final. Backup lokal dan kredensial tidak di-commit.

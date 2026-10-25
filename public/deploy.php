@@ -468,6 +468,27 @@ $actions = [
             ['view:cache', []],
         ],
     ],
+    'telegram-diagnose' => [
+        'label' => 'Periksa konfigurasi Telegram',
+        'description' => 'Memeriksa migration, ekstensi, dan antrean tanpa menampilkan token atau menghubungi Telegram.',
+        'group' => 'diagnostics',
+        'risk' => 'read-only',
+        'commands' => [['telegram:diagnose', []]],
+    ],
+    'telegram-network' => [
+        'label' => 'Periksa koneksi bot Telegram',
+        'description' => 'Memeriksa identitas bot dan status webhook melalui Telegram; tidak mengubah webhook.',
+        'group' => 'diagnostics',
+        'risk' => 'read-only',
+        'commands' => [['telegram:diagnose', ['--network' => true]]],
+    ],
+    'telegram-webhook' => [
+        'label' => 'Pasang webhook Telegram',
+        'description' => 'Setelah .env Telegram lengkap, daftarkan alamat HTTPS aplikasi ini. Update tertunda tidak dibuang.',
+        'group' => 'maintenance',
+        'risk' => 'routine',
+        'commands' => [['telegram:webhook', []]],
+    ],
     'view-logs' => [
         'label' => 'Lihat log aplikasi',
         'description' => 'Membaca 200 baris terakhir log aplikasi secara terbatas tanpa menghapus atau mengubahnya.',

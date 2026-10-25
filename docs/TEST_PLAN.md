@@ -2,6 +2,8 @@
 
 ## Otomatis
 
+Tes kanal Telegram mencakup penautan 1:1, persetujuan web, otorisasi terpisah, role/area/claim, idempotensi, alur Warga/Petugas/Bendahara, media privat, outbox/retry, opt-in notifikasi, batas privasi target, dan laporan Bendahara milik sendiri. Jalankan `vendor/bin/pest tests/Feature/Telegram`; suite wajib lulus di SQLite in-memory dan di MySQL database disposable bernama `bank_sampah_test_telegram`. Jangan arahkan tes ke `bank_sampah`. Tes mocked API bukan bukti webhook publik atau UAT.
+
 - Unit/feature: role scalar, constraint negatif, autentikasi/sesi, middleware persisten, scope, setoran, ledger/hold, file privat, laporan dan master.
 - Cutover: routine tanpa foto, claim eksklusif, stale claimant/nonaktif/area dicabut, release mempertahankan hold, cancel melepas sekali, tidak tersedia, retry dan payload konflik.
 - Exception: kunci, reautentikasi, bukan pihak transaksi, pemulihan claimant yang dicabut, pengalihan pickup dan konversi tepat sekali.

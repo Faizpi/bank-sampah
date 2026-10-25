@@ -30,6 +30,10 @@ abstract class TestCase extends BaseTestCase
     {
         $app = require dirname(__DIR__).'/bootstrap/app.php';
         $app->addAbsoluteCachePathPrefix(substr(sys_get_temp_dir(), 0, 3));
+        if (! is_file(dirname(__DIR__).'/.env.testing')) {
+            $runtimeEnvDir = getenv('BANK_SAMPAH_TEST_ENV_DIR');
+            $app->useEnvironmentPath(is_string($runtimeEnvDir) && $runtimeEnvDir !== '' ? $runtimeEnvDir : dirname(__DIR__));
+        }
         $app->loadEnvironmentFrom('.env.testing');
         $this->traitsUsedByTest = class_uses_recursive(static::class);
         $app->make(Kernel::class)->bootstrap();

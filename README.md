@@ -38,7 +38,7 @@ Landing menampilkan ringkasan seluruh desa dan jenis sampah beserta harga aktif.
 
 Claim mengikat pelaksana sebelum uang/barang berpindah. Setelah serah fisik, satu pencatatan atomik membuat mutasi keluar dan kuitansi. Respons hilang tidak boleh memicu serah fisik kedua; ketidakpastian masuk jalur exception Admin beralasan dan terautentikasi ulang.
 
-Bot Telegram belum diimplementasikan dan WhatsApp tidak digunakan. Penimbangan serta serah-terima sembako tetap melalui web. Tes otomatis belum menggantikan UAT peserta desa nyata. Penyempurnaan UI 8 Oktober 2026 dilacak di [catatan pelaksanaan](docs/IMPLEMENTATION_UI_2026-10-08.md).
+Kanal Bot Telegram untuk Warga, Petugas, dan Bendahara kini tersedia di kode dan tetap **nonaktif secara default** sampai server dikonfigurasi. Admin tetap bekerja melalui web. Penimbangan/finalisasi dan pencatatan serah fisik dapat dilakukan melalui web atau bot dengan layanan domain serta pembukuan yang sama. Telegram tidak menggantikan atau menggandakan transaksi web. Lihat [cakupan, privasi, konfigurasi, dan batas aktivasi](docs/TELEGRAM_CHANNEL.md). WhatsApp tidak digunakan. Tes otomatis belum menggantikan UAT peserta desa nyata. Penyempurnaan UI 8 Oktober 2026 dilacak di [catatan pelaksanaan](docs/IMPLEMENTATION_UI_2026-10-08.md).
 
 ## Teknologi
 

@@ -176,7 +176,7 @@
                                 <label for="terms_accepted" class="text-body-sm text-text-primary leading-relaxed">Saya menyetujui <a class="font-bold text-forest-600 underline underline-offset-4 hover:text-forest-700" href="{{ route('terms-and-privacy') }}" target="_blank" rel="noopener noreferrer">ketentuan operasional dan kebijakan privasi <span class="sr-only">(terbuka di tab baru)</span></a>.</label>
                             </div>
                             @error('terms_accepted')
-                                <p id="terms_accepted-error" class="flex items-start gap-2 break-words text-body-sm font-semibold text-terracotta"><x-public.icon name="circle-alert" size="size-4" class="mt-0.5 shrink-0" />Persetujuan terhadap Ketentuan Operasional v1.0 dan Kebijakan Privasi Ringkas v1.0 wajib diberikan.</p>
+                                <p id="terms_accepted-error" class="flex items-start gap-2 break-words text-body-sm font-semibold text-terracotta"><x-public.icon name="circle-alert" size="size-4" class="mt-0.5 shrink-0" />Persetujuan terhadap Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0 wajib diberikan.</p>
                             @enderror
                         </div>
                     </section>
