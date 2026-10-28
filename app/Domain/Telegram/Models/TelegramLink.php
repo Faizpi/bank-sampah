@@ -16,8 +16,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $chat_id
  * @property string $account_fingerprint
  * @property string $generation
- * @property CarbonImmutable $authorized_until
- * @property CarbonImmutable|null $last_activity_at
  * @property bool $transaction_notifications
  * @property bool $reminders
  * @property bool $summaries
@@ -37,7 +35,7 @@ final class TelegramLink extends Model
 
     protected function casts(): array
     {
-        return ['authorized_until' => 'immutable_datetime', 'last_activity_at' => 'immutable_datetime', 'blocked_at' => 'immutable_datetime', 'transaction_notifications' => 'boolean', 'reminders' => 'boolean', 'summaries' => 'boolean', 'announcements' => 'boolean'];
+        return ['blocked_at' => 'immutable_datetime', 'transaction_notifications' => 'boolean', 'reminders' => 'boolean', 'summaries' => 'boolean', 'announcements' => 'boolean'];
     }
 
     /** @return BelongsTo<User, $this> */

@@ -24,10 +24,9 @@ final class TelegramBot
             if ($command === 'cancel-input') {
                 $ctx->say('Pengisian dihentikan. Pengajuan yang sudah dikirim dan draf setoran tersimpan tidak dibatalkan.', [BotContext::button('Menu', 'menu')]);
             } elseif ($command === 'help') {
-                $ctx->say('Gunakan tombol menu. /menu membuka menu; /batal menghentikan pengisian, bukan membatalkan transaksi. Jangan kirim kata sandi di chat. Penautan dan pencabutan akses dilakukan melalui Profil → Telegram di website.', [['label' => 'Profil Telegram', 'url' => route('telegram.settings')], BotContext::button('Menu', 'menu')]);
+                $ctx->say('Gunakan tombol menu. /menu membuka menu; /batal menghentikan pengisian, bukan membatalkan transaksi. Akun dapat dipakai selama Telegram tetap tertaut dan hak aksesnya masih sah. /keluar menampilkan cara memutus tautan melalui website. Jangan kirim kata sandi di chat.', [['label' => 'Profil Telegram', 'url' => route('telegram.settings')], BotContext::button('Menu', 'menu')]);
             } elseif ($command === 'logout' && $ctx->link !== null) {
-                $ctx->link->forceFill(['authorized_until' => now()])->save();
-                $ctx->say('Otorisasi tindakan diakhiri. Notifikasi tetap mengikuti pilihan Anda. Untuk mencabut seluruh akses, putuskan tautan melalui website.', [['label' => 'Pengaturan Telegram', 'url' => route('telegram.settings')]]);
+                $ctx->say('Untuk keluar dari akun ini, pilih Putuskan Telegram melalui Profil → Telegram di website. Sampai tautan diputus, akun tetap terhubung dan notifikasi mengikuti pilihan Anda. Pengajuan dan saldo tidak dibatalkan.', [['label' => 'Pengaturan Telegram', 'url' => route('telegram.settings')], BotContext::button('Menu', 'menu')]);
             } else {
                 $this->menu($ctx);
             }

@@ -76,16 +76,17 @@ it('never publishes a rolled back transaction', function (): void {
     expect(LedgerEntry::count())->toBe(0)->and(TelegramOutbox::count())->toBe(0);
 });
 
-it('sends an opted in weekly summary once without extending transaction authorization', function (): void {
+it('sends an opted in weekly summary once without changing the persistent link', function (): void {
     ($this->credit)();
-    $this->link->forceFill(['summaries' => true, 'authorized_until' => now()->subMinute()])->save();
-    $before = $this->link->authorized_until->toIso8601String();
+    $this->link->forceFill(['summaries' => true])->save();
+    $before = $this->link->only(['id', 'generation', 'account_fingerprint']);
     $this->travelTo(CarbonImmutable::parse('2026-10-26 09:00', 'Asia/Jakarta'));
     app(TelegramNotifications::class)->produce();
     app(TelegramNotifications::class)->produce();
     $summary = TelegramOutbox::where('category', 'summaries')->firstOrFail();
     expect($summary->payload['text'])->toContain('75.000')->and(TelegramOutbox::where('category', 'summaries')->count())->toBe(1);
-    expect($this->link->fresh()->authorized_until->toIso8601String())->toBe($before);
+    expect($this->link->fresh()->only(['id', 'generation', 'account_fingerprint']))->toBe($before)
+        ->and($this->link->fresh()->getAttribute('authorized_until'))->toBeNull();
 });
 
 it('rate limits reminders and rechecks the request before a delayed delivery', function (): void {

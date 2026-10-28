@@ -46,7 +46,7 @@ final class TelegramConnections extends Page implements HasTable
         return $table->query(TelegramLink::query()->with('user'))->columns([
             TextColumn::make('user.name')->label('Pengguna')->searchable(),
             TextColumn::make('telegram_id')->label('ID Telegram')->formatStateUsing(fn (string $state): string => '••••'.substr($state, -4)),
-            TextColumn::make('authorized_until')->label('Otorisasi hingga')->dateTime('d/m/Y H:i'),
+            TextColumn::make('created_at')->label('Tertaut sejak')->dateTime('d/m/Y H:i'),
         ])->recordActions([
             Action::make('revoke')->label('Cabut tautan')->color('danger')->schema([
                 TextInput::make('password')->label('Kata sandi Admin saat ini')->password()->required()->autocomplete('current-password'),

@@ -55,7 +55,7 @@ final class ServiceTelegramBot
 
             return;
         }
-        $actor = $ctx->actor($kind === 'cash' ? 'bendahara' : 'petugas', true);
+        $actor = $ctx->actor($kind === 'cash' ? 'bendahara' : 'petugas');
         $workflow = app(ClaimedServiceWorkflow::class);
         if ($command === 'service.claim') {
             $record = $workflow->claim($actor, $record);

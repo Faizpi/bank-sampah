@@ -62,7 +62,7 @@ final class TelegramSettings extends Component
         abort_unless($this->challengeId !== null, 422);
         $link = $links->approve($this->actor(), $this->challengeId, $this->preferences());
         $this->reset('challengeId', 'linkUrl', 'password');
-        session()->flash('telegram_success', 'Telegram terhubung dan otorisasi diperbarui.');
+        session()->flash('telegram_success', 'Telegram berhasil ditautkan.');
         app(SendTelegramOutbox::class)->send(1, $link->telegram_id);
     }
 
@@ -86,9 +86,11 @@ final class TelegramSettings extends Component
     public function render(): View
     {
         $actor = $this->actor();
+        $link = TelegramLink::query()->where('user_id', $actor->id)->first();
 
         return view('livewire.profile.telegram-settings', [
-            'link' => TelegramLink::query()->where('user_id', $actor->id)->first(),
+            'link' => $link,
+            'needsVerification' => $link !== null && ! hash_equals($link->account_fingerprint, TelegramAccess::fingerprint($actor)),
             'challenge' => $this->challengeId === null ? null : TelegramChallenge::query()->whereKey($this->challengeId)->where('user_id', $actor->id)->whereNull('consumed_at')->whereNull('cancelled_at')->where('expires_at', '>', now())->first(),
         ])->layout($actor->hasRole('warga') ? 'layouts.citizen' : 'layouts.officer');
     }

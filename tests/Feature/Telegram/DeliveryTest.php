@@ -80,8 +80,9 @@ it('drops messages from a revoked connection or an old authorization generation'
     expect($new->fresh()->status)->toBe('cancelled')->and(Http::recorded()->count())->toBe($before);
 });
 
-it('sends permitted notifications after transaction authorization expires but stops disabled accounts', function (): void {
-    $this->link->forceFill(['transaction_notifications' => true, 'authorized_until' => now()->subMinute()])->save();
+it('sends permitted notifications after long inactivity but stops disabled accounts', function (): void {
+    $this->link->forceFill(['transaction_notifications' => true])->save();
+    $this->travel(400)->days();
     app(TelegramUi::class)->queue('10001', $this->link, 'permitted-notice', ['kind' => 'text', 'text' => 'Informasi transaksi'], 'transaction_notifications');
     expect(app(SendTelegramOutbox::class)->send())->toBe(1);
     $message = app(TelegramUi::class)->reply('10001', $this->link, 'disabled-notice', 'Privat');

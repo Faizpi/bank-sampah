@@ -15,12 +15,12 @@ final class BotContext
 
     public function __construct(public readonly int $updateId, public readonly string $telegramId, public readonly ?TelegramLink $link, public readonly TelegramConversation $conversation) {}
 
-    public function actor(?string $role = null, bool $write = false): User
+    public function actor(?string $role = null): User
     {
         if ($this->link === null) {
             throw new AuthorizationException('Hubungkan akun melalui website terlebih dahulu.');
         }
-        $actor = app(TelegramAccess::class)->actor($this->link, $write);
+        $actor = app(TelegramAccess::class)->actor($this->link);
         if ($role !== null && ! $actor->hasRole($role)) {
             throw new AuthorizationException('Menu ini tidak tersedia untuk peran Anda.');
         }

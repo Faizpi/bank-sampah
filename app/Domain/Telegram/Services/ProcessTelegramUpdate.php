@@ -90,7 +90,6 @@ final class ProcessTelegramUpdate
                     app(TelegramBot::class)->handle($context, $command, $parameters, $payload);
                 }
                 // Only a fully processed interaction counts as valid activity for the staff idle window.
-                $link?->forceFill(['last_activity_at' => now()])->save();
                 $conversation->forceFill(['last_update_id' => $id])->save();
                 $update->forceFill(['status' => 'processed', 'payload' => [], 'processed_at' => now(), 'error_code' => null])->save();
             }, 5);

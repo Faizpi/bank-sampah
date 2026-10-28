@@ -6,12 +6,14 @@
     <x-ui.panel :title="$link ? 'Telegram sudah tertaut' : 'Tautkan akun Anda'">
         <div class="grid gap-4">
             @if ($link)
-                <p>Telegram berakhiran {{ substr($link->telegram_id, -4) }}. Otorisasi tindakan hingga {{ $link->authorized_until->translatedFormat('d M Y H:i') }}.</p>
+                <p>Telegram berakhiran {{ substr($link->telegram_id, -4) }}. Terhubung tanpa batas waktu selama akun dan hak akses tetap aktif.</p>
+                @if ($needsVerification)<p role="status">Data keamanan akun berubah. Verifikasi ulang untuk menggunakan Telegram kembali.</p>@endif
             @endif
-            <p>Masukkan kata sandi hanya di website ini. Setelah membuka bot, kembali ke halaman ini untuk mengonfirmasi Telegram Anda. Data layanan akan dikirim ke chat Telegram yang tertaut; pesan yang sudah terkirim tetap berada di riwayat Telegram.</p>
+            @if (! $link || $needsVerification)<p>Masukkan kata sandi hanya di website ini. Setelah membuka bot, kembali ke halaman ini untuk mengonfirmasi Telegram Anda.</p>@endif
+            <p>Data layanan dikirim ke chat Telegram yang tertaut; pesan yang sudah terkirim tetap berada di riwayat Telegram.</p>
             <x-ui.input name="telegram_password" type="password" label="Kata sandi akun saat ini" placeholder="Masukkan kata sandi di website, bukan di chat" wire:model="password" autocomplete="current-password" :error="$errors->first('password')" />
             <div class="flex flex-wrap gap-3">
-                <x-ui.button wire:click="begin" wire:loading.attr="disabled">{{ $link ? 'Perbarui otorisasi' : 'Buat tautan sekali pakai' }}</x-ui.button>
+                @if (! $link || $needsVerification)<x-ui.button wire:click="begin" wire:loading.attr="disabled">{{ $link ? 'Verifikasi ulang akun' : 'Buat tautan sekali pakai' }}</x-ui.button>@endif
                 @if ($link)<x-ui.button variant="danger" type="button" x-on:click="$dispatch('open-dialog', { id: 'telegram-revoke', invoker: $el })">Putuskan Telegram</x-ui.button>@endif
             </div>
             @if ($challenge && $linkUrl)

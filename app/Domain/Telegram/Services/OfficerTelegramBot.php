@@ -55,7 +55,7 @@ final class OfficerTelegramBot
 
             return;
         }
-        $actor = $ctx->actor('petugas', true);
+        $actor = $ctx->actor('petugas');
         if ($command === 'officer.deposit') {
             $mobileId = isset($p['mobile']) ? (int) $p['mobile'] : null;
             if ($mobileId !== null) {
@@ -255,7 +255,7 @@ final class OfficerTelegramBot
     {
         $pickup = $this->ownedPickup($actor, (int) $p['id']);
         if ($command !== 'officer.pickup.show') {
-            $ctx->actor('petugas', true);
+            $ctx->actor('petugas');
             if (in_array($command, ['officer.pickup.release', 'officer.pickup.exception'], true)) {
                 $ctx->state($command, ['pickup_id' => $pickup->id]);
                 $ctx->say('Jelaskan alasan/kendala minimal 10 karakter.');
@@ -313,7 +313,7 @@ final class OfficerTelegramBot
         abort_unless($service instanceof MobileService, 404);
         $operations = app(MobileServiceService::class);
         if (in_array($command, ['officer.mobile.open', 'officer.mobile.close.confirm'], true)) {
-            $ctx->actor('petugas', true);
+            $ctx->actor('petugas');
             $service = $operations->transition($actor, $service, $command === 'officer.mobile.open' ? MobileServiceStatus::Open : MobileServiceStatus::Closed);
         }
         $ctx->state('menu');

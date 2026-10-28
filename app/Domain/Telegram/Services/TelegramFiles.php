@@ -32,7 +32,7 @@ final class TelegramFiles
         if ($link === null || $conversation === null || $conversation->link_id !== $link->id || $conversation->expires_at->isPast() || ! str_ends_with($conversation->state, '.photo')) {
             throw ValidationException::withMessages(['photo' => 'Pilih Tambahkan foto pada pengajuan atau tugas terlebih dahulu.']);
         }
-        app(TelegramAccess::class)->actor($link, true);
+        app(TelegramAccess::class)->actor($link);
         if ($conversation->state === 'citizen.pickup.photo' && count($conversation->data['photos'] ?? []) >= 2) {
             throw ValidationException::withMessages(['photo' => 'Maksimal dua foto. Pilih Selesai untuk melanjutkan.']);
         }

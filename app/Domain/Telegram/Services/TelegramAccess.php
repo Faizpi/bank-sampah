@@ -8,7 +8,6 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Telegram\Models\TelegramLink;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Validation\ValidationException;
 
 final class TelegramAccess
 {
@@ -24,8 +23,11 @@ final class TelegramAccess
         }
     }
 
-    public function actor(TelegramLink $link, bool $transaction = false): User
+    public function actor(TelegramLink $link): User
     {
+        if (! TelegramLink::query()->whereKey($link->id)->where('user_id', $link->user_id)->where('telegram_id', $link->telegram_id)->where('generation', $link->generation)->exists()) {
+            throw new AuthorizationException('Tautan Telegram sudah dicabut atau diganti.');
+        }
         $actor = User::query()->find($link->user_id);
         if ($actor === null) {
             throw new AuthorizationException('Akses Telegram tidak lagi berlaku.');
@@ -33,12 +35,6 @@ final class TelegramAccess
         $this->eligible($actor);
         if (! hash_equals($link->account_fingerprint, self::fingerprint($actor))) {
             throw new AuthorizationException('Akun berubah. Perbarui penautan melalui website.');
-        }
-        if ($transaction && $link->authorized_until->isPast()) {
-            throw ValidationException::withMessages(['authorization' => 'Otorisasi tindakan berakhir. Buka Profil → Telegram di web untuk memperbaruinya. Notifikasi tetap mengikuti pilihan Anda.']);
-        }
-        if ($transaction && ! $actor->hasRole('warga') && $link->last_activity_at !== null && $link->last_activity_at->addMinutes((int) config('telegram.staff_idle_minutes'))->isPast()) {
-            throw ValidationException::withMessages(['authorization' => 'Otorisasi tindakan berakhir karena tidak ada aktivitas. Buka Profil → Telegram di web untuk memperbaruinya. Notifikasi tetap mengikuti pilihan Anda.']);
         }
 
         return $actor;

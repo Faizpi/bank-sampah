@@ -1,7 +1,7 @@
 @extends('layouts.public')
 
 @section('title', 'Ketentuan Operasional dan Kebijakan Privasi | Bank Sampah Digital Sindangheula')
-@section('description', 'Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0 Bank Sampah Digital Sindangheula, termasuk kanal opsional Telegram.')
+@section('description', 'Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1 Bank Sampah Digital Sindangheula, termasuk kanal opsional Telegram.')
 
 @section('content')
     <div class="public-canvas">
@@ -9,7 +9,7 @@
             <div class="public-container grid items-center gap-8 section-space lg:grid-cols-[1fr_auto]">
                 <div>
                 <p class="text-label font-semibold tracking-wide text-surface/80">Dokumen publik</p>
-                <h1 id="terms-title" class="mt-2 max-w-3xl text-h1 lg:text-h1-lg text-surface">Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0</h1>
+                <h1 id="terms-title" class="mt-2 max-w-3xl text-h1 lg:text-h1-lg text-surface">Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1</h1>
                 <p class="mt-3 max-w-2xl text-body text-surface/80">Dokumen ini tersedia untuk dibaca sebelum pendaftaran dan berlaku untuk penggunaan layanan Bank Sampah Digital Sindangheula, termasuk kanal opsional Telegram.</p>
                 </div>
                 <img src="{{ asset('images/landing/mascot-10.png') }}" alt="Maskot badak sedang berpikir saat warga membaca ketentuan layanan" class="mx-auto h-40 w-44 object-contain lg:h-48 lg:w-52">
@@ -30,7 +30,7 @@
                         <section aria-labelledby="terms-registration">
                             <h2 id="terms-registration" class="text-h2 text-deep-green">Pendaftaran dan penerimaan ketentuan</h2>
                             <ol class="mt-3 list-decimal space-y-2 pl-5">
-                                <li>Pendaftar wajib menyetujui Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0 saat membuat akun.</li>
+                                <li>Pendaftar wajib menyetujui Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1 saat membuat akun.</li>
                                 <li>Sistem menyimpan versi ketentuan, waktu persetujuan, serta riwayat persetujuan setiap pengguna.</li>
                                 <li>Menyetujui ketentuan tidak memverifikasi domisili, mencegah duplikasi akun, mengaktifkan akun, atau memasukkan Anda secara otomatis.</li>
                                 <li>Setelah pendaftaran valid, akun tetap berstatus menunggu verifikasi. Hanya keputusan verifikasi admin yang dapat mengaktifkan akun.</li>
@@ -45,8 +45,9 @@
                             <ul class="mt-3 list-disc space-y-2 pl-5">
                                 <li>Bot Telegram hanya aktif setelah penautan yang dimulai dari halaman Profil di website dengan kata sandi akun; sistem tidak pernah meminta kredensial melalui chat.</li>
                                 <li>Satu akun web tertaut paling banyak satu akun Telegram dan sebaliknya; penggantian menuntut pemutusan tautan sebelumnya melalui akun pemiliknya.</li>
-                                <li>Izin tindakan melalui bot berjangka (Warga 30 hari; Petugas/Bendahara 8 jam atau 60 menit tanpa aktivitas) dan diperbarui dari web. Berakhirnya izin tidak menghentikan notifikasi yang diizinkan.</li>
-                                <li>Pengguna dapat mengakhiri izin dengan perintah keluar pada bot, memutus tautan dari Profil di website, atau meminta pencabutan oleh Admin yang berwenang.</li>
+                                <li>Akses bot berlaku tanpa batas waktu selama Telegram tetap tertaut, akun aktif, dan hak aksesnya masih sah. Lama tidak menggunakan bot tidak mengharuskan pengguna kembali ke website.</li>
+                                <li>Pengguna dapat memutus tautan dari Profil di website atau meminta pencabutan oleh Admin yang berwenang. Perintah /keluar pada bot menampilkan petunjuk pemutusan; perintah itu sendiri tidak memutus tautan.</li>
+                                <li>Perubahan data keamanan akun dapat memerlukan verifikasi ulang. Kedaluwarsa tombol atau isian sementara cukup ditangani melalui /menu, bukan dengan menautkan ulang akun.</li>
                             </ul>
                         </section>
                         <section aria-labelledby="privacy-telegram">

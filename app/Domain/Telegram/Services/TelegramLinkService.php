@@ -92,8 +92,6 @@ final readonly class TelegramLinkService
                 $values = [
                     'telegram_id' => $challenge->telegram_id, 'chat_id' => $challenge->telegram_id,
                     'account_fingerprint' => TelegramAccess::fingerprint($actor), 'generation' => (string) Str::uuid(),
-                    'authorized_until' => now()->addHours((int) config($actor->hasRole('warga') ? 'telegram.citizen_authorization_hours' : 'telegram.staff_authorization_hours')),
-                    'last_activity_at' => now(),
                     ...$this->preferences($preferences),
                 ];
                 $link = $existing ?? new TelegramLink(['id' => (string) Str::uuid(), 'user_id' => $actor->id]);

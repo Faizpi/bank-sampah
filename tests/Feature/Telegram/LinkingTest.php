@@ -59,7 +59,7 @@ it('rejects wrong password expired challenges and a different candidate', functi
     expect(TelegramLink::count())->toBe(0);
 });
 
-it('enforces the one to one account link and rotates callback generation on reauthorization', function (): void {
+it('enforces the one to one account link and rotates callback generation after explicit verification', function (): void {
     $link = ($this->connect)($this->actor, '10001');
     $generation = $link->generation;
     $next = ($this->connect)($this->actor, '10001');
@@ -83,11 +83,11 @@ it('postpones a telegram after repeated invalid link claims', function (): void 
     expect(TelegramLink::count())->toBe(0);
 });
 
-it('separates notifications from expired transaction authorization and rejects changed accounts', function (): void {
+it('keeps linked access after long inactivity but rejects changed account credentials', function (): void {
     $link = ($this->connect)($this->actor, '10001');
-    $link->forceFill(['authorized_until' => now()->subMinute()])->save();
+    expect($link->getAttribute('authorized_until'))->toBeNull()->and($link->getAttribute('last_activity_at'))->toBeNull();
+    $this->travel(400)->days();
     expect(app(TelegramAccess::class)->actor($link)->id)->toBe($this->actor->id);
-    expect(fn () => app(TelegramAccess::class)->actor($link, true))->toThrow(ValidationException::class);
     $this->actor->forceFill(['password' => 'ChangedOnly#2026'])->save();
     expect(fn () => app(TelegramAccess::class)->actor($link))->toThrow(AuthorizationException::class);
 });

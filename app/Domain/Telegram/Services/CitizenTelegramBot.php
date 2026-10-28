@@ -42,7 +42,7 @@ final class CitizenTelegramBot
 
             return;
         }
-        $actor = $ctx->actor('warga', true);
+        $actor = $ctx->actor('warga');
         if ($command === 'citizen.cancel' || $command === 'citizen.cancel.confirm') {
             $kind = (string) $p['kind'];
             $record = $this->requests($actor, $kind)->findOrFail((int) $p['id']);

@@ -19,7 +19,6 @@ use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\Fixtures\WorkflowFixture;
@@ -38,8 +37,8 @@ beforeEach(function (): void {
 it('also enforces both one to one uniqueness constraints at database level', function (): void {
     $first = Bot::link($this->citizen, '10001');
     $other = User::where('username', 'bendahara')->firstOrFail();
-    expect(fn () => TelegramLink::query()->create(['id' => (string) str()->uuid(), 'user_id' => $other->id, 'telegram_id' => '10001', 'chat_id' => '10001', 'account_fingerprint' => str_repeat('f', 64), 'generation' => (string) str()->uuid(), 'authorized_until' => now()->addHour()]))->toThrow(UniqueConstraintViolationException::class);
-    expect(fn () => TelegramLink::query()->create(['id' => (string) str()->uuid(), 'user_id' => $this->citizen->id, 'telegram_id' => '10002', 'chat_id' => '10002', 'account_fingerprint' => str_repeat('f', 64), 'generation' => (string) str()->uuid(), 'authorized_until' => now()->addHour()]))->toThrow(UniqueConstraintViolationException::class);
+    expect(fn () => TelegramLink::query()->create(['id' => (string) str()->uuid(), 'user_id' => $other->id, 'telegram_id' => '10001', 'chat_id' => '10001', 'account_fingerprint' => str_repeat('f', 64), 'generation' => (string) str()->uuid()]))->toThrow(UniqueConstraintViolationException::class);
+    expect(fn () => TelegramLink::query()->create(['id' => (string) str()->uuid(), 'user_id' => $this->citizen->id, 'telegram_id' => '10002', 'chat_id' => '10002', 'account_fingerprint' => str_repeat('f', 64), 'generation' => (string) str()->uuid()]))->toThrow(UniqueConstraintViolationException::class);
     expect(TelegramLink::count())->toBe(1)->and($first->fresh()->user_id)->toBe($this->citizen->id);
 });
 
@@ -52,16 +51,23 @@ it('does not trust the menu for role authorization', function (): void {
     expect(LedgerEntry::count())->toBe(0);
 });
 
-it('rejects expired mutation authorization while still allowing a read only balance', function (): void {
+it('lets a citizen request a pickup after long inactivity without returning to the web', function (): void {
     $link = Bot::link($this->citizen, '10001');
-    $link->forceFill(['authorized_until' => now()->subMinute()])->save();
+    $this->travel(400)->days();
     Bot::text('10001', '/menu');
     Bot::click('10001', 'Jemput sampah');
-    expect(Bot::lastText('10001'))->toContain('Otorisasi tindakan berakhir');
+    Bot::click('10001', 'Hari ini');
+    Bot::click('10001', 'Gunakan alamat profil');
+    Bot::click('10001', 'Aqua Botol');
+    Bot::click('10001', 'Selesai pilih jenis');
+    Bot::click('10001', 'Tinjau pengajuan');
+    Bot::click('10001', 'Ya, kirim pengajuan');
+    expect(PickupRequest::count())->toBe(1)->and(PickupRequest::firstOrFail()->customer_id)->toBe($this->citizen->id);
+    expect($link->fresh()->generation)->toBe($link->generation);
     Bot::text('10001', '/menu');
     Bot::click('10001', 'Saldo');
     expect(Bot::lastText('10001'))->toContain('Saldo tersedia: Rp 0');
-    expect(PickupRequest::count())->toBe(0);
+    expect(LedgerEntry::count())->toBe(0);
 });
 
 it('never re finalizes a draft that the web has already completed', function (): void {
@@ -102,18 +108,23 @@ it('keeps the webhook outside cookie sessions without excluding other web routes
     $this->postJson('/telegram/webhook', ['update_id' => 1])->assertNotFound();
 });
 
-it('ends staff transaction authorization after idle minutes while citizens keep theirs', function (): void {
+it('keeps all three roles usable after long inactivity without a renewal', function (): void {
     $staffLink = Bot::link($this->officer, '10002');
     $citizenLink = Bot::link($this->citizen, '10001');
-    $this->travel(61)->minutes();
+    $treasurer = User::where('username', 'bendahara')->firstOrFail();
+    $treasurerLink = Bot::link($treasurer, '10003');
+    $this->travel(400)->days();
     expect(app(TelegramAccess::class)->actor($staffLink->fresh())->id)->toBe($this->officer->id);
-    expect(fn () => app(TelegramAccess::class)->actor($staffLink->fresh(), true))->toThrow(
-        fn (ValidationException $exception): bool => str_contains((string) $exception->errors()['authorization'][0], 'tidak ada aktivitas'),
-    );
-    expect(app(TelegramAccess::class)->actor($citizenLink->fresh(), true)->id)->toBe($this->citizen->id);
+    expect(app(TelegramAccess::class)->actor($citizenLink->fresh())->id)->toBe($this->citizen->id);
+    expect(app(TelegramAccess::class)->actor($treasurerLink->fresh())->id)->toBe($treasurer->id);
     Bot::text('10002', '/menu');
-    expect(app(TelegramAccess::class)->actor($staffLink->fresh(), true)->id)->toBe($this->officer->id)
-        ->and($staffLink->fresh()->last_activity_at?->format('Ymd Hi'))->toBe(now()->format('Ymd Hi'));
+    Bot::click('10002', 'Catat setoran');
+    expect(Bot::lastText('10002'))->toContain('Ketik nama atau nomor nasabah');
+    Bot::text('10003', '/menu');
+    Bot::click('10003', 'Antrean pembayaran');
+    expect(Bot::lastText('10003'))->toContain('Belum ada tugas pada pilihan ini');
+    expect($staffLink->fresh()->generation)->toBe($staffLink->generation)
+        ->and($treasurerLink->fresh()->generation)->toBe($treasurerLink->generation);
 });
 
 it('lets only an authorized Admin revoke another users link with a password and audit reason', function (): void {
