@@ -16,9 +16,13 @@ Migration transaksi cutover sengaja menolak data transaksi yang tidak kosong. Un
 
 ## Telegram (aktivasi terpisah)
 
-Kode bot nonaktif secara default dan migration-nya hanya menambah tabel. Jangan aktifkan pada hosting sebelum pemberitahuan privasi versi Telegram disetujui/dipublikasikan, backup tersedia, token disimpan privat, domain HTTPS dapat dijangkau Telegram, dan UAT disetujui. Admin tetap memakai panel web.
+Kode bot nonaktif secara default. Migration awal menambah tabel; pembaruan 28 Oktober menonaktifkan penanda waktu lama tanpa reset atau penghapusan tautan/transaksi. Jangan aktifkan pada hosting sebelum pemberitahuan privasi versi Telegram disetujui/dipublikasikan, backup tersedia, token disimpan privat, domain HTTPS dapat dijangkau Telegram, dan UAT disetujui. Admin tetap memakai panel web.
 
 Setelah persetujuan, isi `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, dan secret acak minimal 32 karakter di `.env` server saja; set `TELEGRAM_ENABLED=true`, bersihkan config cache, jalankan migration yang additive, lalu `php artisan telegram:diagnose` dan `php artisan telegram:webhook`. Pastikan scheduler cron setiap menit tetap aktif agar update, pemberitahuan, dan retensi diproses. Jangan meletakkan token di URL, command argument, log, repo, atau chat. Untuk mematikan dengan tertib, jalankan `telegram:webhook --remove` saat konfigurasi masih tersedia, kemudian matikan fitur dan bersihkan cache konfigurasi. Langkah lengkap ada di [TELEGRAM_CHANNEL.md](TELEGRAM_CHANNEL.md).
+
+## Update akses persisten 28 Oktober 2026
+
+Update Telegram 28 Oktober 2026 memakai migration `2026_10_28_100000_make_telegram_link_access_persistent`. Backup, aktifkan maintenance, unggah kode/build yang cocok, atur `TERMS_VERSION=v2.1` bila dikunci di `.env`, lalu jalankan migration biasa dan bangun ulang cache. Tidak perlu reset/seed, mengganti APP_KEY, memasang ulang webhook, atau menautkan ulang akun lama. Pastikan tautan lama bisa membuka menu dan membuat pengajuan setelah update. Kolom penanda waktu lama dipertahankan nullable/tidak aktif agar rollback schema terpisah tetap tersedia; bukan alasan untuk me-rollback migration cutover yang irreversible.
 
 ## Rollback
 

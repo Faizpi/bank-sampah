@@ -1,10 +1,10 @@
-# Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0
+# Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1
 
 Dokumen publik ini adalah kontrak kanonis untuk pendaftaran dan penggunaan Bank Sampah Digital Sindangheula. Dokumen tersedia untuk dibaca publik, termasuk sebelum pendaftaran. Dokumen draft ini diselaraskan dengan baseline dummy empat role sebelum penggunaan nyata di desa.
 
-**Batas versi:** v2.0 menambahkan kanal opsional Telegram: alur penautan (pasal 6 Ketentuan Operasional) serta data yang dikirim, retensi kiriman, persetujuan, dan cara pencabutan (pasal 5 Kebijakan Privasi). v1.0 hanya mendeskripsikan website dan notifikasi dalam aplikasi; riwayat penerimaan v1.0 tetap dipertahankan dan versi baru berlaku prospektif. Kanal Telegram pada kode tetap nonaktif sampai token privat, HTTPS webhook, scheduler, dan UAT disetujui sesuai dokumen operasi.
+**Batas versi:** v2.1, disetujui pemilik pada 28 Oktober 2026, mengganti batas waktu akses Telegram pada v2.0 dengan akses persisten selama tautan dan hak akses tetap sah. v2.0 memperkenalkan kanal Telegram, sedangkan v1.0 hanya mendeskripsikan website dan notifikasi dalam aplikasi. Versi baru berlaku prospektif; riwayat persetujuan v1.0/v2.0 tidak ditimpa dan tidak ada persetujuan ulang massal otomatis. Konfigurasi serta penerapan hosting tetap mengikuti dokumen operasi.
 
-## Ketentuan Operasional v2.0
+## Ketentuan Operasional v2.1
 
 ### 1. Ruang layanan
 
@@ -12,8 +12,8 @@ Bank Sampah Digital Sindangheula membantu pencatatan layanan bank sampah, termas
 
 ### 2. Pendaftaran dan penerimaan ketentuan
 
-1. Pendaftar wajib menyatakan persetujuan secara afirmatif terhadap Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0 saat mendaftar.
-2. Versi yang ditampilkan dan berlaku saat ini adalah v2.0. Sistem menyimpan versi yang saat ini efektif pada `users.terms_version` dan waktu persetujuan yang dicatat server pada `users.terms_accepted_at`, serta mempertahankan catatan riwayat penerimaan yang hanya dapat ditambahkan per pengguna dan versi.
+1. Pendaftar wajib menyatakan persetujuan secara afirmatif terhadap Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1 saat mendaftar.
+2. Versi yang ditampilkan dan berlaku saat ini adalah v2.1. Sistem menyimpan versi yang saat ini efektif pada `users.terms_version` dan waktu persetujuan yang dicatat server pada `users.terms_accepted_at`, serta mempertahankan catatan riwayat penerimaan yang hanya dapat ditambahkan per pengguna dan versi.
 3. Penerimaan ketentuan bukan verifikasi domisili atau duplikasi, bukan aktivasi akun, bukan autentikasi, dan bukan login otomatis.
 4. Setelah pendaftaran yang valid, akun tetap berstatus `menunggu_verifikasi`. Hanya keputusan verifikasi admin yang dapat mengaktifkan akun.
 5. Ketentuan dipublikasikan untuk berlaku ke depan. Riwayat penerimaan versi sebelumnya tetap dipertahankan.
@@ -38,11 +38,11 @@ Versi baru hanya diterbitkan secara prospektif melalui proses yang disetujui dan
 
 1. Layanan bot Telegram bersifat opsional dan hanya dapat diaktifkan melalui penautan yang dimulai dari halaman Profil pada website setelah memasukkan kata sandi akun. Sistem tidak pernah meminta nama pengguna, kata sandi, atau kode apa pun melalui chat Telegram.
 2. Satu akun web dapat tertaut dengan paling banyak satu akun Telegram aktif, dan satu akun Telegram dengan paling banyak satu akun web. Penggantian menuntut pemutusan tautan sebelumnya melalui akun pemiliknya; pengurus tidak menautkan akun Warga atas nama Warga.
-3. Izin tindakan melalui bot berjangka: 30 hari untuk Warga serta 8 jam atau 60 menit tanpa aktivitas sah untuk Petugas/Bendahara, dan diperbarui dari web. Berakhirnya izin tidak menghentikan notifikasi yang telah diizinkan dan tidak membatalkan transaksi yang sudah tercatat.
+3. Akses bot tidak memiliki batas waktu otomatis atau batas tidak aktif selama Telegram tetap tertaut, akun aktif, dan hak akses masih sah. Warga, Petugas, serta Bendahara tidak perlu kembali ke website hanya karena lama tidak menggunakan bot. Tombol dan isian percakapan sementara tetap dapat kedaluwarsa; pengguna cukup membuka /menu dan mengisi ulang melalui bot. Status akun, peran, wilayah tugas, kepemilikan, klaim, status transaksi, dan idempotensi tetap diperiksa oleh server. Perubahan data keamanan akun dapat memerlukan verifikasi ulang, bukan pembaruan berkala.
 4. Informasi, pengajuan, pencatatan, dan berkas yang tersedia melalui bot mengikuti peran serta status layanan yang berlaku; penimbangan dan penyerahan uang atau paket tetap dilakukan secara fisik. Pesan yang sudah terkirim berada pada riwayat Telegram pengguna dan tidak dapat ditarik oleh sistem.
-5. Pengguna dapat mengakhiri izin tindakan dengan perintah keluar pada bot serta memutus tautan dari Profil di website dengan konfirmasi kata sandi. Admin yang berwenang dapat mencabut tautan dengan alasan yang dicatat pada audit.
+5. Pengguna dapat memutus tautan dari Profil di website dengan konfirmasi kata sandi. Perintah /keluar pada bot hanya menampilkan petunjuk pemutusan dan tidak memutus tautan dengan sendirinya. Admin yang berwenang dapat mencabut tautan dengan alasan yang dicatat pada audit.
 
-## Kebijakan Privasi Ringkas v2.0
+## Kebijakan Privasi Ringkas v2.1
 
 ### 1. Data dan tujuan penggunaan
 
@@ -65,7 +65,7 @@ Foto, bukti, ekspor, dan media privat dilindungi dengan akses terotorisasi. Kata
 
 ### 4. Hubungan dengan ketentuan
 
-Penerimaan Ketentuan Operasional v2.0 mencakup pengakuan bahwa Kebijakan Privasi Ringkas v2.0 telah tersedia untuk dibaca. Tidak ada pengajuan transaksi rutin oleh pengurus atas nama Warga.
+Penerimaan Ketentuan Operasional v2.1 mencakup pengakuan bahwa Kebijakan Privasi Ringkas v2.1 telah tersedia untuk dibaca. Tidak ada pengajuan transaksi rutin oleh pengurus atas nama Warga.
 
 ### 5. Kanal Telegram
 
@@ -76,6 +76,6 @@ Penerimaan Ketentuan Operasional v2.0 mencakup pengakuan bahwa Kebijakan Privasi
 
 ## Aksesibilitas dan kontrol pendaftaran
 
-Dokumen ini harus tersedia pada halaman publik, footer, dan halaman pendaftaran tanpa mewajibkan login. Formulir pendaftaran menampilkan kontrol kosong yang belum dicentang dengan label jelas, misalnya: “Saya telah membaca dan menyetujui Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0.” Label tersebut tertaut ke dokumen ini.
+Dokumen ini harus tersedia pada halaman publik, footer, dan halaman pendaftaran tanpa mewajibkan login. Formulir pendaftaran menampilkan kontrol kosong yang belum dicentang dengan label jelas, misalnya: “Saya telah membaca dan menyetujui Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1.” Label tersebut tertaut ke dokumen ini.
 
-Pendaftaran tidak dapat diteruskan sebelum kontrol dicentang. Saat persetujuan belum diberikan, form menampilkan kesalahan berlabel yang menjelaskan bahwa persetujuan terhadap Ketentuan Operasional v2.0 dan Kebijakan Privasi Ringkas v2.0 wajib diberikan. Kontrol, label, tautan, dan pesan kesalahan harus dapat diakses dengan keyboard dan pembaca layar.
+Pendaftaran tidak dapat diteruskan sebelum kontrol dicentang. Saat persetujuan belum diberikan, form menampilkan kesalahan berlabel yang menjelaskan bahwa persetujuan terhadap Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1 wajib diberikan. Kontrol, label, tautan, dan pesan kesalahan harus dapat diakses dengan keyboard dan pembaca layar.

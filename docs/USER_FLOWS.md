@@ -44,7 +44,7 @@ Acuan aktif: [workflow empat role](WEB_WORKFLOW.md) dan [kontrak UI](../DESIGN.m
 
 1. Masuk ke web, buka Profil → Telegram, masukkan kata sandi di website, lalu buka tautan sekali pakai ke bot. Kembali ke web dan cocokkan nama serta empat digit akhir ID sebelum mengonfirmasi.
 2. Satu akun web hanya dapat tertaut ke satu akun Telegram aktif, dan sebaliknya. Admin tetap mengelola akun serta pengecualian di panel web.
-3. Setelah otorisasi tindakan habis, tautan dan notifikasi yang dipilih tetap aktif, tetapi tindakan perlu diotorisasi ulang dari web. /keluar mengakhiri otorisasi tindakan; putuskan tautan menghentikan akses bot.
+3. Setelah penautan awal, akun tetap bisa dipakai tanpa batas waktu selama tautan, status akun, dan hak akses masih sah. Tidak perlu kembali ke web hanya karena lama tidak aktif. Jika tombol/isian sementara kedaluwarsa, ketik /menu dan lanjutkan di bot. /keluar menampilkan petunjuk pemutusan; Putuskan Telegram di web benar-benar menghentikan akses. Perubahan data keamanan akun tetap memerlukan verifikasi ulang.
 4. Warga dapat melihat saldo/riwayat/kartu dan mengajukan pickup, pencairan, serta sembako. Petugas dapat menangani pickup, timbang/finalisasi setoran, sembako, dan layanan keliling. Bendahara dapat mengambil, mencatat pembayaran tunai, serta mengirim laporan sendiri.
 5. Menu Informasi umum tidak perlu login. Pilihan info transaksi, pengingat, ringkasan, dan pengumuman mati sampai dipilih sendiri; frekuensi ringkasan dapat diubah. Pesan yang sudah terkirim tetap tersimpan di Telegram.
 6. Gunakan web jika kanal Telegram belum aktif atau ada perubahan akun/area/akses. Kedua kanal memakai layanan domain yang sama; setelah serah fisik jangan mengulang penyerahan karena balasan bot terlambat.

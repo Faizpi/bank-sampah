@@ -42,6 +42,8 @@ Kanal Bot Telegram untuk Warga, Petugas, dan Bendahara kini tersedia di kode dan
 
 ## Teknologi
 
+Akses Telegram berlaku selama akun tetap tertaut dan kewenangannya masih sah, tanpa batas tidak aktif atau pembaruan berkala dari web. Tombol/isian lama cukup dimulai ulang melalui `/menu`. Status akun, peran, area, pencabutan, perubahan data keamanan, dan aturan transaksi tetap diperiksa; penautan awal dan pemutusan tetap melalui web.
+
 Antarmuka akun memakai satu gaya Green Ledger: kartu layanan berikon, maskot lokal, contoh isian form, serta feedback hover/fokus dengan dukungan reduced motion. Prinsip hierarki dan interaksi Appllama diadaptasi untuk Blade/Livewire; tidak menambah framework atau mengubah aturan saldo. Pengujian responsif tiga peran tersedia di `tests/browser/app-ui-polish.mjs` dan hanya memakai database uji terpisah.
 
 Laravel 13, PHP 8.3+, MySQL 8.0.30-compatible/InnoDB, Livewire 4, Filament 5, Tailwind CSS, dan Vite. Node.js diperlukan untuk build/pengujian, bukan runtime web produksi.

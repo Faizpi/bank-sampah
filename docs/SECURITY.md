@@ -9,7 +9,8 @@
 - Bukti dan ekspor privat; tidak ada tautan storage publik. File divalidasi dan foto diperkecil oleh pemilih bersama.
 - Data publik/QR tidak memuat data pribadi atau saldo individu.
 - Telegram memiliki tautan aktif unik 1:1 yang dikonfirmasi dari web; password tidak diminta di chat. Webhook memakai secret header dan inbox idempoten, tombol bertanda tangan capability acak berumur terbatas, payload privat antrean dienkripsi, dan akses/consent diperiksa kembali saat kirim.
-- Notifikasi Telegram opt-in terpisah dari otorisasi transaksi. Pencabutan membatalkan kiriman tertunda; pesan yang telah dikirim tidak dapat dihapus dari riwayat Telegram.
+- Akses Telegram tidak kedaluwarsa karena waktu atau tidak aktif; tautan, generation, status akun, data keamanan, peran, area, kepemilikan, claimant, dan status transaksi tetap diperiksa pada server. Perubahan data keamanan dapat memerlukan verifikasi ulang, bukan pembaruan berkala. Batas waktu tombol/isian sementara tidak mengakhiri akses akun.
+- Notifikasi Telegram tetap opt-in. Pencabutan membatalkan kiriman tertunda; pesan yang telah dikirim tidak dapat dihapus dari riwayat Telegram.
 - Ringkasan bukti publik dan laporan tidak menerima penggantian nilai melalui state klien. Bukti publik diambil ulang dari transaksi pada setiap render; QR yang dirotasi tidak lagi valid pada komponen yang sudah terbuka.
 - Penerbitan/perbaikan kartu dilakukan eksplisit dan diaudit; halaman kartu baca-saja.
 - `.env`, database, backup, token, log, dan hasil lokal tidak masuk GitHub.

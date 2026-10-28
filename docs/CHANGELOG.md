@@ -1,5 +1,13 @@
 # Catatan perubahan
 
+## Akses Telegram persisten 28 Oktober 2026
+
+- Menghapus masa akses Warga 30 hari, pengurus 8 jam, dan batas 60 menit tanpa aktivitas. Semua role bot tetap dapat memakai akun selama tautan dan kewenangannya masih sah.
+- Mempertahankan penautan awal 1:1, pemeriksaan keamanan/status/peran/area/claim, pencabutan, konfirmasi transaksi, serta kedaluwarsa tombol/isian yang dapat dimulai ulang lewat /menu.
+- Mengganti /keluar menjadi petunjuk pemutusan, bukan pengakhiran izin waktu. Menyingkirkan tombol dan tanggal pembaruan akses dari profil/Admin.
+- Menambah migration yang mempertahankan ID, generation, consent, dan transaksi pada tautan lama, tanpa reset atau seed ulang.
+- Menyelaraskan ketentuan/privasi v2.1 secara prospektif serta menyediakan teks revisi skripsi tanpa menimpa sumber Word.
+
 ## Kanal Telegram (kode lokal, 25 Oktober 2026)
 
 - Menambahkan webhook terverifikasi, update/outbox idempoten, penautan aktif 1:1 dari web, masa otorisasi tindakan, pencabutan Admin, dan antarmuka konfigurasi.

@@ -1,14 +1,15 @@
 # Kanal Bot Telegram
 
-Status implementasi: fitur tersedia pada working copy per 25 Oktober 2026, tetapi `TELEGRAM_ENABLED=false` secara default. Token bot belum dipasang, webhook publik belum didaftarkan, dan belum ada UAT/aktivasi produksi. WhatsApp tidak digunakan.
+Status kode: kanal tersedia sejak 25 Oktober 2026 dan kebijakan akses persisten disetujui pada 28 Oktober 2026. `TELEGRAM_ENABLED=false` tetap nilai bawaan instalasi baru. Pemilik melaporkan penautan serta webhook hosting berhasil pada 25 Oktober; laporan itu bukan bukti UAT atau hasil pengujian rilis 28 Oktober di hosting. WhatsApp tidak digunakan.
 
 ## Batas kanal dan akun
 
 - Bot melayani Warga, Petugas, dan Bendahara. Admin tetap mengelola akun, master, laporan lintas akun, audit, dan pengecualian lewat panel web.
 - Web dan bot memanggil service domain serta ledger yang sama. Tidak ada pembukuan atau saldo terpisah dan tidak perlu mengulang transaksi yang sudah dicatat di kanal lain.
 - Satu akun web tertaut ke maksimal satu Telegram aktif dan satu Telegram ke maksimal satu akun web. Penautan dimulai dari Profil → Telegram, memakai kata sandi hanya di web, challenge acak sekali pakai berumur lima menit, lalu konfirmasi kepemilikan dari web. Username/password tidak diminta di chat.
-- Tautan bersifat persisten; otorisasi tindakan terpisah: 30 hari untuk Warga dan 8 jam untuk Petugas/Bendahara, dengan izin Petugas/Bendahara juga berakhir setelah 60 menit tanpa aktivitas sah di bot dan diperbarui dari web tanpa memasang ulang tautan. Percobaan klaim tautan tidak sah dari satu Telegram dibatasi lima kali per 15 menit, lalu ditunda 15 menit. Role, status akun, wilayah, claimant, status layanan, dan idempotensi diperiksa ulang saat tindakan. Notifikasi tidak memperpanjang otorisasi.
-- Pengguna dapat mengakhiri otorisasi dengan `/keluar`, memperbaruinya dari web, atau memutus tautan dari web. Admin yang berwenang dapat mencabut tautan beserta kiriman yang masih tertunda. Pesan yang sudah dikirim tidak dapat ditarik dari Telegram.
+- Akses Warga, Petugas, dan Bendahara tetap berlaku tanpa batas waktu otomatis selama tautan, akun, dan hak akses masih sah. Tidak ada pembatasan 30 hari, 8 jam, atau 60 menit tidak aktif; pengguna tidak harus kembali ke web karena lama tidak memakai bot. Status akun, peran, wilayah, claimant, status layanan, dan idempotensi tetap diperiksa saat tindakan. Perubahan data keamanan akun (termasuk kata sandi/peran) tetap memerlukan verifikasi ulang, bukan pembaruan berkala.
+- Tautan awal sekali pakai tetap berlaku lima menit, tombol 15 menit, dan isian percakapan sementara 30 menit. Ini batas data sementara, bukan masa akses akun. Jika tombol/isian kedaluwarsa, cukup ketik `/menu` dan lanjutkan dari bot; tidak ada transaksi otomatis dari isian lama.
+- `/keluar` hanya menjelaskan cara memutus tautan melalui web dan tidak mengakhiri akses dengan sendirinya. Putuskan Telegram di web atau pencabutan oleh Admin yang berwenang benar-benar menghentikan akses dan membatalkan kiriman tertunda. Pesan yang sudah dikirim tidak dapat ditarik dari Telegram.
 
 ## Fitur
 
@@ -24,9 +25,9 @@ Semua mutasi transaksi memakai layanan domain yang sudah digunakan web. Membuka 
 
 ## Konfigurasi dan operasi host
 
-1. Kebijakan privasi v2.0 telah diterbitkan pada 25 Oktober 2026 dan mencakup alur penautan, data yang dikirim ke Telegram, retensi kiriman, consent, serta cara pencabutan. Publikasikan versi tersebut di website (halaman ketentuan sudah menampilkan v2.0); riwayat penerimaan v1.0 tetap berlaku secara prospektif.
+1. Kebijakan privasi v2.1 tertanggal 28 Oktober 2026 menyelaraskan akses persisten dan petunjuk pemutusan. Publikasikan versi tersebut bersama rilis ini dan gunakan `TERMS_VERSION=v2.1` bila environment hosting mengatur versi secara eksplisit. Riwayat persetujuan v1.0/v2.0 tidak diubah dan tidak ada persetujuan ulang massal otomatis.
 2. Buat bot melalui BotFather dan simpan token hanya di `.env` privat. Isi `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` (tanpa `@`), serta `TELEGRAM_WEBHOOK_SECRET` acak minimal 32 karakter. Jangan kirim token lewat chat, commit, screenshot, atau command argument.
-3. Pastikan `APP_URL` adalah HTTPS publik; backup database/media, unggah build yang sama dengan source, lalu jalankan migration additive melalui prosedur deployment. Migration Telegram menambah tabel dan tidak me-reset atau men-seed data transaksi.
+3. Pastikan `APP_URL` adalah HTTPS publik; backup database/media, unggah build yang sama dengan source, lalu jalankan migration biasa melalui prosedur deployment. Migration 28 Oktober membuat penanda waktu lama nullable/tidak aktif; tidak menghapus tautan, generation, consent, akun, saldo, atau transaksi dan tidak memerlukan reset/seed. Selama mengganti kode dan menjalankan migration, gunakan maintenance sementara.
 4. Set `TELEGRAM_ENABLED=true` hanya setelah langkah sebelumnya disetujui; bersihkan config cache, lalu jalankan `php artisan telegram:diagnose`. Pemeriksaan jaringan opsional: `php artisan telegram:diagnose --network` (memanggil `getMe` dan `getWebhookInfo`, tidak mengubah webhook).
 5. Daftarkan webhook dengan `php artisan telegram:webhook`. Perintah menolak URL non-HTTPS/localhost dan mencocokkan username token. Jalur webhook hanya menerima chat pribadi dan tidak memakai sesi/CSRF browser.
 6. Cron host tetap harus memanggil `php artisan schedule:run` setiap menit. Saat fitur aktif, scheduler memproses batch update/outbox tiap menit, pengingat/ringkasan tiap lima menit, dan retensi harian. Belum diperlukan worker daemon terpisah untuk konfigurasi ini.
@@ -38,4 +39,11 @@ Untuk menghentikan dengan tertib, saat token masih tersedia jalankan `php artisa
 
 Tes Telegram dijalankan dengan `vendor/bin/pest tests/Feature/Telegram`. Tes otomatis memakai SQLite `:memory:` atau MySQL loopback database khusus `bank_sampah_test_telegram`; `tests/bootstrap.php` menolak nama database lain. Jangan gunakan database `bank_sampah` atau hosting untuk tes yang dapat membuat/mengubah transaksi. Jalankan juga suite regresi web, Pint, dan PHPStan sebelum review.
 
-Kredensial nyata tidak dicantumkan di repo. Sampai token, HTTPS, dan scheduler disiapkan secara terpisah, status bot adalah **implementasi lokal—belum aktif**, bukan “bot sudah live”. UAT dan revisi Bab III skripsi tetap pekerjaan tersendiri.
+Kredensial nyata tidak dicantumkan di repo. Pengujian lokal/mocked tidak membuktikan bahwa rilis ini sudah diunggah atau semua alur di hosting bekerja. UAT dan revisi naskah skripsi tetap pekerjaan tersendiri.
+
+### Bukti lokal perubahan 28 Oktober 2026
+
+- Regresi penuh SQLite: 1.377 tes lulus, satu dilewati; 6.490 assertions.
+- Telegram: 66 tes/303 assertions lulus pada SQLite dan MySQL loopback disposable `bank_sampah_test_telegram_20261028`. Uji migration mencakup skema lama yang belum nullable, mempertahankan identitas/consent, serta down/up terisolasi.
+- PHPStan tanpa error, Pint, pemeriksaan whitespace, serta build Vite lulus. Manifest merujuk delapan aset yang seluruhnya tersedia, tanpa `public/hot`.
+- Tidak ada migration/reset/transaksi uji di database utama, upload hosting, atau klaim UAT/SUS yang dilakukan pada tahap ini.

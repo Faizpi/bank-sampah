@@ -4,7 +4,7 @@ Baseline empat role 5 Oktober 2026, disempurnakan melalui audit UI 8 dan 21 Okto
 
 ## Setoran
 
-Petugas mencari nama/nomor atau memindai warga aktif, memilih dari beberapa hasil bila ada, lalu mengonfirmasi nama sekaligus membuka setoran. Petugas mengisi jenis, kondisi, dan berat aktual, memeriksa total, lalu mencatat setoran. Alur yang sama tersedia melalui Telegram setelah akun Petugas tertaut dan otorisasinya masih berlaku. Semua setoran langsung final dan membuat satu mutasi masuk. Foto lampiran opsional. Transaksi final yang salah ditangani melalui koreksi atau pembalikan resmi.
+Petugas mencari nama/nomor atau memindai warga aktif, memilih dari beberapa hasil bila ada, lalu mengonfirmasi nama sekaligus membuka setoran. Petugas mengisi jenis, kondisi, dan berat aktual, memeriksa total, lalu mencatat setoran. Alur yang sama tersedia melalui Telegram selama akun Petugas tetap tertaut dan hak aksesnya masih sah, tanpa batas waktu atau pembaruan berkala. Semua setoran langsung final dan membuat satu mutasi masuk. Foto lampiran opsional. Transaksi final yang salah ditangani melalui koreksi atau pembalikan resmi.
 
 ## Pickup
 

@@ -10,6 +10,8 @@ WhatsApp tidak digunakan. Telegram dipisahkan sebagai kanal opsional; tes otomat
 
 ## Kanal Telegram 25 Oktober 2026
 
+Catatan historis: batas waktu otorisasi dalam dua butir berikut telah digantikan keputusan 28 Oktober 2026 di bawah.
+
 - Satu akun web aktif tertaut ke paling banyak satu Telegram, dan satu Telegram ke paling banyak satu akun web. Penautan dimulai dan dikonfirmasi dari web melalui challenge sekali pakai; username/password tidak dimasukkan di chat.
 - Otorisasi tindakan berjangka (Warga 30 hari, Petugas/Bendahara 8 jam) terpisah dari tautan dan consent notifikasi. Role, status, area, claimant, status transaksi, dan idempotensi diperiksa ulang oleh layanan server.
 - Izin Petugas/Bendahara juga berakhir setelah 60 menit tanpa aktivitas sah di bot dan diperbarui lewat konfirmasi ulang di web tanpa memasang ulang tautan. Klaim tautan tidak sah dari satu Telegram dibatasi lima kali per 15 menit, lalu ditunda 15 menit.
@@ -18,6 +20,15 @@ WhatsApp tidak digunakan. Telegram dipisahkan sebagai kanal opsional; tes otomat
 - Keempat pilihan notifikasi bersifat opt-in; pengumuman punya consent tersendiri. Foto bot opsional, tervalidasi dan privat. Pesan yang sudah dikirim tidak dapat ditarik dari riwayat Telegram.
 - Implementasi kode nonaktif secara default. Aktivasi produksi menunggu pembaruan/persetujuan pemberitahuan privasi, token privat, HTTPS webhook, scheduler, dan UAT. Tidak ada klaim integrasi Telegram live sebelum itu.
 - Kebijakan privasi v2.0 diterbitkan 25 Oktober 2026 atas persetujuan pemilik, menambah pasal kanal Telegram opsional pada Ketentuan Operasional (penautan, batas 1:1, izin berjangka, pencabutan) dan Kebijakan Privasi (data kiriman, consent default mati, retensi tujuh hari/24 jam, pesan terkirim tidak dapat ditarik). Berlaku prospektif; riwayat penerimaan v1.0 dipertahankan dan tidak ada permintaan persetujuan ulang massal. Gerbang aktivasi produksi yang tersisa: token privat, HTTPS webhook, scheduler, dan UAT.
+
+## Akses Telegram persisten 28 Oktober 2026
+
+- Pemilik meminta penghapusan masa otorisasi dan batas tidak aktif bagi seluruh role bot. Warga dapat mengajukan penjemputan setelah lama tidak aktif tanpa kembali ke website; Petugas/Bendahara mendapat kebijakan akses waktu yang sama.
+- Akses berlaku selama tautan dan hak akses masih sah, bukan sampai tanggal tertentu. Penautan 1:1, verifikasi awal, pencabutan pemilik/Admin, pemeriksaan perubahan data keamanan akun, role/status/area/claim, dan idempotensi tetap berlaku.
+- Tautan awal, tombol, serta state percakapan sementara tetap berumur pendek. Kedaluwarsa tombol/isian ditangani lewat /menu di bot, bukan penautan ulang di web.
+- /keluar hanya membuka petunjuk pemutusan, tidak diam-diam mengakhiri akses. Putuskan Telegram pada web tetap aksi pencabutan yang sebenarnya.
+- Migration baru mempertahankan seluruh tautan dan consent, membuat kolom legacy `authorized_until` nullable serta menonaktifkan kedua penanda waktu lama. Kode tidak lagi membaca/menulisnya sebagai syarat akses. Tidak ada reset/seed atau perubahan transaksi utama.
+- Ketentuan dan privasi v2.1 berlaku prospektif; penerimaan v1.0/v2.0 tidak ditimpa dan tidak ada persetujuan ulang massal otomatis. Sumber Word skripsi tidak diubah oleh pekerjaan ini.
 
 ## Penyempurnaan UI 8 Oktober 2026
 

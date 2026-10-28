@@ -43,6 +43,12 @@ Urutan kerja mengikuti `ROADMAP.md` dan bab 3 skripsi:
 
 ## Batas
 
+### Revisi akses Telegram 28 Oktober 2026
+
+Bagian autentikasi/penautan, tabel parameter teknis, alur percakapan, dan skenario pengujian harus menjelaskan akses persisten: tidak ada masa akses 30 hari/8 jam atau batas 60 menit tidak aktif. Pengguna langsung melanjutkan dari bot selama tautan dan hak akses masih sah. Challenge awal lima menit, tombol 15 menit, dan state percakapan 30 menit tetap untuk data sementara; /menu cukup untuk memulai ulang, bukan kembali ke web. /keluar menampilkan petunjuk pencabutan melalui web. Pencabutan dan perubahan data keamanan/status/role/area tetap diberlakukan.
+
+Teks siap salin disediakan privat di `C:/Skripsi/revisi_2026-10-28_akses_telegram/Teks_Revisi_Akses_Telegram.md`. Sumber Word tidak ditimpa dan tidak ada hasil UAT/SUS baru yang diasumsikan dari perubahan kode.
+
 - Kode Telegram tersedia di working copy, tetapi `TELEGRAM_ENABLED=false` secara default; token, webhook, produksi, dan UAT belum dibuktikan.
 - Bukti UAT dikumpulkan di `UAT_EVIDENCE.md`, bukan dari pengujian otomatis.
 - Data akun dan identitas peserta adalah data sensitif skripsi; tetap di luar repo atau diimport lewat alur `SEEDING.md`.
