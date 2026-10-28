@@ -34,6 +34,8 @@ final class TelegramDiagnose extends Command
             $this->line('Pengiriman tidak pasti: '.TelegramOutbox::query()->where('status', 'uncertain')->count());
         }
         if ($ready && $this->option('network')) {
+            $expectedUrl = route('telegram.webhook');
+            $this->line('Alamat webhook aplikasi: '.TelegramApiFailure::safeUrl($expectedUrl));
             try {
                 $api = app(TelegramApi::class);
                 $bot = $api->call('getMe', []);
@@ -41,9 +43,23 @@ final class TelegramDiagnose extends Command
                 $same = strcasecmp((string) ($bot['username'] ?? ''), (string) config('telegram.bot_username')) === 0;
                 $this->line(($same ? '[OK]' : '[FAIL]').' identitas bot');
                 $this->line('Update menunggu di Telegram: '.(int) ($info['pending_update_count'] ?? 0));
+                $registeredUrl = is_string($info['url'] ?? null) ? $info['url'] : '';
+                if ($registeredUrl === '') {
+                    $this->line('[INFO] Webhook di Telegram belum terpasang.');
+                } else {
+                    $this->line('Webhook di Telegram: '.TelegramApiFailure::safeUrl($registeredUrl));
+                    $this->line(($registeredUrl === $expectedUrl ? '[OK]' : '[WARN]').' kecocokan alamat webhook');
+                }
+                $lastError = TelegramApiFailure::safeDescription($info['last_error_message'] ?? '');
+                if ($lastError !== '') {
+                    $this->line('Kesalahan pengiriman terakhir: '.$lastError);
+                }
                 $ready = $same;
             } catch (TelegramApiFailure $error) {
                 $this->error($error->errorCode);
+                if ($error->description !== '') {
+                    $this->line('Alasan Telegram: '.$error->description);
+                }
 
                 return self::FAILURE;
             }

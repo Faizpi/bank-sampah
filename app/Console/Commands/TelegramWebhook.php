@@ -23,6 +23,7 @@ final class TelegramWebhook extends Command
             return self::FAILURE;
         }
         $url = route('telegram.webhook');
+        $this->line('Alamat webhook: '.TelegramApiFailure::safeUrl($url));
         $host = (string) parse_url($url, PHP_URL_HOST);
         if (parse_url($url, PHP_URL_SCHEME) !== 'https' || $host === 'localhost' || str_ends_with($host, '.test') || (filter_var($host, FILTER_VALIDATE_IP) && ! filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE))) {
             $this->error('Webhook memerlukan APP_URL HTTPS yang dapat diakses Telegram.');
@@ -31,18 +32,24 @@ final class TelegramWebhook extends Command
         }
         try {
             if ($this->option('remove')) {
+                $this->line('Tahap: penghapusan webhook');
                 $api->call('deleteWebhook', ['drop_pending_updates' => false]);
             } else {
+                $this->line('Tahap: pemeriksaan identitas bot');
                 $bot = $api->call('getMe', []);
                 if (strcasecmp((string) ($bot['username'] ?? ''), (string) config('telegram.bot_username')) !== 0) {
                     $this->error('Username bot tidak sesuai token.');
 
                     return self::FAILURE;
                 }
+                $this->line('Tahap: pemasangan webhook');
                 $api->call('setWebhook', ['url' => $url, 'secret_token' => config('telegram.webhook_secret'), 'allowed_updates' => ['message', 'callback_query'], 'drop_pending_updates' => false]);
             }
         } catch (TelegramApiFailure $error) {
             $this->error($error->errorCode);
+            if ($error->description !== '') {
+                $this->line('Alasan Telegram: '.$error->description);
+            }
 
             return self::FAILURE;
         }

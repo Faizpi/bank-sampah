@@ -40,7 +40,7 @@ final class TelegramApi
         if ($code >= 500 && is_array($data) && ($data['ok'] ?? null) === false) {
             $retry = 60;
         }
-        throw new TelegramApiFailure('telegram.http_'.$code, $retry, $code >= 500 && $retry === 0, $code === 403);
+        throw new TelegramApiFailure('telegram.http_'.$code, $retry, $code >= 500 && $retry === 0, $code === 403, TelegramApiFailure::safeDescription(is_array($data) ? ($data['description'] ?? '') : ''));
     }
 
     public function downloadPhoto(string $fileId): string
