@@ -1,7 +1,10 @@
 # Dokumentasi Bank Sampah Digital Sindangheula
 
-Dokumentasi aktif mengikuti cutover empat role 5 Oktober 2026 dan penyempurnaan UI 8 Oktober 2026. Kode, constraint database, dan hasil pengujian aktual menjadi bukti implementasi; catatan checkpoint lama bukan bukti keadaan terbaru.
+Dokumentasi aktif mengikuti cutover empat role 5 Oktober 2026, penyempurnaan UI 8–24 Oktober
+2026, dan kanal Telegram 25–28 Oktober 2026. Kode, constraint database, dan hasil pengujian
+aktual menjadi bukti implementasi; catatan checkpoint lama bukan bukti keadaan terbaru.
 
+- [Linimasa prototipe](RESEARCH_TIMELINE.md): tahapan dari alur persetujuan Admin hingga bot Telegram.
 - [Workflow](WEB_WORKFLOW.md), [panduan tiap pengguna](USER_FLOWS.md), dan [aturan bisnis](BUSINESS_RULES.md).
 - [Kanal Telegram](TELEGRAM_CHANNEL.md): fitur, penautan, consent, operasi, tes, serta syarat sebelum aktivasi.
 - [Kontrak desain aktif](../DESIGN.md) dan [pelaksanaan audit UI](IMPLEMENTATION_UI_2026-10-08.md).
@@ -14,4 +17,5 @@ Dokumentasi aktif mengikuti cutover empat role 5 Oktober 2026 dan penyempurnaan 
 - [Keputusan](DECISIONS.md), [perubahan](CHANGELOG.md), [roadmap](ROADMAP.md).
 - [Kaitan skripsi](SKRIPSI.md): judul, lokasi dokumen di `C:\Skripsi`, pemetaan bab ke repo, dan urutan pengembangan.
 
-PDF proposal dan sembilan flowchart berada di `documents/`; keduanya dibuat dari sumber yang tersimpan di repository. Dokumen validasi checkpoint terdahulu tetap arsip, bukan hasil cutover.
+PDF proposal dan sembilan flowchart berada di `documents/`; keduanya dibuat dari sumber yang
+tersimpan di repository. Dokumen validasi checkpoint terdahulu tetap arsip, bukan hasil cutover.
