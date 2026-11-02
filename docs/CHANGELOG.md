@@ -1,5 +1,12 @@
 # Catatan perubahan
 
+## Rilis prototipe penelitian 4 November 2026
+
+- Menutup rangkaian prototipe dari alur persetujuan Admin berulang, cutover empat peran, penyempurnaan UI, hingga kanal Telegram.
+- Menambahkan [linimasa prototipe](RESEARCH_TIMELINE.md) yang memetakan tahapan ke bukti di repositori.
+- Menulis ulang README dengan konteks Desa Sindangheula, galeri maskot, alur terbaru, dan panduan lokal.
+- Tidak ada perubahan pada aturan bisnis, schema, data, atau konfigurasi Telegram.
+
 ## Akses Telegram persisten 28 Oktober 2026
 
 - Menghapus masa akses Warga 30 hari, pengurus 8 jam, dan batas 60 menit tanpa aktivitas. Semua role bot tetap dapat memakai akun selama tautan dan kewenangannya masih sah.
