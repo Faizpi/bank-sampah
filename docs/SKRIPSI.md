@@ -40,6 +40,7 @@ Urutan kerja mengikuti `ROADMAP.md` dan bab 3 skripsi:
 2. **Selaraskan Bab III dan prototipe penelitian** dengan penautan 1:1, consent notifikasi, finalisasi setoran/serah fisik via bot, serta cakupan tambahan yang kini ada pada kode.
 3. **UAT dan pengukuran SUS/perbandingan Web vs Bot** bersama peserta desa yang sama setelah prototype disetujui; hasilnya menjadi sumber Bab IV, tidak dapat digantikan tes otomatis.
 4. **Aktivasi dan deployment** hanya setelah pemberitahuan privasi disetujui, token/webhook/scheduler siap, dan penerapan disetujui.
+5. **Linimasa dan bukti riwayat** mengikuti [RESEARCH_TIMELINE.md](RESEARCH_TIMELINE.md): prototipe awal dengan persetujuan Admin, cutover empat peran, penyempurnaan UI, lalu kanal Telegram.
 
 ## Batas
 
