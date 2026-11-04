@@ -1,89 +1,301 @@
 <p align="center">
-  <img src="./public/images/landing/mascot-6.png" width="160" alt="Maskot Bank Sampah Digital Sindangheula">
+  <img src="./public/images/landing/mascot-3.png" width="112" alt="Maskot badak memilah sampah">
+  <img src="./public/images/landing/mascot-7.png" width="112" alt="Maskot badak menimbang sampah">
+  <img src="./public/images/landing/mascot-12.png" width="112" alt="Maskot badak menanam bibit">
+  <img src="./public/images/landing/mascot-13.png" width="112" alt="Maskot badak menyambut warga">
 </p>
 
-# Bank Sampah Digital Sindangheula
+<h1 align="center">Bank Sampah Digital Sindangheula</h1>
 
-Website mobile-first untuk setoran, saldo rupiah, penjemputan, pencairan tunai, dan penukaran sembako Desa Sindangheula.
+<p align="center">
+  <strong>Dari sampah terpilah menjadi saldo yang tercatat.</strong><br>
+  Sistem informasi bank sampah untuk warga <strong>Desa Sindangheula</strong>: setor sampah,
+  pantau saldo rupiah, ajukan penjemputan, cairkan saldo, dan tukar sembako dalam satu alur.
+</p>
 
-[Workflow](docs/WEB_WORKFLOW.md) · [Panduan pengguna](docs/USER_FLOWS.md) · [Dokumentasi](docs/README.md) · [Pengujian](docs/TEST_PLAN.md) · [Validasi cutover](docs/VALIDATION_CUTOVER_2026-10-05.md)
+<p align="center">
+  <img alt="Laravel 13" src="https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white">
+  <img alt="PHP 8.3+" src="https://img.shields.io/badge/PHP-8.3%2B-777BB4?logo=php&logoColor=white">
+  <img alt="Livewire 4" src="https://img.shields.io/badge/Livewire-4-FB70A9">
+  <img alt="Filament 5" src="https://img.shields.io/badge/Filament-5-F59E0B">
+  <img alt="MySQL 8" src="https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white">
+  <img alt="Telegram Bot API" src="https://img.shields.io/badge/Telegram-Bot_API-26A5E4?logo=telegram&logoColor=white">
+</p>
 
-## Empat peran dan tugas yang jelas
+<p align="center">
+  <a href="#alur-terbaru"><strong>Alur terbaru</strong></a> ·
+  <a href="#maskot-sindangheula">Maskot</a> ·
+  <a href="#jejak-prototipe">Jejak prototipe</a> ·
+  <a href="#menjalankan-lokal">Menjalankan lokal</a> ·
+  <a href="docs/README.md">Dokumentasi</a>
+</p>
 
-| Peran | Tugas utama |
-| --- | --- |
-| Warga | Menggunakan akun/smartphone sendiri; saldo, kartu, riwayat, dan pengajuan layanan. |
-| Petugas | Setoran, pickup, layanan keliling, sembako pada area tugas aktif, serta riwayat pekerjaan sendiri. |
-| Bendahara | Mengambil dan mencatat pembayaran tunai searea; laporan pembayaran sendiri. |
-| Admin | Akun, wilayah, master, laporan, audit, koreksi resmi, dan pengecualian. |
+---
 
-Satu akun hanya satu peran. Pengurus tidak merangkap tugas. Admin bukan pelaksana fisik rutin.
+## Tentang Desa Sindangheula
 
-## Alur yang ringkas
+**Bank Sampah Digital Sindangheula** adalah prototipe sistem informasi bank sampah untuk
+**Desa Sindangheula**. Warga dapat menyetor sampah yang sudah dipilah, memantau saldo rupiah,
+mengajukan penjemputan, mencairkan saldo tunai, dan menukar saldo dengan paket sembako.
+Pengurus desa mengelola akun, wilayah, harga, laporan, dan audit melalui satu panel admin.
 
-Landing menampilkan ringkasan seluruh desa dan jenis sampah beserta harga aktif. Foto dikelola lewat **Admin → Data Master → Katalog Sampah → Jenis Sampah → Foto**; perubahan sumber yang sama tampil pada landing, katalog, dan harga saat halaman dimuat ulang. Jenis baru memerlukan foto; data lama tanpa foto ditandai sampai dilengkapi. [Panduan foto dan statistik](docs/LANDING_CATALOG_2026-10-09.md).
+Aplikasi dirancang **mobile-first** agar nyaman dipakai lewat ponsel, baik oleh warga maupun
+petugas di lapangan. Setiap transaksi yang sah menghasilkan mutasi saldo, kuitansi, dan jejak
+audit yang dapat ditelusuri kembali.
 
-- Semua setoran langsung final setelah ringkasan berat/nilai diperiksa.
-- Petugas/Bendahara mengambil tugas sendiri, tanpa persetujuan Admin rutin.
-- Form penjemputan satu layar; foto, catatan, dan perkiraan tambahan dapat dilipat. Lampiran rutin opsional, tervalidasi, dan privat.
-- Antrean Petugas/Bendahara dipaginasi dan memisahkan Menunggu/Tugas saya. Menu Layanan Warga memuat seluruh pilihan layanan.
-- Menu Riwayat Petugas memisahkan pekerjaan selesai dari antrean aktif, dengan pencarian dan rincian hanya-baca. Tautan sembako selesai tetap dapat dibuka oleh pelaksananya.
-- Pencatatan tunai/sembako menampilkan satu konfirmasi nama/nominal. Periksa lagi tidak mengubah saldo; foto tetap opsional dan tidak ada persetujuan Admin rutin.
-- Admin membuat akun pengurus beserta tugas secara atomik. Pemeriksaan saldo selesai dengan satu Admin; selisih dicatat tanpa otomatis mengubah saldo.
-- Form edit mempertahankan data tersimpan; bukti publik selalu diturunkan dari transaksi server, termasuk invalidasi QR.
-- Pembayaran hanya tunai penuh, diambil ketika uang fisik tersedia. Tidak ada transfer, pembayaran sebagian, atau tombol tunda kas.
-- Sembako dapat langsung diserahkan; Paket siap diambil adalah pilihan, bukan tahap wajib.
-- Hold belum merupakan pengeluaran. Pelepasan klaim mempertahankan hold; pembatalan sah melepasnya. Setelah klaim, permintaan batal mengunci penyerahan sampai serah fisik dipastikan.
-- Tidak ada expiry otomatis pengajuan layanan.
+> **Status:** prototipe penelitian. Bot Telegram **nonaktif secara default** sampai token,
+> webhook, persetujuan privasi, dan UAT disiapkan. Tes otomatis bukan pengganti UAT peserta
+> desa nyata.
 
-Claim mengikat pelaksana sebelum uang/barang berpindah. Setelah serah fisik, satu pencatatan atomik membuat mutasi keluar dan kuitansi. Respons hilang tidak boleh memicu serah fisik kedua; ketidakpastian masuk jalur exception Admin beralasan dan terautentikasi ulang.
+## Alur terbaru
 
-Kanal Bot Telegram untuk Warga, Petugas, dan Bendahara kini tersedia di kode dan tetap **nonaktif secara default** sampai server dikonfigurasi. Admin tetap bekerja melalui web. Penimbangan/finalisasi dan pencatatan serah fisik dapat dilakukan melalui web atau bot dengan layanan domain serta pembukuan yang sama. Telegram tidak menggantikan atau menggandakan transaksi web. Lihat [cakupan, privasi, konfigurasi, dan batas aktivasi](docs/TELEGRAM_CHANNEL.md). WhatsApp tidak digunakan. Tes otomatis belum menggantikan UAT peserta desa nyata. Penyempurnaan UI 8 Oktober 2026 dilacak di [catatan pelaksanaan](docs/IMPLEMENTATION_UI_2026-10-08.md).
+Alur saat ini sudah **tidak meminta persetujuan Admin rutin** untuk setiap transaksi.
+Admin bekerja pada akun, data master, audit, koreksi resmi, dan pengecualian.
+
+```mermaid
+flowchart TD
+    W[Warga] -->|Setor langsung| T[Petugas menimbang]
+    W -->|Ajukan penjemputan| A[Antrean petugas]
+    A --> T
+    T --> F[Setoran langsung final]
+    F --> S[Saldo rupiah bertambah]
+    S --> P{Pilih layanan}
+    P -->|Pencairan tunai| B[Antrean bendahara]
+    P -->|Tukar sembako| G[Antrean petugas]
+    B --> K[Klaim tugas searea]
+    G --> K
+    K --> H[Serah fisik dan catat atomik]
+    H --> R[Kuitansi dan audit]
+    W -.->|Chat pribadi| TG[Bot Telegram]
+    TG --> F
+    TG --> H
+    ADM[Admin] -->|Akun, master, audit, pengecualian| ADMP[Panel admin]
+```
+
+1. **Setoran langsung final.** Petugas memilih warga, mengisi jenis, kondisi, dan berat aktual,
+   memeriksa total, lalu mencatat. Saldo bertambah dan kuitansi terbentuk dalam satu transaksi.
+2. **Pickup memakai klaim pelaksana.** Warga mengajukan alamat, tanggal, dan jenis sampah.
+   Petugas searea mengambil tugas sendiri, menjemput, lalu menyelesaikan penimbangan aktual.
+3. **Pencairan tunai dan sembako memakai hold.** Pengajuan menahan saldo. Bendahara atau Petugas
+   searea mengambil tugas hanya ketika uang atau paket benar-benar tersedia.
+4. **Serah fisik dicatat satu kali.** Klaim mengikat pelaksana sebelum uang atau barang berpindah.
+   Respons yang hilang tidak boleh memicu serah fisik kedua.
+5. **Admin menangani pengecualian.** Jika serah fisik tidak dapat dipastikan, Admin memeriksa fakta,
+   menulis alasan, dan melakukan autentikasi ulang. Ini bukan persetujuan rutin.
+6. **Telegram adalah kanal opsional.** Bot memakai layanan domain dan pembukuan yang sama dengan web,
+   bukan transaksi terpisah. Penautan awal dan pemutusan tetap melalui web.
+
+**Yang tidak ada lagi:** persetujuan Admin berulang untuk setoran, pickup, pencairan, atau sembako;
+transfer bank dan pembayaran sebagian; expiry otomatis pengajuan; serta kanal WhatsApp.
+
+## Peran dan kewenangan
+
+| Peran | Tugas utama | Batas |
+| --- | --- | --- |
+| **Warga** | Akun sendiri, saldo, riwayat, kartu QR, pengajuan pickup, pencairan, dan sembako. | Tidak dapat mencatat transaksi atau mengubah saldo. |
+| **Petugas** | Identifikasi warga, setoran, pickup, layanan keliling, dan sembako pada area tugas aktif. | Tidak membayar tunai; hanya melihat riwayat pekerjaan sendiri. |
+| **Bendahara** | Mengambil dan mencatat pembayaran tunai pada area tugas aktif. | Laporan hanya pembayaran sendiri; bukan approval Admin. |
+| **Admin** | Akun, wilayah, harga, paket, laporan, audit, koreksi, exception, dan Health baca-saja. | Bukan pelaksana fisik rutin; Admin terakhir dilindungi. |
+
+Satu akun memiliki **tepat satu peran**. Pengurus tidak merangkap tugas, dan tidak ada pengajuan
+oleh pengurus atas nama Warga.
+
+## Maskot Sindangheula
+
+Maskot **badak** menjadi penanda visual sistem: ramah, teliti, dan dekat dengan kebiasaan
+memilah sampah. Ia memakai bandana biru, rompi cokelat, dan daun kecil di telinga. Maskot yang
+sama muncul di landing, dashboard, panel admin, halaman error, dan tutorial agar pengalaman
+warga dan pengurus terasa satu kesatuan.
+
+<table>
+  <tr>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-2.png" width="120" alt="Maskot badak menyambut di halaman masuk"><br>
+      <sub><strong>Sapa warga</strong><br>Menyambut di halaman masuk.</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-3.png" width="120" alt="Maskot badak memilah botol, kertas, dan logam"><br>
+      <sub><strong>Pilah sampah</strong><br>Memisahkan botol, kertas, dan logam.</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-4.png" width="120" alt="Maskot badak membawa sampah terpilah ke layanan keliling"><br>
+      <sub><strong>Layanan keliling</strong><br>Membawa sampah terpilah ke titik layanan.</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-5.png" width="120" alt="Maskot badak memberi tanda centang"><br>
+      <sub><strong>Konfirmasi</strong><br>Memberi tanda bahwa data sudah benar.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-6.png" width="120" alt="Maskot badak membantu mencari data warga"><br>
+      <sub><strong>Cari data</strong><br>Membantu admin menemukan akun dan warga.</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-7.png" width="120" alt="Maskot badak menimbang sampah"><br>
+      <sub><strong>Timbang</strong><br>Memeriksa berat dan nilai setoran.</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-8.png" width="120" alt="Maskot badak memantau antrean tugas"><br>
+      <sub><strong>Antrean tugas</strong><br>Menemani petugas memantau pekerjaan.</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-9.png" width="120" alt="Maskot badak menunjukkan langkah layanan"><br>
+      <sub><strong>Pilih langkah</strong><br>Menunjukkan alur layanan yang tepat.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-10.png" width="120" alt="Maskot badak berpikir saat membaca ketentuan"><br>
+      <sub><strong>Pahami dulu</strong><br>Menemani warga membaca ketentuan dan harga.</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-11.png" width="120" alt="Maskot badak beristirahat dekat material daur ulang"><br>
+      <sub><strong>Daur ulang</strong><br>Mengingatkan bahwa sampah punya nilai.</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-12.png" width="120" alt="Maskot badak menanam bibit"><br>
+      <sub><strong>Tumbuh</strong><br>Merawat lingkungan dan saldo warga.</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="./public/images/landing/mascot-13.png" width="120" alt="Maskot badak menyambut pemeriksaan bukti setoran"><br>
+      <sub><strong>Verifikasi</strong><br>Menyambut pemeriksaan bukti setoran.</sub>
+    </td>
+  </tr>
+</table>
+
+## Jejak prototipe
+
+Repo ini menyimpan perjalanan prototipe, dari alur yang masih meminta persetujuan Admin
+berulang hingga alur klaim saat ini dan kanal Telegram. Rincian tahapan ada di
+[linimasa prototipe](docs/RESEARCH_TIMELINE.md).
+
+| Tanggal | Tahap | Perubahan utama |
+| --- | --- | --- |
+| 4–5 Okt 2026 | Prototipe awal | Setoran, pickup, pencairan, dan sembako masih melalui review atau keputusan Admin. |
+| 5 Okt 2026 | Cutover empat peran | Persetujuan rutin dihapus; setoran langsung final; layanan memakai klaim pelaksana searea. |
+| 8–9 Okt 2026 | UI dan data | Statistik landing, foto katalog, data master privat, dan copy publik dirapikan. |
+| 17–24 Okt 2026 | Penyempurnaan | Hero maskot, riwayat petugas, akun Green Ledger, dan tutorial video. |
+| 25–28 Okt 2026 | Bot Telegram | Penautan 1:1, consent opt-in, webhook, akses persisten, dan privasi v2.1. |
+| 29 Okt–4 Nov 2026 | Penutupan prototipe | README, linimasa penelitian, changelog rilis, dan dokumentasi akhir. |
+
+## Fitur utama
+
+- **Publik:** landing desa, ringkasan statistik, katalog sampah, harga aktif, pengumuman,
+  program, jadwal layanan keliling, tutorial video, dan verifikasi bukti setoran.
+- **Warga:** dashboard saldo, setoran, pengajuan pickup, pencairan tunai, penukaran sembako,
+  kartu nasabah ber-QR, riwayat, dan kuitansi.
+- **Petugas:** identifikasi warga, setoran langsung, tugas pickup, layanan keliling, sembako,
+  dan riwayat pekerjaan sendiri.
+- **Bendahara:** antrean pembayaran tunai, pencatatan serah fisik, kuitansi, dan laporan pribadi.
+- **Admin:** akun dan area tugas, verifikasi warga, wilayah, jenis sampah dan harga, paket sembako,
+  laporan, audit, rekonsiliasi, koreksi resmi, exception, dan Health baca-saja.
+- **Telegram:** menu Warga, Petugas, dan Bendahara; penimbangan/finalisasi, pickup, sembako,
+  layanan keliling, notifikasi opt-in, pengingat, dan ekspor laporan pribadi.
 
 ## Teknologi
 
-Akses Telegram berlaku selama akun tetap tertaut dan kewenangannya masih sah, tanpa batas tidak aktif atau pembaruan berkala dari web. Tombol/isian lama cukup dimulai ulang melalui `/menu`. Status akun, peran, area, pencabutan, perubahan data keamanan, dan aturan transaksi tetap diperiksa; penautan awal dan pemutusan tetap melalui web.
-
-Antarmuka akun memakai satu gaya Green Ledger: kartu layanan berikon, maskot lokal, contoh isian form, serta feedback hover/fokus dengan dukungan reduced motion. Prinsip hierarki dan interaksi Appllama diadaptasi untuk Blade/Livewire; tidak menambah framework atau mengubah aturan saldo. Pengujian responsif tiga peran tersedia di `tests/browser/app-ui-polish.mjs` dan hanya memakai database uji terpisah.
-
-Laravel 13, PHP 8.3+, MySQL 8.0.30-compatible/InnoDB, Livewire 4, Filament 5, Tailwind CSS, dan Vite. Node.js diperlukan untuk build/pengujian, bukan runtime web produksi.
+| Lapisan | Teknologi |
+| --- | --- |
+| Backend | Laravel 13, PHP 8.3+, MySQL 8.0.30/InnoDB |
+| Antarmuka | Livewire 4, Filament 5, Blade, Tailwind CSS 4, Lucide |
+| Build | Vite 8, Node.js 22 |
+| Integrasi | Telegram Bot API (webhook, outbox idempoten, consent) |
+| Pengujian | Pest, PHPStan/Larastan, Pint, Playwright, uji MySQL disposable |
 
 ## Menjalankan lokal
 
-1. Siapkan PHP, Composer, Node.js/npm dan MySQL lokal, misalnya Laragon.
+1. Siapkan PHP 8.3+, Composer, Node.js 22/npm, dan MySQL lokal (misalnya Laragon).
 2. Jalankan `composer install` dan `npm ci --ignore-scripts`.
-3. Salin `.env.example` ke `.env`; isi koneksi lokal dan URL, lalu jalankan `php artisan key:generate`.
-4. Siapkan data utama privat dari SQL pemilik mengikuti [panduan seeder](docs/SEEDING.md). Tanpa sumber ini seeder lokal berhenti; tidak menggantinya dengan akun buatan.
-5. Pada database lokal kosong, jalankan `php artisan migrate --seed`, kemudian `npm run build`.
-6. Document root Laragon harus `public/`; alternatifnya `php artisan serve`.
-
-Hanya ada satu seeder aplikasi: `DatabaseSeeder`. Sumber lokal terbaru memuat 26 akun (20 Warga, 3 Petugas, 1 Bendahara, 2 Admin), 5 RW, 19 RT, penugasan, 4 jenis sampah, dan 4 harga. Superadmin lama menjadi Admin; username dan hash kata sandi sumber dipertahankan. QR dibuat ulang dengan kunci lokal. Transaksi, saldo, sesi, notifikasi, lampiran, dan paket sembako lama tidak diimpor.
-
-Data akun/alamat dan hash kata sandi disimpan privat di `database/data/master-data.json`, diabaikan Git. Akun contoh untuk tes hanya berada di `tests/Fixtures`; tidak dipanggil seeder aplikasi. Tombol isi cepat demo hanya muncul untuk akun sintetis yang benar-benar cocok, bukan semua akun hasil impor. Di production, seeder biasa hanya bootstrap Admin awal sesuai konfigurasi. Update **hosting dummy lama** melalui File Manager menggunakan installer sementara yang diaktifkan eksplisit; lihat [panduan cPanel dan daftar upload](docs/HOSTING_CPANEL_2026-10-20.md). Installer bukan jalur reset untuk data operasional.
-
-### Reset baseline dummy yang sudah ada
-
-Simpan backup terlebih dahulu. Command ini hanya menerima local/testing, host loopback, tepat database `bank_sampah`, dan root media workspace.
+3. Salin `.env.example` ke `.env`, isi koneksi database dan URL, lalu jalankan
+   `php artisan key:generate`.
+4. Siapkan data utama privat mengikuti [panduan seeder](docs/SEEDING.md). Tanpa sumber ini,
+   seeder lokal berhenti dan tidak diganti dengan akun buatan.
+5. Pada database lokal kosong, jalankan `php artisan migrate --seed`, lalu `npm run build`.
+6. Arahkan document root ke `public/`, atau jalankan `php artisan serve`.
 
 ```bash
-php artisan app:reset-demo-baseline --confirm-reset-demo --dry-run
-php artisan app:reset-demo-baseline --confirm-reset-demo
+composer install
+npm ci --ignore-scripts
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+npm run build
+php artisan serve
 ```
 
-Tanpa dry-run data dan media dummy dihapus. Jangan dipakai untuk data nyata; migration cutover transaksi menolak baseline transaksi yang tidak kosong. Cutover schema tidak dapat di-rollback sebagian. [Panduan rilis/rollback](docs/DEPLOYMENT.md).
+Data akun, alamat, dan hash kata sandi disimpan privat di `database/data/master-data.json`
+dan diabaikan Git. Di production, seeder biasa hanya membuat Admin awal sesuai konfigurasi;
+akun yang sudah ada tidak ditimpa.
 
 ## Pengujian
 
 ```bash
-composer test
-composer analyse
-php vendor/bin/pint --test
+composer check          # Pint, PHPStan, dan Pest
+composer test           # Pest saja
 npm run build
 npm run test:browser-guard
+npm run test:browser    # butuh database uji dan server lokal
 ```
 
-Unit/feature memakai SQLite memori dan storage/cache/sesi terpisah. MySQL/browser hanya memakai database disposable `bank_sampah_test` atau suffix-nya, URL loopback, dan token preflight yang sesuai. Runner browser: `npm run test:browser`; skenario locking nyata: `tests/mysql/cutover-concurrency.php`. Lihat [rencana tes](docs/TEST_PLAN.md) untuk batas bukti.
+Unit/feature memakai SQLite memori dan storage/cache/sesi terpisah. Pengujian MySQL/browser
+hanya memakai database disposable `bank_sampah_test` atau suffix-nya, URL loopback, dan token
+preflight yang sesuai. Lihat [rencana tes](docs/TEST_PLAN.md) untuk batas bukti.
 
-Proposal dan sembilan flowchart ada di [documents](documents/). Kuitansi/audit adalah jejak sistem, bukan bukti independen serah fisik. [UAT](docs/UAT_EVIDENCE.md) belum boleh diklaim selesai tanpa peserta nyata.
+## Struktur repo
 
-Jangan mengunggah `.env`, token, backup/database, log, atau kredensial nyata ke GitHub. Lisensi metadata package MIT; distribusi mengikuti kebijakan proyek.
+```text
+app/
+  Domain/                  aturan bisnis, layanan, model, dan enum
+  Livewire/                antarmuka Warga, Petugas, Bendahara, dan publik
+  Filament/                panel Admin
+  Http/Controllers/        webhook Telegram dan controller web
+  Authorization/           peran, izin, dan batas area
+docs/                      kontrak, panduan, validasi, dan linimasa
+documents/                 proposal dan flowchart penelitian
+public/images/landing/     maskot dan foto landing
+resources/views/           Blade, komponen UI, dan layout
+tests/                     Pest, browser, dan uji MySQL
+```
+
+## Dokumentasi
+
+- [Workflow web dan Telegram](docs/WEB_WORKFLOW.md)
+- [Panduan tiap pengguna](docs/USER_FLOWS.md)
+- [Aturan bisnis](docs/BUSINESS_RULES.md)
+- [Peran dan izin](docs/PERMISSIONS.md)
+- [Arsitektur](docs/ARCHITECTURE.md) dan [model data](docs/DATA_MODEL.md)
+- [Kanal Telegram](docs/TELEGRAM_CHANNEL.md)
+- [Keamanan](docs/SECURITY.md), [operasional](docs/OPERATIONS.md), dan [deployment](docs/DEPLOYMENT.md)
+- [Rencana tes](docs/TEST_PLAN.md) dan [bukti UAT](docs/UAT_EVIDENCE.md)
+- [Linimasa prototipe](docs/RESEARCH_TIMELINE.md)
+- [Catatan perubahan](docs/CHANGELOG.md), [roadmap](docs/ROADMAP.md), dan [kaitan skripsi](docs/SKRIPSI.md)
+- [Kontrak desain](DESIGN.md) dan [indeks dokumentasi](docs/README.md)
+
+Proposal dan sembilan flowchart ada di [`documents/`](documents/).
+
+## Keamanan dan privasi
+
+- `.env`, token, backup, database, log, dan kredensial nyata tidak boleh diunggah ke GitHub.
+- Lampiran rutin bersifat privat dan tervalidasi; foto katalog publik dinormalisasi tanpa EXIF/GPS.
+- Telegram memakai penautan 1:1, consent terpisah yang opt-in, dan default nonaktif.
+- Statistik publik melindungi kelompok kecil dan tidak memuat data pribadi.
+- Kuitansi/audit adalah jejak sistem, bukan bukti independen serah fisik.
+- UAT, SUS, dan aktivasi Telegram produksi tidak diklaim selesai sebelum ada peserta dan
+  konfigurasi nyata.
+
+## Penelitian
+
+**Judul:** Pengembangan Sistem Informasi Bank Sampah dengan Integrasi Bot Telegram:
+Studi Kasus Desa Sindangheula
+
+**Penulis:** Muhammad Faiz Bintang Pratama — Informatika, Fakultas Teknik,
+Universitas Sultan Ageng Tirtayasa, 2026
+
+Repo ini adalah objek penelitian dan prototipe teknis. Data warga, dokumen skripsi, dan
+instrumen penelitian tetap berada di luar repositori publik.
+
+## Lisensi
+
+Metadata package memakai lisensi MIT. Distribusi kode, data, dan aset mengikuti kebijakan
+proyek serta persetujuan pemilik data Desa Sindangheula.
