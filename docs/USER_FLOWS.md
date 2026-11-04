@@ -1,6 +1,6 @@
 # Panduan pengguna web
 
-Acuan aktif: [workflow empat role](WEB_WORKFLOW.md) dan [kontrak UI](../DESIGN.md), diperbarui 25 Oktober 2026. Telegram merupakan kanal opsional nonaktif secara default; WhatsApp tidak digunakan.
+Acuan aktif: [workflow empat role](WEB_WORKFLOW.md) dan [kontrak UI](../DESIGN.md), diperbarui 25 Oktober 2026. Telegram sudah aktif di production; `TELEGRAM_ENABLED=false` tetap default untuk instalasi baru. WhatsApp tidak digunakan.
 
 ## Warga
 

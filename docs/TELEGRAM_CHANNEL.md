@@ -1,6 +1,6 @@
 # Kanal Bot Telegram
 
-Status kode: kanal tersedia sejak 25 Oktober 2026 dan kebijakan akses persisten disetujui pada 28 Oktober 2026. `TELEGRAM_ENABLED=false` tetap nilai bawaan instalasi baru. Pemilik melaporkan penautan serta webhook hosting berhasil pada 25 Oktober; laporan itu bukan bukti UAT atau hasil pengujian rilis 28 Oktober di hosting. WhatsApp tidak digunakan.
+Status kode: kanal tersedia sejak 25 Oktober 2026 dan kebijakan akses persisten disetujui pada 28 Oktober 2026. Bot sudah aktif di production dengan token, username, dan webhook yang dikonfigurasi melalui environment server. `TELEGRAM_ENABLED=false` tetap nilai bawaan `.env.example` untuk instalasi baru. Aktivasi production bukan bukti UAT, SUS, atau hasil pengujian rilis 28 Oktober di hosting. WhatsApp tidak digunakan.
 
 ## Batas kanal dan akun
 

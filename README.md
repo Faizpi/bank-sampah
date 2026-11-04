@@ -43,9 +43,10 @@ Aplikasi dirancang **mobile-first** agar nyaman dipakai lewat ponsel, baik oleh 
 petugas di lapangan. Setiap transaksi yang sah menghasilkan mutasi saldo, kuitansi, dan jejak
 audit yang dapat ditelusuri kembali.
 
-> **Status:** prototipe penelitian. Bot Telegram **nonaktif secara default** sampai token,
-> webhook, persetujuan privasi, dan UAT disiapkan. Tes otomatis bukan pengganti UAT peserta
-> desa nyata.
+> **Status:** prototipe penelitian. Bot Telegram **sudah aktif di production** dengan token dan
+> webhook yang dikonfigurasi melalui environment server. Untuk instalasi baru, `.env.example`
+> tetap memakai `TELEGRAM_ENABLED=false` sampai konfigurasi dan persetujuan privasi disiapkan.
+> Tes otomatis bukan pengganti UAT peserta desa nyata.
 
 ## Alur terbaru
 
@@ -82,8 +83,9 @@ flowchart TD
    Respons yang hilang tidak boleh memicu serah fisik kedua.
 5. **Admin menangani pengecualian.** Jika serah fisik tidak dapat dipastikan, Admin memeriksa fakta,
    menulis alasan, dan melakukan autentikasi ulang. Ini bukan persetujuan rutin.
-6. **Telegram adalah kanal opsional.** Bot memakai layanan domain dan pembukuan yang sama dengan web,
-   bukan transaksi terpisah. Penautan awal dan pemutusan tetap melalui web.
+6. **Telegram adalah kanal yang sudah berjalan.** Di production, bot aktif dan memakai layanan
+   domain serta pembukuan yang sama dengan web, bukan transaksi terpisah. Penautan awal dan
+   pemutusan tetap melalui web.
 
 **Yang tidak ada lagi:** persetujuan Admin berulang untuk setoran, pickup, pencairan, atau sembako;
 transfer bank dan pembayaran sebagian; expiry otomatis pengajuan; serta kanal WhatsApp.
@@ -176,7 +178,7 @@ berulang hingga alur klaim saat ini dan kanal Telegram. Rincian tahapan ada di
 | 5 Okt 2026 | Cutover empat peran | Persetujuan rutin dihapus; setoran langsung final; layanan memakai klaim pelaksana searea. |
 | 8–9 Okt 2026 | UI dan data | Statistik landing, foto katalog, data master privat, dan copy publik dirapikan. |
 | 17–24 Okt 2026 | Penyempurnaan | Hero maskot, riwayat petugas, akun Green Ledger, dan tutorial video. |
-| 25–28 Okt 2026 | Bot Telegram | Penautan 1:1, consent opt-in, webhook, akses persisten, dan privasi v2.1. |
+| 25–28 Okt 2026 | Bot Telegram | Penautan 1:1, consent opt-in, webhook, akses persisten, privasi v2.1, dan persiapan production. |
 | 29 Okt–4 Nov 2026 | Penutupan prototipe | README, linimasa penelitian, changelog rilis, dan dokumentasi akhir. |
 
 ## Fitur utama
@@ -192,6 +194,20 @@ berulang hingga alur klaim saat ini dan kanal Telegram. Rincian tahapan ada di
   laporan, audit, rekonsiliasi, koreksi resmi, exception, dan Health baca-saja.
 - **Telegram:** menu Warga, Petugas, dan Bendahara; penimbangan/finalisasi, pickup, sembako,
   layanan keliling, notifikasi opt-in, pengingat, dan ekspor laporan pribadi.
+
+### Kanal Telegram di production
+
+Bot Telegram aktif di production dan membaca konfigurasi dari environment server:
+
+| Variabel | Fungsi |
+| --- | --- |
+| `TELEGRAM_ENABLED` | `true` di production; `false` adalah bawaan `.env.example` untuk instalasi baru. |
+| `TELEGRAM_BOT_TOKEN` | Token BotFather, hanya disimpan di environment server. |
+| `TELEGRAM_BOT_USERNAME` | Username bot tanpa `@`. |
+| `TELEGRAM_WEBHOOK_SECRET` | Secret header untuk memverifikasi webhook. |
+
+Token, secret, dan isi `.env` tidak pernah masuk repo. Prosedur penautan, pendaftaran webhook,
+scheduler, dan penghentian kanal ada di [panduan kanal Telegram](docs/TELEGRAM_CHANNEL.md).
 
 ## Teknologi
 
@@ -278,11 +294,12 @@ Proposal dan sembilan flowchart ada di [`documents/`](documents/).
 
 - `.env`, token, backup, database, log, dan kredensial nyata tidak boleh diunggah ke GitHub.
 - Lampiran rutin bersifat privat dan tervalidasi; foto katalog publik dinormalisasi tanpa EXIF/GPS.
-- Telegram memakai penautan 1:1, consent terpisah yang opt-in, dan default nonaktif.
+- Telegram memakai penautan 1:1 dan consent terpisah yang opt-in; production sudah aktif,
+  sedangkan `.env.example` tetap default nonaktif untuk instalasi baru.
 - Statistik publik melindungi kelompok kecil dan tidak memuat data pribadi.
 - Kuitansi/audit adalah jejak sistem, bukan bukti independen serah fisik.
-- UAT, SUS, dan aktivasi Telegram produksi tidak diklaim selesai sebelum ada peserta dan
-  konfigurasi nyata.
+- UAT dan SUS tidak diklaim selesai sebelum ada peserta; kanal Telegram production sudah
+  berjalan, tetapi itu bukan pengganti bukti UAT.
 
 ## Penelitian
 

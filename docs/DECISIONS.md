@@ -18,7 +18,7 @@ Catatan historis: batas waktu otorisasi dalam dua butir berikut telah digantikan
 - Pengingat dikirim maksimal satu kali per hari pada pukul 09.00 WIB; kiriman terjadwal (pengingat/ringkasan/pengumuman) menghormati jam tenang 20.00–07.00 WIB. Notifikasi transaksi/tugas tetap segera karena tidak terjadwal.
 - Informasi, pengajuan, finalisasi setoran, pencatatan serah fisik, kartu/QR, antrean, serta laporan yang telah disetujui tersedia melalui bot untuk Warga/Petugas/Bendahara. Admin tetap di web. Kanal web tidak dihapus.
 - Keempat pilihan notifikasi bersifat opt-in; pengumuman punya consent tersendiri. Foto bot opsional, tervalidasi dan privat. Pesan yang sudah dikirim tidak dapat ditarik dari riwayat Telegram.
-- Implementasi kode nonaktif secara default. Aktivasi produksi menunggu pembaruan/persetujuan pemberitahuan privasi, token privat, HTTPS webhook, scheduler, dan UAT. Tidak ada klaim integrasi Telegram live sebelum itu.
+- Implementasi kode nonaktif secara default untuk instalasi baru. Production sudah diaktifkan melalui environment server setelah pemberitahuan privasi, token privat, HTTPS webhook, dan scheduler tersedia. UAT tetap bukti terpisah.
 - Kebijakan privasi v2.0 diterbitkan 25 Oktober 2026 atas persetujuan pemilik, menambah pasal kanal Telegram opsional pada Ketentuan Operasional (penautan, batas 1:1, izin berjangka, pencabutan) dan Kebijakan Privasi (data kiriman, consent default mati, retensi tujuh hari/24 jam, pesan terkirim tidak dapat ditarik). Berlaku prospektif; riwayat penerimaan v1.0 dipertahankan dan tidak ada permintaan persetujuan ulang massal. Gerbang aktivasi produksi yang tersisa: token privat, HTTPS webhook, scheduler, dan UAT.
 
 ## Akses Telegram persisten 28 Oktober 2026

@@ -25,7 +25,7 @@
 - Menyelaraskan empat parameter Tabel 3 skripsi: izin Petugas/Bendahara berakhir juga setelah 60 menit tanpa aktivitas sah (kolom `last_activity_at`), klaim tautan tidak sah dibatasi lima kali per 15 menit per Telegram lalu ditunda, pengingat dipatok pukul 09.00 WIB sekali per hari, dan kiriman terjadwal menghormati jam tenang 20.00–07.00 WIB.
 - Menerbitkan Ketentuan Operasional dan Kebijakan Privasi v2.0 yang mencakup kanal Telegram (penautan, data kiriman, consent default mati, retensi, pencabutan); versi default pendaftaran baru naik ke v2.0 tanpa permintaan persetujuan ulang massal bagi penerima v1.0.
 - Harness tes menyediakan `.env.testing` kosong pada direktori runtime terisolasi sehingga suite tanpa file tersebut tetap bebas peringatan dan tidak pernah membaca `.env` developer; halaman pencabutan Admin diuji dengan fitur aktif tanpa mengubah konfigurasi normal.
-- Telegram tetap nonaktif secara default. Ini bukan bukti token/webhook produksi, UAT, atau persetujuan kebijakan privasi.
+- Telegram tetap nonaktif secara default pada rilis ini. Aktivasi production dilakukan setelah rilis melalui environment server. Catatan ini bukan bukti UAT atau persetujuan kebijakan privasi.
 
 ## Perapian copy publik dan urutan landing 9 Oktober 2026
 

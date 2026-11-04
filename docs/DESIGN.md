@@ -488,4 +488,4 @@ Untuk setiap komponen/halaman, review wajib memastikan:
 
 ## Penyelarasan workflow 5 Oktober 2026
 
-Alur aktif mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md). Empat role tetap dan tidak rangkap tugas; foto rutin opsional, tanpa approval Admin rutin. Antrean klaim dan ringkasan nama/nilai harus terlihat jelas. WhatsApp tidak digunakan. Telegram adalah adaptor percakapan terpisah untuk tiga role operasional dan nonaktif secara default; Admin tetap menggunakan web. Kapasitas layanan keliling tetap berlaku. Lihat [cakupan kanal Telegram](TELEGRAM_CHANNEL.md).
+Alur aktif mengikuti [WEB_WORKFLOW.md](WEB_WORKFLOW.md). Empat role tetap dan tidak rangkap tugas; foto rutin opsional, tanpa approval Admin rutin. Antrean klaim dan ringkasan nama/nilai harus terlihat jelas. WhatsApp tidak digunakan. Telegram adalah adaptor percakapan terpisah untuk tiga role operasional; production sudah aktif, sedangkan `.env.example` tetap default nonaktif untuk instalasi baru. Admin tetap menggunakan web. Kapasitas layanan keliling tetap berlaku. Lihat [cakupan kanal Telegram](TELEGRAM_CHANNEL.md).

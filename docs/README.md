@@ -6,7 +6,7 @@ aktual menjadi bukti implementasi; catatan checkpoint lama bukan bukti keadaan t
 
 - [Linimasa prototipe](RESEARCH_TIMELINE.md): tahapan dari alur persetujuan Admin hingga bot Telegram.
 - [Workflow](WEB_WORKFLOW.md), [panduan tiap pengguna](USER_FLOWS.md), dan [aturan bisnis](BUSINESS_RULES.md).
-- [Kanal Telegram](TELEGRAM_CHANNEL.md): fitur, penautan, consent, operasi, tes, serta syarat sebelum aktivasi.
+- [Kanal Telegram](TELEGRAM_CHANNEL.md): fitur, penautan, consent, operasi, tes, serta status production dan syarat aktivasi instalasi baru.
 - [Kontrak desain aktif](../DESIGN.md) dan [pelaksanaan audit UI](IMPLEMENTATION_UI_2026-10-08.md).
 - [Role dan akses](PERMISSIONS.md), [arsitektur](ARCHITECTURE.md), [model data](DATA_MODEL.md).
 - [Keamanan](SECURITY.md), [operasional](OPERATIONS.md), [deployment](DEPLOYMENT.md).

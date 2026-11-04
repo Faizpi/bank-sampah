@@ -50,6 +50,7 @@ Bagian autentikasi/penautan, tabel parameter teknis, alur percakapan, dan skenar
 
 Teks siap salin disediakan privat di `C:/Skripsi/revisi_2026-10-28_akses_telegram/Teks_Revisi_Akses_Telegram.md`. Sumber Word tidak ditimpa dan tidak ada hasil UAT/SUS baru yang diasumsikan dari perubahan kode.
 
-- Kode Telegram tersedia di working copy, tetapi `TELEGRAM_ENABLED=false` secara default; token, webhook, produksi, dan UAT belum dibuktikan.
+- Kanal Telegram sudah aktif di production dengan token dan webhook pada environment server;
+  `TELEGRAM_ENABLED=false` tetap default instalasi baru. UAT dan SUS belum dibuktikan.
 - Bukti UAT dikumpulkan di `UAT_EVIDENCE.md`, bukan dari pengujian otomatis.
 - Data akun dan identitas peserta adalah data sensitif skripsi; tetap di luar repo atau diimport lewat alur `SEEDING.md`.

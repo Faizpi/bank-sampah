@@ -43,7 +43,7 @@ Menu Riwayat memuat setoran final (termasuk yang kemudian dikoreksi/dibalik), pe
 
 - Satu akun memiliki tepat satu dari empat role tetap. Izin tidak dapat diedit melalui panel. Admin aktif terakhir dilindungi pada layanan dan database.
 - Penimbangan/finalisasi setoran serta pencatatan persiapan dan serah-terima sembako dapat dilakukan melalui web atau bot Telegram; kegiatan fisiknya tetap dilakukan langsung. Kedua kanal memakai guard dan layanan domain yang sama. Admin tetap memakai web. WhatsApp tidak digunakan.
-- Bot Telegram nonaktif secara default. Sebelum aktivasi, siapkan token privat, HTTPS/webhook, scheduler, dokumentasi privasi yang disetujui, dan UAT terpisah. Satu akun web tertaut ke maksimal satu Telegram aktif dan satu akun Telegram ke maksimal satu akun web.
+- Bot Telegram aktif di production dengan konfigurasi environment server; `TELEGRAM_ENABLED=false` tetap default `.env.example` untuk instalasi baru. Aktivasi instalasi baru tetap memerlukan token privat, HTTPS/webhook, scheduler, dokumentasi privasi yang disetujui, dan UAT terpisah. Satu akun web tertaut ke maksimal satu Telegram aktif dan satu akun Telegram ke maksimal satu akun web.
 - Semua warga diasumsikan mempunyai smartphone; tidak ada pengajuan oleh pengurus atas nama Warga.
 - Lampiran rutin opsional. Bila diunggah, file tetap tervalidasi dan privat. Kuitansi sistem bukan bukti independen bahwa uang/barang benar-benar berpindah.
 - Tidak ada modul kas atau stok terperinci. Ketersediaan uang/paket merupakan tanggung jawab pelaksana sebelum mengambil tugas.

@@ -54,6 +54,7 @@ bukan hanya melihat keadaan kode terakhir.
 - Tanggal pada tabel adalah tanggal tahapan prototipe, bukan tanggal unggah dokumen skripsi.
 - UAT, pengukuran SUS, dan perbandingan Web vs Telegram membutuhkan peserta desa nyata dan
   tidak diklaim selesai oleh dokumen ini.
-- Bot Telegram nonaktif secara default. Token, webhook HTTPS, scheduler, persetujuan privasi,
-  dan deployment produksi adalah langkah terpisah.
+- Bot Telegram aktif di production dengan token dan webhook pada environment server.
+  `TELEGRAM_ENABLED=false` tetap nilai bawaan `.env.example` untuk instalasi baru; scheduler
+  dan persetujuan privasi dikelola sebagai konfigurasi server.
 - Data warga, dokumen skripsi, dan instrumen penelitian tetap berada di luar repositori publik.
