@@ -18,6 +18,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -135,7 +136,7 @@ final readonly class FinancialReconciliationService
         $cashStatus = $cashTotal === null ? ReconciliationItem::STATUS_OPEN : ($cashTotal === $withdrawalExpected ? ReconciliationItem::STATUS_VERIFIED : ReconciliationItem::STATUS_DIFFERENCE);
         $digitalItems = [];
         $payouts = SandboxPayout::query();
-        if ((clone $payouts)->where(fn ($q) => $q->whereBetween('settled_at', [$start, $end->subMicrosecond()])->orWhereBetween('reversed_at', [$start, $end->subMicrosecond()]))->exists()) {
+        if (Schema::hasTable('sandbox_payouts') && (clone $payouts)->where(fn ($q) => $q->whereBetween('settled_at', [$start, $end->subMicrosecond()])->orWhereBetween('reversed_at', [$start, $end->subMicrosecond()]))->exists()) {
             $settled = (int) (clone $payouts)->where('settled_at', '>=', $start)->where('settled_at', '<', $end)->sum('amount');
             $returned = (int) (clone $payouts)->where('reversed_at', '>=', $start)->where('reversed_at', '<', $end)->sum('amount');
             $entries = LedgerEntry::query()->where('source_type', SandboxPayout::class)->where('effective_at', '>=', $start)->where('effective_at', '<', $end);

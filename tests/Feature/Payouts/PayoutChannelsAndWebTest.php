@@ -9,11 +9,13 @@ use App\Domain\Payouts\Services\PayoutChannels;
 use App\Domain\Payouts\Services\PayoutService;
 use App\Domain\Payouts\Services\PayoutWorker;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
+use App\Filament\Pages\SandboxPayouts;
 use App\Livewire\Citizen\PayoutForm;
 use App\Livewire\Citizen\PayoutShow;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\Fixtures\WorkflowFixture;
@@ -94,4 +96,13 @@ it('keeps production and mismatched database configurations unavailable', functi
     $this->actingAs($this->owner)->get(route('citizen.payout.create'))->assertNotFound();
     config()->set(['payouts.enabled' => true, 'payouts.secret_key' => 'xnd_production_TEST_NOT_REAL']);
     expect(PayoutAccess::configured())->toBeFalse();
+});
+
+it('keeps unconfigured installations safe before the additive migration is installed', function (): void {
+    Schema::shouldReceive('hasTable')->with('sandbox_payouts')->andReturnFalse();
+    expect(PayoutAccess::configured())->toBeFalse();
+    $this->actingAs(User::where('username', 'admin')->firstOrFail());
+    expect(SandboxPayouts::canAccess())->toBeFalse();
+    $this->actingAs($this->owner)->get(route('citizen.payout.create'))->assertNotFound();
+    $this->get(route('citizen.payout.history'))->assertNotFound();
 });

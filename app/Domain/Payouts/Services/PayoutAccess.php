@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 final class PayoutAccess
@@ -23,7 +24,8 @@ final class PayoutAccess
 
         return (bool) config('payouts.enabled') && $isolated
             && str_starts_with((string) config('payouts.secret_key'), 'xnd_development_')
-            && strlen((string) config('payouts.webhook_token')) >= 16;
+            && strlen((string) config('payouts.webhook_token')) >= 16
+            && Schema::hasTable('sandbox_payouts') && Schema::hasTable('sandbox_payout_events');
     }
 
     public function requireConfigured(): void
@@ -36,6 +38,7 @@ final class PayoutAccess
     /** @return Builder<SandboxPayout> */
     public function visibleFor(User $actor): Builder
     {
+        abort_unless(Schema::hasTable('sandbox_payouts'), 404);
         $actor = User::query()->findOrFail($actor->id);
         if ($actor->status->value !== 'aktif' || ! $actor->hasRole('warga', 'bendahara', 'admin')) {
             throw new AuthorizationException('Tidak berhak membuka pencairan simulasi.');

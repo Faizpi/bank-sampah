@@ -14,6 +14,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Schema;
 use UnitEnum;
 
 final class SandboxPayouts extends Page implements HasTable
@@ -34,7 +35,7 @@ final class SandboxPayouts extends Page implements HasTable
     {
         $actor = auth()->user();
 
-        return $actor instanceof User && $actor->hasRole('admin') && $actor->status->value === 'aktif';
+        return $actor instanceof User && $actor->hasRole('admin') && $actor->status->value === 'aktif' && Schema::hasTable('sandbox_payouts');
     }
 
     public function table(Table $table): Table

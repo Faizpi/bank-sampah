@@ -18,6 +18,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\Fixtures\WorkflowFixture;
@@ -45,6 +46,12 @@ it('keeps digital settlement separate from physical cash reconciliation', functi
     $digital = $check->items->firstWhere('item_type', 'payout_ledger');
     expect($digital->expected_total)->toBe(20000)->and($digital->actual_total)->toBe(20000)
         ->and($check->items->firstWhere('item_type', 'cash_disbursement')->expected_total)->toBe(0);
+});
+
+it('keeps ordinary reconciliation available before the sandbox tables exist', function (): void {
+    Schema::shouldReceive('hasTable')->with('sandbox_payouts')->andReturnFalse();
+    $check = app(FinancialReconciliationService::class)->create($this->admin, CarbonImmutable::today('Asia/Jakarta'), 0);
+    expect($check->items)->toHaveCount(5)->and($check->closing_total)->toBe(75000)->and($check->difference)->toBe(0);
 });
 
 it('scopes monitor and masked CSV to current treasurer areas while admin sees all', function (): void {
