@@ -62,8 +62,11 @@
 <section aria-label="Pengajuan aktif">
     <div>
         <h2 id="pengajuan-aktif" class="text-label font-bold text-text-secondary mb-3">Pengajuan Aktif</h2>
-        @if ($activePickups->isEmpty() && $activeWithdrawals->isEmpty() && $activeGroceries->isEmpty())<p>Tidak ada pengajuan aktif.</p>@endif
+        @if ($activePickups->isEmpty() && $activeWithdrawals->isEmpty() && $activeGroceries->isEmpty() && $activePayouts->isEmpty())<p>Tidak ada pengajuan aktif.</p>@endif
         <div class="space-y-2">
+            @foreach ($activePayouts as $payout)
+                <a href="{{ route('citizen.payout.show', $payout) }}" class="app-row-action grid gap-2 rounded-xl border border-border bg-surface p-4"><span class="break-all font-bold">{{ $payout->request_number }}</span><span>{{ $payout->label() }} (digital simulasi)</span><span class="amount-tabular font-semibold">Rp {{ number_format($payout->amount, 0, ',', '.') }}</span></a>
+            @endforeach
             @foreach ($activePickups as $pickup)
                 <a href="{{ route('citizen.pickup.show', $pickup) }}" class="flex items-center justify-between rounded-xl border border-border bg-surface p-4 shadow-xs transition hover:border-forest-600 hover:shadow-sm">
                     <div class="flex items-center gap-3">

@@ -1,7 +1,7 @@
 @extends('layouts.public')
 
 @section('title', 'Ketentuan Operasional dan Kebijakan Privasi | Bank Sampah Digital Sindangheula')
-@section('description', 'Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1 Bank Sampah Digital Sindangheula, termasuk kanal opsional Telegram.')
+@section('description', 'Ketentuan Operasional v2.2 dan Kebijakan Privasi Ringkas v2.2 Bank Sampah Digital Sindangheula, termasuk kanal opsional Telegram.')
 
 @section('content')
     <div class="public-canvas">
@@ -9,7 +9,7 @@
             <div class="public-container grid items-center gap-8 section-space lg:grid-cols-[1fr_auto]">
                 <div>
                 <p class="text-label font-semibold tracking-wide text-surface/80">Dokumen publik</p>
-                <h1 id="terms-title" class="mt-2 max-w-3xl text-h1 lg:text-h1-lg text-surface">Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1</h1>
+                <h1 id="terms-title" class="mt-2 max-w-3xl text-h1 lg:text-h1-lg text-surface">Ketentuan Operasional v2.2 dan Kebijakan Privasi Ringkas v2.2</h1>
                 <p class="mt-3 max-w-2xl text-body text-surface/80">Dokumen ini tersedia untuk dibaca sebelum pendaftaran dan berlaku untuk penggunaan layanan Bank Sampah Digital Sindangheula, termasuk kanal opsional Telegram.</p>
                 </div>
                 <img src="{{ asset('images/landing/mascot-10.png') }}" alt="Maskot badak sedang berpikir saat warga membaca ketentuan layanan" class="mx-auto h-40 w-44 object-contain lg:h-48 lg:w-52">
@@ -30,7 +30,7 @@
                         <section aria-labelledby="terms-registration">
                             <h2 id="terms-registration" class="text-h2 text-deep-green">Pendaftaran dan penerimaan ketentuan</h2>
                             <ol class="mt-3 list-decimal space-y-2 pl-5">
-                                <li>Pendaftar wajib menyetujui Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1 saat membuat akun.</li>
+                                <li>Pendaftar wajib menyetujui Ketentuan Operasional v2.2 dan Kebijakan Privasi Ringkas v2.2 saat membuat akun.</li>
                                 <li>Sistem menyimpan versi ketentuan, waktu persetujuan, serta riwayat persetujuan setiap pengguna.</li>
                                 <li>Menyetujui ketentuan tidak memverifikasi domisili, mencegah duplikasi akun, mengaktifkan akun, atau memasukkan Anda secara otomatis.</li>
                                 <li>Setelah pendaftaran valid, akun tetap berstatus menunggu verifikasi. Hanya keputusan verifikasi admin yang dapat mengaktifkan akun.</li>
@@ -58,6 +58,11 @@
                                 <li>Pesan yang sudah terkirim berada pada riwayat Telegram pengguna dan tidak dapat ditarik sistem. Antrean kiriman di server dihapus paling lama tujuh hari dan berkas laporan paling lama 24 jam.</li>
                                 <li>Pemutusan tautan dari Profil atau pencabutan Admin membatalkan seluruh kiriman tertunda.</li>
                             </ul>
+                        </section>
+                        <section aria-labelledby="privacy-payout">
+                            <h2 id="privacy-payout" class="text-h2 text-deep-green">Pencairan digital (simulasi)</h2>
+                            <p class="mt-3">Fitur riset ini memakai Xendit Test Mode dan tidak mengirim dana riil. Gunakan nama dan nomor rekening atau dompet digital uji. Data tujuan uji, nominal, dan referensi dikirim ke Xendit setelah Anda memeriksa ringkasan dan mengonfirmasi pengajuan. Jika memakai bot, isian juga melewati Telegram.</p>
+                            <p class="mt-3">Saldo riset disisihkan saat pengajuan. Hasil API terverifikasi menentukan pemotongan, pelepasan, atau pengembalian saldo. Tujuan disimpan terenkripsi; laporan menampilkan nomor tersamarkan. Logo bank dan dompet digital hanya menjadi penanda tujuan, bukan klaim kemitraan. Tunai tetap ditangani Bendahara.</p>
                         </section>
                         <section aria-labelledby="privacy-access">
                             <h2 id="privacy-access" class="text-h2 text-deep-green">Akses dan keterbukaan terbatas</h2>

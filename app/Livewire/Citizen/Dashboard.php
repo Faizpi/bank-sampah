@@ -11,6 +11,7 @@ use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Ledger\Models\LedgerEntry;
+use App\Domain\Payouts\Models\SandboxPayout;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
@@ -101,6 +102,10 @@ final class Dashboard extends Component
             ->take(3)
             ->get();
 
+        $activePayouts = config('payouts.enabled')
+            ? SandboxPayout::query()->where('customer_id', $actor->id)->whereNotIn('status', ['succeeded', 'failed', 'cancelled', 'reversed'])->latest('id')->limit(3)->get()
+            : collect();
+
         return view('livewire.citizen.dashboard', [
             'actorName' => $actor->name,
             'availableBalance' => $availableBalance,
@@ -112,6 +117,7 @@ final class Dashboard extends Component
             'activePickups' => $activePickups,
             'activeWithdrawals' => $activeWithdrawals,
             'activeGroceries' => $activeGroceries,
+            'activePayouts' => $activePayouts,
             'groceryHref' => route('citizen.grocery.create'),
         ]);
     }

@@ -2,6 +2,7 @@
 <x-slot:context>Transaksi Anda</x-slot:context>
 
 <section aria-labelledby="withdrawal-history-title" class="space-y-6">
+    @if (\App\Domain\Payouts\Services\PayoutAccess::configured())<a href="{{ route('citizen.payout.history') }}" class="inline-flex min-h-touch items-center font-bold text-forest-600">Riwayat digital (simulasi)</a>@endif
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
             <p class="text-label font-semibold text-forest-600">Riwayat Warga</p>
@@ -35,7 +36,7 @@
                     $badgeStatus = match ($withdrawal->status) {
                         \App\Domain\Withdrawals\Enums\WithdrawalStatus::Paid => 'success',
                         \App\Domain\Withdrawals\Enums\WithdrawalStatus::Cancelled => 'cancelled',
-                        \App\Domain\Withdrawals\Enums\WithdrawalStatus::ReadyForPickup => 'info',
+                        \App\Domain\Withdrawals\Enums\WithdrawalStatus::Processing => 'info',
                         default => 'pending',
                     };
                 @endphp

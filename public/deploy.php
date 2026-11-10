@@ -468,6 +468,20 @@ $actions = [
             ['view:cache', []],
         ],
     ],
+    'payout-diagnose' => [
+        'label' => 'Periksa pencairan digital simulasi',
+        'description' => 'Memeriksa konfigurasi, database terpisah, routing, dan status tidak pasti tanpa mengirim pencairan.',
+        'group' => 'diagnostics',
+        'risk' => 'read-only',
+        'commands' => [['payouts:diagnose', []]],
+    ],
+    'payout-work' => [
+        'label' => 'Proses antrean pencairan simulasi',
+        'description' => 'Memproses maksimal lima pengajuan Xendit Test Mode pada database riset. Tidak mengirim uang riil.',
+        'group' => 'maintenance',
+        'risk' => 'routine',
+        'commands' => [['payouts:work', ['--limit' => 5]]],
+    ],
     'telegram-diagnose' => [
         'label' => 'Periksa konfigurasi Telegram',
         'description' => 'Memeriksa migration, ekstensi, dan antrean tanpa menampilkan token atau menghubungi Telegram.',

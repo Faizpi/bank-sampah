@@ -48,12 +48,12 @@ final class CitizenRegistrationTest extends TestCase
         self::assertNull($user->verified_at);
         self::assertNull($user->verified_by);
         self::assertNull($user->last_login_at);
-        self::assertSame('v2.1', $user->terms_version);
+        self::assertSame('v2.2', $user->terms_version);
         self::assertInstanceOf(CarbonImmutable::class, $user->terms_accepted_at);
         self::assertSame(now()->format('Y-m-d H:i:s'), $user->terms_accepted_at->format('Y-m-d H:i:s'));
         self::assertGuest();
         $this->assertDatabaseHas('customer_profiles', ['user_id' => $user->id, 'rt_id' => $rt->id, 'address' => 'Jalan Melati Nomor 10']);
-        $this->assertDatabaseHas('terms_acceptance_histories', ['user_id' => $user->id, 'accepted_version' => 'v2.1', 'accepted_at' => now()]);
+        $this->assertDatabaseHas('terms_acceptance_histories', ['user_id' => $user->id, 'accepted_version' => 'v2.2', 'accepted_at' => now()]);
         self::assertSame('warga', $user->role->value);
     }
 
@@ -245,7 +245,7 @@ final class CitizenRegistrationTest extends TestCase
 
         $this->get(route('terms-and-privacy'))
             ->assertOk()
-            ->assertSee('Ketentuan Operasional v2.1 dan Kebijakan Privasi Ringkas v2.1')
+            ->assertSee('Ketentuan Operasional v2.2 dan Kebijakan Privasi Ringkas v2.2')
             ->assertSee('Kanal Telegram opsional')
             ->assertSee('<main id="konten-utama"', escape: false);
 

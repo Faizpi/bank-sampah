@@ -3,6 +3,7 @@
 <x-slot:connectivity><x-ui.connectivity-status /></x-slot:connectivity>
 
 <section class="space-y-6" aria-labelledby="reports-title">
+    @if (config('payouts.enabled'))<a href="{{ route('payout.monitor') }}" class="app-interactive inline-flex min-h-touch items-center rounded-lg border border-forest-600 px-4 font-bold text-forest-700">Pantauan digital (simulasi)</a>@endif
     <x-ui.page-heading id="reports-title" :title="$surface === 'treasurer' ? 'Riwayat pembayaran saya' : 'Laporan '.($reportTypes[$reportType] ?? 'Tidak diizinkan')" description="Pilih periode, lihat ringkasan, lalu unduh Excel." mascot="5" />
 
     {{-- Metric Cards --}}

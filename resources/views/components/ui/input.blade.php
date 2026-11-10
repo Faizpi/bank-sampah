@@ -32,8 +32,8 @@
         <p id="{{ $hintId }}" class="text-body-sm text-text-secondary">{{ $hint }}</p>
     @endif
     @if ($error)
-        <p id="{{ $errorId }}" class="flex items-start gap-2 text-body-sm font-semibold text-terracotta">
-            <svg viewBox="0 0 24 24" class="mt-0.5 size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        <p id="{{ $errorId }}" class="flex items-start gap-2 text-body-sm font-semibold text-text-primary">
+            <svg viewBox="0 0 24 24" class="mt-0.5 size-4 shrink-0 text-terracotta" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
             {{ $error }}
         </p>
     @endif

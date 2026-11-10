@@ -332,7 +332,7 @@ final class BackofficePanelTest extends TestCase
             $this->navigationLabelsForGroup($panel, 'Program'),
         );
         self::assertSame(
-            ['Rekonsiliasi', 'Laporan', 'Riwayat aktivitas', 'Perubahan saldo', 'Dana ditahan'],
+            ['Pencairan digital (simulasi)', 'Rekonsiliasi', 'Laporan', 'Riwayat aktivitas', 'Perubahan saldo', 'Dana ditahan'],
             $this->navigationLabelsForGroup($panel, 'Pengawasan'),
         );
         self::assertSame(

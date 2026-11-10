@@ -28,11 +28,13 @@
             'citizen.deposit-history',
             'citizen.withdrawal-history',
             'citizen.grocery-history',
+            'citizen.payout.history',
         ];
         $citizenActiveNav = match(true) {
             $citizenRoute === 'citizen.dashboard' => 'Beranda',
             str_contains($citizenRoute, 'customer-card') => 'Kartu Nasabah',
             $citizenRoute === 'citizen.services' => 'Layanan',
+            str_starts_with($citizenRoute, 'citizen.payout.') && $citizenRoute !== 'citizen.payout.history' => 'Layanan',
             str_contains($citizenRoute, 'deposit-receipt') || in_array($citizenRoute, $citizenHistoryRoutes, true) => 'Riwayat',
             str_contains($citizenRoute, 'pickup') || str_contains($citizenRoute, 'grocery') || str_contains($citizenRoute, 'withdrawal') || str_contains($citizenRoute, 'estimate') => 'Layanan',
             default => 'Akun',

@@ -1,6 +1,7 @@
 <x-slot:title>Ajukan pencairan</x-slot:title>
 
 <section aria-labelledby="withdrawal-request-title" class="grid gap-6">
+    @if (\App\Domain\Payouts\Services\PayoutAccess::configured())<a href="{{ route('citizen.payout.create') }}" class="app-row-action inline-flex min-h-touch items-center rounded-lg border border-forest-600 px-4 font-bold text-forest-700">Pilih pencairan digital (simulasi)</a>@endif
     <x-ui.page-heading id="withdrawal-request-title" title="Ajukan Pencairan" description="Saldo disisihkan sampai uang tunai diterima." mascot="5" />
 
     @if (session('success'))

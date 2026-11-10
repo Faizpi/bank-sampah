@@ -7,6 +7,7 @@ use App\Http\Controllers\GroceryProofController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\OperationalHealthController;
+use App\Http\Controllers\PayoutReportController;
 use App\Http\Controllers\PickupMediaController;
 use App\Http\Controllers\ReportExportController;
 use App\Http\Controllers\WastePhotoController;
@@ -22,6 +23,9 @@ use App\Livewire\Citizen\GroceryHistory;
 use App\Livewire\Citizen\GroceryReceipt;
 use App\Livewire\Citizen\GroceryRequestForm;
 use App\Livewire\Citizen\GroceryShow;
+use App\Livewire\Citizen\PayoutForm;
+use App\Livewire\Citizen\PayoutHistory;
+use App\Livewire\Citizen\PayoutShow;
 use App\Livewire\Citizen\PickupRequestForm;
 use App\Livewire\Citizen\PickupShow;
 use App\Livewire\Citizen\Services;
@@ -47,6 +51,7 @@ use App\Livewire\PublicSite\WasteCatalog;
 use App\Livewire\PublicSite\WastePrices;
 use App\Livewire\Statistics\InternalDashboard;
 use App\Livewire\Treasurer\Dashboard as TreasurerDashboard;
+use App\Livewire\Treasurer\PayoutMonitor;
 use App\Livewire\Treasurer\Reports;
 use App\Livewire\Treasurer\WithdrawalPayments;
 use Illuminate\Http\JsonResponse;
@@ -169,6 +174,21 @@ Route::livewire('/warga/penjemputan/{pickup}', PickupShow::class)
 Route::livewire('/warga/riwayat-pencairan', WithdrawalHistory::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.view'])
     ->name('citizen.withdrawal-history');
+
+Route::livewire('/pengurus/pencairan-digital', PayoutMonitor::class)
+    ->middleware(['auth', 'session.fresh:30', 'permission:withdrawal.view'])->name('payout.monitor');
+Route::get('/pengurus/pencairan-digital/laporan', PayoutReportController::class)
+    ->middleware(['auth', 'session.fresh:30', 'permission:withdrawal.view', 'throttle:exports'])->name('payout.report');
+
+Route::livewire('/warga/pencairan-digital/ajukan', PayoutForm::class)
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.request', 'throttle:financial'])
+    ->name('citizen.payout.create');
+Route::livewire('/warga/riwayat-pencairan-digital', PayoutHistory::class)
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.view'])
+    ->name('citizen.payout.history');
+Route::livewire('/warga/pencairan-digital/{payout}', PayoutShow::class)
+    ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.view'])
+    ->whereNumber('payout')->name('citizen.payout.show');
 
 Route::livewire('/warga/pencairan/ajukan', WithdrawalRequestForm::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.request', 'throttle:financial'])
