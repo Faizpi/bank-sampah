@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PayoutWebhookController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Middleware\ApplyResponseSecurityHeaders;
 use App\Http\Middleware\AssignCorrelationId;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         then: static function (): void {
             // No web session or CSRF exemption shared with any other endpoint.
             Route::post('/telegram/webhook', TelegramWebhookController::class)->name('telegram.webhook');
+            Route::post('/xendit/payout-webhook', PayoutWebhookController::class)->name('payout.webhook');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -38,7 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*', 'telegram/webhook'),
+            fn (Request $request) => $request->expectsJson() || $request->is('api/*', 'telegram/webhook', 'xendit/payout-webhook'),
         );
         $exceptions->respond(
             static fn (Response $response): Response => ApplyResponseSecurityHeaders::apply(request(), $response),

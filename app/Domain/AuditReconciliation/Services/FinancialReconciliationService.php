@@ -12,6 +12,7 @@ use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Ledger\Models\LedgerEntry;
+use App\Domain\Payouts\Models\SandboxPayout;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -132,6 +133,15 @@ final readonly class FinancialReconciliationService
         $holdTotal = $this->holdAt($end);
         $expectedClosing = $opening + $this->netLedgerTotal($start, $end) - $this->holdDelta($start, $end);
         $cashStatus = $cashTotal === null ? ReconciliationItem::STATUS_OPEN : ($cashTotal === $withdrawalExpected ? ReconciliationItem::STATUS_VERIFIED : ReconciliationItem::STATUS_DIFFERENCE);
+        $digitalItems = [];
+        $payouts = SandboxPayout::query();
+        if ((clone $payouts)->where(fn ($q) => $q->whereBetween('settled_at', [$start, $end->subMicrosecond()])->orWhereBetween('reversed_at', [$start, $end->subMicrosecond()]))->exists()) {
+            $settled = (int) (clone $payouts)->where('settled_at', '>=', $start)->where('settled_at', '<', $end)->sum('amount');
+            $returned = (int) (clone $payouts)->where('reversed_at', '>=', $start)->where('reversed_at', '<', $end)->sum('amount');
+            $entries = LedgerEntry::query()->where('source_type', SandboxPayout::class)->where('effective_at', '>=', $start)->where('effective_at', '<', $end);
+            $net = (int) (clone $entries)->where('direction', LedgerEntry::DIRECTION_OUT)->sum('amount') - (int) (clone $entries)->where('direction', LedgerEntry::DIRECTION_IN)->sum('amount');
+            $digitalItems[] = $this->item('payout_ledger', $settled - $returned, $net, 'Mutasi pencairan digital simulasi dibandingkan penyelesaian dan pengembalian. Bukan kas fisik.');
+        }
 
         return [
             'totals' => ['opening_total' => max(0, $opening), 'deposit_total' => $depositActual, 'withdrawal_total' => $withdrawalActual, 'grocery_total' => $groceryActual, 'hold_total' => $holdTotal, 'cash_total' => $cashTotal, 'closing_total' => max(0, $closing), 'difference' => $closing - $expectedClosing],
@@ -141,6 +151,7 @@ final readonly class FinancialReconciliationService
                 $this->item('grocery_ledger', $groceryExpected, $groceryActual, 'Mutasi keluar sembako dibandingkan serah-terima.'),
                 $this->item('cash_disbursement', $withdrawalExpected, $cashTotal ?? 0, $cashTotal === null ? 'Hitungan kas belum diisi.' : 'Hitungan kas fisik dibandingkan pencairan dibayar.', $cashStatus),
                 $this->item('available_balance', max(0, $expectedClosing), max(0, $closing), 'Saldo tersedia setelah mutasi dan perubahan dana ditahan.'),
+                ...$digitalItems,
             ],
         ];
     }

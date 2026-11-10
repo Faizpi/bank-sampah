@@ -10,6 +10,10 @@ Artisan::command('inspire', function (): void {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+if (config('payouts.enabled')) {
+    Schedule::command('payouts:work --limit=10')->everyMinute()->withoutOverlapping(2);
+}
+
 if (config('telegram.enabled')) {
     Schedule::command('telegram:work --limit=25')->everyMinute()->withoutOverlapping(2);
     Schedule::command('telegram:notify')->everyFiveMinutes()->withoutOverlapping(5);

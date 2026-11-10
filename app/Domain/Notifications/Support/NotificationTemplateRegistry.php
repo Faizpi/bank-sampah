@@ -10,6 +10,7 @@ final class NotificationTemplateRegistry
 {
     /** @var array<string, array{title: string, body: string, placeholders: list<string>}> */
     private const TEMPLATES = [
+        'payout.updated' => ['title' => 'Pencairan digital (simulasi)', 'body' => 'Status pencairan simulasi {reference} diperbarui.', 'placeholders' => ['reference']],
         'withdrawal.claimed' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
         'withdrawal.released' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
         'withdrawal.exception_reported' => ['title' => 'Status layanan diperbarui', 'body' => 'Status layanan {reference} diperbarui.', 'placeholders' => ['reference']],
