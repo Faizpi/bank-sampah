@@ -1,5 +1,9 @@
 # Role dan capability tetap
 
+## Pencairan digital simulasi
+
+Warga aktif mengajukan dan melihat miliknya sendiri dengan hak `withdrawal.request/view`. Bendahara aktif dengan `withdrawal.view` hanya melihat digital pada area tugas aktifnya; Admin aktif dapat melihat keseluruhan lewat Pengawasan. Petugas tidak mempunyai akses digital. Tidak ada permission klaim/bayar digital bagi pengurus. Worker bertindak sebagai sistem, bukan menyamar sebagai Bendahara. [Batas dan konfigurasi](PAYOUT_SANDBOX.md).
+
 Sumber kebenaran: `UserRole`, `RoleCapabilities`, `PermissionChecker`, middleware `RequireRole`, policy, dan guard layanan. Tidak ada editor izin atau pivot role.
 
 | Tindakan | Warga | Petugas | Bendahara | Admin |

@@ -2,6 +2,8 @@
 
 ## 1. Status kontrak
 
+Tambahan 10 November 2026: pencairan digital simulasi mengikuti kontrak root dan [PAYOUT_SANDBOX.md](PAYOUT_SANDBOX.md). Logo asli enam tujuan adalah aset lokal khusus yang disetujui pemilik, bukan ikon navigasi atau klaim afiliasi. Tetap gunakan token, komponen, target sentuh, dan state yang sama. Pesan error input memakai teks Primary dengan ikon/border Terracotta setelah pemeriksaan kontras; ini tidak membuat palet baru.
+
 Keputusan UI/workflow aktif berada di [DESIGN.md root](../DESIGN.md). Dokumen ini memuat kontrak token dan komponen untuk publik, Warga, Petugas, Bendahara, dan Admin. Ini bukan mood board. Semua komponen harus memakai token, pola navigasi, state, breakpoint, aksesibilitas, dan larangan yang ditetapkan di sini.
 
 Prinsip: mobile-first, sederhana bagi warga, task-first bagi petugas, action-first bagi admin, data-dense secara terkontrol, saldo-first, hangat, jelas, dan dapat diaudit.

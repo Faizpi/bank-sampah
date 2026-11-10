@@ -14,6 +14,7 @@ tahapan agar perubahan kontrak, antarmuka, dan integrasi mudah ditelusuri.
 | 17–24 Oktober 2026 | Penyempurnaan | Hero maskot, riwayat Petugas, akun Green Ledger, navigasi backoffice, dan tutorial video inline. | [Kontrak desain](../DESIGN.md), [catatan perubahan](CHANGELOG.md) |
 | 25–28 Oktober 2026 | Bot Telegram | Penautan 1:1, consent opt-in, webhook, outbox idempoten, akses persisten, dan privasi v2.1. | [Kanal Telegram](TELEGRAM_CHANNEL.md), [kebijakan privasi](TERMS_AND_PRIVACY.md) |
 | 29 Oktober–4 November 2026 | Penutupan prototipe | README, linimasa penelitian, changelog rilis, dan dokumentasi akhir. | [README utama](../README.md), [catatan perubahan](CHANGELOG.md) |
+| 10 November 2026 | Tambahan pencairan simulasi | Implementasi web/Telegram dengan Xendit Test Mode, enam tujuan, hold, status/reversal, notifikasi dan pantauan. Pengujian lokal memakai API tiruan; uji akun provider dan UAT belum dibuktikan. | [Kontrak sandbox](PAYOUT_SANDBOX.md), `tests/Feature/Payouts`, `tests/browser/payout-smoke.mjs` |
 
 ## Perubahan kontrak utama
 

@@ -1,5 +1,9 @@
 # Rencana pengujian cutover
 
+## Pencairan digital simulasi
+
+Jalankan `tests/Feature/Payouts` untuk pengajuan web/Telegram, enam tujuan, server-side confirmation, consent, kepemilikan/area, hold, idempotensi, timeout/pemulihan, callback terautentikasi, penyelesaian/reversal, notifikasi, CSV masked, dan pemisahan kas fisik. Runner `tests/browser/payout-smoke.mjs` memakai database MySQL khusus, API tiruan, serta screenshot responsif dan pemeriksaan axe. Ini bukan uji akun provider; penerimaan Xendit Test Mode harus dicatat terpisah. [Petunjuk](PAYOUT_SANDBOX.md).
+
 ## Otomatis
 
 Tes kanal Telegram mencakup penautan 1:1, persetujuan web, akses setelah 400 hari tidak aktif pada tiga role, pengajuan pickup tanpa kembali ke web, pemulihan tombol melalui /menu, migrasi tautan lama tanpa mengubah identitas/consent, pencabutan dan generation lama, role/area/claim, idempotensi, media privat, outbox/retry, opt-in notifikasi, privasi target, dan laporan Bendahara sendiri. Jalankan `vendor/bin/pest tests/Feature/Telegram`; suite wajib lulus di SQLite in-memory dan di MySQL database disposable bernama `bank_sampah_test_telegram`. Jangan arahkan tes ke `bank_sampah`. Tes mocked API bukan bukti webhook publik atau UAT.

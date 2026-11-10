@@ -63,13 +63,18 @@ flowchart TD
     S --> P{Pilih layanan}
     P -->|Pencairan tunai| B[Antrean bendahara]
     P -->|Tukar sembako| G[Antrean petugas]
+    P -->|Digital simulasi| D[Konfirmasi Warga]
+    D --> X[Xendit Test Mode otomatis]
+    X --> V[Verifikasi hasil API]
+    V --> R
     B --> K[Klaim tugas searea]
     G --> K
     K --> H[Serah fisik dan catat atomik]
     H --> R[Kuitansi dan audit]
     W -.->|Chat pribadi| TG[Bot Telegram]
-    TG --> F
-    TG --> H
+    TG -.->|Petugas mencatat timbang| T
+    TG -.->|Bendahara menangani tunai| B
+    TG -.->|Warga mengajukan digital| D
     ADM[Admin] -->|Akun, master, audit, pengecualian| ADMP[Panel admin]
 ```
 
@@ -88,7 +93,24 @@ flowchart TD
    pemutusan tetap melalui web.
 
 **Yang tidak ada lagi:** persetujuan Admin berulang untuk setoran, pickup, pencairan, atau sembako;
-transfer bank dan pembayaran sebagian; expiry otomatis pengajuan; serta kanal WhatsApp.
+transfer uang riil dan pembayaran sebagian; expiry otomatis pengajuan; serta kanal WhatsApp.
+
+### Pencairan digital (simulasi penelitian)
+
+Warga dapat mengajukan pencairan digital dari web atau bot Telegram melalui **Xendit Test Mode**.
+Enam pilihan tujuan disiapkan: **BCA, Mandiri, BRI, BNI, DANA, dan GoPay**, dengan logo asli.
+Tujuan hanya dapat dipilih setelah routing API v3 dikonfirmasi pada akun uji Xendit.
+
+Alurnya: pilih tujuan, isi data uji dan nominal, periksa ringkasan, lalu konfirmasi. Sistem
+menyisihkan saldo riset, memproses otomatis, dan mencatat satu mutasi keluar setelah hasil
+sukses terverifikasi. Kegagalan final melepas saldo; pembalikan menghasilkan mutasi pengembalian.
+Tidak diperlukan klaim atau persetujuan Bendahara/Admin. **Tunai tetap ditangani Bendahara.**
+
+Tidak ada uang riil yang dikirim. Fitur default nonaktif, hanya menerima Development API Key,
+dan memerlukan database riset terpisah agar tidak memotong saldo operasional warga. Logo
+merupakan penanda tujuan, bukan klaim kemitraan. Implementasi diuji dengan API tiruan;
+koneksi akun Xendit sebenarnya harus diuji tersendiri sebelum dinyalakan.
+Lihat [konfigurasi, operasi, dan batas pengujian](docs/PAYOUT_SANDBOX.md).
 
 ## Peran dan kewenangan
 
@@ -96,7 +118,7 @@ transfer bank dan pembayaran sebagian; expiry otomatis pengajuan; serta kanal Wh
 | --- | --- | --- |
 | **Warga** | Akun sendiri, saldo, riwayat, kartu QR, pengajuan pickup, pencairan, dan sembako. | Tidak dapat mencatat transaksi atau mengubah saldo. |
 | **Petugas** | Identifikasi warga, setoran, pickup, layanan keliling, dan sembako pada area tugas aktif. | Tidak membayar tunai; hanya melihat riwayat pekerjaan sendiri. |
-| **Bendahara** | Mengambil dan mencatat pembayaran tunai pada area tugas aktif. | Laporan hanya pembayaran sendiri; bukan approval Admin. |
+| **Bendahara** | Mengambil dan mencatat pembayaran tunai pada area tugas aktif; memantau simulasi digital searea. | Laporan tunai hanya pembayaran sendiri; pantauan digital baca saja, bukan approval. |
 | **Admin** | Akun, wilayah, harga, paket, laporan, audit, koreksi, exception, dan Health baca-saja. | Bukan pelaksana fisik rutin; Admin terakhir dilindungi. |
 
 Satu akun memiliki **tepat satu peran**. Pengurus tidak merangkap tugas, dan tidak ada pengajuan

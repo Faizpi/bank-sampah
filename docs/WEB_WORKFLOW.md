@@ -12,6 +12,8 @@ Warga membuka Layanan di web atau menu Telegram dan mengisi bertahap: alamat, ta
 
 ## Pencairan tunai
 
+Bagian ini khusus pembayaran fisik. Jalur tambahan [pencairan digital simulasi](PAYOUT_SANDBOX.md) tidak memakai antrean atau klaim Bendahara.
+
 Pengajuan Warga melalui web atau Telegram langsung menahan saldo dan menunggu Bendahara. Bendahara mengambil pembayaran hanya jika uang tunai fisik tersedia. Setelah uang diberikan satu kali, claimant mencatat pembayaran dari web atau Telegram. Mutasi keluar, konversi hold, waktu, pelaksana, dan kuitansi disimpan atomik. Tidak ada transfer bank, approval Admin, pembayaran sebagian, tombol tunda kas, atau expiry otomatis.
 
 ## Sembako

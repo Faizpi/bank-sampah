@@ -1,5 +1,9 @@
 # Model data cutover
 
+## Tambahan simulasi digital
+
+`sandbox_payouts` menyimpan pemilik/wilayah/nominal, tujuan dan payload terenkripsi, hash, reference/idempotency UUID, status/lease, referensi hold/debit/reversal, serta consent versi `payout-sandbox-v1` dan waktu server. `sandbox_payout_events` hanya menyimpan event tersaring dan penanda deduplikasi/pemrosesan (tanpa body mentah). Identitas, consent, payload, serta referensi keuangan yang sudah terpasang dilindungi trigger; riwayat tidak dapat dihapus. Tidak ada kolom metode digital pada WithdrawalRequest sehingga proses serah tunai tidak bisa menyelesaikan payout. [Alur saldo](PAYOUT_SANDBOX.md).
+
 ## Identitas
 
 `users.role` non-null empat nilai tetap; `status` akun tetap menunggu verifikasi/aktif/ditolak/nonaktif. Profil Warga dan profil/penugasan pengurus terpisah. `access_role_locks` menyimpan singleton dan jumlah Admin aktif yang dipelihara trigger. Tabel izin/role dinamis serta tabel layanan atas nama Warga tidak ada pada schema akhir.

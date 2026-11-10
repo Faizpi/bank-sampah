@@ -2,6 +2,8 @@
 
 ## Source of truth
 
+Tambahan aktif 10 November 2026: pencairan digital simulasi web/Telegram mengikuti [PAYOUT_SANDBOX.md](docs/PAYOUT_SANDBOX.md). Tidak mengubah identitas Green Ledger atau alur tunai. Logo asli enam tujuan disimpan lokal dan tidak menyatakan afiliasi.
+
 Status: Active. Diperbarui 23 Oktober 2026. Berlaku untuk publik, Warga, Petugas, Bendahara, dan Admin. Kontrak token/komponen ada di [docs/DESIGN.md](docs/DESIGN.md); aturan workflow di [docs/WEB_WORKFLOW.md](docs/WEB_WORKFLOW.md). Keputusan di bawah menggantikan penjelasan pra-cutover yang bertentangan. Sumber keputusan: audit Filament/Blade 8 Oktober, katalog berfoto 9 Oktober, serta perbaikan keterlacakan dan konfirmasi transaksi yang disetujui 21 Oktober 2026.
 
 ## Brand
@@ -10,7 +12,7 @@ Identitas Bank Sampah Sindangheula tetap hangat, sederhana, dapat dipercaya, ber
 
 ## Product goals
 
-Pengguna dapat mengetahui status, pelaksana, dan tindakan berikutnya tanpa meminta persetujuan rutin Admin. Kurangi formulir berulang dan panel kosong. Lindungi angka keuangan, identitas, klaim pelaksana, dan jejak audit. Telegram, WhatsApp, deployment, reset database utama, dan klaim UAT/SUS bukan bagian pekerjaan ini.
+Pengguna dapat mengetahui status, pelaksana, dan tindakan berikutnya tanpa meminta persetujuan rutin Admin. Kurangi formulir berulang dan panel kosong. Lindungi angka keuangan, identitas, klaim pelaksana, dan jejak audit. Telegram sudah menjadi kanal operasional; pencairan simulasi kini termasuk kedua kanal. WhatsApp, transfer uang riil, reset database utama, deployment, dan klaim UAT/SUS tidak termasuk perubahan sandbox.
 
 ## Personas and jobs
 
@@ -35,6 +37,8 @@ Gunakan token, font Plus Jakarta Sans, SVG, warna, radius, spacing, dan reduced 
 
 ## Components
 
+Pencairan digital memakai `ui.page-heading`, maskot lokal, form berlabel dengan contoh data uji, serta kartu pilihan logo/radio (dua kolom ponsel, tiga desktop). Pilihan belum terkonfigurasi tampil disabled dengan alasan. Layar tinjauan wajib mendahului konfirmasi server; detail memuat nomor/status/tujuan tersamarkan/nominal serta pelaksana sistem. Riwayat terpisah dari tunai dan tidak menambah tujuan bottom-nav. Form/detail mengaktifkan Layanan; riwayat digital mengaktifkan Riwayat. Pantauan Bendahara/Admin baca saja. Gunakan token, target sentuh, hover/fokus, reduced motion yang sudah ada.
+
 Gunakan komponen Blade ui yang ada. Antrean dipaginasi, hasil pencarian warga tidak memilih diam-diam kandidat pertama, dan lampiran tampil dalam disclosure. Tabel kompleks Filament menyediakan ringkasan/aksi ponsel; detail transaksi keuangan baca-saja tersedia sebelum keputusan pengecualian.
 
 Landing menambah empat kartu ringkasan hijau: Warga aktif, Petugas aktif, setoran tercatat, dan kg terkumpul; empat kolom desktop, dua pada ponsel. Tidak memakai istilah Driver atau mengartikan penugasan sebagai status online. Bagian sampah memakai kartu foto 4:3 dan harga aktif. `public.waste-card`/`public.waste-photo` serta `PublicWasteCatalog` dipakai bersama oleh landing, katalog, dan harga. Foto kosong/gagal harus diberi keterangan, bukan foto palsu. Aksi Foto Admin tidak meminta perubahan harga atau kondisi.
@@ -51,6 +55,8 @@ Prinsip Appllama diadaptasi untuk web Laravel yang sudah ada: hierarki, satu kel
 
 ## Accessibility
 
+Validasi sandbox menemukan teks error input Terracotta kurang kontras pada kanvas terang. Primitive input memakai teks Primary untuk keterbacaan, dengan ikon dan border Terracotta sebagai penanda error. Tidak menambah warna paralel.
+
 Label, error, loading, fokus, dan accessible name berbahasa Indonesia. Tidak ada aksi sah yang hanya dapat dilakukan melalui kamera, hover, atau warna. Kegagalan validasi terlihat pada field/ringkasan. Target sentuh mengikuti kontrak komponen; pemeriksaan pembaca layar nyata tetap belum boleh diklaim selesai tanpa bukti.
 
 ## Responsive behavior
@@ -62,6 +68,8 @@ Validasi 360/390/768/1280. Form ponsel satu kolom; pasangan kondisi/berat pada b
 Bedakan kosong, tidak ditemukan, menunggu, diklaim, terkunci, selesai, dan gagal. Draf Petugas bukan kuitansi Warga. Kunci pengecualian menyembunyikan aksi biasa. Layanan keliling yang masih terbuka tetap dapat ditutup setelah jam jadwal lewat. Receipt/public verification selalu berasal dari data server, termasuk invalidasi token.
 
 ## Content voice
+
+Semua layar/notifikasi/bukti digital harus menyebut simulasi dan tidak adanya pengiriman dana riil. Bukti bukan struk bank. Logo adalah penanda tujuan, bukan kemitraan. Teks baru tidak memakai em dash; gunakan tanda kurung. Jangan menyebut persetujuan atau serah fisik Bendahara untuk digital.
 
 Gunakan Penjemputan, Warga, Ambil tugas, Uang sudah diserahkan, dan Riwayat pembayaran saya. Jelaskan dana yang disisihkan belum dibayar tanpa membebani pengguna dengan jargon ledger/hold. Jangan menyebut persetujuan Admin pada transaksi rutin. Verifikasi akun sekali, pengaturan awal tugas, dan pengecualian adalah konteks berbeda.
 

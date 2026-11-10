@@ -13,12 +13,14 @@
 - Setoran menghitung harga, kondisi, berat aktual, subtotal, dan pembulatan di server. Semua setoran langsung final; draf belum menambah saldo.
 - Final tidak dapat diedit langsung. Koreksi/reversal resmi memerlukan Admin, alasan, autentikasi ulang, dan jejak transaksi asli.
 - Pickup diklaim Petugas searea; hanya claimant aktif boleh melanjutkan. Perkiraan/foto bukan dasar saldo.
-- Pencairan diklaim Bendahara saat kas fisik tersedia. Pencairan hanya tunai dan tidak sebagian.
+- Pencairan tunai diklaim Bendahara saat kas fisik tersedia dan tidak sebagian. Pencairan digital simulasi merupakan jalur riset terpisah menurut [PAYOUT_SANDBOX.md](PAYOUT_SANDBOX.md).
 - Sembako diklaim Petugas saat paket tersedia. Siap diambil opsional; persiapan bukan tahapan wajib. Tidak tersedia sebelum klaim melepas hold.
 - Tidak ada approval Admin rutin, expiry otomatis layanan, modul kas, tombol tunda kas, atau stok rinci.
 - Lampiran rutin opsional; unggahan tetap tervalidasi, privat, dan menjadi bagian payload deduplikasi.
 
 ## Saldo dan kendala
+
+Digital simulasi memakai hold/ledger yang sama pada database riset terpisah, bukan transaksi tunai. Warga mengonfirmasi sendiri dari web/Telegram; tidak ada klaim Bendahara/Admin. API terautentikasi yang cocok dengan identitas, tujuan, nominal, dan mata uang pengajuan menjadi dasar penyelesaian. Webhook hanya memicu pemeriksaan API. Sukses mendebit sekali, gagal final melepas hold, reversal mengkredit melalui mutasi baru. Timeout tetap menahan saldo; operator memulihkan dengan body dan kunci provider yang sama, bukan membuat pengajuan baru. Konfirmasi data uji dicatat sebelum pengiriman. Digital tidak dihitung sebagai pengeluaran kas fisik.
 
 Saldo tersedia = masuk - keluar - hold aktif. Hold bukan pengeluaran. Completion mengonversi hold dan membuat satu mutasi keluar secara atomik; pembatalan sah melepas hold tanpa pengeluaran.
 

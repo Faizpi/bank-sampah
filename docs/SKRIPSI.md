@@ -1,5 +1,11 @@
 # Kaitan Skripsi
 
+## Tambahan rencana dan implementasi pencairan sandbox (10 November 2026)
+
+Bab III perlu menambahkan jalur Warga → konfirmasi tujuan/nominal → Xendit Test Mode → status API → perubahan saldo simulasi, di kedua kanal web dan Telegram. Tidak ada persetujuan Bendahara/Admin untuk digital; peran Bendahara tetap pembayaran tunai dan pantauan digital searea. Model data menambah payout, event, consent, hold/debit/reversal dengan sumber unik. Enam tujuan penelitian adalah BCA, Mandiri, BRI, BNI, DANA, GoPay; dukungan akun provider harus diverifikasi, bukan diasumsikan dari logo.
+
+Batasan masalah harus menyebut tidak ada dana riil, QRIS merchant, payment acceptance, atau validasi kepemilikan rekening nyata. Pengujian mencakup sukses, gagal, timeout, callback duplikat/palsu/terlambat, reversal, batas role/area, pembatalan, serta saldo tidak didebit dua kali. Tes otomatis memakai API tiruan dan database disposable; bukan bukti uji akun provider, kelayakan pembayaran nyata, UAT/SUS, atau hasil Bab IV. [Skenario dan konfigurasi](PAYOUT_SANDBOX.md). Sumber Word privat tidak diubah oleh implementasi ini.
+
 Skripsi penulis memakai aplikasi ini sebagai objek penelitian. Dokumen ini memetaan isi skripsi ke repo agar pengembangan dan penilaian tetap sinkron.
 
 ## Identitas

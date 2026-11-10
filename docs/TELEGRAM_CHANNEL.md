@@ -13,6 +13,8 @@ Status kode: kanal tersedia sejak 25 Oktober 2026 dan kebijakan akses persisten 
 
 ## Fitur
 
+Tambahan 10 November 2026: menu Warga `Digital (simulasi)` mengisi tujuan uji, nama, nomor, nominal, ringkasan, dan konfirmasi melalui bot. Riwayat/status serta pembatalan sebelum pengiriman memakai domain yang sama dengan web; notifikasi status mengikuti consent akun. Bendahara mendapat pantauan baca saja searea, bukan klaim/bayar digital. Fitur default mati sampai database riset dan Xendit Test Mode dikonfigurasi. [Operasi dan batas](PAYOUT_SANDBOX.md).
+
 Menu umum menyediakan katalog/foto/harga, perkiraan nilai, paket aktif, jadwal layanan keliling, pengumuman, target yang dipublikasikan, dan panduan. Data publik tetap tunduk pada batas privasi web.
 
 - Warga: saldo tersedia/disisihkan dan ringkasan mutasi; riwayat/rincian; kartu QR tanpa memutar token; pickup dengan foto/perkiraan opsional; pencairan tunai; sembako; status serta pembatalan yang sesuai tahap.
@@ -21,9 +23,11 @@ Menu umum menyediakan katalog/foto/harga, perkiraan nilai, paket aktif, jadwal l
 - Notifikasi transaksi, pengingat, ringkasan saldo, serta langganan pengumuman adalah pilihan terpisah dan **mati sampai pengguna memilihnya**. Frekuensi ringkasan dapat diatur. Pengingat dikirim maksimal satu kali per hari pada pukul 09.00 WIB, dan kiriman terjadwal (pengingat/ringkasan/pengumuman) menghormati jam tenang 20.00–07.00 WIB. Pengingat dibatasi dan kiriman ditinjau ulang terhadap izin/status sebelum dikirim.
 - Foto bot tidak wajib, format/ukuran diperiksa, disimpan di disk privat, dan tidak pernah menjadi bukti independen bahwa serah fisik terjadi.
 
-Semua mutasi transaksi memakai layanan domain yang sudah digunakan web. Membuka saldo/informasi tidak membuat draft, hold, kartu baru, atau transaksi. Pengajuan pencairan/sembako menahan saldo; mutasi keluar hanya terjadi setelah penyelesaian fisik yang sah.
+Semua mutasi transaksi memakai layanan domain yang sudah digunakan web. Membuka saldo/informasi tidak membuat draft, hold, kartu baru, atau transaksi. Pengajuan tunai/sembako menahan saldo; mutasi keluar mengikuti penyelesaian fisik yang sah. Digital simulasi menahan saldo riset dan mendebit hanya setelah hasil API terverifikasi, tanpa serah fisik.
 
 ## Konfigurasi dan operasi host
+
+Untuk rilis sandbox terbaru, gunakan pemberitahuan privasi v2.2 dan konfirmasi per pengajuan `payout-sandbox-v1`. Penjelasan rilis akses v2.1 di bawah adalah riwayat penautan, bukan versi kebijakan terbaru. Tidak ada penautan ulang massal hanya karena penambahan sandbox.
 
 1. Kebijakan privasi v2.1 tertanggal 28 Oktober 2026 menyelaraskan akses persisten dan petunjuk pemutusan. Publikasikan versi tersebut bersama rilis ini dan gunakan `TERMS_VERSION=v2.1` bila environment hosting mengatur versi secara eksplisit. Riwayat persetujuan v1.0/v2.0 tidak diubah dan tidak ada persetujuan ulang massal otomatis.
 2. Buat bot melalui BotFather dan simpan token hanya di `.env` privat. Isi `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` (tanpa `@`), serta `TELEGRAM_WEBHOOK_SECRET` acak minimal 32 karakter. Jangan kirim token lewat chat, commit, screenshot, atau command argument.

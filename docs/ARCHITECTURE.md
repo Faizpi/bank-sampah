@@ -1,5 +1,9 @@
 # Arsitektur implementasi
 
+## Adaptor Xendit Test Mode
+
+Domain `Payouts` menyimpan `SandboxPayout` terpisah dari permintaan tunai, tetapi memakai LedgerService/BalanceHold yang sama di database riset. Livewire dan PayoutTelegramBot memanggil PayoutService yang sama. Worker memakai lease, POST ber-idempotency, serta GET untuk rekonsiliasi. Webhook tanpa sesi browser memvalidasi token, mendeduplikasi event, dan menjadwalkan GET; body callback tidak dapat mengubah saldo langsung. API tidak dipanggil selama transaksi database keuangan. [Kontrak lengkap](PAYOUT_SANDBOX.md).
+
 Laravel 13 dan PHP 8.3+ memakai modular monolith: domain mengatur transaksi, query, scope, dan audit; Livewire/Filament menjadi antarmuka, bukan sumber otorisasi akhir. Database MySQL 8.0.30/InnoDB menjadi mesin operasional. SQLite memori dipakai untuk tes cepat, bukan bukti locking MySQL.
 
 ## Identitas

@@ -1,5 +1,13 @@
 # Keamanan dan integritas
 
+## Tambahan sandbox Xendit
+
+- Fitur default nonaktif; hanya Development key dan database riset terkonfirmasi. API URL tetap, redirect HTTP dilarang, dan exception provider disaring tanpa body/header rahasia.
+- Webhook memakai `x-callback-token`, limit ukuran, allowlist lima event, reference/provider ID, dan deduplikasi. Body callback tidak bisa mendebit; sistem melakukan GET terautentikasi untuk memeriksa identitas/tujuan/nominal/IDR.
+- Tujuan/payload terenkripsi; snapshot, consent dan referensi keuangan immutable. Laporan menyamarkan nomor dan melindungi formula CSV. Semua perubahan saldo memakai sumber unik dan transaksi database; kegagalan ambigu tidak melepas hold.
+- Pemulihan eksplisit memakai body/key lama, lease dan jeda satu menit. Status final tidak boleh mundur menjadi pending/gagal hanya karena event terlambat; reversal mencatat mutasi pengembalian baru.
+- Gunakan data uji dan pemberitahuan privasi v2.2 beserta consent per pengajuan. [Operasi dan batas](PAYOUT_SANDBOX.md).
+
 - Empat role tetap, satu akun per role, role/status kanonis dibatasi schema.
 - Middleware sesi dan role tetap berlaku pada pembaruan Livewire. Domain memeriksa akses lagi di bawah lock.
 - Admin terakhir terlindungi oleh guard dan trigger counter; akses yang dicabut tidak dapat dipakai menyelesaikan tugas.

@@ -1,5 +1,9 @@
 # Deployment dan rollback
 
+## Rilis tambahan 10 November 2026 (sandbox)
+
+Lihat [PAYOUT_SANDBOX.md](PAYOUT_SANDBOX.md) untuk daftar unggahan, migration tambahan, cron, dan webhook Xendit. Jangan reset/seed database lama. `PAYOUT_SANDBOX_ENABLED=false` tetap aman untuk instalasi yang belum menyiapkan database riset dan akun Test Mode. Pemberitahuan privasi terbaru v2.2 berlaku prospektif; set `TERMS_VERSION=v2.2` jika versi dikunci melalui environment. Perintah diagnose/proses simulasi ditambahkan ke deploy.php, bukan perintah pengiriman uang riil.
+
 Kode deployment tersedia, tetapi pengujian lokal bukan bukti hosting sudah diperbarui. Jangan menjalankan reset demo pada data nyata. Untuk update hosting dummy lama melalui File Manager dan konsol sementara, ikuti [panduan cPanel](HOSTING_CPANEL_2026-10-20.md).
 
 Jika baseline sudah terpasang dan masalahnya foto hero/tombol login/resource Role-Permission lama, gunakan [patch hosting 21 Oktober](HOSTING_UI_FIX_2026-10-21.md). Patch tersebut tidak memerlukan reset database atau seed ulang.

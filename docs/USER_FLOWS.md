@@ -1,5 +1,9 @@
 # Panduan pengguna web
 
+## Tambahan pencairan digital simulasi (10 November 2026)
+
+Warga membuka Layanan → Pencairan digital (simulasi), memilih salah satu tujuan yang terkonfigurasi, mengisi nama/nomor tujuan uji serta nominal, memeriksa ringkasan, lalu mengonfirmasi. Bot menyediakan Digital (simulasi) dengan isian bertahap dan konfirmasi yang sama. Tidak perlu pindah kanal atau menunggu Bendahara. Status/riwayat tersedia di kedua kanal; notifikasi mengikuti pilihan akun tertaut. Pembatalan hanya sebelum pengiriman. Bendahara memantau digital searea tanpa aksi bayar; Admin memantau lewat Pengawasan → Pencairan digital (simulasi). Tunai, sembako, dan tugas Petugas tidak berubah. [Konfigurasi dan batas](PAYOUT_SANDBOX.md).
+
 Acuan aktif: [workflow empat role](WEB_WORKFLOW.md) dan [kontrak UI](../DESIGN.md), diperbarui 25 Oktober 2026. Telegram sudah aktif di production; `TELEGRAM_ENABLED=false` tetap default untuk instalasi baru. WhatsApp tidak digunakan.
 
 ## Warga

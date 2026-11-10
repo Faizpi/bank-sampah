@@ -1,5 +1,15 @@
 # Catatan perubahan
 
+## Pencairan digital simulasi (10 November 2026)
+
+- Menambahkan Xendit Test Mode mandiri pada web dan Telegram untuk BCA, Mandiri, BRI, BNI, DANA, GoPay; routing memerlukan konfirmasi akun provider.
+- Memisahkan transaksi digital dari serah tunai, dengan hold, webhook terverifikasi, idempotensi, rekonsiliasi API, pemulihan timeout, serta reversal append-only.
+- Menambahkan riwayat/bukti simulasi, notifikasi opt-in, pantauan Bendahara searea/Admin, CSV tersamarkan, logo lokal, dan aksi diagnosis deploy.php.
+- Memperbarui privasi v2.2 secara prospektif dan konfirmasi data uji per pengajuan. Tidak menimpa persetujuan/tautan lama.
+- Memperbaiki enum riwayat tunai, respons validasi JSON, dan kontras pesan error input yang ditemukan saat pengujian.
+- Fitur default nonaktif; tidak ada uji akun provider nyata, deployment, atau perubahan database utama dalam rilis source ini.
+- Pengaman pra-migrasi menyembunyikan akses sandbox dan mempertahankan rekonsiliasi biasa ketika tabel tambahan belum tersedia.
+
 ## Rilis prototipe penelitian 4 November 2026
 
 - Menutup rangkaian prototipe dari alur persetujuan Admin berulang, cutover empat peran, penyempurnaan UI, hingga kanal Telegram.
