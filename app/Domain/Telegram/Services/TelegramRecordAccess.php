@@ -6,6 +6,7 @@ namespace App\Domain\Telegram\Services;
 
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Groceries\Services\GroceryService;
+use App\Domain\Payouts\Services\PayoutAccess;
 use App\Domain\Pickups\Services\PickupService;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
@@ -24,6 +25,7 @@ final class TelegramRecordAccess
             'pickup' => app(PickupService::class)->visibleFor($actor),
             'cash' => app(WithdrawalService::class)->visibleFor($actor),
             'grocery' => app(GroceryService::class)->visibleFor($actor),
+            'payout' => app(PayoutAccess::class)->visibleFor($actor),
             default => null,
         };
         if ($query === null) {

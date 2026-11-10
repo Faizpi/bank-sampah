@@ -34,8 +34,8 @@ final class QueueTelegramNotification
         }
         $actor = app(TelegramAccess::class)->actor($link);
         $payload = ['kind' => 'text', 'text' => $title."\n".$body];
-        if (preg_match('~^/warga/(setoran|pencairan|penjemputan|sembako)/(\d+)(?:/|$)~', $reference, $match)) {
-            $payload['guards'] = [['kind' => ['setoran' => 'deposit', 'pencairan' => 'cash', 'penjemputan' => 'pickup', 'sembako' => 'grocery'][$match[1]], 'id' => (int) $match[2]]];
+        if (preg_match('~^/warga/(setoran|pencairan|penjemputan|sembako|pencairan-digital)/(\d+)(?:/|$)~', $reference, $match)) {
+            $payload['guards'] = [['kind' => ['setoran' => 'deposit', 'pencairan' => 'cash', 'penjemputan' => 'pickup', 'sembako' => 'grocery', 'pencairan-digital' => 'payout'][$match[1]], 'id' => (int) $match[2]]];
         } elseif (! $actor->hasRole('warga')) {
             $payload['text'] = $title."\nAda informasi layanan baru. Buka /menu untuk memeriksa data yang masih dalam hak akses Anda.";
         }

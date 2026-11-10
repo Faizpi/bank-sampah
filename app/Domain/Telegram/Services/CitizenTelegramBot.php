@@ -11,6 +11,7 @@ use App\Domain\Groceries\Services\GroceryService;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Ledger\Models\LedgerEntry;
+use App\Domain\Payouts\Services\PayoutAccess;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Pickups\Services\PickupService;
@@ -293,6 +294,9 @@ final class CitizenTelegramBot
     {
         if (! isset($p['kind'])) {
             $ctx->say('Pilih riwayat.', [BotContext::button('Setoran', 'citizen.history', ['kind' => 'deposit']), BotContext::button('Pencairan', 'citizen.history', ['kind' => 'cash']), BotContext::button('Sembako', 'citizen.history', ['kind' => 'grocery']), BotContext::button('Penjemputan', 'citizen.history', ['kind' => 'pickup'])]);
+            if (config('payouts.enabled')) {
+                $ctx->say('Riwayat pencairan digital (simulasi) tersedia terpisah dari pembayaran tunai.', [BotContext::button('Riwayat digital (simulasi)', 'payout.history')]);
+            }
 
             return;
         }
@@ -317,6 +321,12 @@ final class CitizenTelegramBot
     {
         $buttons = [];
         $lines = [];
+        if (config('payouts.enabled')) {
+            foreach (app(PayoutAccess::class)->visibleFor($actor)->whereNotIn('status', ['succeeded', 'failed', 'cancelled', 'reversed'])->latest('id')->limit(5)->get() as $row) {
+                $lines[] = $row->request_number.' · '.$row->label();
+                $buttons[] = BotContext::button('Digital #'.count($lines).' (simulasi)', 'payout.detail', ['id' => $row->id]);
+            }
+        }
         foreach (['pickup' => ['menunggu_petugas', 'dijadwalkan', 'menuju_lokasi', 'dijemput'], 'cash' => ['menunggu_bendahara', 'diproses_bendahara'], 'grocery' => ['menunggu_petugas', 'diproses_petugas', 'siap_diambil']] as $kind => $statuses) {
             foreach ($this->requests($actor, $kind)->whereIn('status', $statuses)->latest('id')->limit(5)->get() as $row) {
                 $lines[] = $row->request_number.' · '.StatusLabel::for($row->status);

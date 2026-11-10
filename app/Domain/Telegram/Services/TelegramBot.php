@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Telegram\Services;
 
+use App\Domain\Payouts\Services\PayoutAccess;
 use Illuminate\Validation\ValidationException;
 
 final class TelegramBot
@@ -33,7 +34,9 @@ final class TelegramBot
 
             return;
         }
-        if (str_starts_with($command, 'pref.')) {
+        if (str_starts_with($command, 'payout.') || ($command === '' && str_starts_with($ctx->conversation->state, 'payout.'))) {
+            app(PayoutTelegramBot::class)->handle($ctx, $command, $parameters, $text);
+        } elseif (str_starts_with($command, 'pref.')) {
             $this->preferences($ctx, $command, $parameters);
         } elseif (str_starts_with($command, 'public.') || str_starts_with($command, 'estimate.') || ($command === '' && str_starts_with($ctx->conversation->state, 'estimate.'))) {
             app(PublicTelegramBot::class)->handle($ctx, $command, $parameters, $text);
@@ -61,6 +64,12 @@ final class TelegramBot
                 default => [BotContext::button('Antrean pembayaran', 'service.queue', ['kind' => 'cash']), BotContext::button('Tugas saya', 'service.queue', ['kind' => 'cash', 'mine' => true]), BotContext::button('Laporan pembayaran', 'service.report')],
             };
             $buttons[] = BotContext::button('Notifikasi', 'pref.show');
+            if (PayoutAccess::configured() && $actor->hasRole('warga')) {
+                $buttons[] = BotContext::button('Digital (simulasi)', 'payout.start');
+            }
+            if (config('payouts.enabled') && $actor->hasRole('bendahara')) {
+                $buttons[] = BotContext::button('Pantau digital (simulasi)', 'payout.monitor');
+            }
         } else {
             $buttons[] = ['label' => 'Hubungkan akun', 'url' => route('telegram.settings')];
         }
