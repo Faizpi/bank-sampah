@@ -65,6 +65,11 @@ it('renders decorative headings and accessible icon actions from existing assets
         ->not->toContain('tabindex="-1"');
 });
 
+it('uses a real button for method selection and keeps navigation cards as links', function (): void {
+    $card = Blade::render('<x-ui.action-card icon="banknote" title="Tunai" wire:click="chooseCash" />');
+    expect($card)->toContain('<button type="button"', 'wire:click="chooseCash"', 'data-action-card', 'app-interactive', '</button>')->not->toContain('<a ');
+});
+
 it('gives every editable text primitive an example without faking native date placeholders', function (): void {
     $paths = [];
     foreach (['citizen', 'officer', 'treasurer', 'auth', 'profile'] as $surface) {

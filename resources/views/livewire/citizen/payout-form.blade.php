@@ -1,22 +1,19 @@
 <x-slot:title>Pencairan digital (simulasi)</x-slot:title>
 <section class="grid gap-6" aria-labelledby="payout-title">
-    <x-ui.page-heading id="payout-title" title="Pencairan digital (simulasi)" description="Ajukan langsung dari akun Anda." mascot="6" />
-    <p role="note" class="rounded-xl border border-border bg-warning-bg p-4 font-semibold">Mode uji coba. Saldo riset akan diproses, tetapi tidak ada uang yang dikirim ke bank atau dompet digital asli.</p>
-    <nav aria-label="Metode pencairan" class="flex flex-wrap gap-3">
-        <a class="app-row-action inline-flex min-h-touch items-center rounded-lg border border-border px-4 font-semibold" href="{{ route('citizen.withdrawal.create') }}">Tunai</a>
-        <span aria-current="page" class="inline-flex min-h-touch items-center rounded-lg bg-success-bg px-4 font-bold text-forest-700">Digital (simulasi)</span>
-    </nav>
+    <x-ui.page-heading id="payout-title" title="Digital (simulasi)" mascot="5" />
+    <div><a href="{{ route('citizen.withdrawal.create') }}" class="app-row-action inline-flex min-h-touch items-center gap-2 rounded-md px-5 py-3 font-semibold text-deep-green"><x-public.icon name="arrow-left" size="size-5" />Ganti metode</a></div>
+    <p role="note" class="rounded-xl border border-border bg-warning-bg p-4 font-semibold">{{ $previewOnly ? 'Pratinjau lokal. Pengajuan belum aktif dan saldo tidak berubah.' : 'Mode uji coba. Tidak ada uang asli yang dikirim.' }}</p>
     @if ($errors->any())<div role="alert" class="rounded-lg border border-terracotta bg-danger-bg p-4">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
     @if ($reviewHash === null)
-        <p>Saldo tersedia: <strong class="amount-tabular">Rp {{ number_format($balance, 0, ',', '.') }}</strong></p>
+        <x-ui.amount-display label="Saldo tersedia" :amount="'Rp '.number_format($balance, 0, ',', '.')" />
         <fieldset class="grid gap-3">
             <legend class="mb-3 font-bold">Pilih tujuan uji</legend>
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 @foreach ($channels as $id => $row)
                     <label class="app-interactive flex min-h-touch cursor-pointer flex-col gap-3 rounded-xl border p-4 {{ $channel === $id ? 'border-forest-600 bg-success-bg' : 'border-border bg-surface' }}">
                         <img src="{{ asset($row['logo']) }}" alt="Logo {{ $row['name'] }}" class="h-7 w-24 max-w-full object-contain object-left" />
-                        <span class="flex items-center gap-2"><input type="radio" aria-label="{{ $row['name'] }}" wire:model.live="channel" value="{{ $id }}" @disabled(! $row['ready']) class="size-5 accent-forest-600"><span class="font-semibold">{{ $row['name'] }}</span></span>
-                        <span class="text-body-sm text-text-secondary">{{ $row['ready'] ? 'Simulasi' : 'Belum dikonfigurasi' }}</span>
+                        <span class="flex items-center gap-2"><input type="radio" aria-label="{{ $row['name'] }}" wire:model.live="channel" value="{{ $id }}" @disabled(! $row['ready'] && ! $previewOnly) class="size-5 accent-forest-600"><span class="font-semibold">{{ $row['name'] }}</span></span>
+                        @if (! $row['ready'] && ! $previewOnly)<span class="text-body-sm text-text-secondary">Belum tersedia</span>@endif
                     </label>
                 @endforeach
             </div>
@@ -27,8 +24,8 @@
             <x-ui.input name="amount" label="Nominal pencairan (Rp)" placeholder="Contoh: 20000" inputmode="numeric" wire:model="amount" :error="$errors->first('amount')" />
             @if ($serviceAreas->count() > 1)<x-ui.select name="serviceAreaId" label="Area layanan" wire:model="serviceAreaId">@foreach ($serviceAreas as $area)<option value="{{ $area->id }}">{{ $area->name }}</option>@endforeach</x-ui.select>@endif
         </div>
-        <p class="text-body-sm text-text-secondary">Nama dan nomor tujuan uji akan dikirim ke Xendit Test Mode. Gunakan data uji, bukan nomor pribadi peserta.</p>
-        <x-ui.button wire:click="review" wire:loading.attr="disabled">Periksa pengajuan</x-ui.button>
+        @unless ($previewOnly)<p class="text-body-sm text-text-secondary">Gunakan data uji. Nama dan nomor tujuan akan dikirim ke Xendit Test Mode.</p>@endunless
+        <x-ui.button wire:click="review" wire:loading.attr="disabled" :disabled="$previewOnly">{{ $previewOnly ? 'Pengajuan belum aktif' : 'Periksa pengajuan' }}</x-ui.button>
     @else
         <x-ui.panel title="Periksa tujuan dan nominal">
             <dl class="grid gap-4">

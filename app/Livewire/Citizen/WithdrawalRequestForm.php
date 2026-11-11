@@ -5,17 +5,22 @@ declare(strict_types=1);
 namespace App\Livewire\Citizen;
 
 use App\Domain\Ledger\Models\LedgerAccount;
+use App\Domain\Payouts\Services\PayoutAccess;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
 use App\Support\LocalInput;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 #[Layout('layouts.citizen')]
 final class WithdrawalRequestForm extends Component
 {
+    #[Locked]
+    public bool $choosingMethod = false;
+
     public string $amount = '';
 
     public string $pickupLocation = '';
@@ -28,12 +33,25 @@ final class WithdrawalRequestForm extends Component
 
     public function mount(WithdrawalService $service): void
     {
+        $this->choosingMethod = PayoutAccess::canViewForm();
         $this->pickupDate = today()->addDay()->toDateString();
         $this->idempotencyKey = (string) str()->uuid();
         /** @var User $actor */
         $actor = auth()->user();
         $areas = $service->availableAreasFor($actor)->get();
         $this->serviceAreaId = $areas->count() === 1 ? (string) $areas->first()->id : '';
+    }
+
+    public function chooseCash(): void
+    {
+        $this->choosingMethod = false;
+    }
+
+    public function changeMethod(): void
+    {
+        abort_unless(PayoutAccess::canViewForm(), 404);
+        $this->choosingMethod = true;
+        $this->resetValidation();
     }
 
     public function updatedAmount(): void
@@ -54,6 +72,11 @@ final class WithdrawalRequestForm extends Component
 
     public function submit(WithdrawalService $service): void
     {
+        if ($this->choosingMethod && PayoutAccess::canViewForm()) {
+            $this->addError('request', 'Pilih metode pencairan terlebih dahulu.');
+
+            return;
+        }
         $this->amount = LocalInput::rupiah($this->amount);
         $minimumAmount = (int) config('app.withdrawal_minimum_amount', 10_000);
         $validated = $this->validate([
@@ -95,6 +118,7 @@ final class WithdrawalRequestForm extends Component
         $actor = auth()->user();
 
         return view('livewire.citizen.withdrawal-request-form', [
+            'digitalAvailable' => PayoutAccess::canViewForm(),
             'availableBalance' => $this->availableBalance($actor),
             'serviceAreas' => $service->availableAreasFor($actor)->get(),
         ]);

@@ -90,7 +90,7 @@ it('requires a counted cash amount but no second administrator', function (): vo
 });
 
 it('serves the citizen service hub and keeps the Admin shared navigation in the Admin area', function (): void {
-    $this->actingAs($this->citizen)->get('/warga/layanan')->assertOk()->assertSee('Minta penjemputan')->assertSee('Cairkan saldo tunai')->assertSee('Tukar saldo dengan sembako')->assertSee('Hitung perkiraan nilai');
+    $this->actingAs($this->citizen)->get('/warga/layanan')->assertOk()->assertSee('Minta penjemputan')->assertSee('Cairkan Saldo')->assertSee('Tukar saldo dengan sembako')->assertSee('Hitung perkiraan nilai');
     $this->actingAs($this->admin)->get('/profil/kata-sandi')->assertOk()->assertSee('Panel Admin')->assertDontSee('href="/dashboard/petugas"', false)->assertDontSee('profile_rt');
 });
 

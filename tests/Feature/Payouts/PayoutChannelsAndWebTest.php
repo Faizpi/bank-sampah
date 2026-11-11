@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Payouts\Models\SandboxPayout;
 use App\Domain\Payouts\Services\PayoutAccess;
@@ -12,6 +13,7 @@ use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Filament\Pages\SandboxPayouts;
 use App\Livewire\Citizen\PayoutForm;
 use App\Livewire\Citizen\PayoutShow;
+use App\Livewire\Citizen\WithdrawalRequestForm;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -105,4 +107,52 @@ it('keeps unconfigured installations safe before the additive migration is insta
     expect(SandboxPayouts::canAccess())->toBeFalse();
     $this->actingAs($this->owner)->get(route('citizen.payout.create'))->assertNotFound();
     $this->get(route('citizen.payout.history'))->assertNotFound();
+});
+
+it('opens a local visual preview without provider credentials and rejects all financial submissions', function (): void {
+    app()->instance('env', 'local');
+    config()->set(['payouts.preview_only' => true, 'payouts.enabled' => false, 'payouts.secret_key' => '', 'payouts.webhook_token' => '', 'payouts.routing' => []]);
+    expect(PayoutAccess::previewOnly())->toBeTrue()->and(PayoutAccess::canViewForm())->toBeTrue()->and(PayoutAccess::configured())->toBeFalse();
+    $this->actingAs($this->owner)->get(route('citizen.dashboard'))->assertOk()->assertSee('Cairkan Saldo')->assertDontSee('Pencairan digital (simulasi)');
+    $this->get(route('citizen.services'))->assertOk()->assertSee('Cairkan Saldo')->assertDontSee('Pencairan digital (simulasi)');
+    $this->get(route('citizen.withdrawal.create'))->assertOk()->assertSee('Tunai')->assertSee('Digital (simulasi)')->assertDontSee('Lokasi pengambilan');
+    $screen = Livewire::test(PayoutForm::class)->assertSee('Pratinjau lokal')->assertSee('Pengajuan belum aktif')->assertSee('BCA')->assertSee('Mandiri')->assertSee('BRI')->assertSee('BNI')->assertSee('DANA')->assertSee('GoPay');
+    $screen->set('channel', 'dana')->set('recipientName', 'Siti Aminah')->set('accountNumber', '081234567890')->set('amount', '20000');
+    $screen->call('review')->assertHasErrors('payout');
+    $screen->call('submit')->assertHasErrors('payout');
+    expect(fn () => app(PayoutService::class)->request($this->owner, Payout::request(), (string) str()->uuid()))->toThrow(ValidationException::class);
+    expect(SandboxPayout::count())->toBe(0)->and(BalanceHold::count())->toBe(0)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(75000);
+    Http::assertNothingSent();
+});
+
+it('ignores the preview switch in production', function (): void {
+    app()->instance('env', 'production');
+    config()->set(['payouts.preview_only' => true, 'payouts.enabled' => false]);
+    expect(PayoutAccess::previewOnly())->toBeFalse()->and(PayoutAccess::canViewForm())->toBeFalse();
+    $this->actingAs($this->owner)->get(route('citizen.payout.create'))->assertNotFound();
+    Http::assertNothingSent();
+});
+
+it('offers two consistent method choices inside the single withdrawal menu without touching balance', function (): void {
+    $this->actingAs($this->owner);
+    $screen = Livewire::test(WithdrawalRequestForm::class)->assertSet('choosingMethod', true)->assertSee('Pilih metode pencairan.')->assertSee('Tunai')->assertSee('Digital (simulasi)')->assertDontSee('Lokasi pengambilan');
+    $screen->call('submit')->assertHasErrors('request');
+    $screen->call('chooseCash')->assertSet('choosingMethod', false)->assertSee('Lokasi pengambilan')->assertSee('Ganti metode');
+    $screen->set('amount', '20000')->call('changeMethod')->assertSet('choosingMethod', true)->assertDontSee('Lokasi pengambilan');
+    $screen->call('chooseCash')->assertSet('amount', '20000')->assertSee('Lokasi pengambilan');
+    expect(SandboxPayout::count())->toBe(0)->and(WithdrawalRequest::count())->toBe(0)->and(BalanceHold::count())->toBe(0)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(75000);
+    Http::assertNothingSent();
+});
+
+it('keeps the cash submission workflow intact after choosing cash', function (): void {
+    $this->actingAs($this->owner);
+    Livewire::test(WithdrawalRequestForm::class)->call('chooseCash')->set('amount', '20000')->set('pickupLocation', 'Loket pengujian')->call('submit')->assertHasNoErrors()->assertRedirect();
+    expect(WithdrawalRequest::count())->toBe(1)->and(SandboxPayout::count())->toBe(0)->and(BalanceHold::count())->toBe(1)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(55000);
+    Http::assertNothingSent();
+});
+
+it('opens cash directly when digital is unavailable', function (): void {
+    config()->set(['payouts.enabled' => false, 'payouts.preview_only' => false]);
+    $this->actingAs($this->owner);
+    Livewire::test(WithdrawalRequestForm::class)->assertSet('choosingMethod', false)->assertSee('Lokasi pengambilan')->assertDontSee('Digital (simulasi)')->assertDontSee('Ganti metode');
 });

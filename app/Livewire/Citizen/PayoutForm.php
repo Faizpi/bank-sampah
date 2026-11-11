@@ -38,7 +38,7 @@ final class PayoutForm extends Component
 
     public function mount(): void
     {
-        abort_unless(PayoutAccess::configured(), 404);
+        abort_unless(PayoutAccess::canViewForm(), 404);
         $actor = $this->actor();
         $this->idempotencyKey = (string) str()->uuid();
         $areas = app(WithdrawalService::class)->availableAreasFor($actor)->get();
@@ -76,11 +76,12 @@ final class PayoutForm extends Component
 
     public function render(): View
     {
-        abort_unless(PayoutAccess::configured(), 404);
+        abort_unless(PayoutAccess::canViewForm(), 404);
         $actor = $this->actor();
 
         return view('livewire.citizen.payout-form', [
             'channels' => app(PayoutChannels::class)->all(),
+            'previewOnly' => PayoutAccess::previewOnly(),
             'serviceAreas' => app(WithdrawalService::class)->availableAreasFor($actor)->get(),
             'balance' => LedgerAccount::query()->where('user_id', $actor->id)->first()?->availableBalance() ?? 0,
         ]);

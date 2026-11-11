@@ -10,6 +10,7 @@
         'arrow-left'    => 'arrow-left',
         'arrow-right'   => 'arrow-right',
         'banknote'      => 'banknote',
+        'wallet-cards'  => 'wallet-cards',
         'bar-chart-3'   => 'bar-chart-3',
         'bell'          => 'bell',
         'clipboard-check' => 'clipboard-check',
@@ -68,6 +69,9 @@
             @break
         @case('banknote')
             <rect width="20" height="14" x="2" y="5" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>
+            @break
+        @case('wallet-cards')
+            <rect x="3" y="5" width="18" height="14" rx="2"/><path d="M16 13h5M3 9h18"/>
             @break
         @case('bar-chart-3')
             <path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16V5"/>

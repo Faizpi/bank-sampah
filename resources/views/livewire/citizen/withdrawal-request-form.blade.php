@@ -1,8 +1,18 @@
-<x-slot:title>Ajukan pencairan</x-slot:title>
+<x-slot:title>Cairkan Saldo</x-slot:title>
 
 <section aria-labelledby="withdrawal-request-title" class="grid gap-6">
-    @if (\App\Domain\Payouts\Services\PayoutAccess::configured())<a href="{{ route('citizen.payout.create') }}" class="app-row-action inline-flex min-h-touch items-center rounded-lg border border-forest-600 px-4 font-bold text-forest-700">Pilih pencairan digital (simulasi)</a>@endif
-    <x-ui.page-heading id="withdrawal-request-title" title="Ajukan Pencairan" description="Saldo disisihkan sampai uang tunai diterima." mascot="5" />
+    <x-ui.page-heading id="withdrawal-request-title" :title="$choosingMethod && $digitalAvailable ? 'Cairkan Saldo' : 'Pencairan tunai'" :description="$choosingMethod && $digitalAvailable ? 'Pilih metode pencairan.' : 'Saldo disisihkan sampai uang tunai diterima.'" mascot="5" />
+
+    @if ($choosingMethod && $digitalAvailable)
+        <div class="grid gap-3" aria-label="Metode pencairan">
+            <x-ui.action-card icon="banknote" title="Tunai" description="Ambil uang tunai melalui Bendahara." wire:click="chooseCash" wire:loading.attr="disabled" />
+            <x-ui.action-card :href="route('citizen.payout.create')" icon="wallet-cards" title="Digital (simulasi)" description="Pilihan bank dan dompet digital." />
+        </div>
+        @error('request')<p role="alert" class="font-semibold text-text-primary">{{ $message }}</p>@enderror
+    @else
+    @if ($digitalAvailable)
+        <div><x-ui.button variant="quiet" wire:click="changeMethod"><x-public.icon name="arrow-left" size="size-5" />Ganti metode</x-ui.button></div>
+    @endif
 
     @if (session('success'))
         <x-ui.success-state title="Berhasil" :description="session('success')" />
@@ -15,17 +25,7 @@
 
     {{-- Balance Info --}}
     @isset($availableBalance)
-        <div class="flex items-center gap-3 rounded-xl border border-forest-600 bg-success-bg px-4 py-3.5">
-            <svg viewBox="0 0 24 24" class="size-5 shrink-0 text-forest-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>
-            </svg>
-            <div>
-                <p class="text-caption text-forest-700">Saldo tersedia</p>
-                <p class="amount-tabular text-label font-bold text-forest-700">
-                    Rp{{ number_format($availableBalance, 0, ',', '.') }}
-                </p>
-            </div>
-        </div>
+        <x-ui.amount-display label="Saldo tersedia" :amount="'Rp '.number_format($availableBalance, 0, ',', '.')" />
     @endisset
 
     {{-- Withdrawal Form --}}
@@ -57,4 +57,5 @@
             <span wire:loading wire:target="submit">Memproses...</span>
         </x-ui.button>
     </div>
+    @endif
 </section>
