@@ -4,7 +4,7 @@ Implementasi 10 November 2026 tersedia pada source web dan Telegram. Fitur nonak
 
 ## Alur dan batas
 
-1. Warga memilih Digital (simulasi), tujuan, nama/nomor tujuan uji, nominal, dan area bila dilayani beberapa area. Tidak meminta lokasi/tanggal pengambilan tunai.
+1. Pada web, Warga membuka satu menu Cairkan Saldo, lalu memilih Tunai atau Digital (simulasi). Tujuan, nama/nomor tujuan uji, nominal, dan area bila dilayani beberapa area diisi setelah memilih digital. Tidak meminta lokasi/tanggal pengambilan tunai. Ganti metode mengembalikan pengguna ke pilihan awal; tidak ada kartu/tombol digital tambahan pada Beranda atau Layanan.
 2. Web/bot menampilkan ringkasan tujuan/nominal dan penggunaan data uji. Konfirmasi menyimpan versi `payout-sandbox-v1` dan waktu server. Nama tujuan tidak disalin otomatis dari identitas warga.
 3. Pengajuan membuat satu hold melalui LedgerService. Saldo tersedia berkurang karena disisihkan, tetapi belum ada mutasi keluar. Tidak ada persetujuan atau klaim Bendahara/Admin.
 4. Cron mengirim snapshot terenkripsi dengan reference/idempotency key tetap. Network call berada di luar transaksi database keuangan.
@@ -16,6 +16,8 @@ Enam tujuan: BCA, Mandiri, BRI, BNI, DANA, GoPay. Logo asli lokal hanya penanda,
 Digital memakai `SandboxPayout`, bukan `WithdrawalRequest`, sehingga klaim/serah tunai tidak dapat menyelesaikannya. Tunai dan sembako tetap tersedia. Angka digital bukan pengeluaran kas fisik pada rekonsiliasi; ada pembanding ledger digital tersendiri.
 
 ## Isolasi database riset
+
+Untuk melihat tampilan saja pada instalasi `APP_ENV=local`, jalankan migration tambahan lalu set `PAYOUT_SANDBOX_PREVIEW=true` dan pertahankan `PAYOUT_SANDBOX_ENABLED=false` di .env lokal. Beranda dan Layanan tetap memakai satu menu Cairkan Saldo; pilihan Tunai dan Digital (simulasi) berada di dalamnya. Enam tujuan digital dapat dipilih untuk melihat label/isian, tetapi pengajuan dinonaktifkan dan server tetap menolak pembuatan hold maupun pengiriman API. Mode ini tidak memerlukan key/routing palsu, tidak mengubah saldo, dan diabaikan pada production. Matikan preview sebelum menyiapkan uji provider di database riset terpisah.
 
 Gunakan satu instalasi/staging riset dengan database terpisah, bukan saldo operasional warga. Web dan bot pada instalasi riset mengakses database yang sama. Tidak ada saldo kedua di dalam satu akun/instalasi; pemisahan berada di tingkat database agar simulasi tidak mengurangi hak uang riil.
 
@@ -77,9 +79,11 @@ UAT/SUS, perangkat nyata, akses rekening/e-wallet sebenarnya, dan deployment tid
 
 ## Bukti pengujian lokal rilis ini
 
+Penyelarasan UI 11 November 2026: satu pintu Cairkan Saldo, dua pilihan metode, aksi Ganti metode dan penghapusan tombol digital tambahan diuji ulang. Suite SQLite terakhir: 1.435 tes, 1.434 lulus, 1 dilewati (ekstensi EXIF), 6.896 assertions. Pint, PHPStan, dan build lulus. Navigasi Tunai/Ganti metode/Digital diverifikasi pada Laragon `bank-sampah.test` di source yang sama, termasuk tampilan ponsel 390 px tanpa overflow horizontal. Pengujian browser ini tidak mengirim pengajuan atau mengubah saldo.
+
 Pemeriksaan dimulai 10 November dan diselesaikan 11 November 2026 (Asia/Jakarta). Tes fitur payout terakhir pada MySQL 8.0.30 Laragon di database disposable: 51 tes, 313 assertions, lulus. Regresi MySQL mencakup 125 tes/648 assertions untuk payout, Telegram, tunai, sembako, dan rekonsiliasi; pengaman pra-migrasi diuji lagi melalui suite payout terakhir. Pint/PHPStan dan build Vite lulus. Browser Chromium headless menyelesaikan delapan layar/alur pada lebar 360/390/768/1280, tanpa error JS/HTTP 500 atau temuan axe serius/kritis pada layar yang diuji. Artefak lokal tersimpan di `artifacts/payouts-2026-11-10` dan tidak dipublikasikan.
 
-Suite lengkap terakhir di SQLite: 1.429 tes, 1.428 lulus, 1 dilewati, 6.823 assertions. EXIF tidak tersedia pada PHP suite SQLite, sehingga tes orientasi foto kamera dilewati, bukan dinyatakan lulus.
+Suite baseline sebelum penyelarasan UI di SQLite: 1.429 tes, 1.428 lulus, 1 dilewati, 6.823 assertions. EXIF tidak tersedia pada PHP suite SQLite, sehingga tes orientasi foto kamera dilewati, bukan dinyatakan lulus. Hasil penyelarasan UI terbaru tercatat pada paragraf di atas.
 
 Semua respons Xendit/Telegram pada pengujian ini tiruan. Laragon utama tetap berjalan; data `bank_sampah`, hosting, dan akun provider tidak diubah. Instance MySQL sementara port 3311 telah dihentikan; database uji disposable dan screenshot lokal tetap merupakan artefak pengujian, bukan data desa atau bukti UAT.
 

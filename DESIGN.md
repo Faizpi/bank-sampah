@@ -23,6 +23,8 @@ Pengguna dapat mengetahui status, pelaksana, dan tindakan berikutnya tanpa memin
 
 ## Information architecture
 
+Penyelarasan 11 November 2026: Beranda dan Layanan hanya menyediakan satu pintu `Cairkan Saldo`. Bila digital tersedia atau sedang dipratinjau lokal, halaman pencairan terlebih dahulu menawarkan dua action-card `Tunai` dan `Digital (simulasi)`. Setelah memilih Tunai, formulir memakai satu aksi sekunder `Ganti metode`; digital kembali ke pilihan yang sama. Tidak ada tombol digital tambahan di bawah tindakan cepat atau kartu layanan kelima. Saat digital nonaktif, formulir tunai tetap langsung tersedia seperti sebelumnya. Kartu pilihan memakai komponen action-card yang sama, dengan elemen button untuk aksi Livewire dan link untuk navigasi.
+
 Navigasi Warga: Beranda, Kartu, Layanan, Riwayat, Akun. Layanan menyediakan semua layanan, bukan hanya penjemputan. Petugas: Tugas, Setoran, Layanan, Riwayat, Akun; Tugas memisahkan Menunggu dan Tugas saya yang aktif, sedangkan Riwayat memuat Setoran/Penjemputan/Sembako yang sudah dikerjakan sendiri dan hanya-baca. Bendahara: Tugas, Pembayaran, Laporan, Akun. Admin kembali ke pusat kerja dari layar bersama; master/teknis ada di kelompok lanjutan yang dapat dilipat.
 
 Urutan landing: hero → Kepala Desa → ringkasan → sampah yang diterima → layanan → cara kerja → konten maskot → akses akun → footer. Bagian Kepala Desa dipindahkan utuh sesudah hero sesuai permintaan pengguna, bukan diubah isinya.
