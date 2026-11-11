@@ -29,11 +29,12 @@ final class PayoutAccess
     public static function configured(): bool
     {
         $database = DB::connection()->getDatabaseName();
-        $isolated = (DB::getDriverName() === 'sqlite' && $database === ':memory:' && app()->environment('testing'))
-            || (($database === config('payouts.database'))
-                && (preg_match('/^bank_sampah_test(?:_[a-z0-9]+)*$/D', $database) === 1 || str_ends_with($database, '_sandbox')));
+        // The owner may designate the existing hosting database as simulation-only.
+        // Require its exact name, not a naming convention; live Xendit keys remain rejected.
+        $databaseConfirmed = (DB::getDriverName() === 'sqlite' && $database === ':memory:' && app()->environment('testing'))
+            || ($database !== '' && $database === config('payouts.database'));
 
-        return (bool) config('payouts.enabled') && ! self::previewOnly() && $isolated
+        return (bool) config('payouts.enabled') && ! self::previewOnly() && $databaseConfirmed
             && str_starts_with((string) config('payouts.secret_key'), 'xnd_development_')
             && strlen((string) config('payouts.webhook_token')) >= 16
             && Schema::hasTable('sandbox_payouts') && Schema::hasTable('sandbox_payout_events');

@@ -20,7 +20,7 @@ final class PayoutDiagnose extends Command
     {
         $configured = PayoutAccess::configured();
         $tables = Schema::hasTable('sandbox_payouts') && Schema::hasTable('sandbox_payout_events');
-        $this->line(($configured ? '[OK]' : '[FAIL]').' konfigurasi sandbox dan isolasi database');
+        $this->line(($configured ? '[OK]' : '[FAIL]').' konfigurasi Test Mode dan konfirmasi database simulasi');
         $this->line(($tables ? '[OK]' : '[FAIL]').' migrasi pencairan simulasi');
         foreach (app(PayoutChannels::class)->all() as $row) {
             $this->line(($row['ready'] ? '[OK]' : '[INFO]').' routing v3 '.$row['name']);
@@ -29,6 +29,7 @@ final class PayoutDiagnose extends Command
             $this->line('Permintaan berstatus tidak pasti: '.SandboxPayout::query()->where('status', 'uncertain')->count());
         }
         $this->line('Tidak ada uang riil yang dikirim. Kesiapan channel perlu dibuktikan melalui akun Test Mode.');
+        $this->line('Simulasi memakai saldo pada database yang dikonfirmasi. Gunakan hanya data dan saldo uji.');
 
         return $configured && $tables ? self::SUCCESS : self::FAILURE;
     }

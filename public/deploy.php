@@ -470,7 +470,7 @@ $actions = [
     ],
     'payout-diagnose' => [
         'label' => 'Periksa pencairan digital simulasi',
-        'description' => 'Memeriksa konfigurasi, database terpisah, routing, dan status tidak pasti tanpa mengirim pencairan.',
+        'description' => 'Memeriksa konfigurasi, konfirmasi database simulasi, routing, dan status tidak pasti tanpa mengirim pencairan.',
         'group' => 'diagnostics',
         'risk' => 'read-only',
         'commands' => [['payouts:diagnose', []]],

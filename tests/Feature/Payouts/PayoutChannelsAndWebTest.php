@@ -16,6 +16,7 @@ use App\Livewire\Citizen\PayoutShow;
 use App\Livewire\Citizen\WithdrawalRequestForm;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -92,13 +93,38 @@ it('displays provider settlement as an automatic simulation rather than physical
     Livewire::test(PayoutShow::class, ['payout' => $row->fresh()])->assertSee('Simulasi berhasil')->assertSee('Otomatis oleh sistem')->assertSee('bukan struk resmi')->assertDontSee('Waktu serah fisik')->assertDontSee('Batalkan sebelum diproses');
 });
 
-it('keeps production and mismatched database configurations unavailable', function (): void {
+it('keeps disabled sandboxes and live provider keys unavailable', function (): void {
     config()->set('payouts.enabled', false);
     expect(PayoutAccess::configured())->toBeFalse();
     $this->actingAs($this->owner)->get(route('citizen.payout.create'))->assertNotFound();
     config()->set(['payouts.enabled' => true, 'payouts.secret_key' => 'xnd_production_TEST_NOT_REAL']);
     expect(PayoutAccess::configured())->toBeFalse();
 });
+
+it('accepts only the confirmed hosting simulation database and development key', function (string $confirmedDatabase, bool $liveKey, bool $expected): void {
+    // Change connection metadata only; no connection to this hosting name is opened.
+    // Schema availability is mocked, and the real disposable test connection is restored.
+    $connection = DB::connection();
+    $originalDatabase = $connection->getDatabaseName();
+    try {
+        $connection->setDatabaseName('smssinde_banksampah');
+        app()->instance('env', 'production');
+        config()->set(['payouts.database' => $confirmedDatabase, 'payouts.preview_only' => false]);
+        if ($liveKey) {
+            config()->set('payouts.secret_key', 'xnd_production_FAKE_NOT_FOR_USE');
+        }
+        Schema::shouldReceive('hasTable')->andReturnTrue();
+        expect(PayoutAccess::configured())->toBe($expected);
+        Http::assertNothingSent();
+    } finally {
+        $connection->setDatabaseName($originalDatabase);
+    }
+})->with([
+    'existing hosting database with Test Mode' => ['smssinde_banksampah', false, true],
+    'different confirmed database is denied' => ['smssinde_banksampah_sandbox', false, false],
+    'missing explicit confirmation is denied' => ['', false, false],
+    'live keys remain denied on the approved database' => ['smssinde_banksampah', true, false],
+]);
 
 it('keeps unconfigured installations safe before the additive migration is installed', function (): void {
     Schema::shouldReceive('hasTable')->with('sandbox_payouts')->andReturnFalse();
