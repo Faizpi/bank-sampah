@@ -15,6 +15,17 @@ use Illuminate\Validation\ValidationException;
 
 final class PayoutAccess
 {
+    public static function previewOnly(): bool
+    {
+        return app()->environment('local') && (bool) config('payouts.preview_only');
+    }
+
+    public static function canViewForm(): bool
+    {
+        return self::configured() || (self::previewOnly()
+            && Schema::hasTable('sandbox_payouts') && Schema::hasTable('sandbox_payout_events'));
+    }
+
     public static function configured(): bool
     {
         $database = DB::connection()->getDatabaseName();
@@ -22,7 +33,7 @@ final class PayoutAccess
             || (($database === config('payouts.database'))
                 && (preg_match('/^bank_sampah_test(?:_[a-z0-9]+)*$/D', $database) === 1 || str_ends_with($database, '_sandbox')));
 
-        return (bool) config('payouts.enabled') && $isolated
+        return (bool) config('payouts.enabled') && ! self::previewOnly() && $isolated
             && str_starts_with((string) config('payouts.secret_key'), 'xnd_development_')
             && strlen((string) config('payouts.webhook_token')) >= 16
             && Schema::hasTable('sandbox_payouts') && Schema::hasTable('sandbox_payout_events');

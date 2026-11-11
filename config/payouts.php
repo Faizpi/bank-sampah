@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
     'enabled' => (bool) env('PAYOUT_SANDBOX_ENABLED', false),
+    'preview_only' => (bool) env('PAYOUT_SANDBOX_PREVIEW', false),
     'database' => env('PAYOUT_SANDBOX_DATABASE', ''),
     'secret_key' => env('XENDIT_PAYOUT_SECRET_KEY', ''),
     'webhook_token' => env('XENDIT_PAYOUT_WEBHOOK_TOKEN', ''),
