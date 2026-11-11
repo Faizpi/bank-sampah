@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Payouts\Models\SandboxPayout;
@@ -34,6 +35,7 @@ beforeEach(function (): void {
 
 it('submits each digital destination from Telegram only after confirmation and settles in shared history', function (string $channel, string $label): void {
     Bot::text('10001', '/menu');
+    Bot::click('10001', 'Cairkan saldo');
     Bot::click('10001', 'Digital (simulasi)');
     Bot::click('10001', $label.' (simulasi)');
     Bot::text('10001', 'Siti Aminah');
@@ -81,4 +83,82 @@ it('lets the treasurer monitor but never claim digital transactions', function (
     $message = TelegramOutbox::where('telegram_id', '10003')->where('kind', 'text')->latest('sequence')->firstOrFail();
     expect(json_encode($message->payload))->not->toContain('payout.cancel', 'Ambil pembayaran');
     expect(TelegramConversation::whereKey('10003')->firstOrFail()->state)->toBe('menu');
+});
+
+it('keeps one withdrawal entry in the Telegram menu and shows both methods without a financial mutation', function (): void {
+    Bot::text('10001', '/menu');
+    $message = TelegramOutbox::where('telegram_id', '10001')->where('kind', 'text')->latest('sequence')->firstOrFail();
+    $labels = collect($message->payload['reply_markup']['inline_keyboard'])->flatten(1)->pluck('text');
+    expect($labels)->toContain('Cairkan saldo')->not->toContain('Digital (simulasi)');
+    Bot::click('10001', 'Cairkan saldo');
+    expect(Bot::lastText('10001'))->toBe('Pilih metode pencairan.')
+        ->and(TelegramConversation::whereKey('10001')->firstOrFail()->state)->toBe('citizen.withdrawal.method');
+    Bot::button('10001', 'Tunai');
+    Bot::button('10001', 'Digital (simulasi)');
+    Bot::text('10001', '20000');
+    expect(Bot::lastText('10001'))->toBe('Pilih metode pencairan.')
+        ->and(WithdrawalRequest::count())->toBe(0)->and(SandboxPayout::count())->toBe(0)
+        ->and(BalanceHold::count())->toBe(0)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(75000);
+});
+
+it('still completes a selected cash withdrawal through the treasurer when digital is enabled', function (): void {
+    Bot::text('10001', '/menu');
+    Bot::click('10001', 'Cairkan saldo');
+    Bot::click('10001', 'Tunai');
+    Bot::text('10001', '20000');
+    Bot::click('10001', 'Hari ini');
+    Bot::click('10001', 'Gunakan alamat profil');
+    Bot::click('10001', 'Ya, kirim pengajuan');
+    $row = WithdrawalRequest::firstOrFail();
+    expect(SandboxPayout::count())->toBe(0)->and(LedgerEntry::count())->toBe(1);
+    Bot::text('10003', '/menu');
+    Bot::click('10003', 'Antrean pembayaran');
+    Bot::click('10003', $this->owner->name.' · Rp 20.000');
+    Bot::click('10003', 'Tunai tersedia — ambil pembayaran');
+    Bot::click('10003', 'Uang sudah diserahkan');
+    Bot::click('10003', 'Ya, catat pembayaran');
+    expect($row->fresh()->paid_at)->not->toBeNull()->and(LedgerEntry::count())->toBe(2)
+        ->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(55000)->and(SandboxPayout::count())->toBe(0);
+});
+
+it('changes methods without spending and rejects stale confirmation buttons', function (): void {
+    Bot::text('10001', '/menu');
+    Bot::click('10001', 'Cairkan saldo');
+    Bot::click('10001', 'Tunai');
+    Bot::text('10001', '20000');
+    Bot::click('10001', 'Hari ini');
+    Bot::click('10001', 'Gunakan alamat profil');
+    $oldCashConfirmation = Bot::button('10001', 'Ya, kirim pengajuan');
+    Bot::click('10001', 'Ganti metode');
+    Bot::click('10001', 'Digital (simulasi)');
+    Bot::click('10001', 'DANA (simulasi)');
+    Bot::text('10001', 'Siti Aminah');
+    Bot::text('10001', '081234567890');
+    Bot::text('10001', '20000');
+    $oldDigitalConfirmation = Bot::button('10001', 'Konfirmasi pencairan simulasi');
+    Bot::click('10001', 'Ganti metode');
+    Bot::click('10001', 'Tunai');
+    Bot::update('10001', ['callback' => $oldCashConfirmation, 'callback_id' => 'stale-cash']);
+    Bot::update('10001', ['callback' => $oldDigitalConfirmation, 'callback_id' => 'stale-digital']);
+    expect(WithdrawalRequest::count())->toBe(0)->and(SandboxPayout::count())->toBe(0)
+        ->and(BalanceHold::count())->toBe(0)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(75000);
+});
+
+it('cannot reuse another roles method selection button', function (): void {
+    Bot::text('10001', '/menu');
+    Bot::click('10001', 'Cairkan saldo');
+    $button = Bot::button('10001', 'Tunai');
+    Bot::text('10002', '/menu');
+    Bot::update('10002', ['callback' => $button, 'callback_id' => 'forged-method']);
+    expect(TelegramConversation::whereKey('10002')->firstOrFail()->state)->toBe('menu')
+        ->and(WithdrawalRequest::count())->toBe(0)->and(SandboxPayout::count())->toBe(0)->and(BalanceHold::count())->toBe(0);
+});
+
+it('keeps the original cash flow when digital is disabled', function (): void {
+    config()->set('payouts.enabled', false);
+    Bot::text('10001', '/menu');
+    Bot::click('10001', 'Cairkan saldo');
+    expect(TelegramConversation::whereKey('10001')->firstOrFail()->state)->toBe('citizen.withdrawal.amount')
+        ->and(Bot::lastText('10001'))->toContain('Berapa rupiah');
+    expect(BalanceHold::count())->toBe(0);
 });

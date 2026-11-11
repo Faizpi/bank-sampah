@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Telegram\Services;
 
-use App\Domain\Payouts\Services\PayoutAccess;
 use Illuminate\Validation\ValidationException;
 
 final class TelegramBot
@@ -64,9 +63,6 @@ final class TelegramBot
                 default => [BotContext::button('Antrean pembayaran', 'service.queue', ['kind' => 'cash']), BotContext::button('Tugas saya', 'service.queue', ['kind' => 'cash', 'mine' => true]), BotContext::button('Laporan pembayaran', 'service.report')],
             };
             $buttons[] = BotContext::button('Notifikasi', 'pref.show');
-            if (PayoutAccess::configured() && $actor->hasRole('warga')) {
-                $buttons[] = BotContext::button('Digital (simulasi)', 'payout.start');
-            }
             if (config('payouts.enabled') && $actor->hasRole('bendahara')) {
                 $buttons[] = BotContext::button('Pantau digital (simulasi)', 'payout.monitor');
             }

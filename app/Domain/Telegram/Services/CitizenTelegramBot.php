@@ -31,6 +31,19 @@ final class CitizenTelegramBot
     public function handle(BotContext $ctx, string $command, array $p, array $payload): void
     {
         $actor = $ctx->actor('warga');
+        if ($command === '' && $ctx->conversation->state === 'citizen.withdrawal.method') {
+            $command = 'citizen.withdrawal';
+        }
+        if ($command === 'citizen.withdrawal' && ($p['method'] ?? null) !== 'cash' && PayoutAccess::configured()) {
+            $ctx->state('citizen.withdrawal.method');
+            $ctx->say('Pilih metode pencairan.', [
+                BotContext::button('Tunai', 'citizen.withdrawal', ['method' => 'cash']),
+                BotContext::button('Digital (simulasi)', 'payout.start'),
+                BotContext::button('Menu', 'menu'),
+            ]);
+
+            return;
+        }
         if (in_array($command, ['citizen.balance', 'citizen.history', 'citizen.active', 'citizen.detail', 'citizen.card'], true)) {
             $ctx->state('menu');
             match ($command) {
@@ -70,7 +83,11 @@ final class CitizenTelegramBot
             }
             if ($areas->count() > 1) {
                 $ctx->state('citizen.area', $data);
-                $ctx->say('Pilih area layanan.', $areas->map(fn ($area): array => BotContext::button($area->name, 'citizen.area', ['id' => $area->id]))->all());
+                $buttons = $areas->map(fn ($area): array => BotContext::button($area->name, 'citizen.area', ['id' => $area->id]))->all();
+                if ($flow === 'withdrawal' && PayoutAccess::configured()) {
+                    $buttons[] = BotContext::button('Ganti metode', 'citizen.withdrawal');
+                }
+                $ctx->say('Pilih area layanan.', $buttons);
             } else {
                 $data['service_area_id'] = $areas->first()->id;
                 $this->start($ctx, $actor, $data);
@@ -150,7 +167,7 @@ final class CitizenTelegramBot
             $ctx->say('Pilih paket. '.$this->balance($actor), $rows->map(fn ($row): array => BotContext::button($row->name.' · '.BotInput::rupiah($row->value), 'citizen.package', ['id' => $row->id]))->all());
         } elseif ($data['flow'] === 'withdrawal') {
             $ctx->state('citizen.withdrawal.amount', $data);
-            $ctx->say('Berapa rupiah yang ingin dicairkan? Contoh: 25000. '.$this->balance($actor));
+            $ctx->say('Berapa rupiah yang ingin dicairkan? Contoh: 25000. '.$this->balance($actor), PayoutAccess::configured() ? [BotContext::button('Ganti metode', 'citizen.withdrawal')] : []);
         } else {
             $this->datePrompt($ctx, 'citizen.pickup.date', $data);
         }
@@ -160,7 +177,11 @@ final class CitizenTelegramBot
     private function datePrompt(BotContext $ctx, string $state, array $data): void
     {
         $ctx->state($state, $data);
-        $ctx->say('Pilih tanggal atau kirim DD/MM/YYYY.', [BotContext::button('Hari ini', 'citizen.input', ['value' => today()->toDateString()]), BotContext::button('Besok', 'citizen.input', ['value' => today()->addDay()->toDateString()])]);
+        $buttons = [BotContext::button('Hari ini', 'citizen.input', ['value' => today()->toDateString()]), BotContext::button('Besok', 'citizen.input', ['value' => today()->addDay()->toDateString()])];
+        if ($data['flow'] === 'withdrawal' && PayoutAccess::configured()) {
+            $buttons[] = BotContext::button('Ganti metode', 'citizen.withdrawal');
+        }
+        $ctx->say('Pilih tanggal atau kirim DD/MM/YYYY.', $buttons);
     }
 
     /** @param array<string, mixed> $data
@@ -176,7 +197,11 @@ final class CitizenTelegramBot
             $data[$data['flow'] === 'pickup' ? 'selected_date' : 'pickup_date'] = BotInput::date($text);
             $ctx->state('citizen.'.$data['flow'].'.address', $data);
             $address = (string) $actor->customerProfile?->address;
-            $ctx->say($data['flow'] === 'pickup' ? 'Kirim alamat penjemputan atau gunakan alamat profil.' : 'Kirim lokasi pengambilan uang tunai atau gunakan alamat profil.', $address === '' ? [] : [BotContext::button('Gunakan alamat profil', 'citizen.input', ['value' => $address])]);
+            $buttons = $address === '' ? [] : [BotContext::button('Gunakan alamat profil', 'citizen.input', ['value' => $address])];
+            if ($data['flow'] === 'withdrawal' && PayoutAccess::configured()) {
+                $buttons[] = BotContext::button('Ganti metode', 'citizen.withdrawal');
+            }
+            $ctx->say($data['flow'] === 'pickup' ? 'Kirim alamat penjemputan atau gunakan alamat profil.' : 'Kirim lokasi pengambilan uang tunai atau gunakan alamat profil.', $buttons);
         } elseif (in_array($state, ['citizen.pickup.address', 'citizen.withdrawal.address'], true)) {
             $data[$data['flow'] === 'pickup' ? 'address' : 'pickup_location'] = BotInput::text($text, 5, 500);
             if ($data['flow'] === 'pickup') {
@@ -253,7 +278,11 @@ final class CitizenTelegramBot
             $text .= $package->name."\n".$package->contents."\n".BotInput::rupiah($package->value).' akan disisihkan sampai paket diserahkan.';
         }
         $ctx->state('citizen.review', $data);
-        $ctx->say($text, [BotContext::button('Ya, kirim pengajuan', 'citizen.submit'), BotContext::button('Batal isi', 'cancel-input')]);
+        $buttons = [BotContext::button('Ya, kirim pengajuan', 'citizen.submit'), BotContext::button('Batal isi', 'cancel-input')];
+        if ($data['flow'] === 'withdrawal' && PayoutAccess::configured()) {
+            $buttons[] = BotContext::button('Ganti metode', 'citizen.withdrawal');
+        }
+        $ctx->say($text, $buttons);
     }
 
     public function balance(User $actor): string
