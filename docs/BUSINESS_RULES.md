@@ -20,7 +20,7 @@
 
 ## Saldo dan kendala
 
-Digital simulasi memakai hold/ledger yang sama pada database riset terpisah, bukan transaksi tunai. Warga mengonfirmasi sendiri dari web/Telegram; tidak ada klaim Bendahara/Admin. API terautentikasi yang cocok dengan identitas, tujuan, nominal, dan mata uang pengajuan menjadi dasar penyelesaian. Webhook hanya memicu pemeriksaan API. Sukses mendebit sekali, gagal final melepas hold, reversal mengkredit melalui mutasi baru. Timeout tetap menahan saldo; operator memulihkan dengan body dan kunci provider yang sama, bukan membuat pengajuan baru. Konfirmasi data uji dicatat sebelum pengiriman. Digital tidak dihitung sebagai pengeluaran kas fisik.
+Digital simulasi memakai hold/ledger yang sama pada database yang ditetapkan khusus untuk simulasi (boleh database hosting yang seluruh datanya masih dummy), bukan transaksi tunai. Warga mengonfirmasi sendiri dari web/Telegram; tidak ada klaim Bendahara/Admin. API terautentikasi yang cocok dengan identitas, tujuan, nominal, dan mata uang pengajuan menjadi dasar penyelesaian. Webhook hanya memicu pemeriksaan API. Sukses mendebit sekali, gagal final melepas hold, reversal mengkredit melalui mutasi baru. Timeout tetap menahan saldo; operator memulihkan dengan body dan kunci provider yang sama, bukan membuat pengajuan baru. Konfirmasi data uji dicatat sebelum pengiriman. Digital tidak dihitung sebagai pengeluaran kas fisik.
 
 Saldo tersedia = masuk - keluar - hold aktif. Hold bukan pengeluaran. Completion mengonversi hold dan membuat satu mutasi keluar secara atomik; pembatalan sah melepas hold tanpa pengeluaran.
 

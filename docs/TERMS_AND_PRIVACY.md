@@ -46,7 +46,7 @@ Versi baru hanya diterbitkan secara prospektif melalui proses yang disetujui dan
 
 ### Pencairan digital (simulasi)
 
-Pencairan digital adalah fitur riset opsional melalui Xendit Test Mode pada database terpisah. Tujuan yang tersedia setelah konfigurasi adalah BCA, Mandiri, BRI, BNI, DANA, dan GoPay. Tidak ada dana riil yang dikirim dan ini bukan layanan pembayaran berizin atau kemitraan resmi dengan pemilik merek. Tunai tetap mengikuti serah fisik Bendahara; hasil digital mengikuti status API terverifikasi tanpa persetujuan rutin Bendahara/Admin.
+Pencairan digital adalah fitur riset opsional melalui Xendit Test Mode pada database yang dikonfirmasi khusus simulasi. Tujuan yang tersedia setelah konfigurasi adalah BCA, Mandiri, BRI, BNI, DANA, dan GoPay. Tidak ada dana riil yang dikirim dan ini bukan layanan pembayaran berizin atau kemitraan resmi dengan pemilik merek. Tunai tetap mengikuti serah fisik Bendahara; hasil digital mengikuti status API terverifikasi tanpa persetujuan rutin Bendahara/Admin.
 
 Pengguna harus memakai data uji. Nama pemilik, nomor rekening/dompet digital uji, nominal, dan referensi dikirim ke Xendit untuk simulasi. Pengisian melalui Telegram juga melewati layanan Telegram. Ringkasan tujuan dan nominal ditampilkan sebelum konfirmasi tersendiri. Server menyimpan tujuan terenkripsi serta catatan persetujuan dan transaksi; laporan/audit tidak menampilkan nomor lengkap atau rahasia. Saldo riset disisihkan saat konfirmasi, didebit sekali ketika simulasi berhasil, dilepas jika gagal final, dan dikembalikan melalui mutasi baru jika hasil dibalik. Hasil belum pasti tetap ditahan untuk pemeriksaan, bukan dianggap sukses.
 

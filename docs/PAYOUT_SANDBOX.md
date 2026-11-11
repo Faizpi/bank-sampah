@@ -15,13 +15,13 @@ Enam tujuan: BCA, Mandiri, BRI, BNI, DANA, GoPay. Logo asli lokal hanya penanda,
 
 Digital memakai `SandboxPayout`, bukan `WithdrawalRequest`, sehingga klaim/serah tunai tidak dapat menyelesaikannya. Tunai dan sembako tetap tersedia. Angka digital bukan pengeluaran kas fisik pada rekonsiliasi; ada pembanding ledger digital tersendiri.
 
-## Isolasi database riset
+## Penetapan database simulasi
 
-Untuk melihat tampilan saja pada instalasi `APP_ENV=local`, jalankan migration tambahan lalu set `PAYOUT_SANDBOX_PREVIEW=true` dan pertahankan `PAYOUT_SANDBOX_ENABLED=false` di .env lokal. Beranda dan Layanan tetap memakai satu menu Cairkan Saldo; pilihan Tunai dan Digital (simulasi) berada di dalamnya. Enam tujuan digital dapat dipilih untuk melihat label/isian, tetapi pengajuan dinonaktifkan dan server tetap menolak pembuatan hold maupun pengiriman API. Mode ini tidak memerlukan key/routing palsu, tidak mengubah saldo, dan diabaikan pada production. Matikan preview sebelum menyiapkan uji provider di database riset terpisah.
+Untuk melihat tampilan saja pada instalasi `APP_ENV=local`, jalankan migration tambahan lalu set `PAYOUT_SANDBOX_PREVIEW=true` dan pertahankan `PAYOUT_SANDBOX_ENABLED=false` di .env lokal. Beranda dan Layanan tetap memakai satu menu Cairkan Saldo; pilihan Tunai dan Digital (simulasi) berada di dalamnya. Enam tujuan digital dapat dipilih untuk melihat label/isian, tetapi pengajuan dinonaktifkan dan server tetap menolak pembuatan hold maupun pengiriman API. Mode ini tidak memerlukan key/routing palsu, tidak mengubah saldo, dan diabaikan pada production. Matikan preview sebelum menyiapkan uji provider pada database simulasi yang dikonfirmasi.
 
-Gunakan satu instalasi/staging riset dengan database terpisah, bukan saldo operasional warga. Web dan bot pada instalasi riset mengakses database yang sama. Tidak ada saldo kedua di dalam satu akun/instalasi; pemisahan berada di tingkat database agar simulasi tidak mengurangi hak uang riil.
+Keputusan pemilik pada 11 November 2026: database hosting yang sudah ada boleh dipakai karena seluruh data dan saldo masih dummy serta sistem belum digunakan secara operasional di desa. Web dan bot memakai ledger/hold yang sama pada database itu. Simulasi dapat benar-benar mengubah catatan saldo aplikasi, tetapi tidak mengirim dana riil. Jangan mengaktifkan fitur ini pada saldo operasional Warga.
 
-Gerbang menolak fitur kecuali database aktual sama dengan `PAYOUT_SANDBOX_DATABASE` dan namanya berakhiran `_sandbox` atau berupa `bank_sampah_test_*`. SQLite `:memory:` hanya saat testing. Mengganti nama database atau menyalin data operasional bukan bukti isolasi aman. Gunakan data uji; jangan menyalin identitas peserta tanpa dasar persetujuan.
+Gerbang mensyaratkan nama database aktual sama persis dengan `PAYOUT_SANDBOX_DATABASE`; tidak ada kewajiban akhiran nama tertentu. Untuk hosting pemilik, `DB_DATABASE` tetap `smssinde_banksampah` dan `PAYOUT_SANDBOX_DATABASE=smssinde_banksampah`. Kunci Development, token webhook, migration, role/area, hold, dan idempotensi tetap wajib. SQLite `:memory:` memiliki pengecualian konfirmasi nama hanya saat testing. Tes otomatis tetap memakai database disposable dan API tiruan, bukan database hosting atau saldo operasional.
 
 ## Konfigurasi privat
 

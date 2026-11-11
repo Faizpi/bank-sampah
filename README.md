@@ -107,7 +107,7 @@ sukses terverifikasi. Kegagalan final melepas saldo; pembalikan menghasilkan mut
 Tidak diperlukan klaim atau persetujuan Bendahara/Admin. **Tunai tetap ditangani Bendahara.**
 
 Tidak ada uang riil yang dikirim. Fitur default nonaktif, hanya menerima Development API Key,
-dan memerlukan database riset terpisah agar tidak memotong saldo operasional warga. Logo
+dan mensyaratkan konfirmasi nama database yang seluruh saldonya masih simulasi. Logo
 merupakan penanda tujuan, bukan klaim kemitraan. Implementasi diuji dengan API tiruan;
 koneksi akun Xendit sebenarnya harus diuji tersendiri sebelum dinyalakan.
 Lihat [konfigurasi, operasi, dan batas pengujian](docs/PAYOUT_SANDBOX.md).
