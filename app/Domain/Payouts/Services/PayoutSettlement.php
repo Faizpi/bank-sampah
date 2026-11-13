@@ -91,7 +91,7 @@ final readonly class PayoutSettlement
         // Payout v3 GET may omit source_amount. When supplied, it must still match.
         // A creation response retains the stricter source checks.
         foreach (['source_currency' => 'IDR', 'source_amount' => $row->amount] as $field => $value) {
-            if (! $providerLookup || array_key_exists($field, $data)) {
+            if (! $providerLookup || (array_key_exists($field, $data) && $data[$field] !== null)) {
                 $checks[$field] = $field === 'source_amount' ? (is_int($data[$field] ?? null) && $data[$field] === $value) : ($data[$field] ?? null) === $value;
             }
         }

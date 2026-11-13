@@ -56,10 +56,14 @@ it('does not settle an unverified webhook payout when the lookup omits the desti
         ->and(LedgerEntry::count())->toBe(1);
 });
 
-it('settles once after an authenticated lookup omits only source amount', function (): void {
+it('settles once when an authenticated lookup has no source amount', function (bool $useNull): void {
     $this->postJson(route('payout.webhook'), $this->event, $this->headers)->assertOk();
     $response = Payout::response($this->row, 'SUCCEEDED');
-    unset($response['source_amount']);
+    if ($useNull) {
+        $response['source_amount'] = null;
+    } else {
+        unset($response['source_amount']);
+    }
     Http::fake(['api.xendit.co/*' => Http::response($response)]);
 
     expect(app(PayoutWorker::class)->run())->toBe(1)
@@ -72,7 +76,7 @@ it('settles once after an authenticated lookup omits only source amount', functi
     expect(LedgerEntry::count())->toBe(2)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(55000);
     Http::assertSentCount(1);
     Http::assertSent(fn ($request): bool => $request->method() === 'GET');
-});
+})->with([false, true]);
 
 it('keeps the hold if an included source amount mismatches on the first authenticated lookup', function (): void {
     $this->postJson(route('payout.webhook'), $this->event, $this->headers)->assertOk();
