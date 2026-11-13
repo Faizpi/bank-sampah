@@ -65,15 +65,22 @@ abstract class ServiceTaskQueue extends Component
         if ($this->queue()->where($this->isCash() ? 'payer_id' : 'claimed_by_id', auth()->id())->exists()) {
             $this->queueTab = 'mine';
         }
-        if (request()->integer('taskId') > 0) {
-            $this->select(request()->integer('taskId'));
+        $taskNumber = request()->query('taskNumber');
+        $legacyTaskId = request()->integer('taskId');
+        if (is_string($taskNumber) && $taskNumber !== '') {
+            $task = $this->queue()->where('request_number', $taskNumber)->first();
+            abort_unless($task !== null, 404);
+            $this->select((int) $task->getKey());
+        } elseif ($legacyTaskId > 0) {
+            $this->select($legacyTaskId);
         }
     }
 
     public function select(int $id): void
     {
-        if (! $this->isCash() && app(OfficerWorkHistory::class)->groceries($this->actor())->whereKey($id)->exists()) {
-            $this->redirectRoute('officer.history', ['type' => 'grocery', 'recordId' => $id]);
+        $completedGrocery = ! $this->isCash() ? app(OfficerWorkHistory::class)->groceries($this->actor())->whereKey($id)->first() : null;
+        if ($completedGrocery instanceof GroceryRedemption) {
+            $this->redirectRoute('officer.history', ['type' => 'grocery', 'recordNumber' => $completedGrocery->request_number]);
 
             return;
         }

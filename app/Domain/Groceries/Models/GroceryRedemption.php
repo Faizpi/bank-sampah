@@ -12,6 +12,7 @@ use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Pickups\Models\StatusHistory;
 use App\Domain\Platform\Models\Media;
 use App\Models\User;
+use App\Support\HasTransactionRouteReference;
 use Carbon\CarbonImmutable;
 use Database\Factories\GroceryRedemptionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -41,6 +42,8 @@ final class GroceryRedemption extends Model
 {
     /** @use HasFactory<GroceryRedemptionFactory> */
     use HasFactory;
+
+    use HasTransactionRouteReference;
 
     protected static function newFactory(): GroceryRedemptionFactory
     {

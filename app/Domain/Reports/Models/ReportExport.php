@@ -9,6 +9,7 @@ use App\Domain\Reports\Enums\ReportExportStatus;
 use App\Domain\Reports\Enums\ReportFormat;
 use App\Domain\Reports\Enums\ReportType;
 use App\Models\User;
+use App\Support\HasUuidRouteReference;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,6 +34,8 @@ use LogicException;
  */
 final class ReportExport extends Model
 {
+    use HasUuidRouteReference;
+
     protected $guarded = ['id'];
 
     protected function casts(): array

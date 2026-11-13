@@ -622,7 +622,7 @@ final readonly class PickupService
             type: $type,
             title: $title,
             body: $body,
-            reference: '/warga/penjemputan/'.$pickup->id,
+            reference: '/warga/penjemputan/'.$pickup->request_number,
             dedupeKey: NotificationDedupeKey::for($type.':'.$pickup->request_number, $pickup->customer_id, 'pickup-v1'),
         ));
     }

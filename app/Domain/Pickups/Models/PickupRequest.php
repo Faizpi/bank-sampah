@@ -11,6 +11,7 @@ use App\Domain\Identity\Models\CustomerProfile;
 use App\Domain\Pickups\Enums\PickupStatus;
 use App\Domain\Platform\Models\Media;
 use App\Models\User;
+use App\Support\HasTransactionRouteReference;
 use Carbon\CarbonImmutable;
 use Database\Factories\PickupRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -40,6 +41,8 @@ final class PickupRequest extends Model
 {
     /** @use HasFactory<PickupRequestFactory> */
     use HasFactory;
+
+    use HasTransactionRouteReference;
 
     protected static function newFactory(): PickupRequestFactory
     {

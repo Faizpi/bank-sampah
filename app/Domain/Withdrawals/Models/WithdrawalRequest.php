@@ -13,6 +13,7 @@ use App\Domain\Pickups\Models\StatusHistory;
 use App\Domain\Platform\Models\Media;
 use App\Domain\Withdrawals\Enums\WithdrawalStatus;
 use App\Models\User;
+use App\Support\HasTransactionRouteReference;
 use Carbon\CarbonImmutable;
 use Database\Factories\WithdrawalRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -39,6 +40,8 @@ final class WithdrawalRequest extends Model
 {
     /** @use HasFactory<WithdrawalRequestFactory> */
     use HasFactory;
+
+    use HasTransactionRouteReference;
 
     protected static function newFactory(): WithdrawalRequestFactory
     {

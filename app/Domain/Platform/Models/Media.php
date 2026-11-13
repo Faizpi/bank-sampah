@@ -6,6 +6,7 @@ namespace App\Domain\Platform\Models;
 
 use App\Domain\Platform\Enums\MediaVisibility;
 use App\Models\User;
+use App\Support\HasUuidRouteReference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
@@ -36,6 +37,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 final class Media extends Model
 {
+    use HasUuidRouteReference;
+
     /** @return array<string, string> */
     protected function casts(): array
     {

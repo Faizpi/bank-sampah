@@ -6,6 +6,7 @@ namespace App\Livewire\Notifications;
 
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Groceries\Models\GroceryRedemption;
+use App\Domain\Payouts\Models\SandboxPayout;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Models\Notification;
@@ -89,26 +90,24 @@ final class NotificationCenter extends Component
 
     private function isConcreteReference(string $reference): bool
     {
-        return preg_match('#^/warga/(?:penjemputan|pencairan|sembako|setoran)/\d+(?:/bukti)?$#', $reference) === 1;
+        return preg_match('#^/warga/(?:penjemputan|pencairan|pencairan-digital|sembako|setoran)/(?:[0-9]+|[A-Za-z][A-Za-z0-9_]*-[A-Za-z0-9_-]+)(?:/bukti)?$#', $reference) === 1;
     }
 
     private function ownsConcreteReference(User $actor, string $reference): bool
     {
-        $match = [];
-        if (preg_match('#^/warga/penjemputan/(\d+)$#', $reference, $match) === 1) {
-            return PickupRequest::query()->whereKey((int) $match[1])->where('customer_id', $actor->id)->exists();
+        if (preg_match('#^/warga/(penjemputan|pencairan|pencairan-digital|sembako|setoran)/([A-Za-z0-9_-]+)(?:/bukti)?$#', $reference, $match) !== 1) {
+            return false;
         }
-        if (preg_match('#^/warga/pencairan/(\d+)(?:/bukti)?$#', $reference, $match) === 1) {
-            return WithdrawalRequest::query()->whereKey((int) $match[1])->where('customer_id', $actor->id)->exists();
-        }
-        if (preg_match('#^/warga/sembako/(\d+)(?:/bukti)?$#', $reference, $match) === 1) {
-            return GroceryRedemption::query()->whereKey((int) $match[1])->where('customer_id', $actor->id)->exists();
-        }
-        if (preg_match('#^/warga/setoran/(\d+)$#', $reference, $match) === 1) {
-            return Deposit::query()->whereKey((int) $match[1])->where('customer_id', $actor->id)->exists();
-        }
+        $model = match ($match[1]) {
+            'penjemputan' => new PickupRequest,
+            'pencairan' => new WithdrawalRequest,
+            'pencairan-digital' => new SandboxPayout,
+            'sembako' => new GroceryRedemption,
+            'setoran' => new Deposit,
+        };
+        $column = ctype_digit($match[2]) ? $model->getKeyName() : ($model instanceof Deposit ? 'deposit_number' : 'request_number');
 
-        return false;
+        return $model->newQuery()->where($column, $match[2])->where('customer_id', $actor->id)->exists();
     }
 
     private function authenticatedUser(): User

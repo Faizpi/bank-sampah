@@ -308,6 +308,7 @@ final class DepositWaveTest extends TestCase
         $deposit = $service->finalize($staff, $service->createDraft($staff, $customer), 'w4-route-key-0001', [['waste_type_id' => $type->id, 'condition_id' => $condition->id, 'weight_kg' => '1.000']], $this->depositProof());
         $token = $deposit->verificationToken();
         self::assertIsString($token);
+        self::assertSame('/warga/setoran/'.$deposit->deposit_number, route('citizen.deposit-receipt', $deposit, false));
 
         $this->actingAs($customer)->get(route('citizen.deposit-receipt', $deposit))
             ->assertOk()

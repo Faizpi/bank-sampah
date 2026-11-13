@@ -57,6 +57,9 @@ it('lets an officer select an active assigned mobile context but not forge the l
     app(MobileServiceService::class)->transition($this->officer, $service->fresh(), MobileServiceStatus::Open);
     $this->actingAs($this->officer);
     Livewire::test(CustomerIdentification::class)->set('selectedMobileServiceId', (string) $service->id)->assertSet('mobileServiceId', $service->id)->assertHasNoErrors();
+    $this->get(route('officer.customer-identification', ['mobileServiceNumber' => $service->service_number]))->assertOk();
+    $this->get(route('officer.deposit-form', ['customerId' => $this->citizen->customerProfile->customer_number, 'mobileServiceNumber' => $service->service_number]))->assertOk();
+    $this->get(route('officer.customer-identification', ['mobileServiceNumber' => 'MOB-UNKNOWN']))->assertNotFound();
     expect(fn () => Livewire::test(CustomerIdentification::class)->set('mobileServiceId', $service->id))->toThrow(CannotUpdateLockedPropertyException::class);
 });
 

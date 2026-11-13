@@ -100,6 +100,13 @@ it('accepts comma weights and rejects malformed mixed separators', function (): 
     Livewire::test(DepositForm::class, ['customerId' => $this->citizen->id])->set('items', [[...$this->items[0], 'weight_kg' => '1.2,5']])->call('saveDraft')->assertHasErrors('items.0.weight_kg');
 });
 
+it('opens the officer deposit screen by customer code while keeping old numeric bookmarks functional', function (): void {
+    $this->actingAs($this->officer);
+    $customerCode = $this->citizen->customerProfile->customer_number;
+    $this->get(route('officer.deposit-form', ['customerId' => $customerCode]))->assertOk();
+    $this->get(route('officer.deposit-form', ['customerId' => $this->citizen->id]))->assertOk();
+});
+
 it('submits pickup from one form with no estimates or photos', function (): void {
     $this->actingAs($this->citizen);
     Livewire::test(PickupRequestForm::class)->set('selectedDate', today()->toDateString())->set('items.0.waste_type_id', (string) $this->type->id)->call('submit')->assertHasNoErrors();

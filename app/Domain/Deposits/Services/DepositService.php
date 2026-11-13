@@ -297,7 +297,7 @@ final readonly class DepositService
                     type: 'deposit.finalized',
                     title: 'Setoran selesai',
                     body: 'Setoran '.$locked->deposit_number.' telah selesai diproses.',
-                    reference: '/warga/setoran/'.$locked->id,
+                    reference: '/warga/setoran/'.$locked->deposit_number,
                     dedupeKey: NotificationDedupeKey::for('deposit.finalized:'.$locked->deposit_number, $locked->customer_id, 'deposit-finalized-v1'),
                 ));
                 $key->forceFill(['status' => 'succeeded', 'result_type' => Deposit::class, 'result_id' => $locked->id])->save();

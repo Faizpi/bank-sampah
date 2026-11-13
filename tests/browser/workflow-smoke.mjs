@@ -49,7 +49,7 @@ try {
     }
   });
   await run('officer records a deposit without photo',async()=>{
-    const page=pages.petugas;await page.goto(baseUrl+'/petugas/setoran/'+fixture.customerId+'?draftId='+fixture.draftId);
+    const page=pages.petugas;await page.goto(baseUrl+'/petugas/setoran/'+fixture.customerId+'?draftNumber='+fixture.draftId);
     await page.getByRole('button',{name:'Data sudah benar - catat setoran'}).click();
     await expect(page.getByText('Setoran berhasil dicatat',{exact:true}).first()).toBeVisible();
     await capture(page,'officer-deposit-complete');
@@ -85,7 +85,7 @@ try {
   await run('officer completed grocery bookmark opens read-only own history', async()=>{
     const page=pages.petugas;
     await page.goto(baseUrl+'/petugas/sembako?taskId='+fixture.groceryId);
-    await expect(page).toHaveURL(new RegExp('/petugas/riwayat\\?type=grocery&recordId='+fixture.groceryId));
+    await expect(page).toHaveURL(new RegExp('/petugas/riwayat\\?type=grocery&recordNumber='+fixture.groceryNumber));
     await expect(page.getByRole('heading', {name:fixture.groceryNumber,exact:true})).toBeVisible();
     await expect(page.getByRole('button', {name:'Paket sudah diserahkan',exact:true})).toHaveCount(0);
     await expect(page.locator('nav[aria-label="Navigasi petugas"] [data-nav-item]')).toHaveCount(5);

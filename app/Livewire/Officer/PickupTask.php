@@ -52,7 +52,7 @@ final class PickupTask extends Component
         /** @var User $actor */
         $actor = auth()->user();
         abort_unless($service->canView($actor, $pickup) && $pickup->assigned_staff_id === $actor->id, 404);
-        $this->pickup = $pickup->load(['customer', 'items.wasteType', 'media', 'statusHistory.actor']);
+        $this->pickup = $pickup->load(['customer', 'deposit', 'items.wasteType', 'media', 'statusHistory.actor']);
         $this->idempotencyKey = (string) str()->uuid();
         $this->actualItems = [['waste_type_id' => '', 'condition_id' => '', 'weight_kg' => '']];
         $this->loadReceipt();

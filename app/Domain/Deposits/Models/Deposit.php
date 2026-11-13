@@ -11,6 +11,7 @@ use App\Domain\MobileServices\Models\MobileService;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Platform\Models\Media;
 use App\Models\User;
+use App\Support\HasTransactionRouteReference;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,13 @@ use LogicException;
  */
 final class Deposit extends Model
 {
+    use HasTransactionRouteReference;
+
+    protected function transactionReferenceColumn(): string
+    {
+        return 'deposit_number';
+    }
+
     public const STATUS_DRAFT = 'draf';
 
     public const STATUS_FINAL = 'final';

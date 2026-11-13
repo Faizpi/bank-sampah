@@ -144,7 +144,7 @@ Route::livewire('/petugas/pindai', CustomerIdentification::class)
 
 Route::livewire('/petugas/setoran/{customerId}', DepositForm::class)
     ->middleware(['role:petugas', 'auth', 'session.fresh:30', 'permission:deposit.create', 'throttle:financial'])
-    ->whereNumber('customerId')
+    ->where('customerId', '[A-Za-z0-9_-]+')
     ->name('officer.deposit-form');
 
 Route::livewire('/warga/estimasi', EstimateForm::class)
@@ -169,7 +169,7 @@ Route::livewire('/warga/penjemputan/ajukan', PickupRequestForm::class)
 
 Route::livewire('/warga/penjemputan/{pickup}', PickupShow::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:pickup.view'])
-    ->whereNumber('pickup')
+    ->where('pickup', '[A-Za-z0-9_-]+')
     ->name('citizen.pickup.show');
 
 Route::livewire('/warga/riwayat-pencairan', WithdrawalHistory::class)
@@ -201,7 +201,7 @@ Route::get('/warga/riwayat-pencairan-digital', function () {
     ->name('citizen.payout.history');
 Route::livewire('/warga/pencairan-digital/{payout}', PayoutShow::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.view'])
-    ->whereNumber('payout')->name('citizen.payout.show');
+    ->where('payout', '[A-Za-z0-9_-]+')->name('citizen.payout.show');
 
 Route::livewire('/warga/pencairan/ajukan', WithdrawalRequestForm::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.request', 'throttle:financial'])
@@ -209,17 +209,17 @@ Route::livewire('/warga/pencairan/ajukan', WithdrawalRequestForm::class)
 
 Route::livewire('/warga/pencairan/{withdrawal}', WithdrawalShow::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.view'])
-    ->whereNumber('withdrawal')
+    ->where('withdrawal', '[A-Za-z0-9_-]+')
     ->name('citizen.withdrawal.show');
 
 Route::livewire('/warga/pencairan/{withdrawal}/bukti', WithdrawalReceipt::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:withdrawal.view'])
-    ->whereNumber('withdrawal')
+    ->where('withdrawal', '[A-Za-z0-9_-]+')
     ->name('citizen.withdrawal.receipt');
 
 Route::livewire('/petugas/penjemputan/{pickup}', PickupTask::class)
     ->middleware(['role:petugas', 'auth', 'session.fresh:30', 'permission:pickup.execute', 'throttle:financial'])
-    ->whereNumber('pickup')
+    ->where('pickup', '[A-Za-z0-9_-]+')
     ->name('officer.pickup.task');
 
 Route::livewire('/warga/riwayat-sembako', GroceryHistory::class)
@@ -232,12 +232,12 @@ Route::livewire('/warga/sembako/ajukan', GroceryRequestForm::class)
 
 Route::livewire('/warga/sembako/{redemption}', GroceryShow::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:grocery.view'])
-    ->whereNumber('redemption')
+    ->where('redemption', '[A-Za-z0-9_-]+')
     ->name('citizen.grocery.show');
 
 Route::livewire('/warga/sembako/{redemption}/bukti', GroceryReceipt::class)
     ->middleware(['role:warga', 'auth', 'session.fresh:30', 'permission:grocery.view'])
-    ->whereNumber('redemption')
+    ->where('redemption', '[A-Za-z0-9_-]+')
     ->name('citizen.grocery.receipt');
 
 Route::livewire('/petugas/sembako', GroceryTasks::class)
@@ -250,22 +250,22 @@ Route::livewire('/petugas/layanan-keliling', MobileServiceTasks::class)
 
 Route::get('/media/pickups/{media}', PickupMediaController::class)
     ->middleware(['auth', 'session.fresh:30'])
-    ->whereNumber('media')
+    ->where('media', '[A-Za-z0-9-]+')
     ->name('pickup.media');
 
 Route::get('/media/withdrawals/{media}', WithdrawalProofController::class)
     ->middleware(['auth', 'session.fresh:30'])
-    ->whereNumber('media')
+    ->where('media', '[A-Za-z0-9-]+')
     ->name('withdrawal.proof');
 
 Route::get('/media/groceries/{media}', GroceryProofController::class)
     ->middleware(['auth', 'session.fresh:30'])
-    ->whereNumber('media')
+    ->where('media', '[A-Za-z0-9-]+')
     ->name('grocery.proof');
 
 Route::get('/laporan/ekspor/{export}', ReportExportController::class)
     ->middleware(['auth', 'session.fresh:30', 'permission:report.export', 'throttle:exports'])
-    ->whereNumber('export')
+    ->where('export', '[A-Za-z0-9-]+')
     ->name('reports.export.download');
 
 Route::livewire('/warga/kartu-nasabah', CustomerCard::class)

@@ -43,3 +43,11 @@ it('queues one owner guarded Telegram notification for each committed payout sta
     expect($messages)->toHaveCount(2)->and($messages->last()->payload['text'])->toContain('Simulasi berhasil', 'Tidak ada dana riil')
         ->not->toContain('081234567890');
 });
+
+it('keeps payout Telegram guards owner scoped when notification links use transaction codes', function (): void {
+    $row = app(PayoutService::class)->request($this->owner, Payout::request(), (string) str()->uuid());
+    $notification = \App\Models\Notification::query()->where('recipient_id', $this->owner->id)->latest('id')->firstOrFail();
+    expect($notification->reference)->toBe('/warga/pencairan-digital/'.$row->request_number);
+    $message = TelegramOutbox::query()->where('category', 'transaction_notifications')->latest('created_at')->firstOrFail();
+    expect($message->payload['guards'])->toBe([['kind' => 'payout', 'id' => $row->id]]);
+});

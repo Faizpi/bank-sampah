@@ -35,8 +35,14 @@
                         @else<a class="inline-flex min-h-touch items-center font-semibold underline" href="{{ route('officer.pickup.task', $task) }}">Lanjutkan tugas</a>@endif
                     @elseif ($taskType === 'grocery')
                         <p>{{ data_get($task->package_snapshot, 'name') }} · Rp {{ number_format($task->value_snapshot, 0, ',', '.') }}</p>
-                        <a class="inline-flex min-h-touch items-center font-semibold underline" href="{{ route('officer.grocery.tasks', ['taskId' => $task->id]) }}">Buka tugas sembako</a>
-                    @else<a class="inline-flex min-h-touch items-center font-semibold underline" href="{{ route('officer.deposit-form', ['customerId' => $task->customer_id, 'draftId' => $task->id]) }}">Lanjutkan draf</a>@endif
+                        <a class="inline-flex min-h-touch items-center font-semibold underline" href="{{ route('officer.grocery.tasks', ['taskNumber' => $task->request_number]) }}">Buka tugas sembako</a>
+                    @else
+                        @if ($task->customer?->customerProfile?->customer_number)
+                            <a class="inline-flex min-h-touch items-center font-semibold underline" href="{{ route('officer.deposit-form', ['customerId' => $task->customer->customerProfile->customer_number, 'draftNumber' => $task->deposit_number]) }}">Lanjutkan draf</a>
+                        @else
+                            <p class="text-body-sm text-text-secondary">Nomor nasabah belum tersedia untuk melanjutkan draf.</p>
+                        @endif
+                    @endif
                     @if ($task->getAttribute('exception_reported_at') && ! $task->getAttribute('exception_resolved_at'))<p class="font-semibold text-terracotta">Tugas dikunci. Jangan ulangi serah fisik; tunggu hasil pemeriksaan.</p>@endif
                 @endif
             </article>

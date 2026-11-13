@@ -141,7 +141,7 @@
             @if (! $confirmed)
                 <x-ui.button wire:click="startDeposit" wire:loading.attr="disabled">Nama sudah sesuai — catat setoran</x-ui.button>
             @else
-                <a class="inline-flex min-h-touch items-center rounded-xl bg-forest-600 px-5 font-bold text-white" href="{{ route('officer.deposit-form', ['customerId' => $candidate->userId, 'mobileServiceId' => $mobileServiceId]) }}">Catat setoran</a>
+                <x-ui.button wire:click="startDeposit" wire:loading.attr="disabled">Catat setoran</x-ui.button>
             @endif
         </x-ui.panel>
     @endif

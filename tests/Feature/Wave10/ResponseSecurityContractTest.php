@@ -93,10 +93,14 @@ it('keeps private media IDOR hidden and omits storage paths from headers and err
         'attachable_id' => $pickup->id,
     ]);
 
+    expect(route('pickup.media', $media, false))->toEndWith('/'.$media->uuid);
+
     $ownerResponse = $this->actingAs($owner)->get(route('pickup.media', $media));
     $ownerResponse
         ->assertOk()
         ->assertHeader('X-Content-Type-Options', 'nosniff');
+    $this->get('/media/pickups/'.$media->id)->assertOk();
+    $this->get('/media/pickups/'.$media->id)->assertOk();
     expect((string) $ownerResponse->headers->get('Cache-Control'))->toContain('no-store')->toContain('private');
 
     config()->set('app.debug', false);
@@ -122,10 +126,14 @@ it('keeps export IDOR hidden and applies private response controls to downloads 
         'end' => '2026-08-02',
     ], 'csv');
 
+    expect(route('reports.export.download', $export, false))->toEndWith('/'.$export->uuid);
+
     $ownerResponse = $this->actingAs($owner)->get(route('reports.export.download', $export));
     $ownerResponse
         ->assertOk()
         ->assertHeader('X-Content-Type-Options', 'nosniff');
+    $this->get('/laporan/ekspor/'.$export->id)->assertOk();
+    $this->get('/laporan/ekspor/'.$export->id)->assertOk();
     expect((string) $ownerResponse->headers->get('Cache-Control'))->toContain('no-store')->toContain('private');
 
     config()->set('app.debug', false);

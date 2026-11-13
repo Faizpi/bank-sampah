@@ -76,8 +76,8 @@ it('restores completed grocery bookmarks as read-only history and hides another 
     $own = GroceryRedemption::factory()->create($this->groceryAttributes);
     $other = GroceryRedemption::factory()->create([...$this->groceryAttributes, 'claimed_by_id' => $this->otherOfficer->id, 'handover_actor_id' => $this->otherOfficer->id]);
     $this->actingAs($this->officer)->get(route('officer.grocery.tasks', ['taskId' => $own->id]))
-        ->assertRedirect(route('officer.history', ['type' => 'grocery', 'recordId' => $own->id]));
-    $this->get(route('officer.history', ['type' => 'grocery', 'recordId' => $own->id]))
+        ->assertRedirect(route('officer.history', ['type' => 'grocery', 'recordNumber' => $own->request_number]));
+    $this->get(route('officer.history', ['type' => 'grocery', 'recordNumber' => $own->request_number]))
         ->assertOk()->assertSee($own->request_number)->assertSee('Lihat rincian penyerahan')->assertDontSee('Paket sudah diserahkan');
     $this->get(route('officer.history', ['type' => 'grocery', 'recordId' => $other->id]))->assertNotFound();
     $this->get(route('officer.grocery.tasks', ['taskId' => $other->id]))->assertNotFound();

@@ -207,7 +207,7 @@
             <x-ui.status-badge status="cancelled">Dibatalkan melalui pembalikan</x-ui.status-badge>
             <p class="mt-3 break-all font-semibold">{{ $receipt['number'] }}</p>
             <p class="mt-2">Nilai asli Rp {{ number_format($receipt['value'], 0, ',', '.') }} tidak lagi menambah saldo warga.</p>
-            <a href="{{ route('officer.history', ['type' => 'deposit', 'recordId' => $pickup->deposit_id]) }}" class="mt-3 inline-flex min-h-touch items-center font-semibold text-forest-700 underline">Lihat riwayat setoran</a>
+            <a href="{{ route('officer.history', ['type' => 'deposit', 'recordNumber' => $pickup->deposit?->deposit_number]) }}" class="mt-3 inline-flex min-h-touch items-center font-semibold text-forest-700 underline">Lihat riwayat setoran</a>
         </x-ui.panel>
     @elseif ($receipt)
         <x-ui.success-state
@@ -218,7 +218,7 @@
             :status="$receipt['status']"
             :description="$receipt['status'] === 'dikoreksi' ? 'Nilai akhir mengikuti koreksi resmi.' : session('success')"
         >
-            <x-slot:actions><a href="{{ route('officer.history', ['type' => 'deposit', 'recordId' => $pickup->deposit_id]) }}" class="inline-flex min-h-touch items-center font-semibold text-forest-700 underline">Lihat riwayat setoran</a></x-slot:actions>
+            <x-slot:actions><a href="{{ route('officer.history', ['type' => 'deposit', 'recordNumber' => $pickup->deposit?->deposit_number]) }}" class="inline-flex min-h-touch items-center font-semibold text-forest-700 underline">Lihat riwayat setoran</a></x-slot:actions>
         </x-ui.success-state>
     @endif
     {{-- Status History --}}

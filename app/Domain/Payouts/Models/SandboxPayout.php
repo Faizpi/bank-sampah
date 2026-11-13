@@ -10,6 +10,7 @@ use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Payouts\Services\PayoutApiFailure;
 use App\Models\User;
+use App\Support\HasTransactionRouteReference;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -47,6 +48,8 @@ use LogicException;
  */
 final class SandboxPayout extends Model
 {
+    use HasTransactionRouteReference;
+
     protected $guarded = [];
 
     protected $hidden = ['recipient', 'request_payload', 'provider_key', 'failure_code'];

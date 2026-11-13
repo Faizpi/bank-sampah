@@ -142,7 +142,7 @@ final class Reports extends Component
         }
         $export = $exports->export($actor, $this->reportType, $filters, 'xlsx');
         if ($export->isAvailable()) {
-            $this->redirectRoute('reports.export.download', ['export' => $export->id]);
+            $this->redirectRoute('reports.export.download', ['export' => $export]);
 
             return;
         }

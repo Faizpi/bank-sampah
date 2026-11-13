@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Telegram\Services;
 
+use App\Domain\Deposits\Models\Deposit;
+use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Notifications\Events\NotificationRequested;
+use App\Domain\Payouts\Models\SandboxPayout;
+use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Telegram\Models\TelegramLink;
+use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -34,8 +39,23 @@ final class QueueTelegramNotification
         }
         $actor = app(TelegramAccess::class)->actor($link);
         $payload = ['kind' => 'text', 'text' => $title."\n".$body];
-        if (preg_match('~^/warga/(setoran|pencairan|penjemputan|sembako|pencairan-digital)/(\d+)(?:/|$)~', $reference, $match)) {
-            $payload['guards'] = [['kind' => ['setoran' => 'deposit', 'pencairan' => 'cash', 'penjemputan' => 'pickup', 'sembako' => 'grocery', 'pencairan-digital' => 'payout'][$match[1]], 'id' => (int) $match[2]]];
+        if (preg_match('~^/warga/(setoran|pencairan|penjemputan|sembako|pencairan-digital)/([A-Za-z0-9_-]+)(?:/|$)~', $reference, $match)) {
+            $routes = [
+                'setoran' => [Deposit::class, 'deposit_number', 'deposit'],
+                'pencairan' => [WithdrawalRequest::class, 'request_number', 'cash'],
+                'penjemputan' => [PickupRequest::class, 'request_number', 'pickup'],
+                'sembako' => [GroceryRedemption::class, 'request_number', 'grocery'],
+                'pencairan-digital' => [SandboxPayout::class, 'request_number', 'payout'],
+            ];
+            [$model, $referenceColumn, $kind] = $routes[$match[1]];
+            $recordQuery = $model::query()->where('customer_id', $link->user_id);
+            $record = ctype_digit($match[2])
+                ? $recordQuery->whereKey((int) $match[2])->first()
+                : $recordQuery->where($referenceColumn, $match[2])->first();
+            if ($record === null) {
+                return;
+            }
+            $payload['guards'] = [['kind' => $kind, 'id' => (int) $record->getKey()]];
         } elseif (! $actor->hasRole('warga')) {
             $payload['text'] = $title."\nAda informasi layanan baru. Buka /menu untuk memeriksa data yang masih dalam hak akses Anda.";
         }

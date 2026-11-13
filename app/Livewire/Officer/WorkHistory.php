@@ -34,9 +34,15 @@ final class WorkHistory extends Component
         $type = request()->query('type', 'deposit');
         abort_unless(is_string($type) && in_array($type, ['deposit', 'pickup', 'grocery'], true), 404);
         $this->type = $type;
-        $recordId = request()->query('recordId');
-        if ($recordId !== null) {
-            $id = filter_var($recordId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $recordNumber = request()->query('recordNumber');
+        $legacyRecordId = request()->query('recordId');
+        if (is_string($recordNumber) && $recordNumber !== '') {
+            $numberColumn = $this->type === 'deposit' ? 'deposit_number' : 'request_number';
+            $record = $this->query($history)->where($numberColumn, $recordNumber)->first();
+            abort_unless($record !== null, 404);
+            $this->recordId = (int) $record->getKey();
+        } elseif ($legacyRecordId !== null) {
+            $id = filter_var($legacyRecordId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             abort_unless(is_int($id), 404);
             $this->recordId = $id;
             abort_unless($this->query($history)->whereKey($id)->exists(), 404);

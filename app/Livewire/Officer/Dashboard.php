@@ -90,7 +90,7 @@ final class Dashboard extends Component
             'grocery' => $groceries->readyForHandover($actor)->with('customer')
                 ->when($this->taskTab === 'waiting', fn (Builder $query): Builder => $query->whereNull('claimed_by_id'))
                 ->when($this->taskTab === 'mine', fn (Builder $query): Builder => $query->where('claimed_by_id', $actor->id))->orderBy('created_at'),
-            'deposit' => Deposit::query()->with('customer')->where('staff_id', $actor->id)->where('status', Deposit::STATUS_DRAFT)->latest('occurred_at'),
+            'deposit' => Deposit::query()->with('customer.customerProfile')->where('staff_id', $actor->id)->where('status', Deposit::STATUS_DRAFT)->latest('occurred_at'),
             default => MobileService::query()->whereHas('staff', fn (Builder $staff): Builder => $staff->whereKey($actor->id))
                 ->where(fn (Builder $query): Builder => $query->where('status', MobileServiceStatus::Open)->orWhere(fn (Builder $scheduled): Builder => $scheduled->where('status', MobileServiceStatus::Published)->where('ends_at', '>=', now())))
                 ->orderBy('starts_at'),

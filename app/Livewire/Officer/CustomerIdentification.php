@@ -57,7 +57,14 @@ final class CustomerIdentification extends Component
         /** @var User|null $actor */
         $actor = auth()->user();
         abort_unless($actor instanceof User && $permissions->allows($actor, 'customer.view'), 403);
+        $requestedMobileServiceNumber = request()->query('mobileServiceNumber');
         $requestedMobileServiceId = request()->integer('mobileServiceId');
+        if (is_string($requestedMobileServiceNumber) && $requestedMobileServiceNumber !== '') {
+            $requestedService = MobileService::query()->where('service_number', $requestedMobileServiceNumber)
+                ->whereHas('staff', static fn (Builder $staff): Builder => $staff->whereKey($actor->id))->first();
+            abort_unless($requestedService instanceof MobileService, 404);
+            $requestedMobileServiceId = (int) $requestedService->id;
+        }
         $this->mobileServiceId = $requestedMobileServiceId > 0 ? $requestedMobileServiceId : null;
         if ($this->mobileServiceId !== null && ! $this->identificationMobileService($actor) instanceof MobileService) {
             $this->mobileServiceId = null;
@@ -101,7 +108,11 @@ final class CustomerIdentification extends Component
         $users = app(VisibleUsers::class);
         $query = $service === null ? $users->queryFor($actor) : $users->queryForMobileService($actor, $service);
         abort_unless($query->where('role', 'warga')->whereKey($candidate->userId)->exists(), 404);
-        $this->redirectRoute('officer.deposit-form', ['customerId' => $candidate->userId, 'mobileServiceId' => $this->mobileServiceId], navigate: true);
+        $parameters = ['customerId' => $candidate->number->value()];
+        if ($service instanceof MobileService) {
+            $parameters['mobileServiceNumber'] = $service->service_number;
+        }
+        $this->redirectRoute('officer.deposit-form', $parameters, navigate: true);
     }
 
     public function scan(string $rawToken, ManageCustomerIdentity $identity): void

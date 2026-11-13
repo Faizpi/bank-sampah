@@ -48,7 +48,7 @@
                             @endif
                             @elseif ($service->status === \App\Domain\MobileServices\Enums\MobileServiceStatus::Open)
                             @if ($canOpenNow && ! $isFull)
-                            <a href="{{ route('officer.customer-identification', ['mobileServiceId' => $service->id]) }}"
+                            <a href="{{ route('officer.customer-identification', ['mobileServiceNumber' => $service->service_number]) }}"
                                 class="inline-flex min-h-touch items-center justify-center gap-2 rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
                                 Catat Setoran
                             </a>
