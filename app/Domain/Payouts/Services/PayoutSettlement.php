@@ -88,10 +88,10 @@ final readonly class PayoutSettlement
             'destination_amount' => is_int($data['destination_amount'] ?? null) && $data['destination_amount'] === $row->amount,
             'status' => is_string($data['status'] ?? null) && strlen($data['status']) <= 40,
         ];
-        // Payout v3 GET may omit source_amount. When supplied, it must still match.
-        // A creation response retains the stricter source checks.
+        // Xendit's Payout object may omit source_amount, including after creation.
+        // A supplied value must always match; destination amount remains required.
         foreach (['source_currency' => 'IDR', 'source_amount' => $row->amount] as $field => $value) {
-            if (! $providerLookup || (array_key_exists($field, $data) && $data[$field] !== null)) {
+            if (($field === 'source_currency' && ! $providerLookup) || (array_key_exists($field, $data) && $data[$field] !== null)) {
                 $checks[$field] = $field === 'source_amount' ? (is_int($data[$field] ?? null) && $data[$field] === $value) : ($data[$field] ?? null) === $value;
             }
         }

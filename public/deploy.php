@@ -490,6 +490,14 @@ $actions = [
         'confirmation' => 'SUDAH CEK XENDIT TIDAK TERCATAT',
         'commands' => [['payouts:resolve-rejected', ['--confirm-not-created' => true]]],
     ],
+    'payout-reconcile-existing' => [
+        'label' => 'Cocokkan pencairan yang sudah ada di Xendit',
+        'description' => 'Membaca satu payout Test Mode dengan GET. Status dan saldo dapat berubah jika identitas dan nominal cocok; tidak membuat payout baru.',
+        'group' => 'maintenance',
+        'risk' => 'dangerous',
+        'confirmation' => 'COCOKKAN PAYOUT XENDIT',
+        'commands' => [['payouts:reconcile-existing', []]],
+    ],
     'telegram-diagnose' => [
         'label' => 'Periksa konfigurasi Telegram',
         'description' => 'Memeriksa migration, ekstensi, dan antrean tanpa menampilkan token atau menghubungi Telegram.',
@@ -573,8 +581,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $kernel = $app->make(Kernel::class);
 
         foreach ($actions[$selectedAction]['commands'] as [$command, $parameters]) {
-            if ($selectedAction === 'payout-resolve-rejected') {
+            if (in_array($selectedAction, ['payout-resolve-rejected', 'payout-reconcile-existing'], true)) {
                 $parameters['request'] = (string) ($_POST['payout_request_number'] ?? '');
+            }
+            if ($selectedAction === 'payout-reconcile-existing') {
+                $parameters['provider'] = (string) ($_POST['payout_provider_id'] ?? '');
             }
             if (in_array($selectedAction, ['hosting-demo-preview', 'hosting-demo-reset'], true)) {
                 $parameters['--database'] = (string) ($_POST['target_database'] ?? '');
@@ -692,8 +703,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         </div>
 
         <div class="payout-fields" hidden style="margin-top:14px">
-            <label for="payout_request_number">Nomor pengajuan digital yang ditolak</label>
+            <label for="payout_request_number">Nomor pengajuan digital</label>
             <input id="payout_request_number" name="payout_request_number" type="text" autocomplete="off" maxlength="27" pattern="SIM-[0-9]{14}-[A-Z0-9]{8}" placeholder="Salin nomor SIM dari pantauan pencairan">
+        </div>
+        <div class="payout-provider-fields" hidden style="margin-top:14px">
+            <label for="payout_provider_id">Payout ID dari Xendit</label>
+            <input id="payout_provider_id" name="payout_provider_id" type="text" autocomplete="off" maxlength="93" pattern="po-[A-Za-z0-9-]{1,90}" placeholder="po-...">
         </div>
 
 
@@ -711,6 +726,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         const backupInput = document.querySelector('[name="backup_confirmed"]');
         const payoutFields = document.querySelector('.payout-fields');
         const payoutInput = document.querySelector('#payout_request_number');
+        const payoutProviderFields = document.querySelector('.payout-provider-fields');
+        const payoutProviderInput = document.querySelector('#payout_provider_id');
         const updateConfirmation = () => {
             const selected = document.querySelector('input[name="action"]:checked');
             const confirmationPhrase = selected?.dataset.confirmation ?? '';
@@ -725,9 +742,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             backupCheck.hidden = !isReset;
             backupInput.required = isReset;
             backupInput.checked = false;
-            const isPayoutRecovery = selected?.value === 'payout-resolve-rejected';
+            const isPayoutReconcile = selected?.value === 'payout-reconcile-existing';
+            const isPayoutRecovery = selected?.value === 'payout-resolve-rejected' || isPayoutReconcile;
             payoutFields.hidden = !isPayoutRecovery;
             payoutInput.required = isPayoutRecovery;
+            payoutProviderFields.hidden = !isPayoutReconcile;
+            payoutProviderInput.required = isPayoutReconcile;
         };
         actionInputs.forEach((input) => input.addEventListener('change', updateConfirmation));
         updateConfirmation();
