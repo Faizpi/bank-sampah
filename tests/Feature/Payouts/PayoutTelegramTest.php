@@ -41,7 +41,7 @@ it('submits each digital destination from Telegram only after confirmation and s
     Bot::text('10001', 'Siti Aminah');
     Bot::text('10001', Payout::request($channel)['number']);
     Bot::text('10001', '20000');
-    expect(Bot::lastText('10001'))->toContain('Tidak ada uang riil', $label);
+    expect(Bot::lastText('10001'))->toContain('Tidak ada uang riil', $label)->not->toContain('tanpa Bendahara');
     expect(SandboxPayout::count())->toBe(0)->and(LedgerEntry::count())->toBe(1);
     $capability = Bot::button('10001', 'Konfirmasi pencairan simulasi');
     Bot::click('10001', 'Konfirmasi pencairan simulasi');
@@ -54,7 +54,8 @@ it('submits each digital destination from Telegram only after confirmation and s
     app(PayoutWorker::class)->run();
     Bot::click('10001', 'Periksa status');
     expect(Bot::lastText('10001'))->toContain('Simulasi berhasil', 'Tidak ada dana riil');
-    $this->actingAs($this->owner)->get(route('citizen.payout.history'))->assertOk()->assertSee($row->request_number)->assertSee('Simulasi berhasil');
+    $this->actingAs($this->owner)->get(route('citizen.payout.history'))->assertRedirect(route('citizen.withdrawal-history', ['metode' => 'digital']));
+    $this->get(route('citizen.withdrawal-history', ['metode' => 'digital']))->assertOk()->assertSee($row->request_number)->assertSee('Simulasi berhasil');
     expect(LedgerEntry::count())->toBe(2);
 })->with([['bca', 'BCA'], ['mandiri', 'Mandiri'], ['bri', 'BRI'], ['bni', 'BNI'], ['dana', 'DANA'], ['gopay', 'GoPay']]);
 
@@ -62,7 +63,8 @@ it('cancels a web request from Telegram without an outflow and protects private 
     $row = app(PayoutService::class)->request($this->owner, Payout::request(), (string) str()->uuid());
     Bot::text('10001', '/menu');
     Bot::click('10001', 'Riwayat');
-    Bot::click('10001', 'Riwayat digital (simulasi)');
+    Bot::click('10001', 'Pencairan');
+    Bot::click('10001', 'Digital (simulasi)');
     Bot::click('10001', 'Rincian #1');
     $button = Bot::button('10001', 'Batalkan sebelum diproses');
     Bot::text('10002', '/menu');
@@ -83,6 +85,18 @@ it('lets the treasurer monitor but never claim digital transactions', function (
     $message = TelegramOutbox::where('telegram_id', '10003')->where('kind', 'text')->latest('sequence')->firstOrFail();
     expect(json_encode($message->payload))->not->toContain('payout.cancel', 'Ambil pembayaran');
     expect(TelegramConversation::whereKey('10003')->firstOrFail()->state)->toBe('menu');
+});
+
+it('keeps cash and digital history below the single Telegram withdrawal history entry', function (): void {
+    Bot::text('10001', '/menu');
+    Bot::click('10001', 'Riwayat');
+    expect(Bot::lastText('10001'))->toBe('Pilih riwayat.');
+    Bot::click('10001', 'Pencairan');
+    expect(Bot::lastText('10001'))->toBe('Pilih metode pencairan.');
+    Bot::button('10001', 'Digital (simulasi)');
+    Bot::click('10001', 'Tunai');
+    expect(Bot::lastText('10001'))->toBe('Belum ada riwayat pada pilihan ini.');
+    expect(WithdrawalRequest::count())->toBe(0)->and(SandboxPayout::count())->toBe(0);
 });
 
 it('keeps one withdrawal entry in the Telegram menu and shows both methods without a financial mutation', function (): void {

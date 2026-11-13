@@ -36,6 +36,7 @@ final class ReportDetailedDepositExportTest extends TestCase
     {
         Storage::fake('media_private');
         $actor = $this->userWith('report.view', 'report.export');
+        $actor->forceFill(['name' => 'Pemilik Setoran Uji'])->save();
         $firstType = WasteType::factory()->create(['name' => 'Plastik Botol Ekspor']);
         $secondType = WasteType::factory()->create(['name' => 'Kertas Koran Ekspor']);
         $condition = WasteCondition::factory()->create(['name' => 'Bersih Ekspor']);
@@ -72,9 +73,10 @@ final class ReportDetailedDepositExportTest extends TestCase
         self::assertSame(ReportExportStatus::Succeeded, $export->status);
         $parts = $this->xlsxParts((string) Storage::disk('media_private')->get((string) $export->path));
         $sheet = $parts['xl/worksheets/sheet1.xml'];
-        foreach (['DEP-DETAIL-EXPORT', (string) $actor->id, 'Plastik Botol Ekspor', 'Kertas Koran Ekspor', 'Bersih Ekspor', '1.250', '2.750', '12500', '29500'] as $expectedValue) {
+        foreach (['DEP-DETAIL-EXPORT', 'Pemilik Setoran Uji', 'Plastik Botol Ekspor', 'Kertas Koran Ekspor', 'Bersih Ekspor', '1.250', '2.750', '12500', '29500'] as $expectedValue) {
             self::assertStringContainsString($expectedValue, $sheet);
         }
+        self::assertStringContainsString('<c r="D2" t="inlineStr"><is><t xml:space="preserve">Pemilik Setoran Uji</t></is></c>', $sheet);
         self::assertSame(3, substr_count($sheet, '<row '));
         self::assertStringContainsString('<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>', $sheet);
         self::assertStringContainsString('<autoFilter ref="A1:Q3"/>', $sheet);

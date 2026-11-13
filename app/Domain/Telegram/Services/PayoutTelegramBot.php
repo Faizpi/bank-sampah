@@ -92,7 +92,7 @@ final class PayoutTelegramBot
                 $data = [...$quote, 'key' => $data['key']];
                 $ctx->state('payout.review', $data);
                 $channel = app(PayoutChannels::class)->get($quote['channel']);
-                $ctx->say('Pencairan digital (simulasi)'."\nAkun: ".$actor->name."\nTujuan: ".$channel['name']."\nNama pemilik: ".$quote['name']."\nNomor uji: ".$quote['number']."\nNominal: ".BotInput::rupiah($quote['amount'])."\nTidak ada uang riil yang dikirim. Sistem memproses otomatis tanpa Bendahara.", [BotContext::button('Konfirmasi pencairan simulasi', 'payout.submit'), BotContext::button('Ganti metode', 'citizen.withdrawal'), BotContext::button('Batal isi', 'cancel-input')]);
+                $ctx->say('Pencairan digital (simulasi)'."\nAkun: ".$actor->name."\nTujuan: ".$channel['name']."\nNama pemilik: ".$quote['name']."\nNomor uji: ".$quote['number']."\nNominal: ".BotInput::rupiah($quote['amount'])."\nTidak ada uang riil yang dikirim.", [BotContext::button('Konfirmasi pencairan simulasi', 'payout.submit'), BotContext::button('Ganti metode', 'citizen.withdrawal'), BotContext::button('Batal isi', 'cancel-input')]);
             } else {
                 $ctx->say('Gunakan tombol terbaru atau ketik /menu untuk memulai kembali.');
             }

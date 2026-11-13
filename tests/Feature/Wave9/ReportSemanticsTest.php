@@ -258,7 +258,7 @@ final class ReportSemanticsTest extends TestCase
             ->assertSet('end', '2026-02-05');
 
         $component->assertSee('Unduh Excel')
-            ->assertSee('Memuat hasil laporan sesuai filter...')
+            ->assertSee('Memuat laporan...')
             ->assertDontSee('CSV')
             ->assertDontSee('PDF');
 
@@ -277,7 +277,8 @@ final class ReportSemanticsTest extends TestCase
         Livewire::test(TreasurerReports::class)
             ->assertSet('reportType', 'withdrawals')
             ->assertSet('reportTypes', [
-                'withdrawals' => 'Pencairan',
+                'withdrawals' => 'Pencairan tunai',
+                'digital_payouts' => 'Digital (simulasi)',
             ]);
 
         Livewire::actingAs($backoffice);
@@ -285,10 +286,11 @@ final class ReportSemanticsTest extends TestCase
             ->assertSet('reportType', 'deposits')
             ->assertSet('reportTypes', [
                 'deposits' => 'Setoran',
-                'withdrawals' => 'Pencairan',
+                'withdrawals' => 'Pencairan tunai',
                 'groceries' => 'Sembako',
                 'pickups' => 'Penjemputan',
                 'participation' => 'Partisipasi',
+                'digital_payouts' => 'Digital (simulasi)',
             ]);
     }
 
@@ -336,6 +338,12 @@ final class ReportSemanticsTest extends TestCase
                 ['key' => 'customer_count', 'label' => 'Nasabah', 'format' => 'count'],
                 ['key' => 'withdrawal_count', 'label' => 'Pencairan', 'format' => 'count'],
                 ['key' => 'total_amount', 'label' => 'Total Pencairan', 'format' => 'currency'],
+            ],
+            'digital_payouts' => [
+                ['key' => 'customer_count', 'label' => 'Warga', 'format' => 'count'],
+                ['key' => 'payout_count', 'label' => 'Pengajuan digital', 'format' => 'count'],
+                ['key' => 'processing_count', 'label' => 'Dalam proses', 'format' => 'count'],
+                ['key' => 'succeeded_amount', 'label' => 'Berhasil (simulasi)', 'format' => 'currency'],
             ],
             'groceries' => [
                 ['key' => 'customer_count', 'label' => 'Nasabah', 'format' => 'count'],

@@ -102,8 +102,10 @@ try {
     await citizen.reload();
     await expect(citizen.getByRole('heading', { name: 'Simulasi berhasil', exact: true })).toBeVisible();
     await capture(citizen, 'settled');
-    await citizen.getByRole('link', { name: 'Riwayat digital (simulasi)', exact: true }).click();
-    await expect(citizen.getByText('DANA (simulasi) · Simulasi berhasil', { exact: true })).toBeVisible();
+    await citizen.getByRole('link', { name: 'Riwayat pencairan', exact: true }).click();
+    await expect(citizen.getByRole('heading', { name: 'Riwayat Pencairan', exact: true })).toBeVisible();
+    await expect(citizen.getByRole('button', { name: 'Digital (simulasi)', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(citizen.getByText('Simulasi berhasil', { exact: true })).toBeVisible();
     await capture(citizen, 'history');
     const treasurer = await login('bendahara');
     await treasurer.goto(`${env.APP_URL}/pengurus/pencairan-digital`);

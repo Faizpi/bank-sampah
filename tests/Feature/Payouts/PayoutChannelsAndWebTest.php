@@ -82,7 +82,8 @@ it('does not expose another customers payout through web detail or history', fun
     $row = app(PayoutService::class)->request($this->owner, Payout::request(), (string) str()->uuid());
     $other = User::factory()->create(['role' => 'warga', 'status' => 'aktif']);
     $this->actingAs($other)->get(route('citizen.payout.show', $row))->assertNotFound();
-    $this->get(route('citizen.payout.history'))->assertOk()->assertDontSee($row->request_number);
+    $this->get(route('citizen.payout.history'))->assertRedirect(route('citizen.withdrawal-history', ['metode' => 'digital']));
+    $this->get(route('citizen.withdrawal-history', ['metode' => 'digital']))->assertOk()->assertDontSee($row->request_number);
 });
 
 it('displays provider settlement as an automatic simulation rather than physical cash handover', function (): void {

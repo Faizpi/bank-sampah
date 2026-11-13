@@ -24,7 +24,7 @@
             <x-ui.input name="amount" label="Nominal pencairan (Rp)" placeholder="Contoh: 20000" inputmode="numeric" wire:model="amount" :error="$errors->first('amount')" />
             @if ($serviceAreas->count() > 1)<x-ui.select name="serviceAreaId" label="Area layanan" wire:model="serviceAreaId">@foreach ($serviceAreas as $area)<option value="{{ $area->id }}">{{ $area->name }}</option>@endforeach</x-ui.select>@endif
         </div>
-        @unless ($previewOnly)<p class="text-body-sm text-text-secondary">Gunakan data uji. Nama dan nomor tujuan akan dikirim ke Xendit Test Mode.</p>@endunless
+        @unless ($previewOnly)<p class="text-body-sm text-text-secondary">Gunakan data uji. Data tujuan dikirim ke Xendit Test Mode.</p>@endunless
         <x-ui.button wire:click="review" wire:loading.attr="disabled" :disabled="$previewOnly">{{ $previewOnly ? 'Pengajuan belum aktif' : 'Periksa pengajuan' }}</x-ui.button>
     @else
         <x-ui.panel title="Periksa tujuan dan nominal">
@@ -34,7 +34,7 @@
                 <div><dt>Nomor tujuan uji</dt><dd class="break-all font-semibold">{{ $accountNumber }}</dd></div>
                 <div><dt>Nominal</dt><dd class="amount-tabular text-h2 font-bold">Rp {{ number_format((int) $amount, 0, ',', '.') }}</dd></div>
             </dl>
-            <p class="mt-4">Saldo disisihkan saat diajukan. Hasil provider menentukan penyelesaian simulasi, tanpa pembayaran oleh Bendahara.</p>
+            <p class="mt-4">Saldo disisihkan sampai simulasi selesai.</p>
         </x-ui.panel>
         <div class="flex flex-wrap gap-3"><x-ui.button variant="secondary" wire:click="edit">Periksa lagi</x-ui.button><x-ui.button wire:click="submit" wire:loading.attr="disabled">Konfirmasi pencairan simulasi</x-ui.button></div>
     @endif

@@ -9,6 +9,9 @@ use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Groceries\Models\GroceryRedemption;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\StaffServiceArea;
+use App\Domain\Payouts\Models\SandboxPayout;
+use App\Domain\Payouts\Services\PayoutAccess;
+use App\Domain\Payouts\Services\PayoutChannels;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Reports\Enums\ReportType;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
@@ -30,8 +33,8 @@ use Illuminate\Support\LazyCollection;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @phpstan-type ReportModel Deposit|WithdrawalRequest|GroceryRedemption|PickupRequest
- * @phpstan-type ReportBuilder Builder<Deposit>|Builder<WithdrawalRequest>|Builder<GroceryRedemption>|Builder<PickupRequest>
+ * @phpstan-type ReportModel Deposit|WithdrawalRequest|GroceryRedemption|PickupRequest|SandboxPayout
+ * @phpstan-type ReportBuilder Builder<Deposit>|Builder<WithdrawalRequest>|Builder<GroceryRedemption>|Builder<PickupRequest>|Builder<SandboxPayout>
  * @phpstan-type ReportModelCollection EloquentCollection<int, Model>
  */
 final readonly class ReportQueryService
@@ -58,6 +61,7 @@ final readonly class ReportQueryService
         'groceries' => ['request_number', 'handed_over_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'package_name', 'package_contents', 'claimant_name', 'handover_staff_name', 'availability_note', 'status', 'value_snapshot'],
         'pickups' => ['request_number', 'customer_name', 'rt', 'service_area', 'address', 'selected_date', 'scheduled_date', 'assigned_staff_name', 'estimated_weight_kg', 'notes', 'completed_at', 'status'],
         'participation' => ['deposit_number', 'occurred_at', 'customer_number', 'customer_name', 'rt', 'service_area', 'staff_name', 'method', 'location', 'status', 'total_weight_kg', 'total_value'],
+        'digital_payouts' => ['request_number', 'created_at', 'customer_name', 'rt', 'service_area', 'channel', 'masked_number', 'status', 'amount', 'provider_id', 'environment', 'executor'],
     ];
 
     /** @var array<string, list<array{key: string, label: string, format: string}>> */
@@ -73,6 +77,12 @@ final readonly class ReportQueryService
             ['key' => 'customer_count', 'label' => 'Nasabah', 'format' => 'count'],
             ['key' => 'withdrawal_count', 'label' => 'Pencairan', 'format' => 'count'],
             ['key' => 'total_amount', 'label' => 'Total Pencairan', 'format' => 'currency'],
+        ],
+        'digital_payouts' => [
+            ['key' => 'customer_count', 'label' => 'Warga', 'format' => 'count'],
+            ['key' => 'payout_count', 'label' => 'Pengajuan digital', 'format' => 'count'],
+            ['key' => 'processing_count', 'label' => 'Dalam proses', 'format' => 'count'],
+            ['key' => 'succeeded_amount', 'label' => 'Berhasil (simulasi)', 'format' => 'currency'],
         ],
         'groceries' => [
             ['key' => 'customer_count', 'label' => 'Nasabah', 'format' => 'count'],
@@ -200,7 +210,7 @@ final readonly class ReportQueryService
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return list<array{reference: string, date: string, subject: string, detail: string, status: string, value: int|string, value_format: 'currency'|'weight'}>
+     * @return list<array{reference: string, date: string, subject: string, detail: string, status: string, value: int|string, value_format: 'currency'|'weight', diagnostic?: string, status_label?: string}>
      */
     public function displayRows(User $actor, string|ReportType $reportType, array $filters, string $sort = 'occurred_at', string $direction = 'desc'): array
     {
@@ -215,6 +225,7 @@ final readonly class ReportQueryService
                 'status' => $this->displayValue($record->getAttribute('status')),
                 'value' => $this->displayAmount($record, $type),
                 'value_format' => $type === ReportType::Pickups ? 'weight' : 'currency',
+                ...($record instanceof SandboxPayout ? ['status_label' => $record->label(), 'diagnostic' => $record->failureNotice() ?? ''] : []),
             ];
         }
 
@@ -240,6 +251,12 @@ final readonly class ReportQueryService
                 'customer_count' => $records->pluck('customer_id')->filter()->unique()->count(),
                 'withdrawal_count' => $records->count(),
                 'total_amount' => (int) $records->sum('amount'),
+            ],
+            ReportType::DigitalPayouts => [
+                'customer_count' => $records->pluck('customer_id')->unique()->count(),
+                'payout_count' => $records->count(),
+                'processing_count' => $records->whereIn('status', ['queued', 'dispatching', 'pending', 'uncertain'])->count(),
+                'succeeded_amount' => (int) $records->where('status', 'succeeded')->sum('amount'),
             ],
             ReportType::Groceries => [
                 'customer_count' => $records->pluck('customer_id')->filter()->unique()->count(),
@@ -317,8 +334,11 @@ final readonly class ReportQueryService
             ReportType::Withdrawals => WithdrawalRequest::query()->with(['customer.customerProfile.rt.serviceAreas', 'payer'])->whereNotNull('paid_at'),
             ReportType::Groceries => GroceryRedemption::query()->with(['customer.customerProfile.rt.serviceAreas', 'claimant', 'handoverActor'])->whereNotNull('handed_over_at'),
             ReportType::Pickups => PickupRequest::query()->with(['customer', 'rt', 'serviceArea', 'assignedStaff'])->whereNotNull('completed_at'),
+            ReportType::DigitalPayouts => app(PayoutAccess::class)->visibleFor($actor)->with(['rt', 'serviceArea']),
         };
-        $this->applyRecordScope($actor, $type, $query);
+        if ($type !== ReportType::DigitalPayouts) {
+            $this->applyRecordScope($actor, $type, $query);
+        }
         $this->applyFilters($query, $type, $filters);
 
         return $query;
@@ -385,11 +405,12 @@ final readonly class ReportQueryService
             ReportType::Withdrawals => 'paid_at',
             ReportType::Groceries => 'handed_over_at',
             ReportType::Pickups => 'completed_at',
+            ReportType::DigitalPayouts => 'created_at',
         };
         $start = CarbonImmutable::parse((string) $filters['start'], 'Asia/Jakarta')->startOfDay();
         $end = CarbonImmutable::parse((string) $filters['end'], 'Asia/Jakarta')->startOfDay();
         $query->where($dateColumn, '>=', $start)->where($dateColumn, '<', $end);
-        if (isset($filters['rt_id']) && $type === ReportType::Pickups) {
+        if (isset($filters['rt_id']) && in_array($type, [ReportType::Pickups, ReportType::DigitalPayouts], true)) {
             $query->where('rt_id', (int) $filters['rt_id']);
         } elseif (isset($filters['rt_id'])) {
             $query->whereHas('customer.customerProfile', static fn (Builder $profile): Builder => $profile->where('rt_id', (int) $filters['rt_id']));
@@ -423,6 +444,9 @@ final readonly class ReportQueryService
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $filters['start']) !== 1 || preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $filters['end']) !== 1 || (string) $filters['start'] >= (string) $filters['end']) {
             throw ValidationException::withMessages(['period' => 'Periode laporan tidak valid.']);
         }
+        if ($type === ReportType::DigitalPayouts && CarbonImmutable::parse((string) $filters['start'])->diffInDays(CarbonImmutable::parse((string) $filters['end'])) > 366) {
+            throw ValidationException::withMessages(['period' => 'Rentang laporan digital maksimal 366 hari.']);
+        }
         $allowedStatuses = array_keys($this->statusOptions($type->value));
         if (isset($filters['status']) && ! in_array($filters['status'], $allowedStatuses, true)) {
             throw ValidationException::withMessages(['status' => 'Status laporan tidak diizinkan.']);
@@ -443,10 +467,15 @@ final readonly class ReportQueryService
             ReportType::Withdrawals => ['sudah_dibayar'],
             ReportType::Groceries => ['selesai'],
             ReportType::Pickups => ['selesai'],
+            ReportType::DigitalPayouts => ['queued', 'dispatching', 'pending', 'uncertain', 'succeeded', 'failed', 'reversed', 'cancelled'],
             default => throw ValidationException::withMessages(['reportType' => 'Jenis laporan tidak diizinkan.']),
         };
 
-        return array_combine($statuses, array_map(StatusLabel::for(...), $statuses));
+        return array_combine($statuses, array_map(static fn (string $status): string => $type === ReportType::DigitalPayouts
+            ? match ($status) {
+                'queued' => 'Menunggu diproses', 'dispatching' => 'Sedang dikirim', 'pending' => 'Menunggu hasil', default => (new SandboxPayout(['status' => $status]))->label()
+            }
+            : StatusLabel::for($status), $statuses));
     }
 
     private function displayReference(Model $record, ReportType $type): string
@@ -463,6 +492,7 @@ final readonly class ReportQueryService
             ReportType::Withdrawals => 'paid_at',
             ReportType::Groceries => 'handed_over_at',
             ReportType::Pickups => 'completed_at',
+            ReportType::DigitalPayouts => 'created_at',
         };
 
         $value = $record->getAttribute($column);
@@ -485,6 +515,11 @@ final readonly class ReportQueryService
 
     private function displayDetail(Model $record, ReportType $type): string
     {
+        if ($record instanceof SandboxPayout) {
+            $channels = app(PayoutChannels::class)->all();
+
+            return $channels[$record->channel]['name'].' (simulasi) · '.$record->maskedNumber().' · Sistem';
+        }
         if ($type === ReportType::Pickups) {
             $area = $record->getRelation('serviceArea');
             $areaName = $this->displayValue($area?->getAttribute('name'));
@@ -506,6 +541,7 @@ final readonly class ReportQueryService
                 $this->displayValue($record->getAttribute('package_snapshot')['code'] ?? null),
                 $this->displayValue($record->getAttribute('availability_note')),
             ], ' · ', 'Penukaran sembako'),
+            ReportType::DigitalPayouts => '',
         };
     }
 
@@ -525,7 +561,7 @@ final readonly class ReportQueryService
 
         $column = match ($type) {
             ReportType::Deposits, ReportType::Participation => 'total_value',
-            ReportType::Withdrawals => 'amount',
+            ReportType::Withdrawals, ReportType::DigitalPayouts => 'amount',
             ReportType::Groceries => 'value_snapshot',
             ReportType::Pickups => 'estimated_weight_kg',
         };
@@ -551,6 +587,7 @@ final readonly class ReportQueryService
     {
         return match ($type) {
             ReportType::Deposits, ReportType::Participation => in_array($sort, ['occurred_at', 'deposit_number', 'total_weight_kg', 'total_value'], true) ? $sort : 'occurred_at',
+            ReportType::DigitalPayouts => in_array($sort, ['request_number', 'amount', 'created_at'], true) ? $sort : 'created_at',
             ReportType::Withdrawals, ReportType::Groceries, ReportType::Pickups => in_array($sort, ['occurred_at', 'request_number', 'amount', 'value_snapshot', 'created_at'], true) ? ($sort === 'occurred_at' ? ($type === ReportType::Withdrawals ? 'paid_at' : ($type === ReportType::Groceries ? 'handed_over_at' : 'completed_at')) : $sort) : 'created_at',
         };
     }

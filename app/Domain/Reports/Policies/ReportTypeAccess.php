@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Reports\Policies;
 
 use App\Domain\Reports\Enums\ReportType;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 final class ReportTypeAccess
@@ -17,6 +18,7 @@ final class ReportTypeAccess
     public function optionsFor(string $surface): array
     {
         return collect($this->allowedFor($surface))
+            ->filter(static fn (ReportType $type): bool => $type !== ReportType::DigitalPayouts || Schema::hasTable('sandbox_payouts'))
             ->mapWithKeys(static fn (ReportType $type): array => [$type->value => self::label($type)])
             ->all();
     }
@@ -40,9 +42,9 @@ final class ReportTypeAccess
     private function allowedFor(string $surface): array
     {
         return match ($surface) {
-            self::TREASURER => [ReportType::Withdrawals],
+            self::TREASURER => [ReportType::Withdrawals, ReportType::DigitalPayouts],
             self::BACKOFFICE => ReportType::cases(),
-            default => throw ValidationException::withMessages(['surface' => 'Permukaan laporan tidak diizinkan.']),
+            default => throw ValidationException::withMessages(['surface' => 'Halaman laporan tidak tersedia.']),
         };
     }
 
@@ -50,10 +52,11 @@ final class ReportTypeAccess
     {
         return match ($type) {
             ReportType::Deposits => 'Setoran',
-            ReportType::Withdrawals => 'Pencairan',
+            ReportType::Withdrawals => 'Pencairan tunai',
             ReportType::Groceries => 'Sembako',
             ReportType::Pickups => 'Penjemputan',
             ReportType::Participation => 'Partisipasi',
+            ReportType::DigitalPayouts => 'Digital (simulasi)',
         };
     }
 }

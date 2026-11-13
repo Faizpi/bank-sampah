@@ -9,6 +9,8 @@ use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\Deposits\Models\Deposit;
 use App\Domain\Deposits\Models\DepositItem;
 use App\Domain\Groceries\Models\GroceryRedemption;
+use App\Domain\Payouts\Models\SandboxPayout;
+use App\Domain\Payouts\Services\PayoutChannels;
 use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Platform\Enums\MediaVisibility;
 use App\Domain\Platform\Models\Media;
@@ -63,7 +65,7 @@ final readonly class ReportExportService
         }
         $matchingRows = $this->matchingRowCount($actor, $type, $filters);
         if ($matchingRows > self::EXPORT_ROW_LIMIT) {
-            throw ValidationException::withMessages(['export' => 'Laporan terlalu besar untuk ekspor sinkron. Persempit periode atau filter laporan.']);
+            throw ValidationException::withMessages(['export' => 'Data laporan terlalu banyak. Pilih periode yang lebih pendek atau tambahkan filter.']);
         }
         $uuid = (string) Str::uuid();
         $export = DB::transaction(function () use ($actor, $type, $fileFormat, $filters, $selectedColumns, $sort, $direction, $uuid): ReportExport {
@@ -250,6 +252,20 @@ final readonly class ReportExportService
     private function recordRow(Model $record, ReportType $type): array
     {
         return match ($type) {
+            ReportType::DigitalPayouts => $record instanceof SandboxPayout ? [
+                'Nomor Pengajuan' => $record->request_number,
+                'Diajukan' => $this->dateValue($record->created_at),
+                'Nama Warga' => (string) data_get($record, 'customer.name', ''),
+                'RT' => (string) data_get($record, 'rt.name', ''),
+                'Area Layanan' => (string) data_get($record, 'serviceArea.name', ''),
+                'Tujuan' => app(PayoutChannels::class)->all()[$record->channel]['name'].' (simulasi)',
+                'Nomor Tersamarkan' => $record->maskedNumber(),
+                'Status Simulasi' => $record->label(),
+                'Nominal Pengajuan (Rp)' => $record->amount,
+                'Referensi Xendit' => $record->provider_id ?? '',
+                'Lingkungan' => 'Xendit Test Mode (tidak mengirim uang riil)',
+                'Pelaksana' => 'Sistem otomatis',
+            ] : [],
             ReportType::Withdrawals => $record instanceof WithdrawalRequest ? [
                 'Nomor Pencairan' => $record->request_number,
                 'Tanggal Dibayar' => $this->dateValue($record->paid_at),
@@ -443,6 +459,9 @@ final readonly class ReportExportService
         if (in_array($type, [ReportType::Deposits, ReportType::Participation], true)) {
             $headers = array_merge($headers, ['Jenis Sampah', 'Kondisi Sampah', 'Berat Item (kg)', 'Harga per Satuan (Rp)', 'Nilai Item (Rp)']);
         }
+        if ($type === ReportType::DigitalPayouts) {
+            $headers = array_merge($headers, ['Lingkungan', 'Pelaksana']);
+        }
 
         return array_values(array_unique($headers));
     }
@@ -450,6 +469,11 @@ final readonly class ReportExportService
     private function headerForColumn(ReportType $type, string $column): string
     {
         return match ($type->value.':'.$column) {
+            'digital_payouts:request_number' => 'Nomor Pengajuan', 'digital_payouts:created_at' => 'Diajukan',
+            'digital_payouts:customer_name' => 'Nama Warga', 'digital_payouts:rt' => 'RT', 'digital_payouts:service_area' => 'Area Layanan',
+            'digital_payouts:channel' => 'Tujuan', 'digital_payouts:masked_number' => 'Nomor Tersamarkan',
+            'digital_payouts:status' => 'Status Simulasi', 'digital_payouts:amount' => 'Nominal Pengajuan (Rp)',
+            'digital_payouts:provider_id' => 'Referensi Xendit', 'digital_payouts:environment' => 'Lingkungan', 'digital_payouts:executor' => 'Pelaksana',
             'deposits:deposit_number', 'participation:deposit_number' => 'Nomor Setoran',
             'deposits:occurred_at', 'participation:occurred_at' => 'Tanggal Setoran',
             'deposits:customer_number', 'participation:customer_number', 'withdrawals:customer_number', 'groceries:customer_number' => 'Nomor Nasabah',

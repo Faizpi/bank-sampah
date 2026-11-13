@@ -7,7 +7,7 @@
         'pending' => ['icon' => 'clock-3', 'classes' => 'bg-warning-bg text-deep-green'],
         'in_progress' => ['icon' => 'loader-circle', 'classes' => 'bg-info-bg text-deep-green'],
         'success' => ['icon' => 'circle-check', 'classes' => 'bg-success-bg text-deep-green'],
-        'error' => ['icon' => 'circle-x', 'classes' => 'bg-danger-bg text-terracotta'],
+        'error' => ['icon' => 'circle-x', 'classes' => 'bg-danger-bg text-text-primary'],
         'cancelled' => ['icon' => 'ban', 'classes' => 'bg-disabled-bg text-text-primary'],
         'closed' => ['icon' => 'ban', 'classes' => 'bg-disabled-bg text-text-primary'],
         'expired' => ['icon' => 'timer-off', 'classes' => 'bg-disabled-bg text-text-primary'],

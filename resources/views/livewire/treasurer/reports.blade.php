@@ -1,13 +1,19 @@
-<x-slot:title>{{ $surface === 'treasurer' ? 'Riwayat pembayaran saya' : 'Laporan '.($reportTypes[$reportType] ?? 'Tidak diizinkan') }}</x-slot:title>
+<x-slot:title>{{ $surface === 'treasurer' ? 'Riwayat pencairan' : 'Laporan '.($reportTypes[$reportType] ?? 'Tidak diizinkan') }}</x-slot:title>
 <x-slot:date>{{ now()->translatedFormat('d F Y') }}</x-slot:date>
 <x-slot:connectivity><x-ui.connectivity-status /></x-slot:connectivity>
 
 <section class="space-y-6" aria-labelledby="reports-title">
-    @if (config('payouts.enabled'))<a href="{{ route('payout.monitor') }}" class="app-interactive inline-flex min-h-touch items-center rounded-lg border border-forest-600 px-4 font-bold text-forest-700">Pantauan digital (simulasi)</a>@endif
-    <x-ui.page-heading id="reports-title" :title="$surface === 'treasurer' ? 'Riwayat pembayaran saya' : 'Laporan '.($reportTypes[$reportType] ?? 'Tidak diizinkan')" description="Pilih periode, lihat ringkasan, lalu unduh Excel." mascot="5" />
+    <x-ui.page-heading id="reports-title" :title="$surface === 'treasurer' ? 'Riwayat pencairan' : 'Laporan '.($reportTypes[$reportType] ?? 'Tidak diizinkan')" description="Pilih periode, lihat ringkasan, lalu unduh Excel." mascot="5" />
+    @if ($surface === 'treasurer' && $digitalAvailable)
+        <div role="group" aria-label="Metode pencairan" class="grid grid-cols-2 gap-3">
+            <x-ui.button :variant="! $isDigital ? 'primary' : 'secondary'" wire:click="selectMethod('tunai')" :aria-pressed="! $isDigital ? 'true' : 'false'" wire:loading.attr="disabled" wire:target="selectMethod"><x-public.icon name="banknote" />Tunai</x-ui.button>
+            <x-ui.button :variant="$isDigital ? 'primary' : 'secondary'" wire:click="selectMethod('digital')" :aria-pressed="$isDigital ? 'true' : 'false'" wire:loading.attr="disabled" wire:target="selectMethod"><x-public.icon name="wallet-cards" />Digital (simulasi)</x-ui.button>
+        </div>
+    @endif
+    @if ($isDigital)<p role="note" class="rounded-lg border border-border bg-warning-bg p-4">Simulasi Xendit (tanpa pengiriman uang riil).</p>@elseif ($surface === 'treasurer')<p class="text-body-sm text-text-secondary">Pembayaran tunai yang Anda catat.</p>@endif
 
     {{-- Metric Cards --}}
-    <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+    <div @class(['grid grid-cols-2 gap-3', 'sm:grid-cols-3' => count($metricDefinitions) !== 4, 'lg:grid-cols-5' => count($metricDefinitions) === 5, 'lg:grid-cols-4' => count($metricDefinitions) === 4])>
         @foreach ($metricDefinitions as $metric)
             @php($isCurrency = $metric['format'] === 'currency')
             <div class="rounded-xl border {{ $isCurrency ? 'border-forest-600/30 bg-success-bg' : 'border-border bg-surface' }} p-4 shadow-xs">
@@ -57,11 +63,11 @@
             @endif
             @if ($surface === 'backoffice')
             <x-ui.select wire:model="serviceAreaId" name="serviceAreaId" label="Area pelayanan (opsional)" :options="$serviceAreas->all()" :error="$errors->first('serviceAreaId')"><option value="">Semua area</option></x-ui.select>
+            @endif
             @if (count($statusOptions) > 1)
             <x-ui.select wire:model="status" name="status" label="Status (opsional)" :options="$statusOptions" :error="$errors->first('status')"><option value="">Semua status</option></x-ui.select>
             @endif
-            @endif
-            <x-ui.input wire:model="search" name="search" label="Nomor transaksi" placeholder="Contoh: STR-2026-001" />
+            <x-ui.input wire:model="search" name="search" label="Nomor transaksi" placeholder="Cari nomor transaksi" />
             <x-ui.button type="submit" wire:loading.attr="disabled" class="justify-self-end lg:self-end">
                 <span wire:loading.remove>Terapkan</span>
                 <span wire:loading>Menerapkan...</span>
@@ -70,7 +76,7 @@
     </x-ui.panel>
 
     {{-- Export --}}
-    <x-ui.panel title="Ekspor Excel" description="Unduh data sesuai filter aktif untuk disimpan atau dibagikan secara internal.">
+    <x-ui.panel title="Unduh laporan" description="Laporan Excel mengikuti periode dan filter yang dipilih.">
         @error('export')
             <div role="alert" class="mb-4 rounded-md border border-terracotta bg-danger-bg p-4 text-body-sm text-text-primary">
                 <p class="font-semibold text-deep-green">Ekspor tidak dapat dibuat</p>
@@ -91,7 +97,7 @@
     </x-ui.panel>
 
     <x-ui.panel title="Hasil laporan">
-        <p wire:loading wire:target="refreshReport,setPeriod" role="status" aria-live="polite" class="mb-4 text-body-sm font-semibold text-text-secondary">Memuat hasil laporan sesuai filter...</p>
+        <p wire:loading wire:target="refreshReport,setPeriod" role="status" aria-live="polite" class="mb-4 text-body-sm font-semibold text-text-secondary">Memuat laporan...</p>
         <div wire:loading wire:target="refreshReport,setPeriod" class="grid gap-3" aria-hidden="true">
             @for ($item = 0; $item < 3; $item++)
                 <div class="rounded-md border border-border bg-warm-canvas p-4">
@@ -111,7 +117,7 @@
                         <div><dt class="text-text-secondary">Waktu</dt><dd class="font-semibold text-deep-green">{{ $row['date'] }}</dd></div>
                         <div><dt class="text-text-secondary">Nasabah</dt><dd class="font-semibold text-deep-green">{{ $row['subject'] }}</dd></div>
                         <div><dt class="text-text-secondary">Detail</dt><dd class="text-deep-green">{{ $row['detail'] }}</dd></div>
-                        <div><dt class="text-text-secondary">Status</dt><dd class="font-semibold text-deep-green">{{ \App\Support\StatusLabel::for($row['status']) }}</dd></div>
+                        <div><dt class="text-text-secondary">Status</dt><dd class="font-semibold text-deep-green">{{ $row['status_label'] ?? \App\Support\StatusLabel::for($row['status']) }}</dd></div>
                         <div>
                             <dt class="text-text-secondary">{{ $isWeight ? 'Estimasi berat' : 'Nilai' }}</dt>
                             <dd class="amount-tabular font-semibold text-deep-green">
@@ -125,6 +131,7 @@
                             </dd>
                         </div>
                     </dl>
+                    @if (filled($row['diagnostic'] ?? null))<details class="mt-3 border-t border-border pt-2"><summary class="min-h-touch cursor-pointer font-semibold">Informasi pengajuan</summary><p class="break-words py-2 text-body-sm">{{ $row['diagnostic'] }}</p></details>@endif
                 </article>
             @empty
                 <x-ui.empty-state kind="no-results" title="Tidak ada hasil" description="Ubah periode atau hapus filter untuk melihat data lain." />
@@ -150,7 +157,7 @@
                             <td class="whitespace-nowrap px-3 py-2 text-text-secondary">{{ $row['date'] }}</td>
                             <td class="px-3 py-2 text-deep-green">{{ $row['subject'] }}</td>
                             <td class="px-3 py-2 text-text-secondary">{{ $row['detail'] }}</td>
-                            <td class="px-3 py-2 text-text-secondary">{{ \App\Support\StatusLabel::for($row['status']) }}</td>
+                            <td class="px-3 py-2 text-text-secondary">{{ $row['status_label'] ?? \App\Support\StatusLabel::for($row['status']) }}@if (filled($row['diagnostic'] ?? null))<details class="mt-2"><summary class="min-h-touch cursor-pointer font-semibold">Informasi pengajuan</summary><p class="max-w-sm break-words py-2">{{ $row['diagnostic'] }}</p></details>@endif</td>
                             <td class="px-3 py-2 text-right amount-tabular">
                                 @if ($row['value'] === '' || $row['value'] === null)
                                     —

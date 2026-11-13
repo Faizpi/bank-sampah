@@ -101,7 +101,7 @@ final class Wave9ContractsTest extends TestCase
 
         self::assertContains('service_area_id', $contract['filters']);
         self::assertContains('status', $contract['filters']);
-        self::assertSame(['deposits', 'withdrawals', 'groceries', 'pickups', 'participation'], $contract['report_types']);
+        self::assertSame(['deposits', 'withdrawals', 'groceries', 'pickups', 'participation', 'digital_payouts'], $contract['report_types']);
         self::assertSame('paid_at', $contract['report_columns']['withdrawals'][1]);
         self::assertSame('handed_over_at', $contract['report_columns']['groceries'][1]);
         self::assertContains('completed_at', $contract['report_columns']['pickups']);

@@ -323,13 +323,16 @@ final class CitizenTelegramBot
     {
         if (! isset($p['kind'])) {
             $ctx->say('Pilih riwayat.', [BotContext::button('Setoran', 'citizen.history', ['kind' => 'deposit']), BotContext::button('Pencairan', 'citizen.history', ['kind' => 'cash']), BotContext::button('Sembako', 'citizen.history', ['kind' => 'grocery']), BotContext::button('Penjemputan', 'citizen.history', ['kind' => 'pickup'])]);
-            if (config('payouts.enabled')) {
-                $ctx->say('Riwayat pencairan digital (simulasi) tersedia terpisah dari pembayaran tunai.', [BotContext::button('Riwayat digital (simulasi)', 'payout.history')]);
-            }
 
             return;
         }
         $kind = (string) $p['kind'];
+        if ($kind === 'cash' && ! isset($p['method']) && PayoutAccess::configured()) {
+            $ctx->say('Pilih metode pencairan.', [BotContext::button('Tunai', 'citizen.history', ['kind' => 'cash', 'method' => 'cash']),
+                BotContext::button('Digital (simulasi)', 'payout.history'), BotContext::button('Menu', 'menu')]);
+
+            return;
+        }
         $page = max(1, (int) ($p['page'] ?? 1));
         $records = $this->records($actor, $kind)->orderByDesc('id')->paginate(5, ['*'], 'page', $page);
         $text = [];
@@ -340,7 +343,7 @@ final class CitizenTelegramBot
             $buttons[] = BotContext::button('Rincian #'.($i + 1), 'citizen.detail', ['kind' => $kind, 'id' => $row->id]);
         }
         if ($records->hasMorePages()) {
-            $buttons[] = BotContext::button('Berikutnya', 'citizen.history', ['kind' => $kind, 'page' => $page + 1]);
+            $buttons[] = BotContext::button('Berikutnya', 'citizen.history', ['kind' => $kind, 'page' => $page + 1, 'method' => $kind === 'cash' ? 'cash' : null]);
         }
         $buttons[] = BotContext::button('Menu', 'menu');
         $ctx->say($text === [] ? 'Belum ada riwayat pada pilihan ini.' : implode("\n", $text), $buttons);

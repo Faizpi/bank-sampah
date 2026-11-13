@@ -6,6 +6,7 @@ namespace App\Livewire\Treasurer;
 
 use App\Authorization\PermissionChecker;
 use App\Domain\CustomersRegions\Models\ServiceArea;
+use App\Domain\Reports\Enums\ReportType;
 use App\Domain\Reports\Policies\ReportTypeAccess;
 use App\Domain\Reports\Services\ReportExportService;
 use App\Domain\Reports\Services\ReportQueryService;
@@ -16,6 +17,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 #[Layout('layouts.officer')]
@@ -26,6 +28,9 @@ final class Reports extends Component
     public string $end = '';
 
     public string $reportType = 'withdrawals';
+
+    #[Url(as: 'metode', history: true)]
+    public string $method = 'tunai';
 
     #[Locked]
     public string $surface = ReportTypeAccess::TREASURER;
@@ -69,6 +74,11 @@ final class Reports extends Component
         abort_unless($actor instanceof User && $permissions->allows($actor, 'report.view'), 403);
         $this->reportTypes = $reportTypes->optionsFor($this->surface);
         $this->reportType = $reportTypes->defaultFor($this->surface)->value;
+        if ($this->method === 'digital' && isset($this->reportTypes[ReportType::DigitalPayouts->value])) {
+            $this->reportType = ReportType::DigitalPayouts->value;
+        } else {
+            $this->method = 'tunai';
+        }
         $today = today('Asia/Jakarta');
         $this->month = $today->format('m');
         $this->year = $today->format('Y');
@@ -142,6 +152,8 @@ final class Reports extends Component
     public function render(): View
     {
         return view('livewire.treasurer.reports', [
+            'digitalAvailable' => isset($this->reportTypes[ReportType::DigitalPayouts->value]),
+            'isDigital' => $this->reportType === ReportType::DigitalPayouts->value,
             'serviceAreas' => ServiceArea::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'years' => array_combine(
                 range((int) today('Asia/Jakarta')->year - 2, (int) today('Asia/Jakarta')->year + 1),
@@ -157,21 +169,46 @@ final class Reports extends Component
 
     public function updatedReportType(): void
     {
+        $this->method = $this->reportType === ReportType::DigitalPayouts->value ? 'digital' : 'tunai';
         $this->status = '';
         $this->refreshReport(app(ReportQueryService::class), app(ReportTypeAccess::class));
+    }
+
+    public function selectMethod(string $method): void
+    {
+        abort_unless(in_array($method, ['tunai', 'digital'], true), 422);
+        $type = $method === 'digital' ? ReportType::DigitalPayouts : ReportType::Withdrawals;
+        abort_unless(isset($this->reportTypes[$type->value]), 422);
+        $this->method = $method;
+        $this->reportType = $type->value;
+        $this->status = '';
+        $this->search = '';
+        $this->refreshReport(app(ReportQueryService::class), app(ReportTypeAccess::class));
+    }
+
+    public function updatedMethod(): void
+    {
+        $this->selectMethod($this->method);
     }
 
     private function validatePeriod(): void
     {
         $this->validate([
             'period' => ['required', 'in:today,week,month,custom'],
-            'month' => ['required_if:period,month', 'integer', 'between:1,12'],
+            'month' => ['required_if:period,month', 'regex:/^(?:0?[1-9]|1[0-2])$/D'],
             'year' => ['required_if:period,month', 'integer', 'between:2000,2100'],
             'start' => ['required', 'date_format:Y-m-d'],
             'end' => ['required', 'date_format:Y-m-d', 'after_or_equal:start'],
             'search' => ['nullable', 'string', 'max:100'],
             'serviceAreaId' => ['nullable', 'integer', 'min:1'],
         ]);
+    }
+
+    /** @return array<string, string> */
+    protected function validationAttributes(): array
+    {
+        return ['period' => 'periode', 'month' => 'bulan', 'year' => 'tahun', 'start' => 'tanggal mulai',
+            'end' => 'tanggal akhir', 'search' => 'nomor transaksi', 'serviceAreaId' => 'area layanan'];
     }
 
     /** @return array{0: string, 1: string} */

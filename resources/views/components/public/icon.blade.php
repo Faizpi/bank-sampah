@@ -17,6 +17,10 @@
         'book-open'     => 'book-open',
         'calendar-days' => 'calendar-days',
         'chevron-right' => 'chevron-right',
+        'chevron-down'  => 'chevron-down',
+        'plus'          => 'plus',
+        'history'       => 'history',
+        'receipt'       => 'receipt',
         'circle-alert'  => 'circle-alert',
         'circle-check'  => 'circle-check',
         'clock-3'       => 'clock-3',
@@ -61,6 +65,18 @@
     @if ($label) role="img" aria-label="{{ $label }}" @else aria-hidden="true" @endif
 >
     @switch($resolvedName)
+        @case('plus')
+            <path d="M12 5v14M5 12h14"/>
+            @break
+        @case('chevron-down')
+            <path d="m6 9 6 6 6-6"/>
+            @break
+        @case('history')
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/>
+            @break
+        @case('receipt')
+            <path d="M4 3v18l4-2 4 2 4-2 4 2V3l-4 2-4-2-4 2Z"/><path d="M8 9h8M8 13h6"/>
+            @break
         @case('arrow-left')
             <path d="M19 12H5"/><path d="m11 6-6 6 6 6"/>
             @break

@@ -61,7 +61,8 @@ it('scopes monitor and masked CSV to current treasurer areas while admin sees al
     $csv = $this->actingAs($this->treasurer)->get(route('payout.report', $filters))->assertOk()->streamedContent();
     expect($csv)->toContain($row->request_number, 'Sandbox', "'=DANGEROUS()", 'Sistem otomatis')->not->toContain('081234567890');
     StaffServiceArea::where('staff_profile_user_id', $this->treasurer->id)->update(['active_to' => today()->subDay()]);
-    $this->get(route('payout.monitor'))->assertOk()->assertDontSee($row->request_number);
+    $this->get(route('payout.monitor'))->assertRedirect(route('treasurer.reports', ['metode' => 'digital']));
+    $this->get(route('treasurer.reports', ['metode' => 'digital']))->assertOk()->assertDontSee($row->request_number);
     expect($this->get(route('payout.report', $filters))->streamedContent())->not->toContain($row->request_number);
     $this->actingAs($this->admin)->get(route('payout.report', $filters))->assertOk();
     expect($this->get(route('payout.report', $filters))->streamedContent())->toContain($row->request_number);
