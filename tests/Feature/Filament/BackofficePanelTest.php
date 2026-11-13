@@ -141,6 +141,7 @@ final class BackofficePanelTest extends TestCase
             'technical-settings.blade.php' => [
                 'settings-queue-backlog-threshold' => 'settings.queue_backlog_threshold',
                 'settings-backup-max-age-hours' => 'settings.backup_max_age_hours',
+                'settings-withdrawal-minimum' => 'settings.withdrawal_minimum_amount',
             ],
             'technical-backups.blade.php' => [
                 'backup-database-alias' => 'backupDatabaseAlias',

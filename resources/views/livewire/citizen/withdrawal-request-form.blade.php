@@ -36,7 +36,7 @@
             @endif
             <x-ui.input wire:model.live.debounce.300ms="amount" label="Nominal (rupiah)" name="amount"
                 inputmode="numeric" placeholder="Contoh: 25000"
-                :hint="$isAmountOverBalance ? 'Nominal melebihi saldo tersedia.' : 'Nominal final tidak dapat diubah setelah diajukan.'"
+                :hint="$isAmountOverBalance ? 'Nominal melebihi saldo tersedia.' : 'Minimal Rp '.number_format(app(\App\Domain\Withdrawals\Services\WithdrawalMinimum::class)->amount(), 0, ',', '.')"
                 :error="$errors->first('amount')" />
             <x-ui.input wire:model="pickupDate" label="Tanggal pengambilan" name="pickupDate"
                 type="date"

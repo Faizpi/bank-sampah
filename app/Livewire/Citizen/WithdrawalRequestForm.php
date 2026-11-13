@@ -6,6 +6,7 @@ namespace App\Livewire\Citizen;
 
 use App\Domain\Ledger\Models\LedgerAccount;
 use App\Domain\Payouts\Services\PayoutAccess;
+use App\Domain\Withdrawals\Services\WithdrawalMinimum;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
 use App\Support\LocalInput;
@@ -78,7 +79,7 @@ final class WithdrawalRequestForm extends Component
             return;
         }
         $this->amount = LocalInput::rupiah($this->amount);
-        $minimumAmount = (int) config('app.withdrawal_minimum_amount', 10_000);
+        $minimumAmount = app(WithdrawalMinimum::class)->amount();
         $validated = $this->validate([
             'amount' => ['required', 'integer', 'min:'.$minimumAmount],
             'pickupLocation' => ['required', 'string', 'min:3', 'max:255'],

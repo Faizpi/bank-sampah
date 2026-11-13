@@ -17,6 +17,7 @@ use App\Domain\Pickups\Models\PickupRequest;
 use App\Domain\Pickups\Services\PickupService;
 use App\Domain\WasteMaster\Queries\PublicWasteCatalog;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
+use App\Domain\Withdrawals\Services\WithdrawalMinimum;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
 use App\Support\StatusLabel;
@@ -167,7 +168,7 @@ final class CitizenTelegramBot
             $ctx->say('Pilih paket. '.$this->balance($actor), $rows->map(fn ($row): array => BotContext::button($row->name.' · '.BotInput::rupiah($row->value), 'citizen.package', ['id' => $row->id]))->all());
         } elseif ($data['flow'] === 'withdrawal') {
             $ctx->state('citizen.withdrawal.amount', $data);
-            $ctx->say('Berapa rupiah yang ingin dicairkan? Contoh: 25000. '.$this->balance($actor), PayoutAccess::configured() ? [BotContext::button('Ganti metode', 'citizen.withdrawal')] : []);
+            $ctx->say('Berapa rupiah yang ingin dicairkan? Minimal Rp '.number_format(app(WithdrawalMinimum::class)->amount(), 0, ',', '.').'. '.$this->balance($actor), PayoutAccess::configured() ? [BotContext::button('Ganti metode', 'citizen.withdrawal')] : []);
         } else {
             $this->datePrompt($ctx, 'citizen.pickup.date', $data);
         }
@@ -376,7 +377,7 @@ final class CitizenTelegramBot
         $buttons = [BotContext::button('Menu', 'menu')];
         if ($row instanceof Deposit) {
             $text .= "\n".BotInput::rupiah($row->effectiveTotalValue()).' · '.$row->total_weight_kg.' kg';
-            $buttons[] = ['label' => 'Kuitansi web', 'url' => route('citizen.deposit-receipt', $id)];
+            $buttons[] = ['label' => 'Kuitansi web', 'url' => route('citizen.deposit-receipt', $row)];
         } elseif ($row instanceof PickupRequest) {
             $text .= "\n".$row->selected_date->translatedFormat('d M Y')."\n".$row->address;
             if ($row->status === PickupStatus::Waiting) {
@@ -389,7 +390,7 @@ final class CitizenTelegramBot
                 $buttons[] = BotContext::button('Batal / minta pembatalan', 'citizen.cancel', ['kind' => $kind, 'id' => $id]);
             }
             if ($row->receipt_ledger_entry_id !== null) {
-                $buttons[] = ['label' => 'Bukti web', 'url' => route($kind === 'cash' ? 'citizen.withdrawal.receipt' : 'citizen.grocery.receipt', $id)];
+                $buttons[] = ['label' => 'Bukti web', 'url' => route($kind === 'cash' ? 'citizen.withdrawal.receipt' : 'citizen.grocery.receipt', $row)];
             }
         }
         $ctx->say($text, $buttons);

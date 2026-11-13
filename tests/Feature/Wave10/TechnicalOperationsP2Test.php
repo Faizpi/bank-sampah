@@ -6,11 +6,13 @@ use App\Domain\AuditReconciliation\Models\AuditLog;
 use App\Domain\AuditReconciliation\Services\AuditLogger;
 use App\Domain\AuditReconciliation\Services\AuditRetentionService;
 use App\Domain\Operations\Enums\BackupStatus;
+use App\Domain\Operations\Models\OperationalSetting;
 use App\Domain\Operations\Services\BackupArtifact;
 use App\Domain\Operations\Services\BackupArtifactPair;
 use App\Domain\Operations\Services\BackupLifecycleService;
 use App\Domain\Operations\Services\BackupRequest;
 use App\Domain\Operations\Services\OperationalSettingsService;
+use App\Domain\Withdrawals\Services\WithdrawalMinimum;
 use App\Filament\Pages\OperationsDashboard;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -46,6 +48,37 @@ it('updates only allowlisted non-secret settings and audits the sanitized values
             'queue_backlog_threshold' => 25,
             'backup_max_age_hours' => 48,
         ]);
+});
+
+it('saves a bounded admin withdrawal minimum used by cash and digital validation after config caching', function (): void {
+    $actor = operationsP2User('system.settings.manage');
+    $service = app(OperationalSettingsService::class);
+    $service->update($actor, ['withdrawal_minimum_amount' => 5000]);
+    config()->set('app.withdrawal_minimum_amount', 10000);
+    expect(app(WithdrawalMinimum::class)->amount())->toBe(5000)
+        ->and(OperationalSetting::query()->where('key', 'withdrawal_minimum_amount')->value('value'))->toBe('5000')
+        ->and(AuditLog::query()->where('action', 'system.settings.updated')->latest('id')->value('new_values'))->toBe(['withdrawal_minimum_amount' => 5000]);
+
+    expect(fn () => $service->update($actor, ['withdrawal_minimum_amount' => 4999]))->toThrow(ValidationException::class);
+    expect(fn () => $service->update($actor, ['withdrawal_minimum_amount' => 1000001]))->toThrow(ValidationException::class);
+});
+
+it('does not allow an environment fallback to lower the protected payout minimum below five thousand', function (): void {
+    config()->set('app.withdrawal_minimum_amount', 1000);
+    expect(app(WithdrawalMinimum::class)->amount())->toBe(5000)
+        ->and(app(OperationalSettingsService::class)->values()['withdrawal_minimum_amount'])->toBe(5000);
+});
+
+it('ignores a stored payout minimum outside the supported range', function (): void {
+    $actor = operationsP2User('system.settings.manage');
+    $service = app(OperationalSettingsService::class);
+    $service->update($actor, ['withdrawal_minimum_amount' => 5000]);
+    OperationalSetting::query()->where('key', 'withdrawal_minimum_amount')->update(['value' => '1000']);
+    config()->set('app.withdrawal_minimum_amount', 15000);
+
+    expect($service->values()['withdrawal_minimum_amount'])->toBe(15000)
+        ->and(config('app.withdrawal_minimum_amount'))->toBe(15000)
+        ->and(app(WithdrawalMinimum::class)->amount())->toBe(15000);
 });
 
 it('maps each invalid technical setting only to its matching manual field', function (): void {

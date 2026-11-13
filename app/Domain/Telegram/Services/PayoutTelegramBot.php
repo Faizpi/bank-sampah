@@ -8,6 +8,7 @@ use App\Domain\Payouts\Models\SandboxPayout;
 use App\Domain\Payouts\Services\PayoutAccess;
 use App\Domain\Payouts\Services\PayoutChannels;
 use App\Domain\Payouts\Services\PayoutService;
+use App\Domain\Withdrawals\Services\WithdrawalMinimum;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
 
@@ -70,7 +71,7 @@ final class PayoutTelegramBot
             abort_unless($ctx->conversation->state === 'payout.channel', 422);
             app(PayoutChannels::class)->get((string) $parameters['channel']);
             $ctx->state('payout.name', [...$data, 'channel' => (string) $parameters['channel']]);
-            $ctx->say('Kirim nama pemilik tujuan uji. Contoh: Siti Aminah. Gunakan data uji; nama dan nomor tujuan akan dikirim ke Xendit Test Mode.', [BotContext::button('Ganti metode', 'citizen.withdrawal')]);
+            $ctx->say('Kirim nama pemilik tujuan uji. Contoh: Siti Aminah.', [BotContext::button('Ganti metode', 'citizen.withdrawal')]);
         } elseif ($command === 'payout.submit') {
             abort_unless($ctx->conversation->state === 'payout.review', 422);
             $row = app(PayoutService::class)->request($actor, [...$data, 'confirmed' => true], (string) $data['key']);
@@ -85,14 +86,14 @@ final class PayoutTelegramBot
             } elseif ($state === 'payout.number') {
                 $data['number'] = app(PayoutChannels::class)->normalizeNumber((string) $data['channel'], $text);
                 $ctx->state('payout.amount', $data);
-                $ctx->say('Berapa rupiah yang ingin dicairkan dalam simulasi? Contoh: 20000. Saldo disisihkan saat pengajuan dikonfirmasi.', [BotContext::button('Ganti metode', 'citizen.withdrawal')]);
+                $ctx->say('Berapa rupiah yang ingin dicairkan dalam simulasi? Minimal Rp '.number_format(app(WithdrawalMinimum::class)->amount(), 0, ',', '.').'. Saldo disisihkan saat pengajuan dikonfirmasi.', [BotContext::button('Ganti metode', 'citizen.withdrawal')]);
             } elseif ($state === 'payout.amount') {
                 $data['amount'] = BotInput::money($text);
                 $quote = app(PayoutService::class)->quote($actor, $data);
                 $data = [...$quote, 'key' => $data['key']];
                 $ctx->state('payout.review', $data);
                 $channel = app(PayoutChannels::class)->get($quote['channel']);
-                $ctx->say('Pencairan digital (simulasi)'."\nAkun: ".$actor->name."\nTujuan: ".$channel['name']."\nNama pemilik: ".$quote['name']."\nNomor uji: ".$quote['number']."\nNominal: ".BotInput::rupiah($quote['amount'])."\nTidak ada uang riil yang dikirim.", [BotContext::button('Konfirmasi pencairan simulasi', 'payout.submit'), BotContext::button('Ganti metode', 'citizen.withdrawal'), BotContext::button('Batal isi', 'cancel-input')]);
+                $ctx->say('Pencairan digital (simulasi)'."\nAkun: ".$actor->name."\nTujuan: ".$channel['name']."\nNama pemilik: ".$quote['name']."\nNomor uji: ".$quote['number']."\nNominal: ".BotInput::rupiah($quote['amount'])."\nNama dan nomor tujuan dikirim ke Xendit untuk simulasi. Tidak ada uang riil yang dikirim.", [BotContext::button('Konfirmasi pencairan simulasi', 'payout.submit'), BotContext::button('Ganti metode', 'citizen.withdrawal'), BotContext::button('Batal isi', 'cancel-input')]);
             } else {
                 $ctx->say('Gunakan tombol terbaru atau ketik /menu untuk memulai kembali.');
             }
@@ -150,7 +151,7 @@ final class PayoutTelegramBot
             $buttons[] = BotContext::button('Batalkan sebelum diproses', 'payout.cancel', ['id' => $row->id]);
         }
         if (! $monitor) {
-            $buttons[] = ['label' => 'Rincian dan bukti web', 'url' => route('citizen.payout.show', $row->id)];
+            $buttons[] = ['label' => 'Rincian dan bukti web', 'url' => route('citizen.payout.show', $row)];
         }
         $ctx->say($row->request_number."\n".$row->label()."\n".$channel['name'].' (simulasi) · '.$row->maskedNumber()."\n".BotInput::rupiah($row->amount)."\nDiproses otomatis oleh sistem (Xendit Sandbox).\nTidak ada dana riil yang dikirim.", $buttons);
     }

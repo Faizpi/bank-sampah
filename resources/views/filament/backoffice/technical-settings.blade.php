@@ -3,6 +3,12 @@
         <h2 id="technical-settings-title" class="text-xl font-semibold text-gray-950">Pengaturan teknis</h2>
         <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-600">Atur ambang operasional yang aman. Rahasia aplikasi, kata sandi, token, dan data login tetap tersimpan di server aplikasi.</p>
         <form wire:submit="saveSettings" class="mt-6 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+                <label for="settings-withdrawal-minimum" class="block text-sm font-medium text-gray-800">Minimum pencairan (Rp)</label>
+                <input id="settings-withdrawal-minimum" wire:model="settings.withdrawal_minimum_amount" type="number" min="5000" max="1000000" required class="mt-2 backoffice-form-control" @error('settings.withdrawal_minimum_amount') aria-invalid="true" aria-describedby="settings-withdrawal-minimum-error" @enderror>
+                <p class="mt-2 text-sm text-gray-600">Berlaku untuk pencairan tunai dan digital simulasi. Batas Rp5.000 adalah aturan aplikasi; kanal Xendit tertentu dapat punya batas sendiri.</p>
+                @error('settings.withdrawal_minimum_amount')<p id="settings-withdrawal-minimum-error" class="mt-2 text-sm text-danger-700" role="alert">{{ $message }}</p>@enderror
+            </div>
             <div>
                 <label for="settings-queue-backlog-threshold" class="block text-sm font-medium text-gray-800">Ambang antrean pekerjaan</label>
                 <input id="settings-queue-backlog-threshold" wire:model="settings.queue_backlog_threshold" type="number" min="1" max="8760" required class="mt-2 backoffice-form-control" @error('settings.queue_backlog_threshold') aria-invalid="true" aria-describedby="settings-queue-backlog-threshold-error" @enderror>

@@ -21,6 +21,7 @@ final readonly class OperationalSettingsService
     private const ALLOWED_SETTINGS = [
         'queue_backlog_threshold' => 'operations.health.queue_backlog_threshold',
         'backup_max_age_hours' => 'operations.health.backup_max_age_hours',
+        'withdrawal_minimum_amount' => 'app.withdrawal_minimum_amount',
     ];
 
     public function __construct(
@@ -47,7 +48,8 @@ final readonly class OperationalSettingsService
                 throw ValidationException::withMessages(['settings' => 'Nilai pengaturan harus bilangan bulat positif.']);
             }
             $value = (int) $value;
-            if ($value < 1 || $value > 8_760) {
+            $minimum = $key === 'withdrawal_minimum_amount' ? 5_000 : 1;
+            if ($value < $minimum || $value > ($key === 'withdrawal_minimum_amount' ? 1_000_000 : 8_760)) {
                 throw ValidationException::withMessages(['settings' => 'Nilai pengaturan berada di luar batas.']);
             }
             $normalized[$key] = $value;
@@ -120,22 +122,30 @@ final readonly class OperationalSettingsService
         }
     }
 
-    /** @return array{queue_backlog_threshold: int, backup_max_age_hours: int} */
+    /** @return array{queue_backlog_threshold: int, backup_max_age_hours: int, withdrawal_minimum_amount: int} */
     public function values(): array
     {
         $values = [
             'queue_backlog_threshold' => (int) config(self::ALLOWED_SETTINGS['queue_backlog_threshold'], 100),
             'backup_max_age_hours' => (int) config(self::ALLOWED_SETTINGS['backup_max_age_hours'], 24),
+            'withdrawal_minimum_amount' => min(1_000_000, max(5_000, (int) config(self::ALLOWED_SETTINGS['withdrawal_minimum_amount'], 10000))),
         ];
         if (! Schema::hasTable('settings')) {
             return $values;
         }
 
         foreach (OperationalSetting::query()->whereIn('key', array_keys(self::ALLOWED_SETTINGS))->get(['key', 'value']) as $setting) {
-            if (array_key_exists($setting->key, $values) && ctype_digit((string) $setting->value)) {
-                $values[$setting->key] = (int) $setting->value;
-                config()->set(self::ALLOWED_SETTINGS[$setting->key], $values[$setting->key]);
+            if (! array_key_exists($setting->key, $values) || ! ctype_digit((string) $setting->value)) {
+                continue;
             }
+
+            $storedValue = (int) $setting->value;
+            if ($setting->key === 'withdrawal_minimum_amount' && ($storedValue < 5_000 || $storedValue > 1_000_000)) {
+                continue;
+            }
+
+            $values[$setting->key] = $storedValue;
+            config()->set(self::ALLOWED_SETTINGS[$setting->key], $storedValue);
         }
 
         return $values;

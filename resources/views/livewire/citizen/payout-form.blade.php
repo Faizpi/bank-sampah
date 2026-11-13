@@ -21,20 +21,19 @@
         <div class="grid gap-4 sm:grid-cols-2">
             <x-ui.input name="recipientName" label="Nama pemilik tujuan uji" placeholder="Contoh: Siti Aminah" wire:model="recipientName" :error="$errors->first('name')" />
             <x-ui.input name="accountNumber" :label="in_array($channel, ['dana', 'gopay'], true) ? 'Nomor dompet digital uji' : 'Nomor rekening uji'" :placeholder="in_array($channel, ['dana', 'gopay'], true) ? 'Contoh: 081234567890' : 'Contoh: 0123456789'" inputmode="numeric" wire:model="accountNumber" :error="$errors->first('number')" />
-            <x-ui.input name="amount" label="Nominal pencairan (Rp)" placeholder="Contoh: 20000" inputmode="numeric" wire:model="amount" :error="$errors->first('amount')" />
+            <x-ui.input name="amount" label="Nominal pencairan (Rp)" placeholder="Contoh: 20000" :hint="'Minimal Rp '.number_format(app(\App\Domain\Withdrawals\Services\WithdrawalMinimum::class)->amount(), 0, ',', '.')" inputmode="numeric" wire:model="amount" :error="$errors->first('amount')" />
             @if ($serviceAreas->count() > 1)<x-ui.select name="serviceAreaId" label="Area layanan" wire:model="serviceAreaId">@foreach ($serviceAreas as $area)<option value="{{ $area->id }}">{{ $area->name }}</option>@endforeach</x-ui.select>@endif
         </div>
-        @unless ($previewOnly)<p class="text-body-sm text-text-secondary">Gunakan data uji. Data tujuan dikirim ke Xendit Test Mode.</p>@endunless
         <x-ui.button wire:click="review" wire:loading.attr="disabled" :disabled="$previewOnly">{{ $previewOnly ? 'Pengajuan belum aktif' : 'Periksa pengajuan' }}</x-ui.button>
     @else
         <x-ui.panel title="Periksa tujuan dan nominal">
             <dl class="grid gap-4">
-                <div><dt>Tujuan</dt><dd class="font-bold">{{ $channels[$channel]['name'] }} (simulasi)</dd></div>
+                <div><dt>Tujuan</dt><dd class="flex flex-wrap items-center gap-2 font-bold"><img src="{{ asset($channels[$channel]['logo']) }}" alt="" data-channel-logo class="h-7 w-20 object-contain object-left">{{ $channels[$channel]['name'] }} (simulasi)</dd></div>
                 <div><dt>Nama pemilik</dt><dd class="break-words font-semibold">{{ $recipientName }}</dd></div>
                 <div><dt>Nomor tujuan uji</dt><dd class="break-all font-semibold">{{ $accountNumber }}</dd></div>
                 <div><dt>Nominal</dt><dd class="amount-tabular text-h2 font-bold">Rp {{ number_format((int) $amount, 0, ',', '.') }}</dd></div>
             </dl>
-            <p class="mt-4">Saldo disisihkan sampai simulasi selesai.</p>
+            <p class="mt-4">Nama dan nomor tujuan dikirim ke Xendit untuk simulasi. Saldo disisihkan sampai simulasi selesai.</p>
         </x-ui.panel>
         <div class="flex flex-wrap gap-3"><x-ui.button variant="secondary" wire:click="edit">Periksa lagi</x-ui.button><x-ui.button wire:click="submit" wire:loading.attr="disabled">Konfirmasi pencairan simulasi</x-ui.button></div>
     @endif

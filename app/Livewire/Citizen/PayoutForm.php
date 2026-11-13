@@ -71,7 +71,7 @@ final class PayoutForm extends Component
             throw ValidationException::withMessages(['payout' => 'Periksa kembali ringkasan sebelum mengonfirmasi pencairan simulasi.']);
         }
         $row = $service->request($this->actor(), [...$this->data(), 'confirmed' => true], $this->idempotencyKey);
-        $this->redirectRoute('citizen.payout.show', ['payout' => $row->id], navigate: true);
+        $this->redirectRoute('citizen.payout.show', ['payout' => $row], navigate: true);
     }
 
     public function render(): View

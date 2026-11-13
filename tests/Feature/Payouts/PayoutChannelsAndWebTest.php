@@ -9,6 +9,8 @@ use App\Domain\Payouts\Services\PayoutAccess;
 use App\Domain\Payouts\Services\PayoutChannels;
 use App\Domain\Payouts\Services\PayoutService;
 use App\Domain\Payouts\Services\PayoutWorker;
+use App\Domain\Operations\Services\OperationalSettingsService;
+use App\Domain\Withdrawals\Services\WithdrawalMinimum;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
 use App\Filament\Pages\SandboxPayouts;
 use App\Livewire\Citizen\PayoutForm;
@@ -42,7 +44,7 @@ it('requires a server verified review before creating a payout from the web', fu
     $screen->call('review')->assertHasNoErrors()->assertSee('Konfirmasi pencairan simulasi');
     $screen->set('accountNumber', '081234567891')->call('submit')->assertHasErrors('payout');
     expect(SandboxPayout::count())->toBe(0);
-    $screen->call('review')->call('submit')->assertHasNoErrors()->assertRedirect(route('citizen.payout.show', 1));
+    $screen->call('review')->call('submit')->assertHasNoErrors()->assertRedirect(route('citizen.payout.show', SandboxPayout::firstOrFail()));
     expect(SandboxPayout::firstOrFail()->recipient['number'])->toBe('081234567891');
     expect(WithdrawalRequest::count())->toBe(0)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(55000);
     Http::assertNothingSent();
@@ -55,6 +57,36 @@ it('renders the six local original logos and labels all choices as simulation', 
         expect(is_file(public_path($row['logo'])))->toBeTrue();
         $screen->assertSee(asset($row['logo']), false);
     }
+});
+
+it('shows the configured minimum for cash and digital without repeating the old footnote', function (): void {
+    config()->set('app.withdrawal_minimum_amount', 15000);
+    $this->actingAs($this->owner);
+    Livewire::test(PayoutForm::class)->assertSee('Minimal Rp 15.000')
+        ->assertDontSee('Gunakan data uji. Data tujuan dikirim ke Xendit Test Mode.')
+        ->set('channel', 'bca')->set('recipientName', 'Siti Aminah')->set('accountNumber', '0123456789')->set('amount', '10000')
+        ->call('review')->assertHasErrors('amount')->set('amount', '15000')->call('review')->assertHasNoErrors()
+        ->assertSee('Nama dan nomor tujuan dikirim ke Xendit untuk simulasi.')->assertSee(asset('images/payouts/bca.svg'), false);
+    Livewire::test(WithdrawalRequestForm::class)->call('chooseCash')->assertSee('Minimal Rp 15.000')
+        ->set('amount', '10000')->set('pickupLocation', 'Loket')->call('submit')->assertHasErrors('amount');
+    Http::assertNothingSent();
+});
+
+it('uses the admin saved minimum across requests for cash and digital without claiming provider support', function (): void {
+    $admin = User::where('username', 'admin')->firstOrFail();
+    app(OperationalSettingsService::class)->update($admin, ['withdrawal_minimum_amount' => 5000]);
+    config()->set('app.withdrawal_minimum_amount', 10000);
+    expect(app(WithdrawalMinimum::class)->amount())->toBe(5000);
+    $this->actingAs($this->owner);
+    Livewire::test(PayoutForm::class)->assertSee('Minimal Rp 5.000')
+        ->set('channel', 'bca')->set('recipientName', 'Siti Aminah')->set('accountNumber', '0123456789')->set('amount', '4999')
+        ->call('review')->assertHasErrors('amount')->set('amount', '5000')->call('review')->assertHasNoErrors();
+    $cash = Livewire::test(WithdrawalRequestForm::class)->call('chooseCash')->assertSee('Minimal Rp 5.000')
+        ->set('amount', '4999')->set('pickupLocation', 'Loket')->call('submit')->assertHasErrors('amount');
+    expect(fn () => app(OperationalSettingsService::class)->update($this->owner, ['withdrawal_minimum_amount' => 1]))->toThrow(\Illuminate\Auth\Access\AuthorizationException::class);
+    $cash->set('amount', '5000')->set('pickupLocation', 'Loket')->call('submit')->assertHasNoErrors();
+    expect(SandboxPayout::count())->toBe(0)->and(WithdrawalRequest::count())->toBe(1)->and(BalanceHold::count())->toBe(1);
+    Http::assertNothingSent();
 });
 
 it('normalizes Indonesian e wallet numbers without changing leading zeros on bank accounts', function (): void {

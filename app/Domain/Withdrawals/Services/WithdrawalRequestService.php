@@ -180,7 +180,7 @@ final readonly class WithdrawalRequestService
 
     private function amount(mixed $value): int
     {
-        if ((is_string($value) && ! ctype_digit($value)) || (! is_int($value) && ! is_string($value)) || (int) $value < (int) config('app.withdrawal_minimum_amount', 10_000)) {
+        if ((is_string($value) && ! ctype_digit($value)) || (! is_int($value) && ! is_string($value)) || (int) $value < app(WithdrawalMinimum::class)->amount()) {
             throw ValidationException::withMessages(['amount' => 'Nominal harus berupa rupiah integer dan memenuhi minimum.']);
         }
 

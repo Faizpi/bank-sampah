@@ -13,6 +13,12 @@ Implementasi 10 November 2026 tersedia pada source web dan Telegram. Fitur nonak
 
 Enam tujuan: BCA, Mandiri, BRI, BNI, DANA, GoPay. Logo asli lokal hanya penanda, bukan klaim afiliasi. Dukungan dan routing v3 harus dikonfirmasi pada akun Xendit. Belum ada bukti keenam tujuan diterima akun provider milik peneliti. Tujuan tanpa routing tidak dapat diajukan. Jangan menyalin `bank_code` API lama ke routing v3 secara asumsi.
 
+Minimum pencairan aplikasi memakai konfigurasi awal `WITHDRAWAL_MINIMUM_AMOUNT` (Rp10.000). Admin dengan izin Pengaturan Teknis dapat menyimpan nilai Rp5.000 sampai Rp1.000.000 pada Pengaturan, dan nilai tersimpan berlaku pada validasi tunai, digital, dan Telegram. Ini hanya minimum aplikasi. Dokumentasi publik Xendit yang diperiksa tidak menyatakan satu minimum universal untuk keenam kanal; kemampuan Rp5.000 harus dipastikan per kanal melalui Test Mode. Tabel batas deskripsi/panjang karakter tidak boleh ditafsirkan sebagai minimum payout.
+
+Pengaturan minimum memakai tabel `settings` yang sudah tersedia, ditampilkan pada halaman Pengaturan Teknis, divalidasi server, dan dicatat di audit. Halaman Cadangan tetap menjadi halaman terpisah untuk alur backup/pemulihan berpasangan; penambahan minimum tidak mengubah atau menjalankan backup.
+
+Tautan detail transaksi baru memakai nomor permintaan/setoran, tautan berkas privat dan ekspor memakai UUID, sedangkan konteks setoran Petugas memakai nomor nasabah, nomor draf, dan nomor layanan keliling. Tugas sembako dan riwayat pekerjaan Petugas juga memakai nomor permintaan. Route lama ber-ID angka tetap didukung untuk bookmark, tetapi setiap permintaan tetap melalui pemeriksaan kepemilikan, penugasan, dan izin.
+
 Digital memakai `SandboxPayout`, bukan `WithdrawalRequest`, sehingga klaim/serah tunai tidak dapat menyelesaikannya. Tunai dan sembako tetap tersedia. Angka digital bukan pengeluaran kas fisik pada rekonsiliasi; ada pembanding ledger digital tersendiri.
 
 ## Penetapan database simulasi
@@ -61,6 +67,8 @@ Urutan pada instalasi riset yang disiapkan pemilik:
 5. Daftarkan URL HTTPS instalasi riset `/xendit/payout-webhook` pada pengaturan Payouts v3 di dashboard Xendit Test Mode dengan token yang cocok. Lima nama `v3_payout.*` adalah nilai event JSON, bukan lima URL yang harus diisi jika dashboard hanya menyediakan satu kolom Payouts v3. Payload contoh dashboard bukan transaksi aplikasi; referensi non-UUID atau transaksi tidak dikenal tetap ditolak. Webhook Telegram berbeda dan tidak perlu dipasang ulang.
 6. Cron memanggil `php artisan schedule:run` setiap menit. `payouts:work --limit=10` berjalan tiap menit saat fitur aktif, dengan lease/lock overlap dan batas waktu. Tidak perlu queue daemon baru. deploy.php menyediakan proses manual maksimal lima pengajuan.
 7. Uji akun provider sebenarnya untuk setiap tujuan yang akan digunakan. Catat hasil/provider ID, webhook, gagal, duplikat, timeout, reversal tanpa mempublikasikan data/rahasia. Bukti otomatis tiruan bukan pengganti langkah ini.
+
+Tautan transaksi baru menggunakan kode permintaan (`SIM-...`, `WDR-...`, `GRC-...`, `PUP-...`, atau `DEP-...`), UUID untuk berkas privat dan ekspor, serta nomor nasabah/nomor layanan untuk konteks petugas. Route lama dengan ID angka tetap menerima bookmark lama. Kode tautan bukan otorisasi; middleware dan pemeriksaan pemilik tetap wajib dijalankan.
 
 Jangan mematikan cron ketika permintaan masih pending. Selesaikan pemeriksaan hasil/hold sebelum menonaktifkan fitur; menonaktifkan fitur tidak membatalkan transaksi atau melepas hold otomatis.
 

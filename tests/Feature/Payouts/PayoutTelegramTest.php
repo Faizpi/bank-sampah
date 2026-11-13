@@ -176,3 +176,20 @@ it('keeps the original cash flow when digital is disabled', function (): void {
         ->and(Bot::lastText('10001'))->toContain('Berapa rupiah');
     expect(BalanceHold::count())->toBe(0);
 });
+
+it('shows the configured minimum for cash and digital and discloses the data transfer before confirmation', function (): void {
+    config()->set('app.withdrawal_minimum_amount', 15000);
+    Bot::text('10001', '/menu');
+    Bot::click('10001', 'Cairkan saldo');
+    Bot::click('10001', 'Tunai');
+    expect(Bot::lastText('10001'))->toContain('Minimal Rp 15.000');
+    Bot::click('10001', 'Ganti metode');
+    Bot::click('10001', 'Digital (simulasi)');
+    Bot::click('10001', 'BCA (simulasi)');
+    Bot::text('10001', 'Siti Aminah');
+    Bot::text('10001', '0123456789');
+    expect(Bot::lastText('10001'))->toContain('Minimal Rp 15.000');
+    Bot::text('10001', '15000');
+    expect(Bot::lastText('10001'))->toContain('Nama dan nomor tujuan dikirim ke Xendit untuk simulasi.');
+    expect(SandboxPayout::count())->toBe(0)->and(BalanceHold::count())->toBe(0);
+});

@@ -140,16 +140,20 @@ class OperationsDashboard extends Page
     {
         $this->assertPageOperation(__FUNCTION__);
         try {
-            app(OperationalSettingsService::class)->update($this->actor(), [
+            $values = [
                 'queue_backlog_threshold' => $this->settings['queue_backlog_threshold'] ?? 0,
                 'backup_max_age_hours' => $this->settings['backup_max_age_hours'] ?? 0,
-            ]);
+            ];
+            if (array_key_exists('withdrawal_minimum_amount', $this->settings)) {
+                $values['withdrawal_minimum_amount'] = $this->settings['withdrawal_minimum_amount'];
+            }
+            app(OperationalSettingsService::class)->update($this->actor(), $values);
         } catch (ValidationException $exception) {
             $message = collect($exception->errors())->flatten()->first() ?? 'Pengaturan tidak valid.';
             $fieldErrors = [];
 
-            foreach (['queue_backlog_threshold', 'backup_max_age_hours'] as $key) {
-                if ($this->invalidSettingValue($this->settings[$key] ?? null)) {
+            foreach (array_keys($values) as $key) {
+                if ($this->invalidSettingValue($this->settings[$key] ?? null, $key === 'withdrawal_minimum_amount' ? 1_000_000 : 8_760, $key === 'withdrawal_minimum_amount' ? 5_000 : 1)) {
                     $fieldErrors['settings.'.$key] = $message;
                 }
             }
@@ -353,13 +357,13 @@ class OperationsDashboard extends Page
         ];
     }
 
-    private function invalidSettingValue(mixed $value): bool
+    private function invalidSettingValue(mixed $value, int $maximum = 8_760, int $minimum = 1): bool
     {
         if (! is_int($value) && (! is_string($value) || ! ctype_digit($value))) {
             return true;
         }
 
-        return (int) $value < 1 || (int) $value > 8_760;
+        return (int) $value < $minimum || (int) $value > $maximum;
     }
 
     private function parseRetentionUntil(): CarbonImmutable

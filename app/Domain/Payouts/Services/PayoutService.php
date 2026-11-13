@@ -11,6 +11,7 @@ use App\Domain\Ledger\Services\LedgerService;
 use App\Domain\Notifications\Data\NotificationPayload;
 use App\Domain\Notifications\Events\NotificationRequested;
 use App\Domain\Payouts\Models\SandboxPayout;
+use App\Domain\Withdrawals\Services\WithdrawalMinimum;
 use App\Domain\Withdrawals\Services\WithdrawalService;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -34,7 +35,7 @@ final readonly class PayoutService
             'channel' => ['required', 'string', 'in:bca,mandiri,bri,bni,dana,gopay'],
             'name' => ['required', 'string', 'min:2', 'max:100', "regex:/^[\\p{L}\\p{N} .'-]+$/u"],
             'number' => ['required', 'string', 'max:30'],
-            'amount' => ['required', 'integer', 'min:'.(int) config('app.withdrawal_minimum_amount', 10000), 'max:'.(int) config('payouts.max_amount')],
+            'amount' => ['required', 'integer', 'min:'.app(WithdrawalMinimum::class)->amount(), 'max:'.(int) config('payouts.max_amount')],
             'service_area_id' => ['nullable', 'integer'],
         ], [
             'channel.required' => 'Pilih bank atau dompet digital tujuan.',
@@ -177,7 +178,7 @@ final readonly class PayoutService
         NotificationRequested::dispatch(new NotificationPayload(
             recipientId: $payout->customer_id, type: 'payout.updated', title: 'Pencairan digital (simulasi)',
             body: $payout->request_number.': '.$payout->label().'. Tidak ada dana riil yang dikirim.',
-            reference: '/warga/pencairan-digital/'.$payout->id, dedupeKey: 'payout:'.$payout->id.':'.$payout->status,
+            reference: '/warga/pencairan-digital/'.$payout->request_number, dedupeKey: 'payout:'.$payout->id.':'.$payout->status,
         ));
     }
 
