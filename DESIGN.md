@@ -23,6 +23,10 @@ Pengguna dapat mengetahui status, pelaksana, dan tindakan berikutnya tanpa memin
 
 ## Information architecture
 
+Penyelarasan 13 November 2026: Bendahara memakai satu halaman Riwayat pencairan dengan pilihan Tunai/Digital (simulasi), filter periode/status, kartu ringkasan, hasil laporan, dan unduh Excel yang sama. Tunai tetap pembayaran yang dicatat sendiri; digital mengikuti wilayah tugas aktif dan tidak menambah total kas tunai. Admin membaca detail digital dalam modal tabel Filament, bukan melalui tautan ke halaman Bendahara. Laporan umum backoffice juga menyediakan kategori Digital (simulasi). URL pantauan lama diarahkan sesuai peran; tidak mengubah akun, transaksi, atau penugasan.
+
+Penyelarasan 12 November 2026: riwayat Warga tetap memiliki tiga tujuan Setoran, Pencairan, dan Sembako. Halaman Pencairan memakai satu route `/warga/riwayat-pencairan` dengan pilihan Tunai atau Digital (simulasi), tersimpan dalam query `metode`. URL riwayat digital lama mengarah ke pilihan digital di halaman yang sama. Gunakan page-heading bermaskot, button berikon dengan state terpilih, transaction-row, badge, empty-state, dan filter dalam disclosure. Telegram juga menempatkan pilihan metode di bawah Riwayat lalu Pencairan. Hapus penjelasan birokrasi dan larangan pengajuan ulang yang berulang pada layar normal; pengaman server, status dana disisihkan, konfirmasi, dan penanda simulasi tetap berlaku.
+
 Penyelarasan 11 November 2026: Beranda dan Layanan hanya menyediakan satu pintu `Cairkan Saldo`. Bila digital tersedia atau sedang dipratinjau lokal, halaman pencairan terlebih dahulu menawarkan dua action-card `Tunai` dan `Digital (simulasi)`. Setelah memilih Tunai, formulir memakai satu aksi sekunder `Ganti metode`; digital kembali ke pilihan yang sama. Tidak ada tombol digital tambahan di bawah tindakan cepat atau kartu layanan kelima. Saat digital nonaktif, formulir tunai tetap langsung tersedia seperti sebelumnya. Kartu pilihan memakai komponen action-card yang sama, dengan elemen button untuk aksi Livewire dan link untuk navigasi.
 
 Navigasi Warga: Beranda, Kartu, Layanan, Riwayat, Akun. Layanan menyediakan semua layanan, bukan hanya penjemputan. Petugas: Tugas, Setoran, Layanan, Riwayat, Akun; Tugas memisahkan Menunggu dan Tugas saya yang aktif, sedangkan Riwayat memuat Setoran/Penjemputan/Sembako yang sudah dikerjakan sendiri dan hanya-baca. Bendahara: Tugas, Pembayaran, Laporan, Akun. Admin kembali ke pusat kerja dari layar bersama; master/teknis ada di kelompok lanjutan yang dapat dilipat.
@@ -39,7 +43,9 @@ Gunakan token, font Plus Jakarta Sans, SVG, warna, radius, spacing, dan reduced 
 
 ## Components
 
-Pencairan digital memakai `ui.page-heading`, maskot lokal, form berlabel dengan contoh data uji, serta kartu pilihan logo/radio (dua kolom ponsel, tiga desktop). Pilihan belum terkonfigurasi tampil disabled dengan alasan. Layar tinjauan wajib mendahului konfirmasi server; detail memuat nomor/status/tujuan tersamarkan/nominal serta pelaksana sistem. Riwayat terpisah dari tunai dan tidak menambah tujuan bottom-nav. Form/detail mengaktifkan Layanan; riwayat digital mengaktifkan Riwayat. Pantauan Bendahara/Admin baca saja. Gunakan token, target sentuh, hover/fokus, reduced motion yang sudah ada.
+Status memuat login dan pendaftaran mengikuti lebar formulir dengan `wire:loading.flex` dan `w-full`, agar Livewire tidak mengganti susunannya menjadi inline-block. Pertahankan spinner, keterangan singkat, status aksesibel, dan tombol kirim yang nonaktif selama proses.
+
+Pencairan digital memakai `ui.page-heading`, maskot lokal, form berlabel dengan contoh data uji, serta kartu pilihan logo/radio (dua kolom ponsel, tiga desktop). Pilihan belum terkonfigurasi tampil disabled dengan alasan. Layar tinjauan wajib mendahului konfirmasi server; detail memuat nomor/status/tujuan tersamarkan/nominal serta pelaksana sistem. Riwayat menyatu dengan tunai melalui pilihan metode, tidak menambah tujuan bottom-nav. Form/detail mengaktifkan Layanan; halaman riwayat mengaktifkan Riwayat. Pantauan Bendahara/Admin baca saja. Gunakan token, target sentuh, hover/fokus, reduced motion yang sudah ada.
 
 Gunakan komponen Blade ui yang ada. Antrean dipaginasi, hasil pencarian warga tidak memilih diam-diam kandidat pertama, dan lampiran tampil dalam disclosure. Tabel kompleks Filament menyediakan ringkasan/aksi ponsel; detail transaksi keuangan baca-saja tersedia sebelum keputusan pengecualian.
 
@@ -70,6 +76,10 @@ Validasi 360/390/768/1280. Form ponsel satu kolom; pasangan kondisi/berat pada b
 Bedakan kosong, tidak ditemukan, menunggu, diklaim, terkunci, selesai, dan gagal. Draf Petugas bukan kuitansi Warga. Kunci pengecualian menyembunyikan aksi biasa. Layanan keliling yang masih terbuka tetap dapat ditutup setelah jam jadwal lewat. Receipt/public verification selalu berasal dari data server, termasuk invalidasi token.
 
 ## Content voice
+
+Penyelarasan 13 November: kode HTTP/provider, nama field seperti recipient.address, serta petunjuk konfigurasi tidak tampil pada Warga, Bendahara, atau modal backoffice. Gunakan pesan yang menjelaskan hasil pengajuan dan status saldo. Simpan rincian teknis di konsol diagnosis terlindungi; jangan hanya menyembunyikannya secara visual sambil mengirimnya sebagai data baris frontend.
+
+Penyuntingan 12 November 2026 mengikuti Humanizer Indonesia dengan ragam semiformal yang netral untuk antarmuka. Kalimat langsung menyebut tindakan atau hasil; hapus penjelasan implementasi, pengulangan judul, dan catatan izin pada layar normal. Gunakan saldo disisihkan, data setoran, hasil penimbangan, dan hasil pencairan sebagai pengganti jargon yang tidak dibutuhkan pengguna. Informasi nominal, status, harga saat draf dibuat, privasi, penanda simulasi, serta peringatan pada penyerahan yang bermasalah tetap dipertahankan. Teks ketentuan/privasi dan data yang ditulis pengguna tidak ditulis ulang. Penghapusan teks tambahan mengikuti permintaan pemilik, bukan pemangkasan isi transaksi.
 
 Semua layar/notifikasi/bukti digital harus menyebut simulasi dan tidak adanya pengiriman dana riil. Bukti bukan struk bank. Logo adalah penanda tujuan, bukan kemitraan. Teks baru tidak memakai em dash; gunakan tanda kurung. Jangan menyebut persetujuan atau serah fisik Bendahara untuk digital.
 

@@ -1,5 +1,32 @@
 # Catatan perubahan
 
+## Rekonsiliasi status Xendit (13 November 2026)
+
+- Pemeriksaan hosting menunjukkan GoPay berhasil di Xendit Test Mode tetapi masih diperiksa di website. Respons GET tidak menyertakan nominal sumber; pencocokan GET kini menerima field sumber yang tidak ada sambil tetap menolak nilai yang tidak cocok dan memeriksa tujuan serta nominal sebelum mengonversi saldo tertahan.
+- Diagnostik status tidak pasti dengan ID provider menggunakan GET tanpa mengirim ulang atau mengubah saldo dan hanya menampilkan hasil kecocokan. Hasil di hosting setelah deployment masih perlu diverifikasi.
+
+## Pemeriksaan penolakan request Xendit (13 November 2026)
+
+- Mengonfirmasi pengajuan GoPay pada hosting mendapat `payout.http_400:API_VALIDATION_ERROR`; tidak ada klaim bahwa payout tersebut berhasil dibuat atau bahwa cron telah diverifikasi melalui log eksekusi.
+- Memperluas pembacaan nama field validasi tersaring, termasuk awalan body/header, JSON pointer, array lokasi, dan rincian bertingkat. Pesan mentah dan nilai isian tetap tidak disimpan.
+- Diagnosis memeriksa struktur snapshot request lama tanpa menampilkan nilai tujuan atau mengirim ulang. Lulus struktur inti bukan bukti kelengkapan persyaratan akun Xendit.
+- Menyatukan riwayat tunai/digital pada laporan Bendahara dengan filter dan ekspor Excel; menambahkan kategori digital pada laporan backoffice serta detail modal pada tabel Admin tanpa tautan keluar panel.
+- Mempertahankan lingkup pembayaran tunai sendiri dan digital per wilayah, tujuan tersamarkan, penanda simulasi pada ekspor, serta pemisahan dari kas fisik. Memperbaiki filter bulan berawalan nol.
+- Berdasarkan penolakan alamat pada hosting, melengkapi alamat penelitian fiktif khusus Test Mode tanpa mengambil alamat Warga. Konfigurasi yang tidak lengkap ditolak sebelum pembuatan hold; pengajuan lama tidak ditulis ulang.
+- Memisahkan pesan antarmuka dari diagnosis teknis: kode provider, HTTP, nama field API, dan petunjuk konfigurasi tidak ditampilkan pada halaman biasa maupun modal Admin.
+
+## Penanganan penolakan Xendit (12 November 2026)
+
+- Melengkapi objek negara/alamat penerima pada request Payouts v3 untuk web dan Telegram tanpa menyalin alamat pribadi Warga.
+- Membedakan penolakan POST pertama yang terkonfirmasi dari timeout, kegagalan GET, konflik idempotensi, dan hasil tidak pasti; penolakan pertama yang sah melepas hold tanpa mutasi keluar.
+- Menampilkan petunjuk error tersaring pada pantauan/diagnosis tanpa menyimpan pesan, body, header, atau nilai isian provider.
+- Menambahkan pemulihan terarah pada deploy.php untuk kasus HTTP 400 lama, dengan konfirmasi operator, satu nomor SIM, pemeriksaan upaya pertama, dan audit tanpa pengiriman ulang.
+- Memperjelas bahwa diagnosis konfigurasi bukan uji provider dan satu kolom webhook Payouts v3 dapat menerima kelima event.
+- Menyatukan riwayat pencairan Warga pada pilihan Tunai/Digital dengan filter, baris transaksi, ikon, badge, dan komponen Green Ledger. URL digital lama diarahkan, bukan menghapus data; menu riwayat Telegram mengikuti pilihan yang sama.
+- Menghapus teks larangan pengajuan ulang dan penjelasan tanpa Bendahara yang berulang dari tampilan pencairan normal, tanpa menghapus pengaman transaksi server.
+- Merapikan bahasa halaman publik, riwayat/bukti Warga, formulir Petugas, laporan Bendahara, panel Admin, dan bot dengan Humanizer Indonesia. Menghapus uraian teknis berulang tanpa mengubah nominal, otorisasi, privasi, atau aturan penyerahan.
+- Memperbaiki status memuat pada login/pendaftaran agar selebar formulir dan tetap memakai susunan flex saat Livewire menampilkan statusnya.
+
 ## Pencairan digital simulasi (10 November 2026)
 
 - Menambahkan Xendit Test Mode mandiri pada web dan Telegram untuk BCA, Mandiri, BRI, BNI, DANA, GoPay; routing memerlukan konfirmasi akun provider.
