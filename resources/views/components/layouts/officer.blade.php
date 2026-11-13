@@ -120,7 +120,7 @@
 
     <x-public.offline-status />
 
-    <main id="konten-utama" tabindex="-1" class="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-officer content-start gap-6 px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-6 sm:px-5 md:pb-24 md:pt-8">
+    <main id="konten-utama" tabindex="-1" class="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-officer grid-cols-1 content-start gap-6 px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-6 sm:px-5 md:pb-24 md:pt-8">
         @isset($todayTasks)
             <section data-slot-today-tasks>{{ $todayTasks }}</section>
         @endisset

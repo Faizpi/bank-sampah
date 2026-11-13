@@ -24,7 +24,7 @@ it('preserves the important financial and privacy information while shortening U
     expect(file_get_contents(resource_path('views/livewire/citizen/payout-show.blade.php')))
         ->toContain('tanpa pengiriman uang riil', 'bukan struk resmi', 'Saldo masih disisihkan', 'Saldo yang disisihkan sudah tersedia kembali.');
     expect(file_get_contents(resource_path('views/livewire/citizen/payout-form.blade.php')))
-        ->toContain('Data tujuan dikirim ke Xendit Test Mode.', 'Konfirmasi pencairan simulasi');
+        ->toContain('Nama dan nomor tujuan dikirim ke Xendit untuk simulasi.', 'Konfirmasi pencairan simulasi');
     expect(file_get_contents(resource_path('views/livewire/officer/deposit-form.blade.php')))
         ->toContain('Harga mengikuti waktu draf setoran dibuat.', 'maksimal tiga angka desimal', 'Periksa nama warga dan hasil timbang');
     expect(file_get_contents(resource_path('views/livewire/citizen/withdrawal-show.blade.php')))

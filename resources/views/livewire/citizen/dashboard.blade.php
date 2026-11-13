@@ -65,7 +65,8 @@
         @if ($activePickups->isEmpty() && $activeWithdrawals->isEmpty() && $activeGroceries->isEmpty() && $activePayouts->isEmpty())<p>Tidak ada pengajuan aktif.</p>@endif
         <div class="space-y-2">
             @foreach ($activePayouts as $payout)
-                <a href="{{ route('citizen.payout.show', $payout) }}" class="app-row-action grid gap-2 rounded-xl border border-border bg-surface p-4"><span class="break-all font-bold">{{ $payout->request_number }}</span><span>{{ $payout->label() }} (digital simulasi)</span><span class="amount-tabular font-semibold">Rp {{ number_format($payout->amount, 0, ',', '.') }}</span></a>
+                @php($payoutChannel = app(\App\Domain\Payouts\Services\PayoutChannels::class)->all()[$payout->channel] ?? null)
+                <a href="{{ route('citizen.payout.show', $payout) }}" class="app-row-action grid gap-2 rounded-xl border border-border bg-surface p-4"><span class="break-all font-bold">{{ $payout->request_number }}</span>@if ($payoutChannel)<span class="flex flex-wrap items-center gap-2"><img src="{{ asset($payoutChannel['logo']) }}" alt="" data-channel-logo class="h-6 w-14 object-contain object-left"><span>{{ $payoutChannel['name'] }} (simulasi)</span></span>@endif<span>{{ $payout->label() }}</span><span class="amount-tabular font-semibold">Rp {{ number_format($payout->amount, 0, ',', '.') }}</span></a>
             @endforeach
             @foreach ($activePickups as $pickup)
                 <a href="{{ route('citizen.pickup.show', $pickup) }}" class="flex items-center justify-between rounded-xl border border-border bg-surface p-4 shadow-xs transition hover:border-forest-600 hover:shadow-sm">

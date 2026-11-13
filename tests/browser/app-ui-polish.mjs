@@ -47,7 +47,7 @@ const surfaces = {
 };
 if (fixture) {
     surfaces.warga.push(`/warga/pencairan/${fixture.withdrawalId}`, `/warga/sembako/${fixture.groceryId}`);
-    surfaces.petugas.push(`/petugas/setoran/${fixture.customerId}?draftId=${fixture.draftId}`);
+    surfaces.petugas.push(`/petugas/setoran/${fixture.customerId}?draftNumber=${fixture.draftId}`);
 }
 let browser;
 let activePage;

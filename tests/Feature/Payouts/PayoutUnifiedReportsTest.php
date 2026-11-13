@@ -49,6 +49,7 @@ it('switches cash and digital in the same treasurer report without changing fina
         ->assertDontSee('Pantauan digital (simulasi)');
     $screen->call('selectMethod', 'digital')->assertSet('reportType', 'digital_payouts')->assertSee($this->digital->request_number)
         ->assertDontSee($this->cash->request_number)->assertSee('Simulasi gagal')->assertSee('Sistem')
+        ->assertSee(asset('images/payouts/gopay.webp'), false)
         ->assertSet('metrics.payout_count', 1)->assertSet('metrics.succeeded_amount', 0)->assertSee('Unduh Excel')
         ->assertDontSee('payout.http_')->assertDontSee('API_VALIDATION_ERROR')->assertDontSee('recipient.address')->assertDontSee('routing');
     $screen->call('selectMethod', 'tunai')->assertSee($this->cash->request_number)->assertDontSee($this->digital->request_number);
@@ -98,6 +99,12 @@ it('opens payout details inside the backoffice table without treasury links or f
     expect($details)->toContain($this->digital->request_number, 'Layanan pencairan belum dapat memproses pengajuan ini.', $this->digital->maskedNumber())
         ->not->toContain($this->digital->recipient['number'], 'payout.http_', 'API_VALIDATION_ERROR', 'routing', 'recipient.address');
     Http::assertSentCount(1);
+});
+
+it('shows the correct channel logo in the admin payout table', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+    $this->actingAs($this->admin);
+    Livewire::test(SandboxPayouts::class)->assertSee(asset('images/payouts/gopay.webp'), false)->assertSee('GoPay');
 });
 
 it('exports masked simulation records as private Excel without counting failed requests as paid', function (): void {

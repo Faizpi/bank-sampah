@@ -20,7 +20,7 @@
 
     {{-- Deposits --}}
     <x-ui.panel title="Setoran" description="Bukti final, kanal layanan, dan status transaksi.">
-        <form class="grid gap-4 border-b border-border pb-4 sm:grid-cols-2 lg:grid-cols-5">
+        <form class="grid min-w-0 gap-4 border-b border-border pb-4 sm:grid-cols-2 lg:grid-cols-3">
             <x-ui.input name="transactionNumber" label="Nomor transaksi" placeholder="Cari nomor setoran" wire:model.live.debounce.300ms="transactionNumber" />
             <x-ui.select name="status" label="Status" placeholder="Semua status" wire:model.live="status">
                 @foreach ($statuses as $filterStatus)

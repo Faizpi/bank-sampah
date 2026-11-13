@@ -40,9 +40,31 @@ it('keeps one withdrawal history with cash and digital choices inside the existi
         ->assertSeeHtml(route('citizen.withdrawal.receipt', $this->cash));
     $screen->call('selectMethod', 'digital')->assertSet('method', 'digital')->assertSee('Riwayat Pencairan')
         ->assertSee($this->digital->request_number)->assertSee('BCA (simulasi)')->assertDontSee($this->cash->request_number)
+        ->assertSee(asset('images/payouts/bca.svg'), false)
         ->assertSeeHtml('aria-pressed="true"');
     $screen->call('selectMethod', 'tunai')->assertSee($this->cash->request_number)->assertDontSee($this->digital->request_number);
     expect(BalanceHold::count())->toBe(1)->and(LedgerEntry::count())->toBe(1);
+    Http::assertNothingSent();
+});
+
+it('keeps each completed receipt with its own record and shows digital proof only after success', function (): void {
+    $pending = WithdrawalRequest::factory()->create(['customer_id' => $this->owner->id, 'requested_by_id' => $this->owner->id,
+        'request_number' => 'WDR-PENDING', 'status' => WithdrawalStatus::Waiting]);
+    $cashHtml = Livewire::test(WithdrawalHistory::class)->html();
+    $document = new DOMDocument;
+    @$document->loadHTML($cashHtml);
+    $xpath = new DOMXPath($document);
+    $paid = $xpath->query('//article[@*[name()="wire:key"]="history-tunai-'.$this->cash->id.'"]')->item(0);
+    $unpaid = $xpath->query('//article[@*[name()="wire:key"]="history-tunai-'.$pending->id.'"]')->item(0);
+    expect($paid)->not->toBeNull()->and($unpaid)->not->toBeNull()
+        ->and($xpath->query('.//a[contains(@href, "'.route('citizen.withdrawal.receipt', $this->cash).'")]', $paid)->length)->toBe(1)
+        ->and($xpath->query('.//a[contains(., "Bukti pencairan")]', $unpaid)->length)->toBe(0);
+
+    Livewire::withQueryParams(['metode' => 'digital'])->test(WithdrawalHistory::class)
+        ->assertSee($this->digital->request_number)->assertDontSee('Bukti simulasi');
+    $this->digital->forceFill(['status' => 'succeeded'])->save();
+    Livewire::withQueryParams(['metode' => 'digital'])->test(WithdrawalHistory::class)
+        ->assertSee('Bukti simulasi')->assertSeeHtml(route('citizen.payout.show', $this->digital));
     Http::assertNothingSent();
 });
 

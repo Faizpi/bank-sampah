@@ -1,8 +1,9 @@
-@props(['type', 'reference', 'status' => 'pending', 'statusLabel', 'time', 'method' => null, 'weight' => null, 'value', 'href', 'corrected' => false])
+@props(['type', 'reference', 'status' => 'pending', 'statusLabel', 'time', 'method' => null, 'weight' => null, 'value', 'href', 'corrected' => false, 'divider' => true, 'logo' => null])
 
-<a href="{{ $href }}" {{ $attributes->class('flex min-h-18 min-w-0 flex-col items-stretch gap-2 border-b border-border py-3 text-text-primary hover:bg-success-bg focus-visible:bg-success-bg sm:flex-row sm:items-center sm:gap-3') }}>
+<a href="{{ $href }}" {{ $attributes->class(['flex min-h-18 min-w-0 flex-col items-stretch gap-2 py-3 text-text-primary hover:bg-success-bg focus-visible:bg-success-bg sm:flex-row sm:items-center sm:gap-3', 'border-b border-border' => $divider]) }}>
     <div class="min-w-0 flex-1">
         <div class="flex min-w-0 flex-wrap items-center gap-2">
+            @if ($logo)<img src="{{ asset($logo) }}" alt="" data-channel-logo class="h-6 w-14 shrink-0 object-contain object-left" />@endif
             <span data-transaction-type class="min-w-0 max-w-full break-words text-label text-deep-green">{{ $type }}</span>
             <span aria-hidden="true" class="text-text-secondary">·</span>
             <span data-transaction-reference class="min-w-0 max-w-full break-words [overflow-wrap:anywhere] text-label text-deep-green">{{ $reference }}</span>

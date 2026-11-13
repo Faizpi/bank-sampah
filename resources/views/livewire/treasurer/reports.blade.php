@@ -2,7 +2,7 @@
 <x-slot:date>{{ now()->translatedFormat('d F Y') }}</x-slot:date>
 <x-slot:connectivity><x-ui.connectivity-status /></x-slot:connectivity>
 
-<section class="space-y-6" aria-labelledby="reports-title">
+<section class="min-w-0 space-y-6" aria-labelledby="reports-title">
     <x-ui.page-heading id="reports-title" :title="$surface === 'treasurer' ? 'Riwayat pencairan' : 'Laporan '.($reportTypes[$reportType] ?? 'Tidak diizinkan')" description="Pilih periode, lihat ringkasan, lalu unduh Excel." mascot="5" />
     @if ($surface === 'treasurer' && $digitalAvailable)
         <div role="group" aria-label="Metode pencairan" class="grid grid-cols-2 gap-3">
@@ -18,7 +18,7 @@
             @php($isCurrency = $metric['format'] === 'currency')
             <div class="rounded-xl border {{ $isCurrency ? 'border-forest-600/30 bg-success-bg' : 'border-border bg-surface' }} p-4 shadow-xs">
                 <p class="text-caption font-medium {{ $isCurrency ? 'text-forest-700' : 'text-text-secondary' }}">{{ $metric['label'] }}</p>
-                <strong class="mt-2 block amount-tabular text-h2 font-bold {{ $isCurrency ? 'text-forest-700' : 'text-deep-green' }}">
+                <strong class="mt-2 block min-w-0 break-words [overflow-wrap:anywhere] amount-tabular text-h2 font-bold {{ $isCurrency ? 'text-forest-700' : 'text-deep-green' }}">
                     @if ($metric['format'] === 'currency')
                         Rp {{ number_format((int) $metrics[$metric['key']], 0, ',', '.') }}
                     @elseif ($metric['format'] === 'weight')
@@ -39,13 +39,13 @@
         </div>
     @endif
     <x-ui.panel title="Filter laporan" description="Gunakan pilihan cepat atau tentukan tanggal sendiri.">
-        <div class="mb-4 flex flex-wrap justify-end gap-2" aria-label="Preset periode">
+        <div class="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Preset periode">
             <button type="button" wire:click="setPeriod('today')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'today' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Hari ini</button>
             <button type="button" wire:click="setPeriod('week')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'week' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Minggu ini</button>
             <button type="button" wire:click="setPeriod('month')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'month' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Per bulan</button>
             <button type="button" wire:click="setPeriod('custom')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'custom' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Rentang tanggal</button>
         </div>
-        <form wire:submit="refreshReport" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filter laporan">
+        <form wire:submit="refreshReport" class="grid min-w-0 gap-4 sm:grid-cols-2" aria-label="Filter laporan">
             @if ($surface === 'backoffice')
             <x-ui.select wire:model.live="reportType" name="reportType" label="Jenis laporan" :options="$reportTypes" :error="$errors->first('reportType')" />
             @endif
@@ -68,10 +68,12 @@
             <x-ui.select wire:model="status" name="status" label="Status (opsional)" :options="$statusOptions" :error="$errors->first('status')"><option value="">Semua status</option></x-ui.select>
             @endif
             <x-ui.input wire:model="search" name="search" label="Nomor transaksi" placeholder="Cari nomor transaksi" />
-            <x-ui.button type="submit" wire:loading.attr="disabled" class="justify-self-end lg:self-end">
-                <span wire:loading.remove>Terapkan</span>
-                <span wire:loading>Menerapkan...</span>
-            </x-ui.button>
+            <div class="flex justify-end sm:col-span-2">
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="refreshReport" class="w-full sm:w-auto">
+                    <span wire:loading.remove wire:target="refreshReport">Terapkan</span>
+                    <span wire:loading wire:target="refreshReport">Menerapkan...</span>
+                </x-ui.button>
+            </div>
         </form>
     </x-ui.panel>
 
@@ -98,7 +100,7 @@
 
     <x-ui.panel title="Hasil laporan">
         <p wire:loading wire:target="refreshReport,setPeriod" role="status" aria-live="polite" class="mb-4 text-body-sm font-semibold text-text-secondary">Memuat laporan...</p>
-        <div wire:loading wire:target="refreshReport,setPeriod" class="grid gap-3" aria-hidden="true">
+        <div wire:loading.grid wire:target="refreshReport,setPeriod" class="grid gap-3" aria-hidden="true">
             @for ($item = 0; $item < 3; $item++)
                 <div class="rounded-md border border-border bg-warm-canvas p-4">
                     <div class="h-5 w-40 rounded-md bg-disabled-bg"></div>
@@ -108,7 +110,7 @@
             @endfor
         </div>
         <div wire:loading.remove wire:target="refreshReport,setPeriod">
-        <div class="grid gap-3 md:hidden">
+        <div class="grid gap-3 lg:hidden">
             @forelse ($rows as $row)
                 @php($isWeight = $row['value_format'] === 'weight')
                 <article class="rounded-md border border-border bg-warm-canvas p-4">
@@ -116,7 +118,7 @@
                     <dl class="mt-3 grid gap-2 text-body-sm">
                         <div><dt class="text-text-secondary">Waktu</dt><dd class="font-semibold text-deep-green">{{ $row['date'] }}</dd></div>
                         <div><dt class="text-text-secondary">Nasabah</dt><dd class="font-semibold text-deep-green">{{ $row['subject'] }}</dd></div>
-                        <div><dt class="text-text-secondary">Detail</dt><dd class="text-deep-green">{{ $row['detail'] }}</dd></div>
+                        <div><dt class="text-text-secondary">Detail</dt><dd class="flex flex-wrap items-center gap-2 text-deep-green">@if (filled($row['channel_logo'] ?? null))<img src="{{ asset($row['channel_logo']) }}" alt="" data-channel-logo class="h-6 w-14 shrink-0 object-contain object-left">@endif<span>{{ $row['detail'] }}</span></dd></div>
                         <div><dt class="text-text-secondary">Status</dt><dd class="font-semibold text-deep-green">{{ $row['status_label'] ?? \App\Support\StatusLabel::for($row['status']) }}</dd></div>
                         <div>
                             <dt class="text-text-secondary">{{ $isWeight ? 'Estimasi berat' : 'Nilai' }}</dt>
@@ -137,7 +139,7 @@
                 <x-ui.empty-state kind="no-results" title="Tidak ada hasil" description="Ubah periode atau hapus filter untuk melihat data lain." />
             @endforelse
         </div>
-        <div class="hidden overflow-x-auto md:block">
+        <div class="hidden min-w-0 overflow-x-auto lg:block">
             <table class="min-w-full text-left text-sm" aria-label="Hasil laporan">
                 <thead class="border-b border-border text-caption text-text-secondary">
                     <tr>
@@ -156,7 +158,7 @@
                             <td class="whitespace-nowrap px-3 py-2 font-medium text-deep-green">{{ $row['reference'] }}</td>
                             <td class="whitespace-nowrap px-3 py-2 text-text-secondary">{{ $row['date'] }}</td>
                             <td class="px-3 py-2 text-deep-green">{{ $row['subject'] }}</td>
-                            <td class="px-3 py-2 text-text-secondary">{{ $row['detail'] }}</td>
+                            <td class="px-3 py-2 text-text-secondary"><div class="flex flex-wrap items-center gap-2">@if (filled($row['channel_logo'] ?? null))<img src="{{ asset($row['channel_logo']) }}" alt="" data-channel-logo class="h-6 w-14 shrink-0 object-contain object-left">@endif<span>{{ $row['detail'] }}</span></div></td>
                             <td class="px-3 py-2 text-text-secondary">{{ $row['status_label'] ?? \App\Support\StatusLabel::for($row['status']) }}@if (filled($row['diagnostic'] ?? null))<details class="mt-2"><summary class="min-h-touch cursor-pointer font-semibold">Informasi pengajuan</summary><p class="max-w-sm break-words py-2">{{ $row['diagnostic'] }}</p></details>@endif</td>
                             <td class="px-3 py-2 text-right amount-tabular">
                                 @if ($row['value'] === '' || $row['value'] === null)

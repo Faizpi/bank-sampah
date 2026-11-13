@@ -55,9 +55,10 @@
                     };
                     $detailUrl = $isDigital ? route('citizen.payout.show', $record) : route('citizen.withdrawal.show', $record);
                 @endphp
-                <div wire:key="history-{{ $method }}-{{ $record->id }}">
+                <article class="border-b border-border last:border-b-0" wire:key="history-{{ $method }}-{{ $record->id }}">
                     <x-ui.transaction-row
                         :type="$isDigital ? $channels[$record->channel]['name'].' (simulasi)' : 'Tunai'"
+                        :logo="$isDigital ? $channels[$record->channel]['logo'] : null"
                         :reference="$record->request_number"
                         :status="$badgeStatus"
                         :status-label="$isDigital ? $record->label() : \App\Support\StatusLabel::for($record->status)"
@@ -65,12 +66,15 @@
                         :method="! $isDigital && $record->pickup_date ? 'Ambil '.$record->pickup_date->translatedFormat('d M Y') : null"
                         :value="'Rp '.number_format($record->amount, 0, ',', '.')"
                         :href="$detailUrl"
+                        :divider="false"
                         class="app-row-action"
                     />
                     @if (! $isDigital && $record->status === \App\Domain\Withdrawals\Enums\WithdrawalStatus::Paid)
-                        <a href="{{ route('citizen.withdrawal.receipt', $record) }}" class="app-row-action inline-flex min-h-touch items-center gap-2 rounded-md px-2 font-semibold text-forest-600"><x-public.icon name="receipt" size="size-5" />Bukti pencairan</a>
+                        <div class="flex justify-start pb-3 sm:justify-end"><a href="{{ route('citizen.withdrawal.receipt', $record) }}" class="app-row-action inline-flex min-h-touch items-center gap-2 rounded-md px-3 font-semibold text-forest-600"><x-public.icon name="receipt" size="size-5" />Bukti pencairan</a></div>
+                    @elseif ($isDigital && $record->status === 'succeeded')
+                        <div class="flex justify-start pb-3 sm:justify-end"><a href="{{ $detailUrl }}" class="app-row-action inline-flex min-h-touch items-center gap-2 rounded-md px-3 font-semibold text-forest-600"><x-public.icon name="receipt" size="size-5" />Bukti simulasi</a></div>
                     @endif
-                </div>
+                </article>
             @empty
                 <x-ui.empty-state :kind="$hasFilters ? 'no-results' : 'no-data'"
                     :title="$hasFilters ? 'Pencairan tidak ditemukan' : 'Belum ada pencairan '.($method === 'digital' ? 'digital' : 'tunai')"

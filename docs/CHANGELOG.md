@@ -1,5 +1,12 @@
 # Catatan perubahan
 
+## Pengaturan minimum dan kode tautan transaksi (13 November 2026)
+
+- Menambahkan minimum pencairan yang dapat diubah Admin dari Pengaturan Teknis (Rp5.000 sampai Rp1.000.000), disimpan pada tabel pengaturan yang ada, dicatat pada audit, dan dipakai seragam pada validasi web serta Telegram. Nilai awal tetap Rp10.000. Batas aplikasi Rp5.000 belum membuktikan setiap kanal Xendit menerima nominal itu.
+- Mengganti ID angka pada tautan detail transaksi baru dengan nomor transaksi/setoran, UUID pada tautan bukti privat/ekspor, serta kode nasabah/layanan pada alur setoran Petugas. Bookmark angka lama tetap didukung; otorisasi dan pemeriksaan pemilik tetap berlaku.
+- Memperbarui referensi notifikasi dan penjagaan Telegram agar cocok dengan kode transaksi tanpa mengirim guard atau tautan kepada akun lain.
+- Menampilkan logo tujuan di ringkasan warga, laporan Bendahara dan tabel Admin; membetulkan ukuran SVG bank/dompet, mencantumkan minimum pencairan pada form, dan menghapus footnote teknis yang berulang sambil mempertahankan pemberitahuan privasi sebelum konfirmasi.
+
 ## Rekonsiliasi status Xendit (13 November 2026)
 
 - Pemeriksaan hosting menunjukkan GoPay berhasil di Xendit Test Mode tetapi masih diperiksa di website. Respons GET tidak menyertakan nominal sumber; pencocokan GET kini menerima field sumber yang tidak ada sambil tetap menolak nilai yang tidak cocok dan memeriksa tujuan serta nominal sebelum mengonversi saldo tertahan.

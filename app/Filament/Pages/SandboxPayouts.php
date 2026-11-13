@@ -13,6 +13,7 @@ use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
@@ -47,7 +48,7 @@ final class SandboxPayouts extends Page implements HasTable
         return $table->query(SandboxPayout::query()->with('customer'))->defaultSort('id', 'desc')->columns([
             TextColumn::make('request_number')->label('Pengajuan')->searchable(),
             TextColumn::make('customer.name')->label('Warga')->searchable(),
-            TextColumn::make('channel')->label('Tujuan')->formatStateUsing(fn (string $state): string => app(PayoutChannels::class)->all()[$state]['name']),
+            ViewColumn::make('channel')->label('Tujuan')->view('filament.backoffice.payout-channel'),
             TextColumn::make('amount')->label('Nominal (Rp)')->money('IDR'),
             TextColumn::make('status')->label('Status simulasi')->formatStateUsing(fn (SandboxPayout $record): string => $record->label()),
             TextColumn::make('created_at')->label('Diajukan')->dateTime('d/m/Y H:i'),

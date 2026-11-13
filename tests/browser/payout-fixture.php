@@ -17,7 +17,8 @@ use Tests\Support\PayoutHarness;
 
 $app = require __DIR__.'/bootstrap.php';
 $app->make(Kernel::class)->bootstrap();
-if (DB::getDriverName() !== 'mysql' || DB::connection()->getDatabaseName() !== 'bank_sampah_test_ui_payouts_20261110'
+if (DB::getDriverName() !== 'mysql' || DB::connection()->getDatabaseName() !== getenv('E2E_DB_DATABASE')
+    || preg_match('/^bank_sampah_test_ui_payouts_[a-z0-9]{8,32}$/D', (string) getenv('E2E_DB_DATABASE')) !== 1
     || ! in_array(DB::connection()->getConfig('host'), ['127.0.0.1', 'localhost', '::1'], true)) {
     throw new RuntimeException('Payout browser fixtures require their dedicated loopback test database.');
 }
@@ -40,6 +41,9 @@ if (($argv[1] ?? '') === 'seed') {
     app(PayoutWorker::class)->process($rejected->id);
     WithdrawalRequest::factory()->create(['customer_id' => $owner->id, 'requested_by_id' => $owner->id,
         'request_number' => 'WDR-UI-CASH', 'status' => WithdrawalStatus::Waiting]);
+    WithdrawalRequest::factory()->create(['customer_id' => $owner->id, 'requested_by_id' => $owner->id,
+        'payer_id' => User::where('username', 'bendahara')->firstOrFail()->id, 'paid_at' => now(),
+        'request_number' => 'WDR-UI-PAID', 'status' => WithdrawalStatus::Paid, 'amount' => 10000]);
     echo "Isolated history preview ready (mock provider only).\n";
 } elseif (($argv[1] ?? '') === 'work') {
     PayoutHarness::configure();

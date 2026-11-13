@@ -210,7 +210,7 @@ final readonly class ReportQueryService
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return list<array{reference: string, date: string, subject: string, detail: string, status: string, value: int|string, value_format: 'currency'|'weight', diagnostic?: string, status_label?: string}>
+     * @return list<array{reference: string, date: string, subject: string, detail: string, status: string, value: int|string, value_format: 'currency'|'weight', diagnostic?: string, status_label?: string, channel_logo?: string}>
      */
     public function displayRows(User $actor, string|ReportType $reportType, array $filters, string $sort = 'occurred_at', string $direction = 'desc'): array
     {
@@ -225,7 +225,8 @@ final readonly class ReportQueryService
                 'status' => $this->displayValue($record->getAttribute('status')),
                 'value' => $this->displayAmount($record, $type),
                 'value_format' => $type === ReportType::Pickups ? 'weight' : 'currency',
-                ...($record instanceof SandboxPayout ? ['status_label' => $record->label(), 'diagnostic' => $record->failureNotice() ?? ''] : []),
+                ...($record instanceof SandboxPayout ? ['status_label' => $record->label(), 'diagnostic' => $record->failureNotice() ?? '',
+                    'channel_logo' => app(PayoutChannels::class)->all()[$record->channel]['logo'] ?? ''] : []),
             ];
         }
 

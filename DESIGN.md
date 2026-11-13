@@ -2,7 +2,7 @@
 
 ## Source of truth
 
-Tambahan aktif 10 November 2026: pencairan digital simulasi web/Telegram mengikuti [PAYOUT_SANDBOX.md](docs/PAYOUT_SANDBOX.md). Tidak mengubah identitas Green Ledger atau alur tunai. Logo asli enam tujuan disimpan lokal dan tidak menyatakan afiliasi.
+Tambahan aktif 13 November 2026: Pengaturan Teknis mencakup minimum pencairan bersama, dan rute detail/berkas memakai kode transaksi atau UUID. Nomor nasabah dan layanan keliling menjadi kode konteks pada setoran Petugas. Rincian minimum serta batas Test Mode ada di [PAYOUT_SANDBOX.md](docs/PAYOUT_SANDBOX.md). Pencairan digital simulasi web/Telegram mengikuti dokumen yang sama. Tidak mengubah identitas Green Ledger atau alur tunai. Logo tujuan yang disimpan lokal hanya penanda kanal dan tidak menyatakan afiliasi.
 
 Status: Active. Diperbarui 23 Oktober 2026. Berlaku untuk publik, Warga, Petugas, Bendahara, dan Admin. Kontrak token/komponen ada di [docs/DESIGN.md](docs/DESIGN.md); aturan workflow di [docs/WEB_WORKFLOW.md](docs/WEB_WORKFLOW.md). Keputusan di bawah menggantikan penjelasan pra-cutover yang bertentangan. Sumber keputusan: audit Filament/Blade 8 Oktober, katalog berfoto 9 Oktober, serta perbaikan keterlacakan dan konfirmasi transaksi yang disetujui 21 Oktober 2026.
 
@@ -43,9 +43,13 @@ Gunakan token, font Plus Jakarta Sans, SVG, warna, radius, spacing, dan reduced 
 
 ## Components
 
+Penyelarasan 13 November: setiap baris riwayat pencairan dan tautan buktinya berada dalam satu kelompok dengan garis pemisah setelah keseluruhan kelompok. Bukti tunai tersedia setelah pembayaran; bukti digital bertanda simulasi tersedia setelah status berhasil. Pengajuan yang belum selesai tetap menyediakan rincian, bukan bukti berhasil. Filter laporan Bendahara dan Admin memakai preset periode yang mudah disentuh, bidang dua kolom jika ruang cukup, dan tombol Terapkan pada baris tersendiri. Pada layar sempit bidang dan tombol tidak boleh terpotong; hasil laporan memakai kartu pada ponsel dan tablet, lalu tabel pada layar lebih lebar. Filter riwayat setoran maksimal tiga kolom.
+
 Status memuat login dan pendaftaran mengikuti lebar formulir dengan `wire:loading.flex` dan `w-full`, agar Livewire tidak mengganti susunannya menjadi inline-block. Pertahankan spinner, keterangan singkat, status aksesibel, dan tombol kirim yang nonaktif selama proses.
 
 Pencairan digital memakai `ui.page-heading`, maskot lokal, form berlabel dengan contoh data uji, serta kartu pilihan logo/radio (dua kolom ponsel, tiga desktop). Pilihan belum terkonfigurasi tampil disabled dengan alasan. Layar tinjauan wajib mendahului konfirmasi server; detail memuat nomor/status/tujuan tersamarkan/nominal serta pelaksana sistem. Riwayat menyatu dengan tunai melalui pilihan metode, tidak menambah tujuan bottom-nav. Form/detail mengaktifkan Layanan; halaman riwayat mengaktifkan Riwayat. Pantauan Bendahara/Admin baca saja. Gunakan token, target sentuh, hover/fokus, reduced motion yang sudah ada.
+
+Logo tujuan digital disertai nama pada pilihan, tinjauan, riwayat warga, pengajuan aktif, laporan bendahara, dan tabel admin. Tampilkan nominal minimum yang berasal dari konfigurasi yang sama dengan validasi server pada formulir tunai/digital dan Telegram. Hindari pengulangan keterangan teknis, tetapi jelaskan pengiriman nama dan nomor tujuan ke Xendit sebelum konfirmasi serta pertahankan penanda simulasi.
 
 Gunakan komponen Blade ui yang ada. Antrean dipaginasi, hasil pencarian warga tidak memilih diam-diam kandidat pertama, dan lampiran tampil dalam disclosure. Tabel kompleks Filament menyediakan ringkasan/aksi ponsel; detail transaksi keuangan baca-saja tersedia sebelum keputusan pengecualian.
 
