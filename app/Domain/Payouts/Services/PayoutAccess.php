@@ -43,7 +43,7 @@ final class PayoutAccess
     public function requireConfigured(): void
     {
         if (! self::configured()) {
-            throw ValidationException::withMessages(['payout' => 'Pencairan simulasi belum tersedia. Gunakan lingkungan riset dan konfigurasi Xendit Test Mode yang benar.']);
+            throw ValidationException::withMessages(['payout' => 'Pencairan digital belum tersedia. Gunakan pencairan tunai.']);
         }
     }
 

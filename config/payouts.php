@@ -12,6 +12,15 @@ return [
     'api_version' => '2025-09-01',
     'max_amount' => 1_000_000,
     'http_timeout' => 8,
+    // Fictitious research fixture for Test Mode only, never a citizen's home address.
+    // PayoutAccess rejects live keys and this application has no live payout path.
+    'test_recipient_address' => [
+        'country' => 'ID',
+        'street_line_1' => 'Jalan Uji Simulasi No. 1',
+        'city' => 'Serang',
+        'province_state' => 'Banten',
+        'postal_code' => '42111',
+    ],
     // Routing identifiers must be confirmed against the account's v3 dynamic schema.
     'routing' => [
         'bca' => env('XENDIT_PAYOUT_ROUTING_BCA', ''),

@@ -11,7 +11,6 @@ use App\Domain\Ledger\Services\LedgerService;
 use App\Domain\Payouts\Models\SandboxPayout;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 final readonly class PayoutSettlement
 {
@@ -20,11 +19,11 @@ final readonly class PayoutSettlement
     /** Apply only an authenticated API response, never an unverified callback body.
      * @param  array<string, mixed>  $data
      */
-    public function apply(int $id, array $data): SandboxPayout
+    public function apply(int $id, array $data, bool $providerLookup = false): SandboxPayout
     {
-        return DB::transaction(function () use ($id, $data): SandboxPayout {
+        return DB::transaction(function () use ($id, $data, $providerLookup): SandboxPayout {
             $row = SandboxPayout::query()->lockForUpdate()->findOrFail($id);
-            $this->assertMatches($row, $data);
+            $this->assertMatches($row, $data, $providerLookup);
             $providerState = (string) $data['status'];
             $row->forceFill(['provider_id' => $data['payout_id'], 'business_id' => $data['business_id'], 'provider_status' => $providerState, 'lease' => null, 'leased_at' => null, 'next_check_at' => now()->addMinute()]);
             if ($row->status === 'reversed' || in_array($row->status, ['failed', 'cancelled'], true)) {
@@ -74,25 +73,47 @@ final readonly class PayoutSettlement
     }
 
     /** @param array<string, mixed> $data */
-    private function assertMatches(SandboxPayout $row, array $data): void
+    private function assertMatches(SandboxPayout $row, array $data, bool $providerLookup): void
     {
         $expected = $row->request_payload['recipient']['account_details'];
         $actual = data_get($data, 'recipient.account_details', []);
-        $valid = $row->environment === 'test' && is_array($actual)
-            && is_string($data['payout_id'] ?? null) && preg_match('/^po-[A-Za-z0-9-]{1,90}$/D', $data['payout_id']) === 1
-            && ($row->provider_id === null || $row->provider_id === $data['payout_id'])
-            && ($data['reference_id'] ?? null) === $row->reference_id
-            && ($data['source_currency'] ?? null) === 'IDR' && ($data['destination_currency'] ?? null) === 'IDR'
-            && is_int($data['source_amount'] ?? null) && $data['source_amount'] === $row->amount
-            && is_int($data['destination_amount'] ?? null) && $data['destination_amount'] === $row->amount
-            && is_string($data['business_id'] ?? null) && $data['business_id'] !== ''
-            && ($row->business_id === null || $row->business_id === $data['business_id'])
-            && is_string($data['status'] ?? null) && strlen($data['status']) <= 40;
-        foreach (['account_number', 'account_country', 'currency', 'routing_type_1', 'routing_value_1'] as $field) {
-            $valid = $valid && ($actual[$field] ?? null) === $expected[$field];
+        $checks = [
+            'provider_id' => is_string($data['payout_id'] ?? null)
+                && preg_match('/^po-[A-Za-z0-9-]{1,90}$/D', $data['payout_id']) === 1
+                && ($row->provider_id === null || $row->provider_id === $data['payout_id']),
+            'reference_id' => ($data['reference_id'] ?? null) === $row->reference_id,
+            'business_id' => is_string($data['business_id'] ?? null) && $data['business_id'] !== ''
+                && ($row->business_id === null || $row->business_id === $data['business_id']),
+            'destination_currency' => ($data['destination_currency'] ?? null) === 'IDR',
+            'destination_amount' => is_int($data['destination_amount'] ?? null) && $data['destination_amount'] === $row->amount,
+            'status' => is_string($data['status'] ?? null) && strlen($data['status']) <= 40,
+        ];
+        // Payout v3 GET may omit source_amount. When supplied, it must still match.
+        // A creation response retains the stricter source checks.
+        foreach (['source_currency' => 'IDR', 'source_amount' => $row->amount] as $field => $value) {
+            if (! $providerLookup || array_key_exists($field, $data)) {
+                $checks[$field] = $field === 'source_amount' ? (is_int($data[$field] ?? null) && $data[$field] === $value) : ($data[$field] ?? null) === $value;
+            }
         }
-        if (! $valid) {
-            throw ValidationException::withMessages(['payout' => 'Identitas, tujuan, nominal, atau mata uang provider tidak sesuai pengajuan. Dana tetap menunggu pemeriksaan.']);
+        if (! $providerLookup || $row->business_id === null) {
+            $checks['recipient'] = is_array($actual);
+            foreach (['account_number', 'account_country', 'currency', 'routing_type_1', 'routing_value_1'] as $field) {
+                $checks['recipient_'.$field] = ($actual[$field] ?? null) === $expected[$field];
+            }
         }
+        if ($row->environment !== 'test') {
+            $checks['environment'] = false;
+        }
+        $mismatches = array_keys(array_filter($checks, static fn (bool $valid): bool => ! $valid));
+        if ($mismatches !== []) {
+            $this->failClosed($mismatches);
+        }
+    }
+
+    /** @param list<string> $mismatches */
+    private function failClosed(array $mismatches): never
+    {
+        // Field identifiers are an allowlisted internal diagnostic, never a raw API body.
+        throw new PayoutApiFailure('payout.response_unconfirmed:'.implode(',', array_slice($mismatches, 0, 6)));
     }
 }

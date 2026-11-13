@@ -45,4 +45,30 @@ final class PayoutHarness
             'status' => $status, 'business_id' => 'test-business', 'source_currency' => 'IDR', 'destination_currency' => 'IDR',
             'source_amount' => $row->amount, 'destination_amount' => $row->amount, 'recipient' => $row->request_payload['recipient']];
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function lookupResponse(SandboxPayout $row, string $status = 'SUCCEEDED'): array
+    {
+        $response = self::response($row, $status);
+        unset($response['recipient'], $response['source_currency'], $response['source_amount']);
+
+        return $response;
+    }
+
+    /** @return array<string, mixed> */
+    public static function lookupResponseWithMaskedDestination(SandboxPayout $row, string $status = 'SUCCEEDED'): array
+    {
+        $response = self::response($row, $status);
+        $details = $response['recipient']['account_details'];
+        $response['recipient']['account_details'] = [
+            'currency' => $details['currency'], 'account_country' => $details['account_country'],
+            'routing_type_1' => $details['routing_type_1'], 'routing_value_1' => $details['routing_value_1'],
+            'account_number_last4' => substr($details['account_number'], -4),
+        ];
+        unset($response['source_currency'], $response['source_amount']);
+
+        return $response;
+    }
 }

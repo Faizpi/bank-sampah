@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Payouts\Models;
 
+use App\Domain\CustomersRegions\Models\Rt;
+use App\Domain\CustomersRegions\Models\ServiceArea;
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerEntry;
+use App\Domain\Payouts\Services\PayoutApiFailure;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -46,7 +49,7 @@ final class SandboxPayout extends Model
 {
     protected $guarded = [];
 
-    protected $hidden = ['recipient', 'request_payload', 'provider_key'];
+    protected $hidden = ['recipient', 'request_payload', 'provider_key', 'failure_code'];
 
     protected function casts(): array
     {
@@ -57,6 +60,18 @@ final class SandboxPayout extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'customer_id');
+    }
+
+    /** @return BelongsTo<Rt, $this> */
+    public function rt(): BelongsTo
+    {
+        return $this->belongsTo(Rt::class);
+    }
+
+    /** @return BelongsTo<ServiceArea, $this> */
+    public function serviceArea(): BelongsTo
+    {
+        return $this->belongsTo(ServiceArea::class);
     }
 
     /** @return BelongsTo<BalanceHold, $this> */
@@ -87,6 +102,16 @@ final class SandboxPayout extends Model
     public function maskedNumber(): string
     {
         return '••••'.substr($this->recipient['number'], -4);
+    }
+
+    public function failureExplanation(): ?string
+    {
+        return PayoutApiFailure::explanation($this->failure_code);
+    }
+
+    public function failureNotice(): ?string
+    {
+        return PayoutApiFailure::publicMessage($this->failure_code);
     }
 
     protected static function booted(): void

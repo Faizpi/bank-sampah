@@ -82,8 +82,9 @@ final class PayoutWorker
         $eventBoundary = (int) DB::table('sandbox_payout_events')->where('sandbox_payout_id', $row->id)->max('id');
         try {
             $api = app(XenditPayoutApi::class);
-            $result = $row->provider_id === null ? $api->create($row) : $api->find($row->provider_id);
-            app(PayoutSettlement::class)->apply($row->id, $result);
+            $isStatusLookup = $row->provider_id !== null;
+            $result = $isStatusLookup ? $api->find($row->provider_id) : $api->create($row);
+            app(PayoutSettlement::class)->apply($row->id, $result, providerLookup: $isStatusLookup);
             DB::table('sandbox_payout_events')->where('sandbox_payout_id', $row->id)->where('id', '<=', $eventBoundary)->whereNull('processed_at')->update(['processed_at' => now()]);
 
             return true;
@@ -94,7 +95,15 @@ final class PayoutWorker
                     return;
                 }
                 $code = $error instanceof PayoutApiFailure ? $error->codeName : 'payout.response_unconfirmed';
-                $current->forceFill(['status' => $current->isTerminal() ? $current->status : 'uncertain', 'failure_code' => $code,
+                $rejected = $error instanceof PayoutApiFailure && ! $error->uncertain && $row->attempts === 1
+                    && $row->provider_id === null && $current->provider_id === null && ! $current->isTerminal()
+                    && $current->ledger_entry_id === null && $current->reversal_entry_id === null
+                    && ! DB::table('sandbox_payout_events')->where('sandbox_payout_id', $current->id)->exists();
+                if ($rejected) {
+                    app(LedgerService::class)->releaseHold(app(PayoutIntegrity::class)->hold($current));
+                    app(AuditLogger::class)->record(null, 'payout.submission_rejected', $current, [], ['environment' => 'test', 'code' => $code], (string) Str::uuid());
+                }
+                $current->forceFill(['status' => $rejected ? 'failed' : ($current->isTerminal() ? $current->status : 'uncertain'), 'failure_code' => $code,
                     'lease' => null, 'leased_at' => null, 'next_check_at' => $current->provider_id === null ? null : now()->addMinutes(5)])->save();
                 app(PayoutService::class)->notify($current);
             }, 5);

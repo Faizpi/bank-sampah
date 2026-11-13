@@ -482,6 +482,14 @@ $actions = [
         'risk' => 'routine',
         'commands' => [['payouts:work', ['--limit' => 5]]],
     ],
+    'payout-resolve-rejected' => [
+        'label' => 'Tutup pengajuan ditolak Xendit (HTTP 400)',
+        'description' => 'Untuk satu pengajuan lama yang ditolak pada pengiriman pertama. Pastikan tidak tercatat pada Xendit Test Mode. Melepas saldo tertahan tanpa mengirim payout baru; timeout atau pengajuan ber-ID provider ditolak.',
+        'group' => 'maintenance',
+        'risk' => 'dangerous',
+        'confirmation' => 'SUDAH CEK XENDIT TIDAK TERCATAT',
+        'commands' => [['payouts:resolve-rejected', ['--confirm-not-created' => true]]],
+    ],
     'telegram-diagnose' => [
         'label' => 'Periksa konfigurasi Telegram',
         'description' => 'Memeriksa migration, ekstensi, dan antrean tanpa menampilkan token atau menghubungi Telegram.',
@@ -565,6 +573,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $kernel = $app->make(Kernel::class);
 
         foreach ($actions[$selectedAction]['commands'] as [$command, $parameters]) {
+            if ($selectedAction === 'payout-resolve-rejected') {
+                $parameters['request'] = (string) ($_POST['payout_request_number'] ?? '');
+            }
             if (in_array($selectedAction, ['hosting-demo-preview', 'hosting-demo-reset'], true)) {
                 $parameters['--database'] = (string) ($_POST['target_database'] ?? '');
                 if ($selectedAction === 'hosting-demo-reset') {
@@ -680,6 +691,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             <label class="backup-check" hidden><input type="checkbox" name="backup_confirmed" value="yes"> Saya sudah menyimpan backup database, .env, dan berkas hosting.</label>
         </div>
 
+        <div class="payout-fields" hidden style="margin-top:14px">
+            <label for="payout_request_number">Nomor pengajuan digital yang ditolak</label>
+            <input id="payout_request_number" name="payout_request_number" type="text" autocomplete="off" maxlength="27" pattern="SIM-[0-9]{14}-[A-Z0-9]{8}" placeholder="Salin nomor SIM dari pantauan pencairan">
+        </div>
+
 
         <button type="submit">Jalankan aksi</button>
     </form>
@@ -693,6 +709,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         const databaseInput = document.querySelector('#target_database');
         const backupCheck = document.querySelector('.backup-check');
         const backupInput = document.querySelector('[name="backup_confirmed"]');
+        const payoutFields = document.querySelector('.payout-fields');
+        const payoutInput = document.querySelector('#payout_request_number');
         const updateConfirmation = () => {
             const selected = document.querySelector('input[name="action"]:checked');
             const confirmationPhrase = selected?.dataset.confirmation ?? '';
@@ -707,6 +725,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             backupCheck.hidden = !isReset;
             backupInput.required = isReset;
             backupInput.checked = false;
+            const isPayoutRecovery = selected?.value === 'payout-resolve-rejected';
+            payoutFields.hidden = !isPayoutRecovery;
+            payoutInput.required = isPayoutRecovery;
         };
         actionInputs.forEach((input) => input.addEventListener('change', updateConfirmation));
         updateConfirmation();

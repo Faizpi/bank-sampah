@@ -28,6 +28,7 @@ final readonly class PayoutService
     public function quote(User $actor, array $data): array
     {
         $this->access->requireConfigured();
+        $this->testRecipientAddress();
         $actor = $this->actor($actor);
         $validated = validator($data, [
             'channel' => ['required', 'string', 'in:bca,mandiri,bri,bni,dana,gopay'],
@@ -60,18 +61,19 @@ final readonly class PayoutService
             throw ValidationException::withMessages(['payout' => 'Konfirmasi penggunaan data tujuan uji dan pencairan simulasi terlebih dahulu.']);
         }
         if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{15,190}$/D', $key) !== 1) {
-            throw ValidationException::withMessages(['payout' => 'Kunci pengajuan tidak valid.']);
+            throw ValidationException::withMessages(['payout' => 'Formulir pengajuan sudah tidak berlaku. Buka kembali halaman pencairan.']);
         }
         $quote = $this->quote($actor, $data);
+        $address = $this->testRecipientAddress();
         $hash = hash('sha256', json_encode($quote, JSON_THROW_ON_ERROR));
 
-        return DB::transaction(function () use ($actor, $quote, $hash, $key): SandboxPayout {
+        return DB::transaction(function () use ($actor, $quote, $address, $hash, $key): SandboxPayout {
             $actor = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
             $this->actor($actor);
             $existing = IdempotencyKey::activeForUpdate($actor->id, 'payout.request', $key);
             if ($existing !== null) {
                 if ($existing->payload_hash !== $hash || $existing->result_id === null) {
-                    throw ValidationException::withMessages(['payout' => 'Kunci pengajuan sudah dipakai untuk data berbeda.']);
+                    throw ValidationException::withMessages(['payout' => 'Data pengajuan berubah. Periksa kembali riwayat pencairan sebelum melanjutkan.']);
                 }
 
                 return SandboxPayout::query()->where('customer_id', $actor->id)->findOrFail($existing->result_id);
@@ -81,10 +83,12 @@ final readonly class PayoutService
             $channel = $this->channels->get($quote['channel']);
             $nameParts = explode(' ', $quote['name']);
             $surname = count($nameParts) > 1 ? array_pop($nameParts) : null;
-            $recipient = ['type' => 'INDIVIDUAL', 'given_name' => implode(' ', $nameParts), 'relationship' => 'CUSTOMER', 'account_details' => [
-                'currency' => 'IDR', 'account_country' => 'ID', 'account_holder_name' => $quote['name'], 'account_number' => $quote['number'],
-                'routing_type_1' => $channel['wallet'] ? 'WALLET' : 'SWIFT', 'routing_value_1' => $channel['routing'],
-            ]];
+            $recipient = ['type' => 'INDIVIDUAL', 'given_name' => implode(' ', $nameParts), 'relationship' => 'CUSTOMER',
+                // Complete fictitious address, only on the guarded Test Mode path.
+                'address' => $address, 'account_details' => [
+                    'currency' => 'IDR', 'account_country' => 'ID', 'account_holder_name' => $quote['name'], 'account_number' => $quote['number'],
+                    'routing_type_1' => $channel['wallet'] ? 'WALLET' : 'SWIFT', 'routing_value_1' => $channel['routing'],
+                ]];
             if ($surname !== null) {
                 $recipient['surname'] = $surname;
             }
@@ -117,11 +121,51 @@ final readonly class PayoutService
                 return $row;
             }
             if ($row->status !== 'queued' || $row->lease !== null || $row->provider_id !== null) {
-                throw ValidationException::withMessages(['payout' => 'Permintaan sudah diproses. Tunggu hasil pemeriksaan status, jangan mengirim pencairan baru untuk transaksi yang sama.']);
+                throw ValidationException::withMessages(['payout' => 'Pengajuan sudah diproses. Periksa status terbaru pada riwayat pencairan.']);
             }
             $this->ledger->releaseHold(app(PayoutIntegrity::class)->hold($row));
             $row->forceFill(['status' => 'cancelled', 'next_check_at' => null])->save();
             $this->audit->record($actor, 'payout.cancelled', $row, [], ['environment' => 'test'], (string) Str::uuid());
+            $this->notify($row);
+
+            return $row;
+        }, 5);
+    }
+
+    public function resolveRejectedSubmission(string $requestNumber, bool $confirmedNotCreated = false): SandboxPayout
+    {
+        $this->access->requireConfigured();
+        if (! $confirmedNotCreated || preg_match('/^SIM-[0-9]{14}-[A-Z0-9]{8}$/D', $requestNumber) !== 1) {
+            throw ValidationException::withMessages(['payout' => 'Isi nomor pengajuan SIM dan konfirmasikan bahwa pengajuan tidak tercatat pada Xendit Test Mode.']);
+        }
+        $payout = SandboxPayout::query()->where('request_number', $requestNumber)->first();
+        if ($payout === null) {
+            throw ValidationException::withMessages(['payout' => 'Pengajuan tidak ditemukan.']);
+        }
+
+        return DB::transaction(function () use ($payout): SandboxPayout {
+            User::query()->whereKey($payout->customer_id)->lockForUpdate()->firstOrFail();
+            $row = SandboxPayout::query()->lockForUpdate()->findOrFail($payout->id);
+            // Only the old first-attempt HTTP 400 case is eligible. Never close a timeout,
+            // a retry after an unknown result, or any request associated with a provider.
+            if (! in_array($row->status, ['uncertain', 'failed'], true) || $row->failure_code !== 'payout.http_400'
+                || $row->attempts !== 1 || $row->provider_id !== null || $row->business_id !== null
+                || $row->lease !== null || $row->ledger_entry_id !== null || $row->reversal_entry_id !== null
+                || DB::table('sandbox_payout_events')->where('sandbox_payout_id', $row->id)->exists()) {
+                throw ValidationException::withMessages(['payout' => 'Pemulihan ditolak. Hanya penolakan HTTP 400 pada pengiriman pertama tanpa ID provider, webhook, mutasi, atau proses aktif yang dapat ditutup.']);
+            }
+            $hold = app(PayoutIntegrity::class)->hold($row);
+            if ($row->status === 'failed' && $hold->status === 'dilepas') {
+                return $row;
+            }
+            if (! $hold->isActive()) {
+                throw ValidationException::withMessages(['payout' => 'Status saldo tertahan tidak sesuai. Periksa rekonsiliasi sebelum melanjutkan.']);
+            }
+            $this->ledger->releaseHold($hold);
+            $row->forceFill(['status' => 'failed', 'next_check_at' => null])->save();
+            $this->audit->record(null, 'payout.submission_rejected', $row, [], [
+                'environment' => 'test', 'code' => $row->failure_code, 'operator_confirmed_not_created' => true,
+            ], (string) Str::uuid());
             $this->notify($row);
 
             return $row;
@@ -135,6 +179,25 @@ final readonly class PayoutService
             body: $payout->request_number.': '.$payout->label().'. Tidak ada dana riil yang dikirim.',
             reference: '/warga/pencairan-digital/'.$payout->id, dedupeKey: 'payout:'.$payout->id.':'.$payout->status,
         ));
+    }
+
+    /** @return array<string, string> */
+    private function testRecipientAddress(): array
+    {
+        $configured = config('payouts.test_recipient_address');
+        $address = [];
+        foreach (['country', 'street_line_1', 'city', 'province_state', 'postal_code'] as $field) {
+            $value = is_array($configured) ? ($configured[$field] ?? null) : null;
+            if (! is_string($value) || trim($value) === '' || mb_strlen($value) > 255) {
+                throw ValidationException::withMessages(['payout' => 'Layanan pencairan digital belum siap. Hubungi Admin.']);
+            }
+            $address[$field] = trim($value);
+        }
+        if ($address['country'] !== 'ID' || preg_match('/^[0-9]{5}$/D', $address['postal_code']) !== 1) {
+            throw ValidationException::withMessages(['payout' => 'Layanan pencairan digital belum siap. Hubungi Admin.']);
+        }
+
+        return $address;
     }
 
     private function actor(User $actor): User

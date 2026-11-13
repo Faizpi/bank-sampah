@@ -14,6 +14,7 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Tests\Fixtures\WorkflowFixture;
@@ -58,6 +59,41 @@ it('settles exactly once from an authenticated successful API response without a
     Http::assertSent(fn ($r): bool => $r->method() === 'POST' && $r->hasHeader('idempotency-key', $row->provider_key)
         && $r['reference_id'] === $row->reference_id && $r->hasHeader('api-version', '2025-09-01'));
     test()->assertDatabaseHas('audit_logs', ['action' => 'payout.succeeded', 'actor_type' => 'system']);
+});
+
+it('settles an accepted payout from an authenticated lookup when the provider masks recipient account details', function (): void {
+    $row = app(PayoutService::class)->request($this->owner, Payout::request('gopay'), (string) str()->uuid());
+    $created = Payout::response($row, 'ACCEPTED');
+    Http::fake(['api.xendit.co/*' => Http::response($created)]);
+    app(PayoutWorker::class)->run();
+    expect($row->fresh()->status)->toBe('pending')->and($row->fresh()->provider_id)->toBe($created['payout_id'])
+        ->and($row->fresh()->balanceHold->status)->toBe('aktif')->and(LedgerEntry::count())->toBe(1);
+
+    $this->travel(2)->minutes();
+    Http::swap(new Factory);
+    Http::preventStrayRequests();
+    Http::fake(['api.xendit.co/*' => Http::response(Payout::lookupResponseWithMaskedDestination($row, 'SUCCEEDED'))]);
+    expect(app(PayoutWorker::class)->run())->toBe(1);
+    app(PayoutWorker::class)->run();
+    expect($row->fresh()->status)->toBe('succeeded')->and($row->fresh()->ledger_entry_id)->not->toBeNull()
+        ->and($row->fresh()->balanceHold->status)->toBe(BalanceHold::STATUS_CONVERTED)
+        ->and(LedgerEntry::count())->toBe(2)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(55000);
+    Http::assertSent(fn ($request): bool => $request->method() === 'GET' && str_ends_with($request->url(), '/'.$created['payout_id']));
+    test()->assertDatabaseHas('audit_logs', ['action' => 'payout.succeeded', 'actor_type' => 'system']);
+});
+
+it('keeps the hold and rejects an authenticated lookup with a mismatched amount', function (): void {
+    $row = app(PayoutService::class)->request($this->owner, Payout::request('gopay'), (string) str()->uuid());
+    Http::fake(['api.xendit.co/*' => Http::response(Payout::response($row, 'ACCEPTED'))]);
+    app(PayoutWorker::class)->run();
+    $this->travel(2)->minutes();
+    Http::swap(new Factory);
+    Http::preventStrayRequests();
+    Http::fake(['api.xendit.co/*' => Http::response([...Payout::lookupResponse($row), 'destination_amount' => 1])]);
+    app(PayoutWorker::class)->run();
+    expect($row->fresh()->status)->toBe('uncertain')->and($row->fresh()->provider_id)->not->toBeNull()
+        ->and($row->fresh()->balanceHold->status)->toBe('aktif')->and($row->fresh()->ledger_entry_id)->toBeNull()
+        ->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(55000)->and(LedgerEntry::count())->toBe(1);
 });
 
 it('releases the hold once on a definitive provider failure', function (): void {

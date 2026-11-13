@@ -45,6 +45,45 @@ it('does not trust a forged success status when authenticated provider lookup is
     expect($this->row->fresh()->status)->toBe('pending')->and($this->row->fresh()->balanceHold->status)->toBe('aktif')->and(LedgerEntry::count())->toBe(1);
 });
 
+it('does not settle an unverified webhook payout when the lookup omits the destination', function (): void {
+    $this->postJson(route('payout.webhook'), $this->event, $this->headers)->assertOk();
+    Http::fake(['api.xendit.co/*' => Http::response(Payout::lookupResponse($this->row))]);
+    app(PayoutWorker::class)->run();
+    expect($this->row->fresh()->status)->toBe('uncertain')
+        ->and($this->row->fresh()->business_id)->toBeNull()
+        ->and($this->row->fresh()->balanceHold->status)->toBe('aktif')
+        ->and($this->row->fresh()->ledger_entry_id)->toBeNull()
+        ->and(LedgerEntry::count())->toBe(1);
+});
+
+it('settles once after an authenticated lookup omits only source amount', function (): void {
+    $this->postJson(route('payout.webhook'), $this->event, $this->headers)->assertOk();
+    $response = Payout::response($this->row, 'SUCCEEDED');
+    unset($response['source_amount']);
+    Http::fake(['api.xendit.co/*' => Http::response($response)]);
+
+    expect(app(PayoutWorker::class)->run())->toBe(1)
+        ->and($this->row->fresh()->status)->toBe('succeeded')
+        ->and($this->row->fresh()->balanceHold->status)->toBe('dikonversi')
+        ->and(LedgerEntry::count())->toBe(2)
+        ->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(55000);
+    $this->postJson(route('payout.webhook'), $this->event, $this->headers)->assertOk();
+    app(PayoutWorker::class)->run();
+    expect(LedgerEntry::count())->toBe(2)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(55000);
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request): bool => $request->method() === 'GET');
+});
+
+it('keeps the hold if an included source amount mismatches on the first authenticated lookup', function (): void {
+    $this->postJson(route('payout.webhook'), $this->event, $this->headers)->assertOk();
+    Http::fake(['api.xendit.co/*' => Http::response([...Payout::response($this->row), 'source_amount' => 1])]);
+    app(PayoutWorker::class)->run();
+    expect($this->row->fresh()->status)->toBe('uncertain')
+        ->and($this->row->fresh()->balanceHold->status)->toBe('aktif')
+        ->and($this->row->fresh()->ledger_entry_id)->toBeNull()
+        ->and(LedgerEntry::count())->toBe(1);
+});
+
 it('reconciles reversed payments once without deleting the original debit', function (): void {
     Http::fake(['api.xendit.co/*' => Http::response(Payout::response($this->row))]);
     app(PayoutWorker::class)->run();

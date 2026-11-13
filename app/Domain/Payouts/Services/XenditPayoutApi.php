@@ -44,7 +44,7 @@ final class XenditPayoutApi
             throw new PayoutApiFailure('payout.transport');
         }
         if (! $response->successful() || ! is_array($data)) {
-            throw new PayoutApiFailure('payout.http_'.$response->status());
+            throw PayoutApiFailure::http($response->status(), $data, creating: $method === 'POST');
         }
 
         return $data;
