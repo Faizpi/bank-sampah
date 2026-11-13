@@ -87,7 +87,7 @@
     </x-ui.panel>
 
     {{-- Status Panel --}}
-    <x-ui.panel title="Status tugas" description="Urutan status harus diikuti. Estimasi tidak digunakan untuk saldo.">
+    <x-ui.panel title="Status tugas" description="Perbarui status sesuai proses penjemputan.">
         <div class="flex items-center gap-3">
             <x-ui.status-badge :status="$pickupBadge">
                 {{ \App\Support\StatusLabel::for($pickup->status) }}
@@ -222,7 +222,7 @@
         </x-ui.success-state>
     @endif
     {{-- Status History --}}
-    <x-ui.panel title="Tahapan penjemputan" description="Semua tahapan ditampilkan; tahapan berikutnya tetap redup sampai status tugas berubah.">
+    <x-ui.panel title="Tahapan penjemputan">
         <x-ui.status-stepper
             :steps="$pickupStages"
             :current-status="$pickupStatus"

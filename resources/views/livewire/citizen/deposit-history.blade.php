@@ -7,7 +7,7 @@
         <div>
             <p class="text-label font-semibold text-forest-600">Riwayat Warga</p>
             <h1 id="history-title" class="mt-2 text-h1 font-bold text-deep-green">Riwayat Setoran</h1>
-            <p class="mt-3 text-body text-text-secondary">Setoran dan koreksi hanya menampilkan data milik akun Anda.</p>
+            <p class="mt-3 text-body text-text-secondary">Lihat setoran dan perubahan nilainya.</p>
         </div>
         <x-ui.mascot variant="10" bubble="Semua tercatat rapi!" bubblePosition="top" class="h-28 w-auto shrink-0" />
     </div>

@@ -13,7 +13,7 @@ final class LoginRateLimiter
 
     private const DECAY_SECONDS = 60;
 
-    private const FAILURE_MESSAGE = 'Kredensial tidak valid atau akun tidak dapat digunakan.';
+    private const FAILURE_MESSAGE = 'Username atau kata sandi tidak sesuai, atau akun belum aktif.';
 
     public function ensureAllowed(string $username, string $ip): void
     {

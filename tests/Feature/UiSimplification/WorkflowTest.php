@@ -124,7 +124,7 @@ it('never writes customer identity when its card is merely opened', function ():
 
 it('only offers valid report statuses and makes invalid input visible', function (): void {
     $this->actingAs($this->treasurer);
-    Livewire::test(Reports::class)->assertSet('statusOptions', ['sudah_dibayar' => 'Sudah dibayar'])->assertSee('Riwayat pembayaran saya')
+    Livewire::test(Reports::class)->assertSet('statusOptions', ['sudah_dibayar' => 'Sudah dibayar'])->assertSee('Riwayat pencairan')
         ->set('status', 'menunggu_verifikasi')->call('refreshReport')->assertHasErrors('status')->assertSee('Status laporan tidak diizinkan.');
 });
 

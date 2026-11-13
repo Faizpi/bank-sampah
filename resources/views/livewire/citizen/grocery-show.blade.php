@@ -13,13 +13,13 @@
         @if ($locked)
             <p role="alert" class="mt-3">{{ $redemption->exception_kind === 'cancellation_request' ? 'Petugas memastikan paket belum diserahkan sebelum pembatalan dan pengembalian saldo.' : 'Admin sedang memastikan penyerahan paket. Jangan meminta penyerahan kedua.' }}</p>
         @elseif ($redemption->status->value === 'menunggu_petugas')
-            <p class="mt-3">Menunggu Petugas mengambil tugas saat paket tersedia.</p>
+            <p class="mt-3">Menunggu petugas menyiapkan paket.</p>
         @elseif ($redemption->status->value === 'siap_diambil')
             <p class="mt-3">Paket siap diambil. Temui {{ $redemption->claimant?->name ?? 'Petugas' }} dan pastikan nama serta isi paket sesuai.</p>
         @elseif ($redemption->status->value === 'diproses_petugas')
-            <p class="mt-3">Paket ditangani {{ $redemption->claimant?->name ?? 'Petugas' }} dan dapat langsung diserahkan saat tersedia.</p>
+            <p class="mt-3">Paket sedang disiapkan oleh {{ $redemption->claimant?->name ?? 'Petugas' }}.</p>
         @endif
-        <p class="mt-3">{{ $redemption->balanceHold?->status === 'aktif' ? 'Dana masih disisihkan, belum menjadi saldo keluar. Saldo keluar dicatat setelah paket diserahkan.' : ($redemption->receipt_ledger_entry_id ? 'Penyerahan paket sudah dicatat sebagai saldo keluar.' : 'Dana tidak lagi disisihkan untuk pengajuan ini.') }}</p>
+        <p class="mt-3">{{ $redemption->balanceHold?->status === 'aktif' ? 'Saldo disisihkan sampai paket diserahkan.' : ($redemption->receipt_ledger_entry_id ? 'Saldo sudah dipotong untuk penukaran ini.' : 'Tidak ada saldo yang disisihkan untuk pengajuan ini.') }}</p>
         @if ($redemption->cancellation_reason || $redemption->rejection_reason)<p>Alasan: {{ $redemption->cancellation_reason ?? $redemption->rejection_reason }}</p>@endif
         @if (! $redemption->status->isTerminal() && ! $locked)
             <x-ui.button variant="secondary" wire:click="cancel" wire:loading.attr="disabled">{{ $redemption->claimed_by_id === null ? 'Batalkan pengajuan' : 'Minta pembatalan' }}</x-ui.button>

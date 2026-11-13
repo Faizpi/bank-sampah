@@ -29,7 +29,7 @@
     @if ($canRestoreBackup)
         <section class="mt-6 rounded-xl border border-info-200 bg-info-50 p-5 shadow-sm" aria-labelledby="technical-restore-title">
             <h2 id="technical-restore-title" class="text-xl font-semibold text-gray-950">Verifikasi pemulihan</h2>
-            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-700">Verifikasi di lingkungan terisolasi. Halaman ini hanya mencatat bukti dan hasil, bukan menjalankan pemulihan.</p>
+            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-700">Catat hasil uji pemulihan dari lingkungan uji terpisah. Pemulihan data tidak dijalankan dari halaman ini.</p>
             <form x-on:submit.prevent="if ($el.reportValidity()) $dispatch('open-dialog', { id: 'restore-verification-dialog', invoker: $event.submitter })" class="mt-6 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
                 @foreach ([
                     ['restore-backup-id', 'restoreBackupId', 'ID cadangan'],

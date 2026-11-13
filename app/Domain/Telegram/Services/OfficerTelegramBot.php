@@ -133,7 +133,7 @@ final class OfficerTelegramBot
             }
             abort_unless($deposit instanceof Deposit, 422);
             $ctx->state('menu');
-            $ctx->say('Setoran tercatat: '.$deposit->deposit_number."\n".StatusLabel::for($deposit->status).' · '.BotInput::rupiah($deposit->effectiveTotalValue())."\nJangan catat ulang setoran yang sama.", [BotContext::button('Riwayat pekerjaan', 'officer.history', ['kind' => 'deposit']), BotContext::button('Menu', 'menu')]);
+            $ctx->say('Setoran tercatat: '.$deposit->deposit_number."\n".StatusLabel::for($deposit->status).' · '.BotInput::rupiah($deposit->effectiveTotalValue()), [BotContext::button('Riwayat pekerjaan', 'officer.history', ['kind' => 'deposit']), BotContext::button('Menu', 'menu')]);
         } else {
             $this->input($ctx, $actor, $payload);
         }
@@ -226,7 +226,7 @@ final class OfficerTelegramBot
         $data['quote'] = $quote;
         $customer = User::query()->findOrFail((int) $data['customer_id']);
         $ctx->state('officer.review', $data);
-        $ctx->say('Petugas: '.$actor->name."\nWarga: ".$customer->name."\n".implode("\n", $quote['lines'])."\nTotal: ".BotInput::rupiah($quote['total'])."\nPeriksa hasil timbang sebelum mencatat.", [BotContext::button('Tambah jenis', 'officer.types'), BotContext::button('Foto opsional', 'officer.photo'), BotContext::button('Data benar — catat setoran', 'officer.finalize'), BotContext::button('Batal isi', 'cancel-input')]);
+        $ctx->say('Petugas: '.$actor->name."\nWarga: ".$customer->name."\n".implode("\n", $quote['lines'])."\nTotal: ".BotInput::rupiah($quote['total'])."\nPeriksa hasil timbang sebelum mencatat.", [BotContext::button('Tambah jenis', 'officer.types'), BotContext::button('Foto opsional', 'officer.photo'), BotContext::button('Data benar (catat setoran)', 'officer.finalize'), BotContext::button('Batal isi', 'cancel-input')]);
     }
 
     /** @param array<string, mixed> $p */

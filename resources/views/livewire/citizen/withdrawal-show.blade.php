@@ -16,7 +16,7 @@
         @elseif ($withdrawal->status->value === 'diproses_bendahara')
             <p class="mt-3">Pembayaran ditangani {{ $withdrawal->payer?->name ?? 'Bendahara' }}. Pastikan nama penerima dan nominal sesuai saat mengambil uang.</p>
         @endif
-        <p class="mt-3">{{ $withdrawal->balanceHold?->status === 'aktif' ? 'Dana ini masih disisihkan, belum dibayarkan atau dicatat sebagai saldo keluar.' : ($withdrawal->receipt_ledger_entry_id ? 'Pembayaran sudah dicatat sebagai saldo keluar.' : 'Dana tidak lagi disisihkan untuk pengajuan ini.') }}</p>
+        <p class="mt-3">{{ $withdrawal->balanceHold?->status === 'aktif' ? 'Saldo disisihkan sampai uang tunai diserahkan.' : ($withdrawal->receipt_ledger_entry_id ? 'Pembayaran tunai sudah tercatat pada saldo.' : 'Tidak ada saldo yang disisihkan untuk pengajuan ini.') }}</p>
         @if ($withdrawal->cancellation_reason || $withdrawal->rejection_reason)<p>Alasan: {{ $withdrawal->cancellation_reason ?? $withdrawal->rejection_reason }}</p>@endif
         @if (! $withdrawal->status->isTerminal() && ! $locked)
             <x-ui.button variant="secondary" wire:click="cancel" wire:loading.attr="disabled">{{ $withdrawal->payer_id === null ? 'Batalkan pengajuan' : 'Minta pembatalan' }}</x-ui.button>

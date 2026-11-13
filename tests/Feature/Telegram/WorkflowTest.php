@@ -174,7 +174,7 @@ it('weighs all four waste types and finalizes one direct deposit through chat', 
         Bot::text('10002', '1');
     }
     expect(LedgerEntry::count())->toBe(0);
-    Bot::click('10002', 'Data benar — catat setoran');
+    Bot::click('10002', 'Data benar (catat setoran)');
     expect(Deposit::firstOrFail()->status)->toBe('final')->and(Deposit::firstOrFail()->items()->count())->toBe(4);
     expect(LedgerEntry::count())->toBe(1)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(5000);
 });
@@ -192,7 +192,7 @@ it('finishes a claimed pickup only after weighing and final deposit', function (
     Bot::click('10002', 'Aqua Botol');
     Bot::click('10002', 'Bersih dan Kering');
     Bot::text('10002', '2');
-    Bot::click('10002', 'Data benar — catat setoran');
+    Bot::click('10002', 'Data benar (catat setoran)');
     expect($pickup->fresh()->status)->toBe(PickupStatus::Completed)->and($pickup->fresh()->deposit_id)->not->toBeNull();
     expect(LedgerAccount::firstOrFail()->availableBalance())->toBe(3000)->and(LedgerEntry::count())->toBe(1);
 });
@@ -227,7 +227,7 @@ it('opens weighs recaps and closes only an assigned mobile service', function ()
     Bot::click('10002', 'Aqua Botol');
     Bot::click('10002', 'Bersih dan Kering');
     Bot::text('10002', '2');
-    Bot::click('10002', 'Data benar — catat setoran');
+    Bot::click('10002', 'Data benar (catat setoran)');
     expect($service->fresh()->served_count)->toBe(1)->and(Deposit::firstOrFail()->mobile_service_id)->toBe($service->id);
     Bot::text('10002', '/menu');
     Bot::click('10002', 'Layanan keliling');

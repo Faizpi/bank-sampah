@@ -6,7 +6,7 @@
         <x-ui.action-card :href="route('telegram.settings')" icon="log-in" title="Telegram" description="Hubungkan akun dan atur notifikasi." />
     @endif
 
-    <x-ui.panel title="Data profil" description="Nama dan nomor telepon dapat diperbarui sendiri. Wilayah dan RT ditetapkan oleh pengelola.">
+    <x-ui.panel title="Data profil" :description="auth()->user()?->hasRole('warga') ? 'Wilayah dan RT dikelola oleh Admin.' : null">
         @if ($profileChanged)
             <div class="mb-4 rounded-xl border border-forest-600 bg-success-bg px-4 py-3.5 text-body text-forest-700" role="status" aria-live="polite">
                 Data profil berhasil diperbarui.
@@ -24,7 +24,7 @@
             @else
                 <div class="sm:col-span-2">
                     <p class="text-label font-semibold text-deep-green">Alamat</p>
-                    <p class="mt-1 rounded-xl border border-border bg-disabled-bg px-4 py-3 text-body text-text-secondary">Alamat dikelola oleh petugas.</p>
+                    <p class="mt-1 rounded-xl border border-border bg-disabled-bg px-4 py-3 text-body text-text-secondary">Hubungi Admin untuk memperbarui alamat.</p>
                 </div>
             @endif
             @endif

@@ -16,7 +16,7 @@
     @endif
 
     @if ($scannerOpen)
-        <x-ui.panel title="Pindai QR nasabah" description="Arahkan kamera ke QR kartu nasabah. QR hanya digunakan untuk mengenali kartu nasabah; nama tetap harus dikonfirmasi." state="success">
+        <x-ui.panel title="Pindai QR nasabah" description="Pindai kartu nasabah, lalu periksa nama warga." state="success">
             <div
                 x-data="{
                     stream: null,
@@ -91,7 +91,7 @@
     @else
         <x-ui.panel title="Pindai dengan kamera" description="Gunakan kamera perangkat untuk membaca QR kartu nasabah. Kodenya tidak ditampilkan di layar.">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p class="text-body-sm text-text-secondary">Jika kamera tidak tersedia atau izinnya ditolak, cari warga menggunakan nomor atau nama di bawah.</p>
+                <p class="text-body-sm text-text-secondary">Jika kamera tidak bisa dipakai, cari nomor atau nama warga di bawah.</p>
                 <div class="flex flex-col items-end">
                     <x-ui.button type="button" wire:click="openScanner">Buka Pemindai QR</x-ui.button>
                 </div>

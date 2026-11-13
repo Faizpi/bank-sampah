@@ -19,7 +19,7 @@ use Illuminate\Validation\ValidationException;
 
 final readonly class AuthenticateUser
 {
-    private const FAILURE_MESSAGE = 'Kredensial tidak valid atau akun tidak dapat digunakan.';
+    private const FAILURE_MESSAGE = 'Username atau kata sandi tidak sesuai, atau akun belum aktif.';
 
     public function __construct(
         private AuthFactory $auth,

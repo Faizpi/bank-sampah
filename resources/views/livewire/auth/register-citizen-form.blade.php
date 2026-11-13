@@ -182,9 +182,9 @@
                     </section>
 
                     <div class="space-y-3 border-t border-border pt-6">
-                        <div class="flex min-h-touch items-center gap-3 rounded-xl bg-info-bg px-4 py-3 border border-sky-100" wire:loading wire:target="register" aria-live="polite">
+                        <div class="flex min-h-touch w-full items-center gap-3 rounded-xl bg-info-bg px-4 py-3 border border-sky-100" wire:loading.flex wire:target="register" role="status" aria-live="polite" data-auth-loading="register">
                             <x-public.icon name="loader-circle" size="size-5" class="shrink-0 animate-spin text-sky-blue motion-reduce:animate-none" />
-                            <p class="text-body-sm font-semibold text-text-secondary">Memproses pendaftaran. Mohon tunggu.</p>
+                            <p class="min-w-0 text-body-sm font-semibold text-text-secondary">Mengirim pendaftaran...</p>
                         </div>
 
                         <x-ui.button type="submit" class="w-full shadow-md bg-forest-600 text-surface font-bold py-3 rounded-xl transition duration-200 hover:bg-forest-700" wire:loading.attr="disabled" wire:target="register">

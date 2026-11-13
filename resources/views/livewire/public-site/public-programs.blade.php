@@ -6,8 +6,8 @@
         <div class="public-container grid items-center gap-8 section-space lg:grid-cols-[1fr_auto]">
             <div>
             <p class="text-label font-semibold tracking-wide text-surface/80">Program desa</p>
-            <h1 id="programs-page-title" class="mt-2 max-w-3xl text-h1 lg:text-h1-lg text-surface">Bergerak lewat angka ringkasan.</h1>
-            <p class="mt-3 max-w-2xl text-body text-surface/80">Target dan progres ditampilkan tanpa nama, nomor nasabah, alamat, saldo, atau riwayat individu.</p>
+            <h1 id="programs-page-title" class="mt-2 max-w-3xl text-h1 lg:text-h1-lg text-surface">Target dan statistik bank sampah</h1>
+            <p class="mt-3 max-w-2xl text-body text-surface/80">Lihat target pengumpulan sampah dan perkembangannya.</p>
             <div class="mt-5 flex flex-wrap gap-2">
                 <a href="{{ route('public.announcements') }}" class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md bg-surface px-5 text-label text-deep-green transition duration-180 ease-standard hover:bg-success-bg active:translate-y-px">
                     Lihat pengumuman program
@@ -28,14 +28,14 @@
                 id="programs-title"
                 eyebrow="Program berjalan"
                 title="Target aktif"
-                description="Target yang tampil telah melewati ambang publikasi dan hanya memuat ukuran ringkasan program."
+                description="Target pengumpulan sampah yang sedang berjalan."
             />
 
             @if ($targets->isEmpty())
                 <x-ui.empty-state
                     class="mt-8"
                     title="Belum ada target publik"
-                    description="Target ditampilkan setelah memenuhi ambang privasi publik."
+                    description="Belum ada target yang dapat ditampilkan."
                     action-label="Lihat pengumuman program"
                     action-href="{{ route('public.announcements') }}"
                 />
@@ -74,7 +74,7 @@
                     id="public-statistics-title"
                     eyebrow="Statistik ringkasan"
                     title="Ringkasan desa"
-                    description="Ringkasan ini hanya menampilkan metrik yang diizinkan untuk publikasi dan telah memenuhi ambang privasi."
+                    description="Ringkasan kegiatan bank sampah selama 12 bulan terakhir."
                 />
                 <p class="mt-3 text-body-sm text-text-secondary">Periode 12 bulan: {{ \Carbon\CarbonImmutable::parse($statistics['period']['start'])->translatedFormat('d F Y') }} – {{ \Carbon\CarbonImmutable::parse($statistics['period']['end'])->subDay()->translatedFormat('d F Y') }}</p>
                 @if ($rtFilteringEnabled)
@@ -95,7 +95,7 @@
                         <x-public.icon name="circle-alert" size="size-6" class="mt-0.5 text-harvest-gold" />
                         <div>
                             <h3 class="text-title text-deep-green">Ringkasan belum ditampilkan</h3>
-                            <p class="mt-1 text-body-sm text-text-secondary">Ringkasan belum ditampilkan karena belum memenuhi ambang privasi publik.</p>
+                            <p class="mt-1 text-body-sm text-text-secondary">Ringkasan belum tersedia untuk publik.</p>
                         </div>
                     </div>
                 @else

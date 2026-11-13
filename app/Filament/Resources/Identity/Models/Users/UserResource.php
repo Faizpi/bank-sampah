@@ -92,7 +92,7 @@ final class UserResource extends Resource
                 ])->columns(['default' => 1, 'md' => 3]),
             ]),
             Section::make('Perubahan peran')->visible(fn (?User $record): bool => $record !== null && app(PermissionChecker::class)->allows(self::actor(), 'role.manage'))->schema([
-                Select::make('new_role')->label('Peran baru (opsional)')->placeholder('Tetap menggunakan peran saat ini')->options(fn (): array => UserRole::options(true))->live()->afterStateUpdated(fn (Set $set): mixed => $set('service_areas', [['service_area_id' => null, 'active_from' => null, 'active_to' => null]]))->helperText('Saat peran berubah, tetapkan tugas baru secara eksplisit. Tugas lama tidak diwariskan.'),
+                Select::make('new_role')->label('Peran baru (opsional)')->placeholder('Tetap menggunakan peran saat ini')->options(fn (): array => UserRole::options(true))->live()->afterStateUpdated(fn (Set $set): mixed => $set('service_areas', [['service_area_id' => null, 'active_from' => null, 'active_to' => null]]))->helperText('Pilih wilayah tugas untuk peran baru. Penugasan lama tidak ikut dipindahkan.'),
                 Textarea::make('role_reason')->label('Alasan perubahan peran')->minLength(10)->maxLength(1000)->requiredWith('new_role'),
             ]),
         ]);

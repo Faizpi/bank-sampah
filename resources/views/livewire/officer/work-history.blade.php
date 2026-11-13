@@ -60,7 +60,7 @@
                     <details @if ($recordId !== null) open @endif>
                         <summary class="min-h-touch cursor-pointer py-3 font-semibold text-forest-700">Lihat rincian penyerahan</summary>
                         <p class="text-body-sm">{{ data_get($record->package_snapshot, 'contents') }}</p>
-                        <p class="mt-2 text-body-sm text-text-secondary">Dicatat oleh {{ $record->handoverActor?->name ?? 'pelaksana layanan' }}. Penyerahan selesai; jangan serahkan paket kedua untuk transaksi ini.</p>
+                        <p class="mt-2 text-body-sm text-text-secondary">Penyerahan dicatat oleh {{ $record->handoverActor?->name ?? 'Petugas' }}.</p>
                     </details>
                 @endif
             </article>

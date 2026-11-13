@@ -35,7 +35,7 @@
                     <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z"/><path d="m9 12 2 2 4-4"/>
                 </svg>
                 <div class="flex-1">
-                    <p class="text-label font-bold text-forest-700">Estimasi Informatif</p>
+                    <p class="text-label font-bold text-forest-700">Perkiraan nilai setoran</p>
                     <p class="mt-2 amount-tabular text-amount-lg font-extrabold text-deep-green">
                         Rp{{ number_format($result['estimated_value'], 0, ',', '.') }}
                     </p>

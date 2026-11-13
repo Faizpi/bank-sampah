@@ -83,7 +83,7 @@ it('never re finalizes a draft that the web has already completed', function ():
     $draft = Deposit::firstOrFail();
     $type = WasteType::where('code', 'AQUA-BOTOL')->firstOrFail();
     app(DepositService::class)->finalize($this->officer, $draft, (string) str()->uuid(), [['waste_type_id' => $type->id, 'condition_id' => $type->conditions()->firstOrFail()->id, 'weight_kg' => '2']]);
-    Bot::click('10002', 'Data benar — catat setoran');
+    Bot::click('10002', 'Data benar (catat setoran)');
     expect(LedgerEntry::count())->toBe(1)->and(LedgerAccount::firstOrFail()->availableBalance())->toBe(3000);
     expect(Bot::lastText('10002'))->toContain('3.000');
 });

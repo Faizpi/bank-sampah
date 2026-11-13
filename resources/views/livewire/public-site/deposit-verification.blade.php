@@ -18,7 +18,7 @@
                 id="verification-summary-title"
                 eyebrow="Bukti publik"
                 title="Ringkasan transaksi terverifikasi"
-                description="Nomor bukti, waktu, berat, nilai, dan status tersedia tanpa membuka saldo atau data pribadi."
+                description="Cocokkan rincian pada bukti setoran."
             />
 
             <div class="mt-8 space-y-6">

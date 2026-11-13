@@ -9,7 +9,7 @@
             <p class="text-label font-semibold text-forest-600">Operasional Petugas</p>
             <h1 id="deposit-title" class="mt-2 text-h1 font-bold text-deep-green">Setoran Baru</h1>
             <p class="mt-3 text-body text-text-secondary">
-                Tambahkan berat aktual. Harga dan subtotal selalu dihitung ulang server saat pencatatan.
+                Masukkan jenis sampah dan hasil penimbangannya.
             </p>
         </div>
         <x-ui.mascot variant="11" bubble="Timbang dengan akurat!" bubblePosition="top" class="h-28 w-auto shrink-0" />
@@ -19,7 +19,7 @@
         $depositComplete = $draft?->isFinal();
     @endphp
 
-    <x-ui.panel title="Konteks setoran" description="Identitas warga dan metode ini tetap digunakan sampai setoran selesai.">
+    <x-ui.panel title="Data setoran">
         <dl class="grid gap-4 text-body-sm sm:grid-cols-2">
             <div>
                 <dt class="text-text-secondary">Warga</dt>
@@ -112,7 +112,7 @@
                 <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                     <div>
                         <h3 class="text-label font-bold text-deep-green">Ringkasan nilai setoran</h3>
-                        <p class="text-body-sm text-text-secondary">Harga mengikuti waktu pembuatan draf jika ada; subtotal dihitung ulang server saat pencatatan.</p>
+                        <p class="text-body-sm text-text-secondary">Harga mengikuti waktu draf setoran dibuat.</p>
                     </div>
                     @if ($pricePreview['complete'])
                         <strong class="amount-tabular text-title text-forest-700">Rp {{ number_format($pricePreview['total'], 0, ',', '.') }}</strong>
@@ -163,7 +163,7 @@
       </div>
       </details>
       <div class="rounded-xl border border-border bg-warning-bg p-4">
-          <p class="text-body-sm text-deep-green">Periksa nama warga, jenis, berat, nilai, dan bukti pada halaman ini sebelum mencatat. Harga mengikuti waktu pembuatan draf jika Anda melanjutkan draf tersimpan.</p>
+          <p class="text-body-sm text-deep-green">Periksa nama warga dan hasil timbang sebelum mencatat setoran.</p>
           <div class="mt-4 flex justify-end">
               <x-ui.button type="button" wire:click="finalize" wire:loading.attr="disabled" wire:target="finalize" data-photo-picker-action>
                   <span wire:loading.remove wire:target="finalize">{{ 'Data sudah benar - catat setoran' }}</span>

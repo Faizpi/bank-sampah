@@ -163,3 +163,14 @@ it('requires a strong token CSRF and explicit target backup and reset confirmati
         ->and($console)->toContain('Gunakan HTTPS untuk konsol deployment.')
         ->and($console)->not->toContain('<?= escapeDeployConsole($submittedToken) ?>');
 });
+
+it('requires an exact request number and operator confirmation for legacy payout rejection recovery', function (): void {
+    $console = file_get_contents(base_path('public/deploy.php'));
+
+    expect($console)->toContain("'payout-resolve-rejected' => [")
+        ->toContain("'confirmation' => 'SUDAH CEK XENDIT TIDAK TERCATAT'")
+        ->toContain("['payouts:resolve-rejected', ['--confirm-not-created' => true]]")
+        ->toContain('name="payout_request_number"')->toContain('pattern="SIM-[0-9]{14}-[A-Z0-9]{8}"')
+        ->toContain("\$parameters['request'] = (string) (\$_POST['payout_request_number'] ?? '')")
+        ->toContain('payoutInput.required = isPayoutRecovery');
+});

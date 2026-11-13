@@ -91,7 +91,7 @@ final class CoreAuthenticationTest extends TestCase
                 ->set('username', $user->username)
                 ->set('password', $password)
                 ->call('login')
-                ->assertHasErrors(['username' => 'Kredensial tidak valid atau akun tidak dapat digunakan.'])
+                ->assertHasErrors(['username' => 'Username atau kata sandi tidak sesuai, atau akun belum aktif.'])
                 ->assertDispatched('login-invalid');
 
             $this->assertGuest();
@@ -113,7 +113,7 @@ final class CoreAuthenticationTest extends TestCase
             ->set('username', 'nonexistentuser')
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
-            ->assertHasErrors(['username' => 'Kredensial tidak valid atau akun tidak dapat digunakan.']);
+            ->assertHasErrors(['username' => 'Username atau kata sandi tidak sesuai, atau akun belum aktif.']);
 
         $this->assertGuest();
         $audit = AuditLog::query()->sole();
@@ -136,7 +136,7 @@ final class CoreAuthenticationTest extends TestCase
             ->set('username', 'siti')
             ->set('password', 'rahasia-yang-kuat')
             ->call('login')
-            ->assertHasErrors(['username' => 'Kredensial tidak valid atau akun tidak dapat digunakan.']);
+            ->assertHasErrors(['username' => 'Username atau kata sandi tidak sesuai, atau akun belum aktif.']);
 
         $this->assertGuest();
         $audit = AuditLog::query()->sole();
@@ -161,7 +161,7 @@ final class CoreAuthenticationTest extends TestCase
                 ->set('username', $user->username)
                 ->set('password', 'kata-sandi-salah')
                 ->call('login')
-                ->assertHasErrors(['username' => 'Kredensial tidak valid atau akun tidak dapat digunakan.']);
+                ->assertHasErrors(['username' => 'Username atau kata sandi tidak sesuai, atau akun belum aktif.']);
 
             $this->assertGuest();
         }

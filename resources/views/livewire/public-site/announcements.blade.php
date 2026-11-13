@@ -28,7 +28,7 @@
                 id="announcements-title"
                 eyebrow="Terbaru"
                 title="Pengumuman aktif"
-                description="Baca informasi resmi sebelum menggunakan layanan atau datang ke titik layanan."
+                description="Informasi terbaru tentang kegiatan dan layanan bank sampah."
             />
 
             @if ($announcements->isEmpty())

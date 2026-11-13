@@ -37,7 +37,7 @@
                         <x-public.icon name="circle-alert" size="size-5" class="mt-0.5 shrink-0 text-terracotta" />
                         <div class="min-w-0">
                             <h2 class="text-title text-deep-green font-bold">Tidak dapat masuk</h2>
-                            <p class="mt-1 break-words text-body-sm text-text-secondary">Kredensial tidak valid atau akun tidak dapat digunakan.</p>
+                            <p class="mt-1 break-words text-body-sm text-text-secondary">Periksa username dan kata sandi Anda.</p>
                             <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-body-sm" aria-label="Field yang perlu diperbaiki">
                                 @foreach ($errors->keys() as $errorKey)
                                     @if (isset($errorFieldLabels[$errorKey]))
@@ -81,9 +81,9 @@
                 </div>
 
                 <div class="space-y-3 pt-2">
-                    <div class="flex min-h-touch items-center gap-3 rounded-xl bg-info-bg px-4 py-3 border border-sky-100" wire:loading wire:target="login" aria-live="polite">
+                    <div class="flex min-h-touch w-full items-center gap-3 rounded-xl bg-info-bg px-4 py-3 border border-sky-100" wire:loading.flex wire:target="login" role="status" aria-live="polite" data-auth-loading="login">
                         <x-public.icon name="loader-circle" size="size-5" class="shrink-0 animate-spin text-sky-blue motion-reduce:animate-none" />
-                        <p class="text-body-sm font-semibold text-text-secondary">Memproses masuk. Mohon tunggu.</p>
+                        <p class="min-w-0 text-body-sm font-semibold text-text-secondary">Sedang masuk ke akun...</p>
                     </div>
 
                     <x-ui.button type="submit" class="w-full" wire:loading.attr="disabled" wire:target="login">

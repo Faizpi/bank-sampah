@@ -58,7 +58,7 @@ final class MobileServiceResource extends Resource
         return $schema->components([
             Section::make('Jadwal')->schema([
                 Select::make('rw_id')->label('RW')->helperText('Opsional. Pilih RW untuk membatasi pilihan RT, atau gunakan RW saja sebagai cakupan layanan.')->options(fn (): array => RegionOptions::rws())->searchable()->live()->afterStateUpdated(fn (Set $set): mixed => $set('rt_id', null)),
-                Select::make('rt_id')->label('RT')->helperText('Opsional. Tanpa RW, semua RT aktif tersedia; dengan RW, hanya RT dalam RW tersebut yang ditampilkan.')->options(function (Get $get): array {
+                Select::make('rt_id')->label('RT')->helperText('Pilih RW jika ingin membatasi pilihan RT.')->options(function (Get $get): array {
                     $rwId = $get('rw_id');
 
                     return Rt::query()

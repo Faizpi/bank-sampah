@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <section class="backoffice-page-intro" aria-labelledby="reconciliation-title">
         <h2 id="reconciliation-title" class="text-2xl font-bold text-deep-green">Pemeriksaan saldo harian</h2>
-        <p class="mt-2 text-body">Bandingkan transaksi, saldo, dan total uang tunai yang dibayarkan. Satu Admin mencatat hasilnya; tidak ada persetujuan kedua.</p>
+        <p class="mt-2 text-body">Cocokkan transaksi dan saldo dengan uang tunai yang dibayarkan.</p>
         <p class="mt-2 text-body-sm">Pemeriksaan tidak membayar transaksi atau mengubah saldo. Kesalahan uang diperbaiki melalui koreksi resmi.</p>
     </section>
     @if (session('reconciliation-success'))<p role="status" class="rounded-xl bg-success-bg p-4">{{ session('reconciliation-success') }}</p>@endif

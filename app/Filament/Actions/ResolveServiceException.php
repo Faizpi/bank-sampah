@@ -52,7 +52,7 @@ final class ResolveServiceException
         return Action::make('resolveException')->label('Selesaikan pengecualian')
             ->visible(fn (WithdrawalRequest|GroceryRedemption $record): bool => $record->exception_reported_at !== null && $record->exception_resolved_at === null)
             ->authorize(fn (): bool => app(PermissionChecker::class)->allows(auth()->user(), 'transaction.exception'))
-            ->modalDescription('Hanya untuk transaksi dengan serah fisik yang tidak pasti. Konfirmasi fakta dengan pelaksana dan warga sebelum memutuskan. Ini bukan persetujuan rutin.')
+            ->modalDescription('Periksa penyerahan uang atau paket bersama pelaksana dan warga sebelum mengambil keputusan.')
             ->modalContent(fn (WithdrawalRequest|GroceryRedemption $record): View => self::inspection($record))
             ->schema([
                 Select::make('decision')->label('Hasil pemeriksaan')->options(fn (WithdrawalRequest|GroceryRedemption $record): array => ['handed_over' => 'Sudah diserahkan — catat penyelesaian', 'not_handed_over' => $record->getAttribute('cancellation_requested_at') !== null ? 'Belum diserahkan — batalkan dan kembalikan saldo tersedia' : 'Belum diserahkan — kembali ke antrean, dana tetap disisihkan'])->required(),

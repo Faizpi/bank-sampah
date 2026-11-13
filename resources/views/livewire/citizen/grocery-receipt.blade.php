@@ -16,7 +16,7 @@
         :status="$redemption->status->value"
     />
 
-    <x-ui.panel title="Ringkasan penyerahan" description="Saldo keluar dicatat setelah serah-terima yang sah.">
+    <x-ui.panel title="Ringkasan penyerahan">
         <p class="mb-4 font-bold">Warga: {{ $redemption->customer->name }} · {{ $redemption->customer->customerProfile?->customer_number }}</p>
         <p>Waktu serah fisik: {{ $redemption->physical_handed_over_at?->translatedFormat('d F Y H:i') ?? 'Tidak diketahui; waktu di bawah adalah waktu pencatatan sistem.' }}</p>
         <dl class="grid gap-4 text-body md:grid-cols-2">
@@ -29,7 +29,7 @@
     </x-ui.panel>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-print-hide>
-        <p class="text-caption text-text-secondary">Butuh arsip? Cetak bukti ini atau simpan sebagai PDF dari dialog cetak.</p>
+        <p class="text-caption text-text-secondary">Cetak bukti atau simpan sebagai PDF.</p>
         <button type="button" data-print-button class="inline-flex min-h-touch items-center justify-center gap-2 rounded-md bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">
             <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>
             Cetak bukti

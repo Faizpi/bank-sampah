@@ -5,7 +5,7 @@
     <div>
         <p class="text-label text-forest-600">Bukti {{ $withdrawal->request_number }}</p>
         <h1 id="withdrawal-receipt-title" class="mt-2 text-h1 text-deep-green">Pencairan berhasil</h1>
-        <p class="mt-3 text-body text-text-secondary">Bukti ini hanya dapat dilihat oleh pemilik pencairan yang sudah dibayar.</p>
+
     </div>
 
     <x-ui.success-state
