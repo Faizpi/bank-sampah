@@ -344,7 +344,10 @@ final class BackofficePanelTest extends TestCase
             ['Direktori', 'Nasabah', 'Pengguna', 'Verifikasi Warga', 'Wilayah', 'Area Pelayanan', 'Dusun', 'RW', 'RT', 'Katalog Sampah', 'Jenis Sampah', 'Kategori Sampah', 'Kondisi Sampah', 'Harga Sampah', 'Satuan Sampah', 'Paket Sembako'],
             $this->navigationLabelsForGroup($panel, 'Data Master', includeChildren: true),
         );
-        self::assertSame(['Kondisi sistem'], $this->navigationLabelsForGroup($panel, 'Administrasi sistem'));
+        self::assertSame(
+            ['Kontrol teknis', 'Pengaturan', 'Pemeliharaan', 'Cadangan', 'Retensi audit', 'Retensi foto', 'Kondisi sistem'],
+            $this->navigationLabelsForGroup($panel, 'Administrasi sistem', includeChildren: true),
+        );
     }
 
     public function test_backoffice_panel_registers_only_current_resources_without_scanning_stale_files(): void
