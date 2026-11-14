@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 use App\Domain\Ledger\Models\BalanceHold;
 use App\Domain\Ledger\Models\LedgerAccount;
+use App\Domain\Operations\Services\OperationalSettingsService;
 use App\Domain\Payouts\Models\SandboxPayout;
 use App\Domain\Payouts\Services\PayoutAccess;
 use App\Domain\Payouts\Services\PayoutChannels;
 use App\Domain\Payouts\Services\PayoutService;
 use App\Domain\Payouts\Services\PayoutWorker;
-use App\Domain\Operations\Services\OperationalSettingsService;
-use App\Domain\Withdrawals\Services\WithdrawalMinimum;
 use App\Domain\Withdrawals\Models\WithdrawalRequest;
+use App\Domain\Withdrawals\Services\WithdrawalMinimum;
 use App\Filament\Pages\SandboxPayouts;
 use App\Livewire\Citizen\PayoutForm;
 use App\Livewire\Citizen\PayoutShow;
 use App\Livewire\Citizen\WithdrawalRequestForm;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -83,7 +84,7 @@ it('uses the admin saved minimum across requests for cash and digital without cl
         ->call('review')->assertHasErrors('amount')->set('amount', '5000')->call('review')->assertHasNoErrors();
     $cash = Livewire::test(WithdrawalRequestForm::class)->call('chooseCash')->assertSee('Minimal Rp 5.000')
         ->set('amount', '4999')->set('pickupLocation', 'Loket')->call('submit')->assertHasErrors('amount');
-    expect(fn () => app(OperationalSettingsService::class)->update($this->owner, ['withdrawal_minimum_amount' => 1]))->toThrow(\Illuminate\Auth\Access\AuthorizationException::class);
+    expect(fn () => app(OperationalSettingsService::class)->update($this->owner, ['withdrawal_minimum_amount' => 1]))->toThrow(AuthorizationException::class);
     $cash->set('amount', '5000')->set('pickupLocation', 'Loket')->call('submit')->assertHasNoErrors();
     expect(SandboxPayout::count())->toBe(0)->and(WithdrawalRequest::count())->toBe(1)->and(BalanceHold::count())->toBe(1);
     Http::assertNothingSent();
@@ -120,10 +121,21 @@ it('does not expose another customers payout through web detail or history', fun
 
 it('displays provider settlement as an automatic simulation rather than physical cash handover', function (): void {
     $row = app(PayoutService::class)->request($this->owner, Payout::request(), (string) str()->uuid());
+    $this->actingAs($this->owner);
+    Livewire::test(PayoutShow::class, ['payout' => $row->fresh()])
+        ->assertSee('Pencairan sedang diproses')
+        ->assertSee('payout-status-spinner')
+        ->assertDontSee('payout-status-check');
     Http::fake(['api.xendit.co/*' => Http::response(Payout::response($row))]);
     app(PayoutWorker::class)->run();
-    $this->actingAs($this->owner);
-    Livewire::test(PayoutShow::class, ['payout' => $row->fresh()])->assertSee('Simulasi berhasil')->assertSee('Otomatis oleh sistem')->assertSee('bukan struk resmi')->assertDontSee('Waktu serah fisik')->assertDontSee('Batalkan sebelum diproses');
+    Livewire::test(PayoutShow::class, ['payout' => $row->fresh()])
+        ->assertSee('Pencairan berhasil')
+        ->assertSee('payout-status-check')
+        ->assertDontSee('payout-status-spinner')
+        ->assertSee('Otomatis oleh sistem')
+        ->assertSee('bukan struk resmi')
+        ->assertDontSee('Waktu serah fisik')
+        ->assertDontSee('Batalkan sebelum diproses');
 });
 
 it('keeps disabled sandboxes and live provider keys unavailable', function (): void {

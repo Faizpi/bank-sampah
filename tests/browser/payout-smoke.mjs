@@ -118,7 +118,7 @@ try {
     await capture(citizen, 'queued');
     fixture('work');
     await citizen.reload();
-    await expect(citizen.getByRole('heading', { name: 'Simulasi berhasil', exact: true })).toBeVisible();
+    await expect(citizen.getByRole('heading', { name: 'Pencairan berhasil', exact: true })).toBeVisible();
     await capture(citizen, 'settled');
     await citizen.getByRole('link', { name: 'Riwayat pencairan', exact: true }).click();
     await expect(citizen.getByRole('heading', { name: 'Riwayat Pencairan', exact: true })).toBeVisible();

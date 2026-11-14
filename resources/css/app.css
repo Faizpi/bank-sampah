@@ -335,6 +335,48 @@
     }
 }
 
+/* Payout receipt: the spinner marks an in-flight simulation, the check draws once when it succeeds. */
+@keyframes payout-status-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes payout-status-draw {
+    to { stroke-dashoffset: 0; }
+}
+
+.payout-status-spinner {
+    transform-origin: center;
+    animation: payout-status-spin 900ms linear infinite;
+}
+
+.payout-status-check {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: payout-status-draw 480ms var(--ease-standard) 120ms forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .payout-status-spinner,
+    .payout-status-check {
+        animation: none;
+    }
+
+    .payout-status-check {
+        stroke-dashoffset: 0;
+    }
+}
+
+@media print {
+    .payout-status-spinner,
+    .payout-status-check {
+        animation: none;
+    }
+
+    .payout-status-check {
+        stroke-dashoffset: 0;
+    }
+}
+
 @keyframes shine-sweep {
     0% { background-position: 200% center; }
     100% { background-position: -200% center; }
