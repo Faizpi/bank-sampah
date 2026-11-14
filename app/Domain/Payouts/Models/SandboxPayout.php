@@ -97,8 +97,8 @@ final class SandboxPayout extends Model
     public function label(): string
     {
         return match ($this->status) {
-            'succeeded' => 'Simulasi berhasil', 'failed' => 'Simulasi gagal', 'reversed' => 'Saldo simulasi dikembalikan',
-            'cancelled' => 'Dibatalkan', 'uncertain' => 'Status sedang diperiksa', default => 'Simulasi sedang diproses',
+            'succeeded' => 'Pencairan berhasil', 'failed' => 'Pencairan gagal', 'reversed' => 'Saldo pencairan dikembalikan',
+            'cancelled' => 'Pencairan dibatalkan', 'uncertain' => 'Status sedang diperiksa', default => 'Pencairan sedang diproses',
         };
     }
 

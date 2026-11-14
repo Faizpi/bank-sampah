@@ -343,7 +343,7 @@ final class ReportSemanticsTest extends TestCase
                 ['key' => 'customer_count', 'label' => 'Warga', 'format' => 'count'],
                 ['key' => 'payout_count', 'label' => 'Pengajuan digital', 'format' => 'count'],
                 ['key' => 'processing_count', 'label' => 'Dalam proses', 'format' => 'count'],
-                ['key' => 'succeeded_amount', 'label' => 'Berhasil (simulasi)', 'format' => 'currency'],
+                ['key' => 'succeeded_amount', 'label' => 'Pencairan berhasil', 'format' => 'currency'],
             ],
             'groceries' => [
                 ['key' => 'customer_count', 'label' => 'Nasabah', 'format' => 'count'],

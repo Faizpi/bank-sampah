@@ -123,7 +123,7 @@ try {
     await citizen.getByRole('link', { name: 'Riwayat pencairan', exact: true }).click();
     await expect(citizen.getByRole('heading', { name: 'Riwayat Pencairan', exact: true })).toBeVisible();
     await expect(citizen.getByRole('button', { name: 'Digital (simulasi)', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(citizen.getByText('Simulasi berhasil', { exact: true })).toBeVisible();
+    await expect(citizen.getByText('Pencairan berhasil', { exact: true })).toBeVisible();
     await expect(citizen.getByRole('link', { name: 'Bukti simulasi' })).toBeVisible();
     await expect(citizen.locator('[data-channel-logo]').first()).toBeVisible();
     await capture(citizen, 'history');
@@ -158,7 +158,7 @@ try {
     const treasurer = await login('bendahara');
     await treasurer.goto(`${env.APP_URL}/pengurus/pencairan-digital`);
     await expect(treasurer.getByRole('heading', { name: 'Riwayat pencairan' })).toBeVisible();
-    await expect(treasurer.getByRole('region', { name: 'Hasil laporan' }).locator('article').filter({ hasText: 'Simulasi berhasil' })).toBeVisible();
+    await expect(treasurer.getByRole('region', { name: 'Hasil laporan' }).locator('article').filter({ hasText: 'Pencairan berhasil' })).toBeVisible();
     for (const width of [360, 390, 768, 1280]) {
         await treasurer.setViewportSize({ width, height: 900 });
         const form = treasurer.getByRole('form', { name: 'Filter laporan' });
@@ -187,7 +187,7 @@ try {
         ['sembako', '/petugas/sembako'], ['keliling', '/petugas/layanan-keliling'], ['profil', '/profil/kata-sandi']]);
     const admin = await login('admin');
     await admin.goto(`${env.APP_URL}/backoffice/sandbox-payouts`);
-    await expect(admin.getByText('Simulasi berhasil', { exact: true })).toBeVisible();
+    await expect(admin.getByText('Pencairan berhasil', { exact: true })).toBeVisible();
     await expect(admin.locator('[data-channel-logo]').first()).toBeVisible();
     await capture(admin, 'admin');
     assert.deepEqual(errors, []);

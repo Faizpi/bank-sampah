@@ -48,8 +48,9 @@ it('switches cash and digital in the same treasurer report without changing fina
         ->assertSee($this->cash->request_number)->assertDontSee($this->digital->request_number)->assertSet('metrics.total_amount', 10000)
         ->assertDontSee('Pantauan digital (simulasi)');
     $screen->call('selectMethod', 'digital')->assertSet('reportType', 'digital_payouts')->assertSee($this->digital->request_number)
-        ->assertDontSee($this->cash->request_number)->assertSee('Simulasi gagal')->assertSee('Sistem')
+        ->assertDontSee($this->cash->request_number)->assertSee('Pencairan gagal')->assertSee('Sistem')
         ->assertSee(asset('images/payouts/gopay.webp'), false)
+        ->assertSee('Pencairan berhasil')->assertDontSee('Berhasil (simulasi)')
         ->assertSet('metrics.payout_count', 1)->assertSet('metrics.succeeded_amount', 0)->assertSee('Unduh Excel')
         ->assertDontSee('payout.http_')->assertDontSee('API_VALIDATION_ERROR')->assertDontSee('recipient.address')->assertDontSee('routing');
     $screen->call('selectMethod', 'tunai')->assertSee($this->cash->request_number)->assertDontSee($this->digital->request_number);
@@ -115,7 +116,7 @@ it('exports masked simulation records as private Excel without counting failed r
     expect($zip->open(Storage::disk('media_private')->path($export->path)))->toBeTrue();
     $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
     $zip->close();
-    expect($sheet)->toContain($this->digital->request_number, 'GoPay (simulasi)', 'Simulasi gagal', 'Sistem otomatis', 'tidak mengirim uang riil')
+    expect($sheet)->toContain($this->digital->request_number, 'GoPay (simulasi)', 'Pencairan gagal', 'Sistem otomatis', 'tidak mengirim uang riil')
         ->not->toContain($this->digital->recipient['number'], $this->cash->request_number);
     $summary = app(ReportQueryService::class)->aggregate($this->treasurer, $this->filters, ReportType::DigitalPayouts);
     expect($summary['succeeded_amount'])->toBe(0)->and($summary['payout_count'])->toBe(1)->and(LedgerEntry::count())->toBe(1);

@@ -12,14 +12,7 @@
             $status === 'uncertain' => 'warning',
             default => 'processing',
         };
-        $statusLabel = match ($status) {
-            'succeeded' => 'Pencairan berhasil',
-            'failed' => 'Pencairan gagal',
-            'reversed' => 'Saldo pencairan dikembalikan',
-            'cancelled' => 'Pencairan dibatalkan',
-            'uncertain' => 'Status sedang diperiksa',
-            default => 'Pencairan sedang diproses',
-        };
+        $statusLabel = $payout->label();
         $toneClasses = [
             'success' => 'bg-success-bg text-forest-600',
             'danger' => 'bg-danger-bg text-terracotta',

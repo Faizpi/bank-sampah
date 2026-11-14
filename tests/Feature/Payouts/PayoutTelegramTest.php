@@ -53,9 +53,9 @@ it('submits each digital destination from Telegram only after confirmation and s
     Bot::fakeHttp(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 11]]), 'api.xendit.co/*' => Http::response(Payout::response($row))]);
     app(PayoutWorker::class)->run();
     Bot::click('10001', 'Periksa status');
-    expect(Bot::lastText('10001'))->toContain('Simulasi berhasil', 'Tidak ada dana riil');
+    expect(Bot::lastText('10001'))->toContain('Pencairan berhasil', 'Tidak ada dana riil');
     $this->actingAs($this->owner)->get(route('citizen.payout.history'))->assertRedirect(route('citizen.withdrawal-history', ['metode' => 'digital']));
-    $this->get(route('citizen.withdrawal-history', ['metode' => 'digital']))->assertOk()->assertSee($row->request_number)->assertSee('Simulasi berhasil');
+    $this->get(route('citizen.withdrawal-history', ['metode' => 'digital']))->assertOk()->assertSee($row->request_number)->assertSee('Pencairan berhasil');
     expect(LedgerEntry::count())->toBe(2);
 })->with([['bca', 'BCA'], ['mandiri', 'Mandiri'], ['bri', 'BRI'], ['bni', 'BNI'], ['dana', 'DANA'], ['gopay', 'GoPay']]);
 
