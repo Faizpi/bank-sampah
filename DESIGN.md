@@ -81,6 +81,8 @@ Bedakan kosong, tidak ditemukan, menunggu, diklaim, terkunci, selesai, dan gagal
 
 ## Content voice
 
+Penyuntingan 14 November: hapus catatan implementasi dan penjelasan berulang pada Pengaturan, direktori, riwayat, bukti, laporan, serta petunjuk Telegram. Formulir tetap memuat label, batas nominal, pesan validasi, dan konfirmasi yang diperlukan. Keterbatasan kanal Xendit dijelaskan dalam dokumentasi; peringatan penghapusan permanen, saldo disisihkan, privasi, dan penanda simulasi tetap tampil pada konteksnya. Label hasil digital memakai Pencairan berhasil/gagal/sedang diproses melalui model yang sama, termasuk laporan dan bot.
+
 Penyelarasan 13 November: kode HTTP/provider, nama field seperti recipient.address, serta petunjuk konfigurasi tidak tampil pada Warga, Bendahara, atau modal backoffice. Gunakan pesan yang menjelaskan hasil pengajuan dan status saldo. Simpan rincian teknis di konsol diagnosis terlindungi; jangan hanya menyembunyikannya secara visual sambil mengirimnya sebagai data baris frontend.
 
 Penyuntingan 12 November 2026 mengikuti Humanizer Indonesia dengan ragam semiformal yang netral untuk antarmuka. Kalimat langsung menyebut tindakan atau hasil; hapus penjelasan implementasi, pengulangan judul, dan catatan izin pada layar normal. Gunakan saldo disisihkan, data setoran, hasil penimbangan, dan hasil pencairan sebagai pengganti jargon yang tidak dibutuhkan pengguna. Informasi nominal, status, harga saat draf dibuat, privasi, penanda simulasi, serta peringatan pada penyerahan yang bermasalah tetap dipertahankan. Teks ketentuan/privasi dan data yang ditulis pengguna tidak ditulis ulang. Penghapusan teks tambahan mengikuti permintaan pemilik, bukan pemangkasan isi transaksi.

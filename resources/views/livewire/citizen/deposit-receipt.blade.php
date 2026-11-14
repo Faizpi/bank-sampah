@@ -7,7 +7,6 @@
         <div>
             <p class="text-label font-semibold text-forest-600">Bukti Transaksi</p>
             <h1 id="receipt-title" class="mt-2 text-h1 font-bold text-deep-green">Setoran Selesai</h1>
-            <p class="mt-3 text-body text-text-secondary">Simpan atau cetak bukti ini sebagai rujukan transaksi Anda.</p>
         </div>
         <div data-print-hide>
             <x-ui.mascot variant="2" bubble="Setoran berhasil tercatat!" bubblePosition="top" class="h-28 w-auto shrink-0" />

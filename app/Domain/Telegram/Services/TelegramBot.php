@@ -102,6 +102,9 @@ final class TelegramBot
             $buttons[] = BotContext::button($label, 'pref.frequency', ['value' => $value]);
         }
         $buttons[] = BotContext::button('Menu', 'menu');
-        $ctx->say('Pilih notifikasi yang Anda izinkan. Pengumuman hanya dikirim setelah langganan diaktifkan. Pengingat dibatasi satu ringkasan per hari. Frekuensi ringkasan saat ini: '.$link->summary_frequency.'.', $buttons);
+        $frequency = match ($link->summary_frequency) {
+            'daily' => 'harian', 'monthly' => 'bulanan', default => 'mingguan',
+        };
+        $ctx->say('Pilih notifikasi yang ingin diterima. Pengingat maksimal sekali sehari. Ringkasan tabungan: '.$frequency.'.', $buttons);
     }
 }

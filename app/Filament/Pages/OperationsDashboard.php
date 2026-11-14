@@ -289,7 +289,7 @@ class OperationsDashboard extends Page
             correlationId: $this->correlationId(),
         ));
 
-        session()->flash('operations_notice', 'Metadata cadangan tercatat. Penyalinan basis data dan media tetap dijalankan melalui prosedur penerapan. ID: '.$backup->getKey());
+        session()->flash('operations_notice', 'Data cadangan #'.$backup->getKey().' tercatat.');
         $this->resetBackupFields();
         $this->dispatch('close-dialog', id: 'backup-metadata-dialog');
     }
@@ -315,7 +315,7 @@ class OperationsDashboard extends Page
             correlationId: $this->correlationId(),
         );
 
-        session()->flash('operations_notice', 'Hasil verifikasi pemulihan tercatat. Aplikasi tidak menjalankan pemulihan atau menyentuh berkas cadangan.');
+        session()->flash('operations_notice', 'Hasil verifikasi pemulihan tercatat.');
         $this->restoreBackupId = '';
         $this->restoreTargetAlias = '';
         $this->restoreEvidenceReference = '';

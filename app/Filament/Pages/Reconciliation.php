@@ -73,7 +73,7 @@ final class Reconciliation extends Page
         $actor = auth()->user();
         $cash = trim($this->cashTotal) === '' ? null : (int) $this->cashTotal;
         $service->create($actor, CarbonImmutable::parse($this->businessDate, 'Asia/Jakarta'), $cash, $this->notes);
-        session()->flash('reconciliation-success', 'Catatan dibuat. Periksa pembanding dan catat hasilnya; tidak perlu Admin kedua.');
+        session()->flash('reconciliation-success', 'Pembanding siap. Periksa selisih dan catat hasilnya.');
     }
 
     public function saveCashCount(int $reconciliationId, FinancialReconciliationService $service): void
@@ -104,7 +104,7 @@ final class Reconciliation extends Page
             throw ValidationException::withMessages($messages);
         }
         $this->decisionReasons[$reconciliationId] = '';
-        session()->flash('reconciliation-success', 'Hasil pemeriksaan tercatat. Pencatatan ini tidak mengubah saldo atau membayar transaksi.');
+        session()->flash('reconciliation-success', 'Hasil pemeriksaan tercatat.');
     }
 
     /** @return array<string, bool|Collection<int, ReconciliationModel>> */

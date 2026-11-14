@@ -3,7 +3,7 @@
     @if ($canRunBackup)
         <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-labelledby="technical-backup-title">
             <h2 id="technical-backup-title" class="text-xl font-semibold text-gray-950">Catat metadata cadangan</h2>
-            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-600">Catat lokasi, kode pemeriksaan berkas, ukuran, status, dan masa simpan. Berkas cadangan dibuat melalui prosedur penerapan.</p>
+            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-600">Buat berkas cadangan secara terpisah, lalu catat datanya di sini.</p>
             <form x-on:submit.prevent="if ($el.reportValidity()) $dispatch('open-dialog', { id: 'backup-metadata-dialog', invoker: $event.submitter })" class="mt-6 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
                 @foreach ([
                     ['backup-database-alias', 'backupDatabaseAlias', 'Lokasi basis data', 'text', 'Contoh: backup-db-20260811'],
@@ -29,7 +29,7 @@
     @if ($canRestoreBackup)
         <section class="mt-6 rounded-xl border border-info-200 bg-info-50 p-5 shadow-sm" aria-labelledby="technical-restore-title">
             <h2 id="technical-restore-title" class="text-xl font-semibold text-gray-950">Verifikasi pemulihan</h2>
-            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-700">Catat hasil uji pemulihan dari lingkungan uji terpisah. Pemulihan data tidak dijalankan dari halaman ini.</p>
+            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-700">Catat hasil uji pemulihan. Halaman ini tidak memulihkan data.</p>
             <form x-on:submit.prevent="if ($el.reportValidity()) $dispatch('open-dialog', { id: 'restore-verification-dialog', invoker: $event.submitter })" class="mt-6 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
                 @foreach ([
                     ['restore-backup-id', 'restoreBackupId', 'ID cadangan'],

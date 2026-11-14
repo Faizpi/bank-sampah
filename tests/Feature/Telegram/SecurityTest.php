@@ -151,3 +151,15 @@ it('records explicit announcement consent and old activate buttons cannot silent
     expect($link->fresh()->announcements)->toBeTrue();
     $this->assertDatabaseHas('audit_logs', ['action' => 'telegram.preferences.updated', 'actor_id' => $this->citizen->id]);
 });
+
+it('shows notification frequencies in Indonesian without silently enabling subscriptions', function (string $frequency, string $label): void {
+    $link = Bot::link($this->citizen, '10001', ['summary_frequency' => $frequency]);
+    Bot::text('10001', '/menu');
+    Bot::click('10001', 'Notifikasi');
+
+    expect(Bot::lastText('10001'))->toContain('Ringkasan tabungan: '.$label.'.', 'Pengingat maksimal sekali sehari.')
+        ->not->toContain('weekly', 'daily', 'monthly')
+        ->and($link->fresh()->announcements)->toBeFalse()
+        ->and($link->fresh()->summaries)->toBeFalse()
+        ->and($link->fresh()->summary_frequency)->toBe($frequency);
+})->with([['daily', 'harian'], ['weekly', 'mingguan'], ['monthly', 'bulanan']]);

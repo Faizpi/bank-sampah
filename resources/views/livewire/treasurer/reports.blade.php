@@ -38,7 +38,7 @@
             @foreach ($errors->all() as $message)<p>{{ $message }}</p>@endforeach
         </div>
     @endif
-    <x-ui.panel title="Filter laporan" description="Gunakan pilihan cepat atau tentukan tanggal sendiri.">
+    <x-ui.panel title="Filter laporan">
         <div class="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Preset periode">
             <button type="button" wire:click="setPeriod('today')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'today' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Hari ini</button>
             <button type="button" wire:click="setPeriod('week')" class="min-h-touch rounded-md border px-4 text-body-sm font-semibold {{ $period === 'week' ? 'border-forest-600 bg-success-bg text-forest-700' : 'border-border bg-surface text-deep-green hover:border-forest-600 hover:bg-success-bg' }}">Minggu ini</button>
@@ -78,7 +78,7 @@
     </x-ui.panel>
 
     {{-- Export --}}
-    <x-ui.panel title="Unduh laporan" description="Laporan Excel mengikuti periode dan filter yang dipilih.">
+    <x-ui.panel title="Unduh laporan">
         @error('export')
             <div role="alert" class="mb-4 rounded-md border border-terracotta bg-danger-bg p-4 text-body-sm text-text-primary">
                 <p class="font-semibold text-deep-green">Ekspor tidak dapat dibuat</p>

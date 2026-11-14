@@ -52,13 +52,12 @@
                 <dt class="text-caption font-medium text-text-secondary">Perkiraan berat</dt>
                 <dd class="mt-0.5 font-semibold text-deep-green">
                     {{ \App\Support\WeightFormatter::format($pickup->estimated_weight_kg) }} kg
-                    <span class="text-caption font-normal text-text-secondary">(bukan saldo)</span>
                 </dd>
             </div>
         </dl>
     </x-ui.panel>
 
-    <x-ui.panel title="Sampah yang diajukan" description="Rincian dan foto ini tersimpan bersama pengajuan Anda.">
+    <x-ui.panel title="Sampah yang diajukan">
         <div class="grid gap-3 md:grid-cols-2">
             @foreach ($pickup->items as $item)
                 <div class="rounded-lg bg-warm-canvas px-3 py-2">
@@ -91,7 +90,7 @@
 
     <details class="rounded-xl border border-border bg-surface p-4">
         <summary class="cursor-pointer text-label font-semibold text-deep-green">Lihat rincian tahapan</summary>
-    <x-ui.panel title="Tahapan penjemputan" description="Setoran hanya dibuat setelah penimbangan aktual berhasil difinalkan.">
+    <x-ui.panel title="Tahapan penjemputan" description="Saldo bertambah setelah setoran dicatat.">
         <x-ui.status-stepper
             :steps="$pickupStages"
             :current-status="$pickupStatus"

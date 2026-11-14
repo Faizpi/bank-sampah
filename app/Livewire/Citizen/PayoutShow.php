@@ -31,7 +31,7 @@ final class PayoutShow extends Component
         $actor = auth()->user();
         abort_unless($actor instanceof User, 403);
         $service->cancel($actor, $this->record());
-        session()->flash('payout_success', 'Pengajuan dibatalkan. Saldo riset yang disisihkan sudah dilepas.');
+        session()->flash('payout_success', 'Pengajuan dibatalkan. Saldo yang disisihkan tersedia kembali.');
     }
 
     public function render(): View

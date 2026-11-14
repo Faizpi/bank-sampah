@@ -6,7 +6,7 @@
         <div>
             <p class="text-label font-semibold text-forest-600">Riwayat Warga</p>
             <h1 id="grocery-history-title" class="mt-2 text-h1 font-bold text-deep-green">Riwayat Penukaran Sembako</h1>
-            <p class="mt-3 text-body text-text-secondary">Pantau paket, nilai penukaran, status, dan bukti penyerahan Anda.</p>
+            <p class="mt-3 text-body text-text-secondary">Pantau status dan bukti penyerahan paket.</p>
         </div>
         <a href="{{ route('citizen.grocery.create') }}" class="inline-flex min-h-touch shrink-0 items-center justify-center rounded-xl bg-forest-600 px-5 text-label font-bold text-white transition hover:bg-forest-700">Ajukan penukaran</a>
     </div>
@@ -17,7 +17,7 @@
         <a href="{{ route('citizen.grocery-history') }}" aria-current="page" class="inline-flex min-h-touch items-center justify-center rounded-lg bg-success-bg px-3 text-center text-label font-bold text-forest-700">Sembako</a>
     </nav>
 
-    <x-ui.panel title="Penukaran sembako" description="Paket, nilai, status, detail, dan bukti penyerahan.">
+    <x-ui.panel title="Penukaran sembako">
         <form class="grid gap-4 border-b border-border pb-4 sm:grid-cols-2">
             <x-ui.input name="requestNumber" label="Nomor pengajuan" placeholder="Cari nomor penukaran" wire:model.live.debounce.300ms="requestNumber" />
             <x-ui.select name="status" label="Status" placeholder="Semua status" wire:model.live="status">

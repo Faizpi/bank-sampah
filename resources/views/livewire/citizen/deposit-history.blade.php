@@ -19,7 +19,7 @@
     </nav>
 
     {{-- Deposits --}}
-    <x-ui.panel title="Setoran" description="Bukti final, kanal layanan, dan status transaksi.">
+    <x-ui.panel title="Setoran">
         <form class="grid min-w-0 gap-4 border-b border-border pb-4 sm:grid-cols-2 lg:grid-cols-3">
             <x-ui.input name="transactionNumber" label="Nomor transaksi" placeholder="Cari nomor setoran" wire:model.live.debounce.300ms="transactionNumber" />
             <x-ui.select name="status" label="Status" placeholder="Semua status" wire:model.live="status">
@@ -81,7 +81,7 @@
     </x-ui.panel>
 
     {{-- Corrections --}}
-    <x-ui.panel title="Koreksi" description="Nilai sebelum, sesudah, alasan, dan dampak saldo.">
+    <x-ui.panel title="Koreksi">
         <div class="divide-y divide-border">
             @forelse ($corrections as $correction)
                 <article class="py-4 first:pt-0 last:pb-0" wire:key="correction-{{ $correction->id }}">

@@ -112,7 +112,7 @@ final class PayoutTelegramBot
         }
         $buttons[] = BotContext::button('Ganti metode', 'citizen.withdrawal');
         $buttons[] = BotContext::button('Menu', 'menu');
-        $ctx->say('Pilih tujuan pencairan digital (simulasi). Tidak ada dana riil yang dikirim. Hanya tujuan yang sudah dikonfigurasi yang tersedia.', $buttons);
+        $ctx->say('Pilih tujuan pencairan digital (simulasi). Tidak ada dana riil yang dikirim.', $buttons);
     }
 
     /** @param array<string, mixed> $p */

@@ -70,7 +70,7 @@
         </div>
     @endif
 
-    <x-ui.panel title="Permintaan warga" description="Rincian awal menjadi acuan penimbangan; nilai akhir selalu berdasarkan timbang aktual.">
+    <x-ui.panel title="Permintaan warga" description="Nilai setoran mengikuti hasil timbang.">
         <dl class="grid gap-3 text-body sm:grid-cols-3">
             <div class="rounded-lg bg-warm-canvas px-3 py-2"><dt class="text-caption text-text-secondary">Warga</dt><dd class="mt-0.5 font-semibold text-deep-green">{{ $pickup->customer?->name ?? 'Warga' }}</dd></div>
             <div class="rounded-lg bg-warm-canvas px-3 py-2"><dt class="text-caption text-text-secondary">Jadwal</dt><dd class="mt-0.5 font-semibold text-deep-green">{{ $pickup->scheduled_date?->translatedFormat('d F Y') ?? 'Belum dijadwalkan' }}</dd></div>
@@ -87,7 +87,7 @@
     </x-ui.panel>
 
     {{-- Status Panel --}}
-    <x-ui.panel title="Status tugas" description="Perbarui status sesuai proses penjemputan.">
+    <x-ui.panel title="Status tugas">
         <div class="flex items-center gap-3">
             <x-ui.status-badge :status="$pickupBadge">
                 {{ \App\Support\StatusLabel::for($pickup->status) }}
@@ -121,7 +121,7 @@
 
     {{-- Actual Weighing --}}
     @if ($canComplete)
-        <x-ui.panel title="Timbang aktual" description="Berat aktual ini menjadi sumber setoran dan saldo." state="success">
+        <x-ui.panel title="Timbang aktual" state="success">
             <div class="grid gap-4">
                 @foreach ($actualItems as $index => $item)
                     <fieldset wire:key="actual-item-{{ $index }}" class="grid grid-cols-2 gap-3 border-b border-border pb-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">

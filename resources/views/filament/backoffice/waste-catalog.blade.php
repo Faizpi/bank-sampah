@@ -4,7 +4,7 @@
             <div>
         <p class="text-sm font-semibold text-forest-700">Data master</p>
         <h2 id="waste-catalog-title" class="mt-1 text-2xl font-bold text-deep-green">Katalog Sampah</h2>
-        <p class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Kelola kategori, jenis, kondisi, satuan, dan harga dari satu area yang mudah ditemukan.</p>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Atur jenis sampah dan harga.</p>
             </div>
             <img src="{{ asset('images/landing/mascot-3.png') }}" alt="Maskot badak memilah kategori dan jenis sampah" class="h-24 w-24 self-end object-contain sm:h-28 sm:w-28 sm:self-auto">
         </div>

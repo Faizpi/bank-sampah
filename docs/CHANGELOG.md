@@ -1,5 +1,16 @@
 # Catatan perubahan
 
+## Bahasa antarmuka lebih ringkas (14 November 2026)
+
+- Menghapus catatan teknis pada Pengaturan serta penjelasan berulang di direktori, riwayat, bukti transaksi, dan filter laporan. Petunjuk penjemputan, kamera, serta halaman wilayah/katalog ditulis langsung sesuai tindakan pengguna.
+- Memperpendek pemberitahuan administrasi tanpa menghilangkan batas nominal, validasi, status saldo, peringatan penghapusan permanen, atau keterangan bahwa halaman Cadangan belum membuat berkas backup.
+- Mengganti frekuensi ringkasan Telegram menjadi harian/mingguan/bulanan dan menghapus penjelasan konfigurasi yang tidak diperlukan pada pemilihan tujuan pencairan. Pilihan langganan tetap opt-in.
+
+## Label status pencairan seragam (14 November 2026)
+
+- Menyatukan label status digital menjadi Pencairan berhasil, Pencairan gagal, dan Pencairan sedang diproses pada detail, riwayat, laporan, ekspor, notifikasi, backoffice, serta Telegram. Halaman detail memakai label model yang sama agar istilah tidak berbeda antarhalaman.
+- Mempertahankan penanda digital (simulasi), Xendit Test Mode, dan keterangan bahwa tidak ada uang riil yang dikirim. Tidak mengubah status transaksi, saldo, atau alur provider.
+
 ## Pengaturan minimum dan kode tautan transaksi (13 November 2026)
 
 - Menambahkan minimum pencairan yang dapat diubah Admin dari Pengaturan Teknis (Rp5.000 sampai Rp1.000.000), disimpan pada tabel pengaturan yang ada, dicatat pada audit, dan dipakai seragam pada validasi web serta Telegram. Nilai awal tetap Rp10.000. Batas aplikasi Rp5.000 belum membuktikan setiap kanal Xendit menerima nominal itu.

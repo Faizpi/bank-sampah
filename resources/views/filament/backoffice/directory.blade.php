@@ -28,8 +28,4 @@
         @endif
     </x-backoffice.section-navigation>
 
-    <div class="mt-4 flex items-start gap-3 rounded-lg border border-info-200 bg-info-50 px-4 py-3 text-sm leading-6 text-info-950">
-        <x-filament::icon icon="heroicon-o-information-circle" class="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-        <p>Nasabah memuat kartu dan data warga. Pengguna &amp; peran mengatur akun dan akses. Pendaftaran baru ada di Verifikasi warga.</p>
-    </div>
 </x-filament-panels::page>

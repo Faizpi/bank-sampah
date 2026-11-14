@@ -190,6 +190,18 @@ try {
     await expect(admin.getByText('Pencairan berhasil', { exact: true })).toBeVisible();
     await expect(admin.locator('[data-channel-logo]').first()).toBeVisible();
     await capture(admin, 'admin');
+    await admin.goto(`${env.APP_URL}/backoffice/technical-settings-page`);
+    await expect(admin.getByLabel('Minimum pencairan (Rp)', { exact: true })).toHaveValue('10000');
+    await expect(admin.getByText('Atur ambang operasional yang aman.', { exact: false })).toHaveCount(0);
+    await expect(admin.getByText('Batas Rp5.000 adalah aturan aplikasi', { exact: false })).toHaveCount(0);
+    await capture(admin, 'admin-settings');
+    await auditRoutes(admin, 'admin', [
+        ['directory', '/backoffice/directory'], ['catalog', '/backoffice/waste-catalog'],
+        ['regions', '/backoffice/regions'], ['technical', '/backoffice/operations-dashboard'],
+        ['backups', '/backoffice/technical-backups-page'],
+        ['audit-retention', '/backoffice/technical-audit-retention-page'],
+        ['photo-retention', '/backoffice/technical-media-retention-page'],
+    ]);
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ checks, errors }, null, 2));
 } finally {

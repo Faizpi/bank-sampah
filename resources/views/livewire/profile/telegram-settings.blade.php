@@ -22,7 +22,7 @@
                     @if ($challenge->telegram_id)
                         <p>Telegram yang membuka tautan: <strong>{{ $challenge->display_name }}</strong>, ID berakhiran {{ substr($challenge->telegram_id, -4) }}. Pastikan ini Telegram Anda.</p>
                         <x-ui.button wire:click="approve" wire:loading.attr="disabled">Ya, hubungkan Telegram ini</x-ui.button>
-                    @else<p role="status">Buka tautan di Telegram lalu tekan Mulai. Halaman ini akan memperbarui statusnya.</p>@endif
+                    @else<p role="status">Buka tautan di Telegram lalu tekan Mulai.</p>@endif
                     <p class="text-body-sm text-text-secondary">Berlaku sampai {{ $challenge->expires_at->format('H:i') }}.</p>
                 </div>
             @elseif ($challengeId)<p role="status">Tautan kedaluwarsa. Buat ulang untuk melanjutkan.</p>@endif

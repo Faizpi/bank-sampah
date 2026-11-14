@@ -9,7 +9,7 @@
             <p class="font-semibold text-gray-950">Pengaman penghapusan</p>
             <ul class="mt-2 list-disc space-y-1 pl-5">
                 <li>Usia foto minimal {{ $mediaRetentionMinimumAgeDays }} hari.</li>
-                <li>Maksimal {{ $mediaRetentionBatchLimit }} foto per eksekusi agar aman pada layanan hosting dengan sumber daya terbatas.</li>
+                <li>Maksimal {{ $mediaRetentionBatchLimit }} foto sekali proses.</li>
                 <li>Pratinjau wajib dijalankan ulang setelah 10 menit atau saat batas tanggal berubah.</li>
             </ul>
         </div>
