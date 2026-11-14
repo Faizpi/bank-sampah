@@ -73,6 +73,8 @@ Label, error, loading, fokus, dan accessible name berbahasa Indonesia. Tidak ada
 
 ## Responsive behavior
 
+Pembaruan 14 November: pada bukti pencairan digital, logo dan nama tujuan berada di tengah pada ponsel dan tetap di kanan pada tablet serta desktop. Keterangan simulasi tetap menyatakan bahwa uang asli tidak dikirim; bukti transaksi berasal dari sistem bank sampah.
+
 Validasi 360/390/768/1280. Form ponsel satu kolom; pasangan kondisi/berat pada baris timbang boleh dua kolom jika tetap terbaca tanpa overflow. Nominal/nama/status/aksi tidak mengharuskan geser horizontal pada layar operasional utama. Desktop Admin tetap mendukung tabel lengkap.
 
 ## Interaction states

@@ -1,5 +1,10 @@
 # Catatan perubahan
 
+## Tampilan bukti pencairan di ponsel (14 November 2026)
+
+- Menempatkan logo dan nama bank atau dompet digital di tengah pada ponsel, tanpa mengubah posisi pada tablet dan desktop.
+- Meringkas keterangan pada bukti menjadi “Simulasi. Uang asli tidak dikirim.” Bukti tetap berasal dari sistem bank sampah.
+
 ## Bahasa antarmuka lebih ringkas (14 November 2026)
 
 - Menghapus catatan teknis pada Pengaturan serta penjelasan berulang di direktori, riwayat, bukti transaksi, dan filter laporan. Petunjuk penjemputan, kamera, serta halaman wilayah/katalog ditulis langsung sesuai tindakan pengguna.

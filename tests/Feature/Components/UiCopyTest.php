@@ -34,7 +34,7 @@ it('keeps internal implementation notes out of routine user screens', function (
 
 it('preserves the important financial and privacy information while shortening UI copy', function (): void {
     expect(file_get_contents(resource_path('views/livewire/citizen/payout-show.blade.php')))
-        ->toContain('tanpa pengiriman uang riil', 'bukan struk resmi', 'Saldo masih disisihkan', 'Saldo yang disisihkan sudah tersedia kembali.');
+        ->toContain('Simulasi. Uang asli tidak dikirim.', 'Saldo masih disisihkan', 'Saldo yang disisihkan sudah tersedia kembali.');
     expect(file_get_contents(resource_path('views/livewire/citizen/payout-form.blade.php')))
         ->toContain('Nama dan nomor tujuan dikirim ke Xendit untuk simulasi.', 'Konfirmasi pencairan simulasi');
     expect(file_get_contents(resource_path('views/livewire/officer/deposit-form.blade.php')))

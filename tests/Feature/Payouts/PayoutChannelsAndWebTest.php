@@ -124,6 +124,7 @@ it('displays provider settlement as an automatic simulation rather than physical
     $this->actingAs($this->owner);
     Livewire::test(PayoutShow::class, ['payout' => $row->fresh()])
         ->assertSee('Pencairan sedang diproses')
+        ->assertSee('Simulasi. Uang asli tidak dikirim.')
         ->assertSee('payout-status-spinner')
         ->assertDontSee('payout-status-check');
     Http::fake(['api.xendit.co/*' => Http::response(Payout::response($row))]);
@@ -133,7 +134,8 @@ it('displays provider settlement as an automatic simulation rather than physical
         ->assertSee('payout-status-check')
         ->assertDontSee('payout-status-spinner')
         ->assertSee('Otomatis oleh sistem')
-        ->assertSee('bukan struk resmi')
+        ->assertSee('Uang asli tidak dikirim')
+        ->assertSee('Simulasi. Uang asli tidak dikirim.')
         ->assertDontSee('Waktu serah fisik')
         ->assertDontSee('Batalkan sebelum diproses');
 });

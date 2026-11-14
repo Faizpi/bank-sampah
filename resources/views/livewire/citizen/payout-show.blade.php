@@ -1,7 +1,7 @@
 <x-slot:title>Status pencairan digital (simulasi)</x-slot:title>
 <section class="grid gap-6" aria-labelledby="payout-status-title" data-print-area @if (! $payout->isTerminal()) wire:poll.10s @endif>
     <x-ui.page-heading id="payout-status-title" title="Pencairan digital (simulasi)" mascot="5" />
-    <p class="rounded-xl border border-border bg-warning-bg p-4 font-semibold">Simulasi Xendit (tanpa pengiriman uang riil). Bukti ini bukan struk resmi bank atau dompet digital.</p>
+    <p class="rounded-xl border border-border bg-warning-bg p-4 font-semibold">Simulasi. Uang asli tidak dikirim.</p>
     @if (session('payout_success'))<p role="status">{{ session('payout_success') }}</p>@endif
     @if ($errors->any())<div role="alert">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
     @php
@@ -21,7 +21,7 @@
         ];
     @endphp
     <x-ui.panel>
-        <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="flex flex-wrap items-start justify-between gap-4" data-payout-header>
             <div class="flex min-w-0 items-center gap-3" role="status" aria-live="polite">
                 <span class="grid size-12 shrink-0 place-items-center rounded-full {{ $toneClasses[$statusTone] }}" aria-hidden="true">
                     @if ($statusTone === 'success')
@@ -48,8 +48,8 @@
                     <h2 class="break-words text-title text-deep-green">{{ $statusLabel }}</h2>
                 </div>
             </div>
-            <div class="flex shrink-0 flex-col items-end gap-1">
-                <img src="{{ asset($channel['logo']) }}" alt="Logo {{ $channel['name'] }}" class="h-8 w-24 object-contain object-right">
+            <div class="flex w-full shrink-0 flex-col items-center gap-1 sm:w-auto sm:items-end" data-payout-channel>
+                <img src="{{ asset($channel['logo']) }}" alt="Logo {{ $channel['name'] }}" class="h-8 w-24 object-contain object-center sm:object-right">
                 <p class="text-caption text-text-secondary">{{ $channel['name'] }} (simulasi)</p>
             </div>
         </div>

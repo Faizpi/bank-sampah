@@ -115,6 +115,23 @@ try {
     await citizen.getByRole('button', { name: 'Periksa pengajuan', exact: true }).click();
     await citizen.getByRole('button', { name: 'Konfirmasi pencairan simulasi', exact: true }).click();
     await citizen.waitForURL(/\/warga\/pencairan-digital\/SIM-[A-Z0-9-]+$/);
+    await expect(citizen.getByText('Simulasi. Uang asli tidak dikirim.', { exact: true })).toBeVisible();
+    for (const width of [320, 360, 390, 640, 768, 1280]) {
+        await citizen.setViewportSize({ width, height: 900 });
+        const bounds = await citizen.locator('[data-payout-header]').evaluate(header => {
+            const container = header.getBoundingClientRect();
+            const channel = header.querySelector('[data-payout-channel]').getBoundingClientRect();
+            const logo = header.querySelector('[data-payout-channel] img').getBoundingClientRect();
+            return { container: { left: container.left, right: container.right }, channel: { left: channel.left, right: channel.right }, logo: { left: logo.left, right: logo.right } };
+        });
+        if (width < 640) {
+            const center = (bounds.container.left + bounds.container.right) / 2;
+            assert.ok(Math.abs((bounds.logo.left + bounds.logo.right) / 2 - center) < 2, `Logo not centered at ${width}`);
+        } else {
+            assert.ok(Math.abs(bounds.logo.right - bounds.container.right) < 2, `Logo not right-aligned at ${width}`);
+        }
+    }
+    await citizen.setViewportSize({ width: 390, height: 844 });
     await capture(citizen, 'queued');
     fixture('work');
     await citizen.reload();
